@@ -1,0 +1,141 @@
+---
+id: spec-0001
+type: spec
+status: draft
+depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012]
+owner: gundi
+rubric: spec-quality
+---
+
+# Spec 0001 — The spine: artifact contract + lifecycle + conformance check
+
+> **Gated (A2 / D2).** This is `draft`. **No build begins until it is ratified.** It is the
+> first artifact of the spec stage (`decision-0011`), and the first user of that stage.
+
+## Purpose
+
+Specify the **spine** — the smallest real machinery: a portable **artifact contract**, its
+**lifecycle**, and an agentic **conformance check** that enforces them. It formalizes the
+proto-contract we have been dogfooding across ~18 artifacts (every decision/invariant/research
+file). Per `0010`, all of it is **agent instructions — no runtime, no script**: the check is a
+sub-agent applying a rubric.
+
+## Scope
+
+**In scope (first build):** the frontmatter schema, the lifecycle states + transition rules,
+the directional-flow rule, and the conformance sub-agent + its rubric, dogfooded on our own
+corpus with a positive-control fixture.
+
+**Named but build-deferred:** the **activation/wiring contract** (§5 — how the pack hooks into
+a host's behavior; built in the delivery slice, `0012`). **Out of scope (later specs):**
+conformance-*to-upstream* (does an implementation match its spec — a judgment agent); the
+multi-surface CLI (`0012` v1); friction-export (`0009`) — though §3 notes the check's report
+*is* the capture substrate.
+
+## 1. The artifact contract (frontmatter schema)
+
+Every non-code artifact opens with YAML frontmatter:
+
+| Field | Req | Rule |
+|---|---|---|
+| `id` | ✓ | unique across the corpus; typed slug (`decision-0007`, `invariants-v1`, `spec-0001`) |
+| `type` | ✓ | one of: `decision`, `invariant-set`, `research-note`, `spec`, `rubric` *(extensible by a recorded decision)* |
+| `status` | ✓ | one of: `draft`, `ratified`, `approved` (§2) |
+| `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root |
+| `owner` | ✓ | the accountable human |
+| `date` / `ratified` / `supersedes` / `superseded_by` / `rubric` | — | optional |
+
+**External refs:** a `depends_on` entry that is not an artifact `id` must match a declared
+external-ref prefix (v0 allowlist: `brief-§…`). Anything else is a **dangling reference** →
+fail.
+
+## 2. Lifecycle
+
+States and the **only** legal transitions: `draft → ratified → approved`; plus
+`ratified|approved → superseded` (via a successor with `supersedes`).
+
+- **`draft`** — in progress. **Not consumable** by downstream.
+- **`ratified`** — intent approved by the **human** (B3 intent face / D2). Consumable.
+- **`approved`** — passed **independent conformance** at the execution layer (B3 conformance
+  face). Consumable.
+- **`superseded`** — replaced; must carry `superseded_by`; **never** consumed as current truth
+  (B4). Decisions are append-only: supersede, never edit a ratified one.
+
+## 3. The conformance check (sub-agent + rubric — no script, `0010`)
+
+A read-only sub-agent that takes the corpus (or one artifact + corpus) and applies the
+**artifact-contract rubric**, emitting a **loud** pass/fail report (D1). It derives its
+checklist from this spec, not from the producer (B3). Its checks:
+
+1. Frontmatter present; all required fields present and well-typed.
+2. `type` ∈ allowed; `status` ∈ allowed.
+3. `id` unique across the corpus.
+4. Every `depends_on` resolves to an existing artifact `id` **or** a declared external ref;
+   no dangling references.
+5. **Directional flow (load-bearing, A1/B1):** no `ratified` or `approved` artifact
+   `depends_on` a `draft` artifact.
+6. Required body sections present per type (§4).
+7. Supersede integrity: a `superseded` artifact has `superseded_by`; nothing consumes it as
+   current truth.
+
+**Honesty clause (math-quest):** *accurately listing the violations is success.* A check that
+hides drift to report "pass" has failed this spec. The report is also the raw **friction
+capture** substrate for `0009`.
+
+## 4. Required body sections (per type)
+
+- `spec` → `## Acceptance criteria`, `## Open questions`.
+- `invariant-set` → the set, `## Acceptance criteria`, `## Open questions`.
+- `decision` → `## Context`, `## Decision`, `## Consequences`.
+- `research-note` → `## Acceptance criteria`, `## Open questions`.
+
+*(Surfacing our own drift is expected — e.g. decisions that predate this rule, or informal
+`brief-§…` refs. The check must report them, not paper over them. See AC6.)*
+
+## 5. Activation / wiring contract (specified here; built in the delivery slice, `0012`)
+
+Named per `0012`, because *resources present ≠ resources used* (availability vs activation —
+expressed-vs-enforced at the delivery level). The spine must define how its resources bind to
+a host's behavior, even though the binding is built when delivery is:
+
+- **Mechanism (v0, Claude plugin):** the conformance check fires via **hooks** (on the host's
+  commit/PR/Write events), skills are **model-invoked**, and an optional **default agent** can
+  shape the host's behavior.
+- **Composition (load-bearing):** Bonsai **augments, never clobbers** the host's existing
+  `CLAUDE.md`/instructions — coexist, and record any change to them as a surfaced decision.
+- **Activation level = the C1 dial, surfaced** (`0008`): *available + referenced* → *hooks
+  fire* → *default agent*, chosen by the user, never silently maximal.
+- **Acceptance (deferred to the delivery build):** installing at a chosen dial level produces
+  *exactly* that degree of binding, surfaced; the host's prior instructions are preserved;
+  uninstall is clean.
+
+## Acceptance criteria
+
+- **AC1 — no false pass / no vague fail.** On our corpus, every artifact either passes or
+  yields a *specific, accurate* violation (exact field/rule/id), never a vague or absent one.
+- **AC2 — positive control (B3 open question).** Given a known-bad fixture exhibiting each
+  violation class (missing field; bad `status`; dangling `depends_on`; **ratified-depends-on-
+  draft**; missing required section; superseded-but-consumed), the check **rejects it and
+  names the exact violation**. The check is not trusted until it fails this fixture.
+- **AC3 — loud, never degraded.** An unparseable/missing input halts with a visible error; no
+  partial "pass" is emitted (D1).
+- **AC4 — directional flow always caught.** Any `ratified`/`approved` artifact depending on a
+  `draft` is always flagged (no exceptions).
+- **AC5 — no runtime.** The check runs as a sub-agent + rubric on the agentic surface, with
+  **no Python/Node/other runtime** (`0010`).
+- **AC6 — finds real drift.** Run on the current corpus, it surfaces the *known* existing
+  inconsistencies (decisions lacking the §4 sections; informal external refs), proving it
+  detects, not rubber-stamps.
+
+## Open questions
+
+- **Spec granularity (`0011`):** does every change need a spec, or only non-trivial ones
+  (minimal-first threshold)? This spec assumes the latter.
+- **Two consumable states or one?** Is the `ratified`/`approved` split worth it at v0, or
+  collapse to `draft → ratified`? (Keeps the B3 two-faces distinction; may be premature.)
+- **External-ref mechanism:** an allowlist prefix (v0) vs a registry artifact — revisit when
+  refs multiply.
+- **`core/` placement (`0005`):** the built resources (rubric, sub-agent) are Layer-A product
+  → `core/`; this spec moves there in the `0005` reorg.
+- **Activation/wiring (§5, `0012`):** which hooks/skills/default-agent per dial level — owed
+  by the delivery slice, not this build.
