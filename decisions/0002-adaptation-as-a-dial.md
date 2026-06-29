@@ -1,7 +1,8 @@
 ---
 id: decision-0002
 type: decision
-status: draft
+status: ratified
+ratified: 2026-06-29
 depends_on: [brief-§9.2, brief-§5, decision-0001]
 owner: gundi
 date: 2026-06-29
