@@ -14,6 +14,10 @@ date: 2026-06-29
 > confirmed, 0 killed → synthesized to 10 findings. Confidence tags below are the
 > verification verdicts, not assertions. Adoption numbers are **point-in-time snapshots**
 > (fast-moving) and stars are an imperfect proxy. Full transcript: workflow `wf_c9d9078c-ddf`.
+>
+> **Addendum (targeted gap-fill, 2026-06-29):** SpecSwarm, Kiro, Cursor, Devin added via
+> direct primary-source fetch + cross-check (lighter than the 3-vote pass); confidence
+> tagged per source quality (`medium` where only a vendor self-describes).
 
 ## Purpose
 
@@ -38,6 +42,22 @@ and archetype diversity.
   design/tasks/spec deltas). Four-stage flow (`new → ff → apply → archive`; core profile:
   propose/explore/apply/sync/archive). MIT, 21 tools, ~27k→57.6k stars in <6 months.
   Sources: openspec.pro; github.com/Fission-AI/OpenSpec; YC launch.
+- **Kiro (AWS)** — `confidence: high` (vendor + independent). Agentic IDE/CLI/web for
+  spec-driven dev. Three artifacts **`requirements.md → design.md → tasks.md`**, then
+  implementation, then **verification via property-based tests** (catch edge cases unit
+  tests miss). **Approval gates** between phases (Requirements-First / Design-First variants;
+  a "Quick Plan" *skips* gates); tasks run as a dependency-graph in concurrent "waves." AWS
+  frames the docs as "guardrails." Moderately opinionated; supports ACP / AGENTS.md / MCP.
+  Production, paid (Pro Max $100/mo). Sources: kiro.dev; kiro.dev/docs/specs; AWS Builder
+  Center.
+- **SpecSwarm** (Marty Bonacci) — `confidence: high`. Spec-driven *for Claude Code* with
+  multi-agent orchestration. 5-command core loop `init → build → fix → modify → ship`
+  (build = spec → plan → tasks → implement → quality-score). Quality-threshold **gate**
+  (default 80/100), per-task **verifier** subagent, adversarial **`spec-mentor`**
+  spec-vs-code check, version-controlled specs in `.specswarm/`, a constitution with
+  warn/block severities. MIT; 22 releases (v7.11.0, May 2026), 219 commits, ~63★ — *active
+  but low adoption.* (`specswarm.com` returned HTTP 403; data from the repo.) Source:
+  github.com/MartyBonacci/specswarm.
 
 ### B. PRD/story-driven multi-agent lifecycle (role-decomposed)
 - **BMAD-METHOD** — `confidence: high`. 12+ named domain-expert roles (PM, Architect,
@@ -68,47 +88,83 @@ and archetype diversity.
 - **VoltAgent/awesome-claude-code-subagents** — `confidence: high`. A *catalog* (10 role
   categories incl. Meta & Orchestration), not a methodology. Reference for the design space.
 
+### E. Rules/config packs (substrate, not a process)
+- **Cursor Rules** — `confidence: high`. System-level instructions injected into agent
+  context (`.mdc` files in `.cursor/rules`, user rules, `AGENTS.md`). Explicitly *"persistent
+  configuration and instructions, not a methodology"* — no workflow stages, gates, or
+  artifact transitions. The boundary case / **negative control** for the admission gate.
+  Source: cursor.com/docs.
+
+### F. Autonomous agents (open-ended)
+- **Devin (Cognition)** — `confidence: medium` (vendor self-description only). "The AI
+  software engineer" — autonomous, plans and executes end-to-end (migrations, on-call),
+  *open-ended rather than a fixed methodology.* Human oversight is a **merge-time approval**
+  ("a human is kept in the loop just to… approve Devin's changes"). Production at enterprise
+  scale (Nubank). Source: devin.ai.
+
 ### Controls (non-AI — flagged, not primary targets)
 - **Shape Up** — `confidence: high`. Pitch → betting-table gate → fixed 6-week cycle →
   2-week cool-down. Stable author-canonical baseline. Source: basecamp.com/shapeup.
 - **Scrum** — `confidence: high`. Declared "immutable" yet "purposefully incomplete."
   Prescriptive baseline to contrast against adaptable AI methods. Source: scrumguides.org.
 
-## ⚠ Gaps (loud failure — invariant 7: do not rank on no data)
+## Gaps — status after targeted follow-up
 
-- **Kiro (Amazon)** — **required candidate, ZERO surviving verified claims** this batch.
-  It is a real spec-driven AI IDE, but its stages/artifacts/gates/maturity are *unconfirmed
-  here.* Needs a dedicated verification pass before ranking.
-- **spec-swarm** — **required candidate, ZERO verified claims.** Existence as a distinct,
-  maintained framework is *unconfirmed.* Verify before ranking.
-- **Thin archetypes** (in-scope for discovery, no verified claims): IDE rules/config packs
-  (**Cursor** rules/workflows, **Windsurf**, **Aider**, **Cline/Roo**) and autonomous
-  commercial agents (**Devin/Cognition**, **Tessl**, **Conductor**). The rules/config-pack
-  and autonomous-agent archetypes are currently underrepresented.
+- **Kiro (AWS)** — ✅ resolved (now under archetype A; vendor + independent sources).
+- **SpecSwarm** — ✅ resolved (now under archetype A; confirmed via GitHub repo).
+  `specswarm.com` returned HTTP 403, so the marketing site is unverified — repo data used.
+- **Cursor / Devin** — ✅ added (archetypes E, F), filling the config-pack and autonomous
+  archetypes.
+- **Still unsurveyed (low priority):** Windsurf, Aider, Cline/Roo, Tessl, Conductor — further
+  instances of archetypes already represented by Cursor and Devin. Survey only if Step 1
+  reveals a coverage gap.
+
+## Resolution — does the gate apply to pattern-level guidance? (maintainer: yes, if it carries guardrails)
+
+The Cursor ↔ Devin ↔ Agent-SDK contrast settles the boundary question Step 0 raised. The
+admission gate keys on the **invariant properties acting as guardrails**, *not* on the
+presence of fixed/named steps:
+
+- **Agent SDK** — pattern-level (`gather → act → verify → repeat`), no rigid stages, but its
+  `verify` embeds invariant 5 as a guardrail → **admissible**.
+- **Devin** — open-ended, but a human merge-time approval embeds part of invariant 4 →
+  **partial** (likely fails directional-flow / gate-at-every-handover).
+- **Cursor Rules** — embeds *no* flow or gate, only injected standards → **fails** — rightly
+  so. It fails for lacking guardrails, not for "being patterns/config."
+
+**Candidate refinement (for Step 2):** reword invariant 1's gate face — "directional flow
+exists" should *not* require fixed or named stages, only one-way decreasing-ambiguity flow.
+Patterns that carry the guardrails pass; pure config that carries none does not.
 
 ## Ranked shortlist for Step 1 (recommendation)
 
-**Tier 1 — test first (distinct archetypes, real structure, strong maturity):**
-1. **GitHub Spec Kit** — spec-driven; its strict stage ordering is a live instance of
-   invariant 1 (directional handover) with explicit gates (invariant 2).
-2. **BMAD-METHOD** — PRD/role-driven; named roles are a live instance of invariant 4
-   (authority split / who-owns-what).
-3. **OpenSpec** — lightweight spec-driven; versioned specs + changes + archive is a live
-   instance of invariant 3 (auditable archive).
+Chosen for **archetype + boundary coverage** — including cases that *should* fail — so Step 1
+tests the invariants against variety, not five clones of one shape.
 
-**Tier 2 — test next (archetype coverage):**
-4. **Agent OS** — standards-injection (a different shape; tests whether the gate fits
-   non-staged config systems).
-5. **Anthropic Agent SDK / Claude Code subagents** — SDK/IDE-native orchestration; also the
-   self-reference case (our own substrate). Its `verify work` step is a live instance of
-   invariant 5 (independent verification) worth probing.
+**Tier 1 — staged methodologies, real structure + maturity:**
+1. **GitHub Spec Kit** — spec-driven; strict stage ordering ↔ invariant 1, explicit gates ↔ 2.
+2. **Kiro (AWS)** — commercial IDE spec-driven; `requirements→design→tasks→verify` with
+   **approval gates** ↔ invariants 1, 2, 4; property-based verification ↔ 5.
+3. **BMAD-METHOD** — PRD/role-driven; named roles ↔ invariant 4.
+4. **OpenSpec** — lightweight spec-driven; versioned specs/changes/archive ↔ invariant 3.
 
-**Controls — map "which invariant subset do they satisfy" (per decision `0006`), not pass/fail:**
+**Tier 2 — boundary & archetype cases (often the most informative tests):**
+5. **SpecSwarm** — Claude-Code-native; structurally the richest invariant-correlate
+   (quality-gate ↔ 2, `spec-mentor` adversarial check ↔ 5, versioned specs ↔ 3, constitution
+   ↔ 4) — *low adoption; test for **coverage**, not popularity.*
+6. **Anthropic Agent SDK / Claude Code subagents** — pattern-level (not staged); the
+   self-substrate case. Tests whether the gate admits guardrail-bearing *patterns* (see
+   resolution above). `verify work` ↔ invariant 5.
+7. **Devin (Cognition)** — autonomous, open-ended; only a merge-time human gate. Tests how
+   the gate handles agents with no staged directional flow.
+8. **Cursor Rules** — **negative control:** pure config, *explicitly not a methodology*.
+   Should **fail** the gate — confirming the gate discriminates.
+
+**Controls — map which invariant subset they satisfy (decision `0006`), not pass/fail:**
 - Shape Up, Scrum.
 
-**Before finalizing Step 1:** run a targeted verification on **Kiro** and **spec-swarm**,
-and one pass on the **rules/config-pack** archetype (Cursor) so all archetypes are
-represented or explicitly excluded with reason.
+**Still unsurveyed (optional, low priority):** Windsurf, Aider, Cline/Roo (more config-pack
+shapes), Tessl, Conductor (more autonomous agents) — fill only if Step 1 finds a gap.
 
 ## Acceptance criteria
 
@@ -119,13 +175,12 @@ represented or explicitly excluded with reason.
 
 ## Open questions (carried into Step 1)
 
-- **Kiro / spec-swarm:** dedicated verification — real stages/artifacts/gates + maturity?
-- **Archetype coverage:** do we need a rules/config-pack (Cursor) and an autonomous-agent
-  (Devin) target for the gate to be tested against the full design space?
-- **Preview signal (to confirm in Step 1, currently `inferred` not verified):** several
-  targets already exhibit invariant correlates — Spec Kit↔1/2, OpenSpec↔3, BMAD↔4,
-  claude-sub-agent↔2, Agent-SDK `verify`↔5. Does this survive close gate-testing, or do the
-  correlates break under detail? (This is exactly Step 1's job, and seeds Step 2.)
-- **Soft vs hard methodologies:** Anthropic's "patterns/guidance" framing means it isn't a
-  rigid staged process — does the admission gate even apply to pattern-level guidance, or
-  only to methodologies with explicit stages? (A real boundary question for the gate.)
+- **Preview signal (tag `inferred`, to confirm in Step 1):** targets already exhibit
+  invariant correlates — Spec Kit↔1/2, Kiro↔1/2/4/5, OpenSpec↔3, BMAD↔4, SpecSwarm↔2/3/4/5,
+  Agent-SDK `verify`↔5. Does this survive close gate-testing, or do correlates break under
+  detail? (Step 1's job; seeds Step 2.)
+- **Negative control:** does Cursor Rules cleanly **fail** the gate, and Devin land
+  *partial*? If a pure-config pack somehow "passes," the gate is too loose.
+- **Skippable gates:** Kiro's "Quick Plan" and SpecSwarm's `--quick` *skip* gates/approvals.
+  Does an **optional** gate still satisfy invariant 2 ("a gate at every handover"), or does
+  skippability violate it? (A real test of how strict the gate invariant is.)
