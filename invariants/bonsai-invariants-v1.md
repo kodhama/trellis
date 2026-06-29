@@ -88,8 +88,35 @@ names stages.*
   the whole archive.
 - **B6. Self-improvement is a disciplined loop** — *strong, less settled.* Trigger-driven,
   rides existing rituals, biased to retiring rules.
-- **B7. Minimal-first, reference-not-adoption** — *strong, less settled.* Smallest process
-  that works; frameworks are a parts catalog borrowed-by-decision, not an identity.
+- **B7. Minimal-first** — *strong, less settled.* Smallest process that works; add a step
+  only when friction reveals the boundary. *(v0's "reference-not-adoption" split out to B8 —
+  strict single-framework adoption is legitimate, so "never inherit wholesale" was too strong.)*
+- **B8. The reference relationship is explicit, recorded, and surfaced** — *provisional.* How
+  much the operating model **adopts** one framework vs **adapts**/synthesizes from several
+  (`decision-0002`) is a free choice — but the choice, and every *divergence* from a
+  reference, is a recorded decision (B4) and surfaced (D1), never silent drift. *(Replaces
+  v0's "never adopt wholesale," which wrongly foreclosed the conductor end — the Spec Kit case.)*
+- **B9. Clarify before commit** — *strong (new, from framework analysis).* Ambiguity in an
+  upstream artifact is actively **surfaced and resolved** — usually by asking the human —
+  before downstream consumes it; ambiguity is never silently resolved by guessing.
+  *Near-universal: Spec Kit `/clarify`, Kiro ambiguity/gap analysis pre-code, SpecSwarm
+  clarification + `/ss:decisions`.* Arguably the most central uncertainty-reduction act, and
+  absent from v0.
+- **B10. Bounded correction, then loud escalation** — *provisional (new, agentic).* On
+  verification failure, attempt **bounded** auto-correction (retry/repair to a limit), then
+  **escalate visibly** — never infinite-loop, never silently abandon. *SpecSwarm `/ss:fix`
+  auto-retry + watchdog; Agent SDK verify-loop.* (Most operational of the set — candidate to
+  collapse into D1; see open questions.)
+- **B11. Epistemic integrity — calibrated, independent judgment** — *provisional (new;
+  agent-conduct, a different kind).* The agent's assessments **track the evidence, not the
+  human's preferences**: it states disagreement and risks plainly when analysis warrants, and
+  affirms only when the data genuinely supports it — *withholding warranted positive signal is
+  as much a distortion as manufacturing praise*, and **performed disagreement is sycophancy
+  inverted**. The **human-facing twin of B3** (the builder doesn't grade itself; the agent
+  doesn't flatter the human) and the **precondition that makes the intent gate D2 real** — a
+  sycophantic gatekeeper cannot catch a wrong upstream. *Weakly checkable: realized in
+  sub-agent design (adversarial, self-derived checklists) and system prompts, not a gate.
+  Candidate to merge into B3.*
 
 ---
 
@@ -136,6 +163,10 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 | 6 | Added **gatekeeper dial (C2) `{agent\|human\|none}`** | who enforces is configurable | `decision-0008` |
 | 7 | **Elevated loud-failure (v0-7) → transparency floor (D1)** incl. conscious skip | the true floor is surfacing, not enforcing | `decision-0008` |
 | 8 | Named the **intent-gate floor (D2)** explicitly | the one non-configurable gate | v0-4 + `0008` |
+| 9 | **Split B7**: minimal-first kept; reference-not-adoption → **B8** (recorded reference relationship) | strict single-framework adopt is legitimate (conductor); v0 foreclosed it | `decision-0002` + Spec Kit case |
+| 10 | Added **B9 clarify-before-commit** | near-universal framework feature; central uncertainty-reduction act, absent from v0 | `research-0001/0002` |
+| 11 | Added **B10 bounded-correction-then-escalation** | agentic reliability; prevents infinite-loop / silent abandonment | SpecSwarm, Agent SDK |
+| 12 | Added **B11 epistemic integrity** (calibrated, anti-sycophancy) | human-facing twin of B3; precondition for D2 to function | maintainer + B3/D2 logic |
 | — | Kept: v0 3+7 merge (B4); bounded context (B5); self-improvement (B6); minimal-first (B7); directional flow (A1/B1); intent locus (A3) | — | — |
 
 ---
@@ -165,3 +196,13 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   Claude Agent SDK (passes A as pattern-with-guardrails).
 - **Does any operating invariant (B) collapse or graduate to a dial?** Minimal-first (B7)
   applied to v1 itself.
+- **Minimal-first tension:** this round grew the operating layer 7 → 11. Which of B8–B11 are
+  real invariants vs. practices? **B10** (candidate: collapse into D1) and **B11** (candidate:
+  merge into B3) are the likeliest to retire. *B10 was added on the maintainer's instruction
+  over my recorded reservation that it is more operational than invariant — noted here, not
+  buried (which is B11 in action).*
+- **Is B11 a new *class* (agent-conduct/epistemic) or part of B3?** If kept separate, the set
+  recognizes two faces of independence — conformance (B3) and intent (B11).
+- **Adherence (`decision-0002`):** working stance is two coarse modes — *adopt* (one
+  framework) vs *adapt* (synthesize from several); deliberately **not** formalized into the
+  invariant model until instance #2 can test it. v1 encodes only the durable part (B8).

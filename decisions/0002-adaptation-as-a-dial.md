@@ -31,6 +31,21 @@ using others only as reference.
 - "Enough seeds to spawn a coherent methodology" becomes a design target for the parts
   catalog (relates to decision `0003`).
 
+## Refinement (2026-06-29) — two coarse modes, not a per-area dial
+
+Testing the dial concretely (maintainer pushback): a *per-area* adherence setting (conduct
+framework X for the build loop, author your own planning) risks being **brittle**. Working
+stance instead — two coarse modes, the real variable being *single-source fidelity vs
+multi-source synthesis*:
+
+1. **Adopt** — one framework, faithfully, for the whole process (conductor end).
+2. **Adapt** — synthesize from one *or several* references, evolving (author end).
+
+**Deliberately not formalized into the invariant model yet** — it is abstract and hard to
+test, so per minimal-first it stays a recorded stance until instance #2 shows what lands.
+`invariants-v1` encodes only the durable part: the reference relationship (adopt/adapt/
+diverge) is explicit, recorded, and surfaced (B8).
+
 ## Supersedes / superseded by
 
 — (none)

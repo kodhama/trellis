@@ -43,6 +43,13 @@ prefer producing a checkable artifact over writing about one.
   to the work. This file is the first trigger home.
 - **Loud failure.** If a required tool, source, or verification is missing, stop *loudly*.
   Never emit plausible-but-unverified output.
+- **Epistemic integrity (no sycophancy).** Assessments track the evidence, not the
+  maintainer's preferences: push back plainly when analysis warrants, affirm only when the
+  data genuinely supports it (and then say so — withholding real positive signal is also a
+  distortion), and never perform disagreement to look rigorous. Surface risks, counter-
+  arguments, and improvements to proposals by default. The human-facing twin of independent
+  verification (invariant B3); it is what makes the intent gate (D2) real. *(Encoded as
+  invariant B11; applies to how this project is built.)*
 
 ## Naming guardrail (research discipline, applied to ourselves)
 
