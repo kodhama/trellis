@@ -9,17 +9,21 @@ small set of invariants. It is **not** a process; it is the layer *above* the st
 
 ## Status
 
-Early. We are at the **intent layer**: defining and (soon) validating the load-bearing
-invariant set before building any machinery. Nothing is ratified yet — the invariants are
-held `draft` pending research (decision `0006`).
+The **intent layer is ratified**: `invariants-v1` (the load-bearing invariant set) and
+decisions `0001–0008` are ratified, after a three-step research pass (`research/`) that
+gate-tested real frameworks (Spec Kit, Kiro, BMAD, OpenSpec, SpecSwarm). **Next:** the
+*spine* — the portable artifact contract + lifecycle — the first machinery. The N=1
+generalization risk (one project so far) remains the central open question.
 
 ## Where things are
 
 - [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md) — the full thesis
   (read §10 verdict, §11 start-here, §12 operating method first).
-- [`invariants/bonsai-invariants-v0.md`](invariants/bonsai-invariants-v0.md) — the
-  load-bearing core: *Bonsai's invariants — our synthesis, v0*.
-- [`decisions/`](decisions/) — append-only decision records (`0001–0006`).
+- [`invariants/bonsai-invariants-v1.md`](invariants/bonsai-invariants-v1.md) — the
+  load-bearing core (ratified): *Bonsai's invariants — our synthesis, v1* (structural gate ·
+  operating layer · dials · floors). v0 kept as a superseded diff.
+- [`decisions/`](decisions/) — append-only decision records (`0001–0008`, ratified).
+- [`research/`](research/) — the framework gate-test research notes.
 - [`CLAUDE.md`](CLAUDE.md) — the methodology we use to build Bonsai (Layer B / instance #1).
 
 ## How we work
