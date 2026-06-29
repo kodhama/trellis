@@ -184,6 +184,12 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 
 ## Open questions
 
+- **B3 positive control (friction-logged 2026-06-29, from our own CI-reviewer verification):**
+  should independent verification require the verifier be *demonstrably able to fail* —
+  validated against a known-bad **positive control** — not merely that a verifier *exists*? A
+  checker that can't be shown to reject anything is a decorative gate (the D2/sycophancy
+  disease one level down). Surfaced when our own verification loop read a null result from a
+  test with no discriminating power. Decide when building the spine's verification machinery.
 - **Is D1 (transparency) its own floor, or still part of loud-failure (B-layer)?** v1 elevated
   it on the strength of `0008`; ratification should confirm or fold it back.
 - **Does A4 over-constrain pattern-level methodologies** (e.g. Agent SDK) that have no explicit
