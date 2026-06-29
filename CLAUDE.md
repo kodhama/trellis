@@ -4,7 +4,7 @@
 > development process* — it fits, teaches, adapts, and guards whatever methodology a
 > project uses, while enforcing a small set of invariants. It is **not** a process; it is
 > the layer above the steps. See `agentic-dev-meta-layer-brief.md` (in this repo) for the
-> full thesis and `invariants/bonsai-invariants-v0.md` for the load-bearing core.
+> full thesis and `invariants/bonsai-invariants-v1.md` for the load-bearing core (ratified).
 
 > **We build Bonsai with Bonsai.** This file is a deliberately tiny instance of the seed
 > operating method (brief §12). It dogfoods our own invariants from commit one. Friction
@@ -54,17 +54,18 @@ prefer producing a checkable artifact over writing about one.
 
 If we ever name the invariant set authoritatively, attribute it clearly as **our
 synthesis** — never imply pre-existing provenance. For now it is exactly *"Bonsai's
-invariants — our synthesis, v0."* Eponymous framing is a deliberate *later* decision, made
+invariants — our synthesis, v1."* Eponymous framing is a deliberate *later* decision, made
 only once the set's durability is proven across multiple instances.
 
 ## Current state
 
-- **Intent layer (in review):** invariant set v0 + decisions `0001–0005` are `draft`.
-  The invariant set is **held for research, not ratified on assertion** (decision `0006`).
-- **Active work:** research (decision `0006`) to validate/refine the invariants before
-  ratification — chiefly testing real methodologies against the admission gate.
-- **Next (deferred until invariants ratified):** the spine — portable artifact contract +
-  lifecycle (brief §8.1) — the first machinery; it `depends_on` the ratified invariant set.
+- **Intent layer: ratified.** `invariants-v1` is the ratified current-truth set (A1–A4 gate
+  · B1–B9 operating · C dials · D floors); decisions `0001–0008` are ratified; v0 superseded.
+- **Research done:** Steps 0–2 (`research-0001` target landscape, `research-0002` gate-test
+  of real frameworks); findings folded into v1.
+- **Machinery:** automated PR review live (decision `0007`).
+- **Next:** the **spine** — portable artifact contract + lifecycle (brief §8.1) — the first
+  build, consuming ratified `invariants-v1`. Then find **instance #2** (the N=1 risk).
 
 ## Acceptance criteria
 
