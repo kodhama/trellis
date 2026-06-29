@@ -24,16 +24,23 @@ are also explicitly "needs data" per the maintainer.
 ## Decision
 
 The invariant set stays `draft` and is **validated by research before ratification**, not
-ratified by assertion. The research agenda is the set's own Open questions, prioritised:
+ratified by assertion. The research runs in **three steps**:
 
-1. **Admission-gate validation (highest value):** test real methodologies (BMAD, spec-kit,
-   and others) against the four `methodology` invariants `{1-flow, 2, 4-intent, 5}`. Does
-   the gate hold? Which invariant is the first to break?
-2. **Prior-art / novelty honesty:** does an existing framework already articulate this set
-   (or part of it)? If so, cite it; never claim false novelty (the §4 guardrail).
-3. **Contested calls:** gather data to place provenance (gate vs supplied) and invariant 1's
-   ratification split.
-4. **Instance #1:** test our own build methodology (decision `0005`) against the gate.
+- **Step 0 — Target identification** *(done → `research/0001-target-landscape.md`)*. Deep
+  research to find the AI-agentic-dev methodologies worth testing and rank a shortlist.
+  Seeds incl. spec-kit, BMAD, Agent OS, Kiro, OpenSpec, spec-swarm; discover others. Non-AI
+  methods (Shape Up, Scrum, RUP) included as **controls only** — first to cut if scope must
+  shrink.
+- **Step 1 — Invariant validation.** Gate-test each *AI* target against the four
+  `methodology` invariants `{1-flow, 2, 4-intent, 5}` (pass/partial/fail + evidence): does
+  the gate hold? which breaks first? For *non-AI* controls, instead map **which invariant
+  subset they conform to** (that subset map signals which invariants are AI-specific vs
+  general). Plus: prior-art/novelty honesty (does a named framework already articulate the
+  set? — §4 guardrail), data for the two contested calls, and instance #1 (our own build
+  methodology, decision `0005`) against the gate.
+- **Step 2 — Invariant refinement/discovery** *(follow-up)*. Use the findings to **tweak
+  existing invariants and propose new ones** that better reflect how real methodologies
+  behave — bidirectional, not just pass/fail. Likely output: a draft `invariants-v1`.
 
 ## Consequences
 
