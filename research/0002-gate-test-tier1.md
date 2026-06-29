@@ -31,6 +31,7 @@ And where do the invariant *definitions* break against real frameworks?
 | **Kiro** | PARTIAL — standard enforces req→design→tasks; **Quick Plan bypasses**; Design-First reverses | PARTIAL — gates **skippable via Quick Plan** | PARTIAL — standard approval opt-in; Quick Plan reviews *after the fact* | **ABSENT** — no builder-distinct verifier evidenced |
 | **OpenSpec** | PARTIAL→weak — *explicitly rejects phase-lock* ("dependencies are enablers… what's possible, not what's required next") | **ABSENT** — no mandatory gates; `verify` runs after code and "won't block archive" | PARTIAL — humans initiate; no formal approval step | **ABSENT** — `/opsx:verify` is the *same* AI, optional |
 | **BMAD** | PARTIAL — ordered phases via workflows (PRD→arch→epics→stories); not hard-enforced | PARTIAL — planning artifacts gate implementation; "code reviews" in build phase | PARTIAL→PASS — human planning collaboration is core (mandatory-ness undocumented) | **PARTIAL→PASS** — **distinct roles**: Developer (Amelia) vs reviewer/QA, optional Test Architect (Murat) |
+| **SpecSwarm** *(Tier 2)* | PARTIAL — `spec→plan→tasks→implement`; recommended, not enforced | PARTIAL→PASS — 80/100 quality gate **mandatory before merge**; `--quick`/`--minimal` skip sub-gates | PARTIAL — upfront decisions touchpoint (`/ss:decisions`) + clarification Qs; no formal sign-off | **PASS** — **fresh-context adversarial `spec-mentor`** (spec-vs-code) + per-task verifier, both **distinct from the implementer** |
 
 Secondary (`3 provenance`, a `bonsai-design` invariant, noted for interest): **OpenSpec is
 strongest** — versioned spec library + change deltas (ADDED/MODIFIED/REMOVED) + dated archive
@@ -72,13 +73,36 @@ structure; Bonsai supplies the enforcement.**" That both *validates the methodol
 design distinction* and *defines Bonsai's wedge precisely*: turn expressed→enforced, and add
 the independent verifier none of them have.
 
+## Tier 2 addendum — SpecSwarm: the independent verifier exists in the wild
+
+SpecSwarm answers Step 1's biggest gap. Its **`spec-mentor`** is a *fresh-context,
+adversarial* subagent doing **spec-vs-code** verification, and a per-task **verifier**
+subagent confirms each task's acceptance criteria — both **distinct agents from the
+implementer** (producer ≠ verifier). `/ss:ship` adds a parallel review panel (code-reviewer,
+silent-failure-hunter, type-design-analyzer). `confidence: high` (repo README; `WORKFLOW.md`
+404'd).
+
+**It matters twice:**
+1. **Invariant 5 is not aspirational** — an AI-native framework already embodies "the builder
+   does not grade itself" via a fresh-context adversarial checker. It nearly mirrors the
+   source project's `conformance-reviewer` (the brief's harvest target). So independent
+   verification is *demonstrably implementable*, not just present in human-role models (BMAD).
+2. **SpecSwarm is the closest existing model of the maintainer's target UX** (decision
+   `0008`): a quality gate that is **mandatory-by-default** (80/100 before merge) yet has
+   **surfaced skip fast-paths** (`--quick`, `--minimal`). Enforced-but-skippable, consciously
+   — exactly the "allow the skip, but surface it" stance.
+
 ## Candidate refinements for Step 2 (the bidirectional payoff)
 
-1. **Expressed vs Enforced is a first-class axis.** Re-score every gate property on
-   *enforcement strength*: `expressed` (documented) / `default-on-but-skippable` /
-   `enforced`. The admission gate (methodology) tests that the structure is *expressed*;
-   Bonsai's job is to move it to *enforced*. **This may deserve to be stated as an explicit
-   principle** — possibly the sharpest articulation of Bonsai's value yet.
+1. **Expressed vs Enforced is a first-class axis — but enforcement is a *dial*, not Bonsai's
+   fixed stance (decision `0008`).** Re-score every gate property on *enforcement strength*:
+   `expressed` (documented) / `default-on-but-skippable` / `enforced`. The admission gate
+   (methodology) tests only that the structure is *expressed*. Bonsai can move it toward
+   *enforced* — but that strictness is an **opt-in layer** (enterprise/assurance), never
+   forced, so speed-first users aren't alienated. **The actual floor is surfacing, not
+   enforcement:** a skip is allowed if it is made *visible/conscious* (extends invariant 7,
+   loud failure). That — "surface the choice" — may be the sharpest statement of Bonsai's
+   value, sharper than "enforce."
 2. **Skippable gate ≠ gate (invariant 2).** A gate that an optional fast-path bypasses does
    not satisfy "a gate at every handover." Define mandatory-vs-optional explicitly.
 3. **Intent sign-off must be mandatory and *pre-downstream* (invariant 4a).** Review-after-
@@ -110,5 +134,6 @@ the independent verifier none of them have.
   the invariant set).
 - **BMAD verification depth:** is its reviewer/QA role a *genuine* independent check (own
   checklist, distinct context) or nominal? Needs a closer look to confirm the PASS.
-- **Tier 2 still owed:** SpecSwarm (its `spec-mentor` adversarial check may be the one real
-  independent-verifier in the field), Agent SDK, Devin, Cursor (negative control).
+- **Tier 2 status:** SpecSwarm ✅ done (see addendum — it *is* the real independent-verifier).
+  Still owed: Agent SDK, Devin, Cursor (negative control) — boundary cases, can fold into
+  Step 2.
