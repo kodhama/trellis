@@ -2,7 +2,7 @@
 id: spec-0001
 type: spec
 status: draft
-depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012]
+depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, research-0003]
 owner: gundi
 rubric: spec-quality
 ---
@@ -39,7 +39,7 @@ Every non-code artifact opens with YAML frontmatter:
 | Field | Req | Rule |
 |---|---|---|
 | `id` | ✓ | unique across the corpus; typed slug (`decision-0007`, `invariants-v1`, `spec-0001`) |
-| `type` | ✓ | one of: `decision`, `invariant-set`, `research-note`, `spec`, `rubric` *(extensible by a recorded decision)* |
+| `type` | ✓ | **open field — methodology-defined**, not a closed enum (`research-0003`); each type carries a `scope` (below) + a rubric |
 | `status` | ✓ | one of: `draft`, `ratified`, `approved` (§2) |
 | `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root |
 | `owner` | ✓ | the accountable human |
@@ -48,6 +48,21 @@ Every non-code artifact opens with YAML frontmatter:
 **External refs:** a `depends_on` entry that is not an artifact `id` must match a declared
 external-ref prefix (v0 allowlist: `brief-§…`). Anything else is a **dangling reference** →
 fail.
+
+**Types are open (`decision-0003`, `research-0003`).** Bonsai does not impose a fixed type
+set — a methodology brings its own (`spec`/`requirements`/`PRD`/`changes` are one function
+under many names). Bonsai ships a **soft seed spine** — `spec` · `plan` · `tasks` ·
+`decision` · `research-note` · `feedback` · `rubric` · `invariant-set` — extensible by a
+recorded decision. Each type carries a **`scope`**, so the layer split (`decision-0005`) is
+enforceable at the type level:
+
+- **`core-methodology`** — shipped to any supervised project: `decision`, `spec`, `plan`,
+  `tasks`, `research-note`, `rubric`, object-level `feedback`.
+- **`bonsai-product`** — Bonsai's own content, not per-project-instantiated: `invariant-set`;
+  the contract + the type/rubric definitions.
+- **`bonsai-meta`** — specific to evolving Bonsai: the `decision-0009` feedback-*on-Bonsai*.
+
+On install, **only `core-methodology` types ship.**
 
 ## 2. Lifecycle
 
@@ -68,7 +83,7 @@ A read-only sub-agent that takes the corpus (or one artifact + corpus) and appli
 checklist from this spec, not from the producer (B3). Its checks:
 
 1. Frontmatter present; all required fields present and well-typed.
-2. `type` ∈ allowed; `status` ∈ allowed.
+2. `type` is declared (open field — must carry a `scope` + a rubric); `status` ∈ allowed.
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id` **or** a declared external ref;
    no dangling references.
@@ -86,8 +101,12 @@ capture** substrate for `0009`.
 
 - `spec` → `## Acceptance criteria`, `## Open questions`.
 - `invariant-set` → the set, `## Acceptance criteria`, `## Open questions`.
-- `decision` → `## Context`, `## Decision`, `## Consequences`.
-- `research-note` → `## Acceptance criteria`, `## Open questions`.
+- `decision` → `## Context`, `## Decision`, `## Consequences` (no acceptance criteria —
+  ratification *is* a decision's acceptance).
+- `research-note` → `## Open questions` (+ sources & confidence tags); **no** acceptance-
+  criteria gate.
+- `feedback` → exempt; an advisory rubric, never a gate (math-quest pattern).
+- *Other (methodology-defined) types* declare their required sections via their rubric.
 
 *(Surfacing our own drift is expected — e.g. decisions that predate this rule, or informal
 `brief-§…` refs. The check must report them, not paper over them. See AC6.)*
