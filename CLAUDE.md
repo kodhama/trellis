@@ -28,8 +28,13 @@ prefer producing a checkable artifact over writing about one.
 
 - **Artifacts.** Every non-code document opens with frontmatter
   (`id / type / status / depends_on / owner`). Statuses: `draft → ratified → approved`.
-  **Downstream consumes only ratified/approved upstream, never drafts.** Every artifact
-  carries `## Acceptance criteria` and `## Open questions`.
+  **Downstream consumes only ratified/approved upstream, never drafts.** Required body
+  sections are **per-type** (not a blanket rule — a strategic decision has no "acceptance
+  criteria"; ratification *is* its acceptance):
+  - `decision` → `## Context` / `## Decision` / `## Consequences`
+  - `spec` / `invariant-set` → `## Acceptance criteria` / `## Open questions`
+  - `research-note` → `## Open questions` (+ sources & confidence tags)
+  - `feedback` → exempt (advisory rubric, never a gate)
 - **Decisions.** Significant choices get an **append-only** record in `decisions/`. You
   *supersede* (with a forward pointer), never edit, a ratified decision. The four strategic
   forks (brief §9) are records `0001–0004`.
