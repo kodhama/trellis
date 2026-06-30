@@ -1,10 +1,11 @@
 ---
 id: spec-0001
 type: spec
-status: draft
+status: ratified
 depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, research-0003]
 owner: gundi
 rubric: spec-quality
+ratified: 2026-06-30
 ---
 
 # Spec 0001 — The spine: artifact contract + lifecycle + conformance check
@@ -40,7 +41,7 @@ Every non-code artifact opens with YAML frontmatter:
 |---|---|---|
 | `id` | ✓ | unique across the corpus; typed slug (`decision-0007`, `invariants-v1`, `spec-0001`) |
 | `type` | ✓ | **open field — methodology-defined**, not a closed enum (`research-0003`); each type carries a `scope` (below) + a rubric |
-| `status` | ✓ | one of: `draft`, `ratified`, `approved` (§2) |
+| `status` | ✓ | v0: `draft` → `ratified` (+ `superseded`); `approved` deferred — see §2 |
 | `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root |
 | `owner` | ✓ | the accountable human |
 | `date` / `ratified` / `supersedes` / `superseded_by` / `rubric` | — | optional |
@@ -66,15 +67,20 @@ On install, **only `core-methodology` types ship.**
 
 ## 2. Lifecycle
 
-States and the **only** legal transitions: `draft → ratified → approved`; plus
-`ratified|approved → superseded` (via a successor with `supersedes`).
+v0 (intent layer only): `draft → ratified`; plus `ratified → superseded` (via a successor
+with `supersedes`).
 
 - **`draft`** — in progress. **Not consumable** by downstream.
 - **`ratified`** — intent approved by the **human** (B3 intent face / D2). Consumable.
-- **`approved`** — passed **independent conformance** at the execution layer (B3 conformance
-  face). Consumable.
 - **`superseded`** — replaced; must carry `superseded_by`; **never** consumed as current truth
   (B4). Decisions are append-only: supersede, never edit a ratified one.
+
+**Deferred — a *core* decision, not a v0 omission.** An execution-layer **`approved`** state
+(B3 conformance face — implementation that passed independent conformance) is part of the
+product's contract, but its model is undecided: *a third document status, or a gate-outcome
+on a change rather than a status?* Because the lifecycle is `bonsai-product` scope we do not
+guess it now — it is decided when the conformance-to-upstream slice is built. v0 has no
+execution-layer artifacts, so the question is not yet live.
 
 ## 3. The conformance check (sub-agent + rubric — no script, `0010`)
 
@@ -87,8 +93,8 @@ checklist from this spec, not from the producer (B3). Its checks:
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id` **or** a declared external ref;
    no dangling references.
-5. **Directional flow (load-bearing, A1/B1):** no `ratified` or `approved` artifact
-   `depends_on` a `draft` artifact.
+5. **Directional flow (load-bearing, A1/B1):** no `ratified` artifact `depends_on` a
+   `draft` artifact.
 6. Required body sections present per type (§4).
 7. Supersede integrity: a `superseded` artifact has `superseded_by`; nothing consumes it as
    current truth.

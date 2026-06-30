@@ -1,7 +1,8 @@
 ---
 id: decision-0009
 type: decision
-status: draft
+status: ratified
+ratified: 2026-06-30
 depends_on: [decision-0001, decision-0002, invariants-v1]
 owner: gundi
 date: 2026-06-29
