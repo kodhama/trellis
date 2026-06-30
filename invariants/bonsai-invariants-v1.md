@@ -112,9 +112,21 @@ names stages.*
   *Near-universal: Spec Kit `/clarify`, Kiro ambiguity/gap analysis pre-code, SpecSwarm
   clarification + `/ss:decisions`.* Arguably the most central uncertainty-reduction act, and
   absent from v0.
-*(Former B10 bounded-correction and B11 epistemic-integrity removed this round — B11 merged
-into B3's intent face; B10's durable half absorbed into D1, its retry-bounding demoted to an
-operating practice. Minimal-first correcting a one-session overshoot.)*
+- **B10. Backpropagation (upstream repair)** — *strong (added post-ratification 2026-06-30;
+  re-ratify on merge)*. When downstream work — implementation, tests, config, ops — reveals
+  that an upstream artifact is **missing, incomplete, or contradicted**, the agent **surfaces a
+  suggestion to repair the upstream**: *update* the existing artifact, or *create* a missing
+  one (a retroactive spec/ADR), routed through that artifact's gate — **never** a silent
+  downstream patch. The **maintenance complement of A1/B1**: upstream stays the source of
+  truth, so downstream never silently forks (drift). The agent always *suggests*; the human
+  rules (D2). *B6 (self-improvement) is the special case — backprop to the **process**; B10
+  generalizes it to all upstream artifacts. Two flavors: **contradicted** upstream (update) and
+  **missing** upstream (create). Descriptive docs that merely describe downstream are NOT
+  backprop; a **governing** artifact that should exist but doesn't, is.*
+
+*(Two earlier candidates were retired during v1 drafting — a bounded-correction invariant (its
+durable half absorbed into D1) and an epistemic-integrity invariant (merged into B3's intent
+face). Minimal-first correcting a one-session overshoot.)*
 
 ---
 
@@ -167,8 +179,12 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 | 9 | **Split B7**: minimal-first kept; reference-not-adoption → **B8** (recorded reference relationship) | strict single-framework adopt is legitimate (conductor); v0 foreclosed it | `decision-0002` + Spec Kit case |
 | 10 | Added **B9 clarify-before-commit** | near-universal framework feature; central uncertainty-reduction act, absent from v0 | `research-0001/0002` |
 | 11 | **B11 epistemic integrity merged into B3** as its *intent face* | same principle (independence of judgment) one layer up; minimal-first | maintainer + B3/D2 logic |
-| 12 | **B10 dropped**; "escalate-don't-abandon" absorbed into **D1**, retry-bounding demoted to a practice | most operational; not invariant-worthy on reflection | minimal-first + maintainer |
+| 12 | **bounded-correction candidate dropped**; "escalate-don't-abandon" absorbed into **D1**, retry-bounding demoted to a practice | most operational; not invariant-worthy on reflection | minimal-first + maintainer |
 | — | Kept: v0 3+7 merge (B4); bounded context (B5); self-improvement (B6); minimal-first (B7); directional flow (A1/B1); intent locus (A3) | — | — |
+
+*Post-ratification: **B10 Backpropagation** added 2026-06-30 (maintainer) — the maintenance
+complement of A1, surfaced by the spine's own drift-and-repair (the conformance fix was itself
+a backprop). Re-ratified on merge.*
 
 ---
 
