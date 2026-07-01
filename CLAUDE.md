@@ -22,7 +22,9 @@
 Bonsai must **always ground out in concrete, project-specific artifacts** — a real
 instructions file, real gates, real sub-agents. If it ever just *describes* process
 instead of *producing and enforcing* it, it has failed. Same rule applies to this repo:
-prefer producing a checkable artifact over writing about one.
+prefer producing a checkable artifact over writing about one. **And it applies to our own
+rules:** every invariant or abstract instruction carries ≥1 concrete example (few-shot) — *a
+rule you can't exemplify is probably vaporware.*
 
 ## Operating method
 
