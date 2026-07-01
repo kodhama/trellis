@@ -44,6 +44,36 @@ instance to settle.
 
 ---
 
+## Identifiers (stable slugs) — `decision-0013`
+
+Each invariant has a **stable `slug`** — its *canonical identifier*. The `A/B/C/D`+number is a
+**display label**: convenient to say, **frozen** for existing invariants (never renumbered),
+but **not** a reference. **References use slugs.** When invariants merge, the absorbed slug is
+`superseded_by` the survivor's, so any old reference — *including the ordinal* — resolves
+through this registry (same historical-reference exemption as artifacts; append-only decisions
+are never edited to chase a rename). This retires the tombstone hack: a merge is now a proper
+slug-supersede, not an ordinal gap.
+
+| Slug | Label | Note |
+|---|---|---|
+| `inv-directional-flow` | A1 | |
+| `inv-handover-points` | A2 | |
+| `inv-intent-locus` | A3 | |
+| `inv-ratifiable-artifacts` | A4 | |
+| `inv-graph-maintenance` | B1 | absorbed `inv-self-improvement` + the backprop reflex |
+| `inv-gate-at-handover` | B2 | |
+| `inv-independent-judgment` | B3 | absorbed `inv-epistemic-integrity` (intent face) |
+| `inv-auditable-archive` | B4 | |
+| `inv-bounded-context` | B5 | |
+| `inv-self-improvement` | B6 | **superseded_by `inv-graph-maintenance`** |
+| `inv-minimal-first` | B7 | |
+| `inv-reference-relationship` | B8 | |
+| `inv-clarify-before-commit` | B9 | |
+| `dial-enforcement-strength` | C1 | |
+| `dial-gatekeeper` | C2 | |
+| `floor-transparency` | D1 | absorbed `inv-bounded-correction` (escalate-don't-abandon) |
+| `floor-intent-gate` | D2 | |
+
 ## A. Structural invariants — the admission gate (`methodology`)
 
 *Small by design. A methodology that has these shapes can be supervised; Bonsai supplies the
@@ -114,9 +144,10 @@ names stages.*
   field's best instance.*
 - **B5. Bounded context** — *durable.* Each operation reads only its declared inputs, never
   the whole archive.
-- **B6 → folded into B1 (directional-graph maintenance).** Self-improvement — trigger-driven
-  repair + prune of *rules* — is the rules facet of graph maintenance. *(Number kept as a
-  resolvable pointer for artifacts that cite B6, e.g. decisions `0009`/`0011`.)*
+- **B6 (`inv-self-improvement`) → superseded_by `inv-graph-maintenance` (B1).** Self-improvement
+  — trigger-driven repair + prune of *rules* — is the rules facet of graph maintenance. Any
+  reference to B6 / `inv-self-improvement` (e.g. decisions `0009`/`0011`) resolves to B1 via the
+  registry — no decision is edited to chase the merge.
 - **B7. Minimal-first** — *strong, less settled.* Smallest process that works; add a step
   only when friction reveals the boundary. *(v0's "reference-not-adoption" split out to B8 —
   strict single-framework adoption is legitimate, so "never inherit wholesale" was too strong.)*
