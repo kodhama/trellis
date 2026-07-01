@@ -15,7 +15,8 @@ ratified: 2026-06-29
 > v0 using **Step 1 evidence** (`research-0002` — gate-testing Spec Kit, Kiro, BMAD, OpenSpec,
 > SpecSwarm) and the **enforcement reframe** (`decision-0008`). **Ratified 2026-06-29 by the
 > maintainer** — this is now the current-truth invariant set; the spine and all machinery
-> consume *this*. v0 is kept (marked superseded) only for diffing.
+> consume *this*. It is the **compiled current-truth spec** (revise-in-place); its change
+> history and rationale live in ADRs (`decision-0014`), not inline. `invariants-v0` is superseded.
 
 > **What v1 changes, in one breath:** v0 was a flat list of 9. v1 splits it into a small
 > **structural gate** (what a methodology must *have the shape for*), a **configurable
@@ -202,36 +203,6 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 
 ---
 
-## Changes from v0 → v1 (with rationale + source)
-
-| # | Change | Why | Source |
-|---|---|---|---|
-| 1 | Split flat list into **A/B + dials + floors** | Step 1: frameworks have structure, not enforcement | `research-0002` |
-| 2 | **Reclassified Independent Verification** (v0-5) `methodology` → `bonsai-design` | spec-driven tools lack it; Bonsai supplies it; SpecSwarm proves it implementable | `research-0002` |
-| 3 | Split "gate at every handover" (v0-2) into **A2 (points exist)** + **B2 (enforced)** | enforced ≠ merely defined; skippable gates puncture it | `research-0002` |
-| 4 | Added **A4 ratifiable/checkable artifacts** as explicit structural prerequisite | it's what B1/B3/B4 act on | synthesis |
-| 5 | **Enforcement demoted to a dial (C1)**, not a mandate | strictness was a hypothesis; keep speed-first users | `decision-0008` |
-| 6 | Added **gatekeeper dial (C2) `{agent\|human\|none}`** | who enforces is configurable | `decision-0008` |
-| 7 | **Elevated loud-failure (v0-7) → transparency floor (D1)** incl. conscious skip | the true floor is surfacing, not enforcing | `decision-0008` |
-| 8 | Named the **intent-gate floor (D2)** explicitly | the one non-configurable gate | v0-4 + `0008` |
-| 9 | **Split B7**: minimal-first kept; reference-not-adoption → **B8** (recorded reference relationship) | strict single-framework adopt is legitimate (conductor); v0 foreclosed it | `decision-0002` + Spec Kit case |
-| 10 | Added **B9 clarify-before-commit** | near-universal framework feature; central uncertainty-reduction act, absent from v0 | `research-0001/0002` |
-| 11 | **B11 epistemic integrity merged into B3** as its *intent face* | same principle (independence of judgment) one layer up; minimal-first | maintainer + B3/D2 logic |
-| 12 | **bounded-correction candidate dropped**; "escalate-don't-abandon" absorbed into **D1**, retry-bounding demoted to a practice | most operational; not invariant-worthy on reflection | minimal-first + maintainer |
-| — | Kept: v0 3+7 merge (B4); bounded context (B5); self-improvement (B6); minimal-first (B7); directional flow (A1/B1); intent locus (A3) | — | — |
-
-*Post-ratification amendments (2026-07-01; re-ratified on merge):*
-- ***B1 → Directional-graph maintenance*** *— consolidated former B1 (flow) + B6
-  (self-improvement) + a backprop reflex + forward re-propagation into the four operations of
-  keeping the dependency graph consistent and minimal (B6 tombstoned with a pointer to B1).
-  Surfaced by the spine's own drift-and-repair (the conformance fix was itself a backprop) and
-  the maintainer's graph-hygiene consolidation.*
-- ***Examples convention added*** *(see Acceptance criteria) — every invariant carries a
-  concrete example; the iron rule (§7) applied to the set itself. Itself surfaced by backprop:
-  the abstraction of B1 revealed the need.*
-
----
-
 ## Acceptance criteria
 
 - The **admission gate (A) is small** (4 structural properties) and is the *only* set
@@ -244,6 +215,9 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 - **Every invariant carries ≥1 concrete example** (few-shot), especially abstract ones — the
   iron rule (brief §7) applied to the set itself: *a rule you can't exemplify is probably
   vaporware.* Name the application instance where useful.
+- **This file is the compiled current-truth spec** (revise-in-place, `ratified`, shippable);
+  *significant* invariant changes are recorded as ADRs (`decision-0014`), not inline — B4
+  applied to the set itself. It carries rationale by *reference* (links to governing ADRs).
 
 ## Open questions
 
