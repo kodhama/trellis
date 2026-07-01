@@ -70,9 +70,27 @@ names stages.*
 
 ## B. Operating invariants — what Bonsai supplies (`bonsai-design`)
 
-- **B1. Enforce directional flow** — *durable.* Downstream consumes only **ratified** upstream
-  (never drafts). *The frameworks express A1 but rarely enforce this — Bonsai does.* Strength
-  set by dial C1.
+- **B1. Directional-graph maintenance** — *durable.* The dependency graph of **artifacts and
+  rules** is kept **consistent and minimal**, information flowing one way (decreasing
+  ambiguity). Maintenance is trigger-driven (not vigilance), rides existing rituals, stays
+  subordinate to the work, and proceeds by **surfaced suggestions the human rules on** (D2);
+  **append-only** records are superseded, never edited-in-substance or deleted (B4), while
+  revise-in-place/derived artifacts change directly. Four operations:
+  - **Flow:** downstream consumes only **ratified** upstream, never drafts (strength = dial
+    C1). *(e.g. implementation reads an approved spec, not a draft.)*
+  - **Forward — re-propagate on change:** when an upstream changes, its **direct dependents**
+    are flagged for re-review; recursion emerges (each review may flag *its* dependents).
+    *(e.g. a repaired ADR → re-review its specs → plans → tests → code, in turn.)* *(Full
+    content-consistency enforcement is the deferred conformance-to-upstream check, `spec-0001`.)*
+  - **Backward — repair (backprop):** downstream reveals an upstream is missing/incomplete/
+    contradicted → suggest **updating or creating** it, never a silent downstream patch, so
+    downstream never forks from upstream. *(e.g. build uncovers a missing architectural
+    decision → create the ADR; undocumented infra → a retroactive ADR; a too-abstract rule →
+    add a grounding example.)*
+  - **Prune:** retire an upstream that outlives what it governs; **bias toward retiring over
+    adding**. *(e.g. a rule whose trigger is gone; a spec/doc/config whose referent was removed.)*
+  *Absorbs former B1 (flow) + B6 (self-improvement) + the backprop candidate + forward
+  re-propagation — the four operations of keeping the graph true and minimal.*
 - **B2. Enforce a gate at each handover** — *durable.* Apply the verification gate at every
   A2 handover. *Real frameworks leave gates skippable (Kiro Quick Plan, Spec Kit lean path);
   Bonsai makes the gate real* — at the strictness of dial C1, and **any skip is surfaced**
@@ -96,8 +114,9 @@ names stages.*
   field's best instance.*
 - **B5. Bounded context** — *durable.* Each operation reads only its declared inputs, never
   the whole archive.
-- **B6. Self-improvement is a disciplined loop** — *strong, less settled.* Trigger-driven,
-  rides existing rituals, biased to retiring rules.
+- **B6 → folded into B1 (directional-graph maintenance).** Self-improvement — trigger-driven
+  repair + prune of *rules* — is the rules facet of graph maintenance. *(Number kept as a
+  resolvable pointer for artifacts that cite B6, e.g. decisions `0009`/`0011`.)*
 - **B7. Minimal-first** — *strong, less settled.* Smallest process that works; add a step
   only when friction reveals the boundary. *(v0's "reference-not-adoption" split out to B8 —
   strict single-framework adoption is legitimate, so "never inherit wholesale" was too strong.)*
@@ -112,18 +131,6 @@ names stages.*
   *Near-universal: Spec Kit `/clarify`, Kiro ambiguity/gap analysis pre-code, SpecSwarm
   clarification + `/ss:decisions`.* Arguably the most central uncertainty-reduction act, and
   absent from v0.
-- **B10. Backpropagation (upstream repair)** — *strong (added post-ratification 2026-06-30;
-  re-ratify on merge)*. When downstream work — implementation, tests, config, ops — reveals
-  that an upstream artifact is **missing, incomplete, or contradicted**, the agent **surfaces a
-  suggestion to repair the upstream**: *update* the existing artifact, or *create* a missing
-  one (a retroactive spec/ADR), routed through that artifact's gate — **never** a silent
-  downstream patch. The **maintenance complement of A1/B1**: upstream stays the source of
-  truth, so downstream never silently forks (drift). The agent always *suggests*; the human
-  rules (D2). *B6 (self-improvement) is the special case — backprop to the **process**; B10
-  generalizes it to all upstream artifacts. Two flavors: **contradicted** upstream (update) and
-  **missing** upstream (create). Descriptive docs that merely describe downstream are NOT
-  backprop; a **governing** artifact that should exist but doesn't, is.*
-
 *(Two earlier candidates were retired during v1 drafting — a bounded-correction invariant (its
 durable half absorbed into D1) and an epistemic-integrity invariant (merged into B3's intent
 face). Minimal-first correcting a one-session overshoot.)*
@@ -182,9 +189,15 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 | 12 | **bounded-correction candidate dropped**; "escalate-don't-abandon" absorbed into **D1**, retry-bounding demoted to a practice | most operational; not invariant-worthy on reflection | minimal-first + maintainer |
 | — | Kept: v0 3+7 merge (B4); bounded context (B5); self-improvement (B6); minimal-first (B7); directional flow (A1/B1); intent locus (A3) | — | — |
 
-*Post-ratification: **B10 Backpropagation** added 2026-06-30 (maintainer) — the maintenance
-complement of A1, surfaced by the spine's own drift-and-repair (the conformance fix was itself
-a backprop). Re-ratified on merge.*
+*Post-ratification amendments (2026-07-01; re-ratified on merge):*
+- ***B1 → Directional-graph maintenance*** *— consolidated former B1 (flow) + B6
+  (self-improvement) + a backprop reflex + forward re-propagation into the four operations of
+  keeping the dependency graph consistent and minimal (B6 tombstoned with a pointer to B1).
+  Surfaced by the spine's own drift-and-repair (the conformance fix was itself a backprop) and
+  the maintainer's graph-hygiene consolidation.*
+- ***Examples convention added*** *(see Acceptance criteria) — every invariant carries a
+  concrete example; the iron rule (§7) applied to the set itself. Itself surfaced by backprop:
+  the abstraction of B1 revealed the need.*
 
 ---
 
@@ -197,6 +210,9 @@ a backprop). Re-ratified on merge.*
 - Strictness and gatekeeper are **dials with surfaced defaults**, not hard-coded — so the
   same set serves startup and enterprise (`decision-0004`).
 - The two floors are stated as non-configurable, with D2 the recognized exception to C2.
+- **Every invariant carries ≥1 concrete example** (few-shot), especially abstract ones — the
+  iron rule (brief §7) applied to the set itself: *a rule you can't exemplify is probably
+  vaporware.* Name the application instance where useful.
 
 ## Open questions
 
