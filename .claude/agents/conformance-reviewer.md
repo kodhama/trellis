@@ -22,8 +22,9 @@ positive control against it.
    well-typed (`depends_on` a list, etc.).
 2. `status ∈ {draft, ratified, superseded}` (no `approved` in v0).
 3. `id` unique across the corpus.
-4. Every `depends_on` resolves to an existing artifact `id` **or** a declared external-ref
-   prefix (v0 allowlist: `brief-§…`). Flag dangling references.
+4. Every `depends_on` resolves to an existing artifact `id`, a declared external-ref prefix
+   (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
+   registry (mapping to a successor). Flag dangling references.
 5. **Directional flow (load-bearing):** no `ratified` artifact `depends_on` a `draft`
    artifact.
 6. Required body sections per type (`spec-0001` §4): `decision` → Context/Decision/

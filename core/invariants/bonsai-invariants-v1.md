@@ -2,7 +2,7 @@
 id: invariants-v1
 type: invariant-set
 status: ratified
-depends_on: [invariants-v0, research-0002, decision-0008]
+depends_on: [research-0002, decision-0008]
 owner: gundi
 supersedes: invariants-v0
 ratified: 2026-06-29
@@ -74,6 +74,13 @@ slug-supersede, not an ordinal gap.
 | `dial-gatekeeper` | C2 | |
 | `floor-transparency` | D1 | absorbed `inv-bounded-correction` (escalate-don't-abandon) |
 | `floor-intent-gate` | D2 | |
+
+**Retired artifact ids** (file deleted; the id resolves to its successor via this registry —
+the historical-reference exemption lets append-only decisions keep the old id, `decision-0014`):
+
+| Retired id | → Successor |
+|---|---|
+| `invariants-v0` | `invariants-v1` |
 
 ## A. Structural invariants — the admission gate (`methodology`)
 

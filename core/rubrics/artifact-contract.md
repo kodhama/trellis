@@ -24,8 +24,9 @@ scope: bonsai-product
    declared centrally, not per-file)*; `status ∈ {draft, ratified, superseded}` (v0 — no
    `approved` yet, `spec-0001` §2).
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*
-4. **`depends_on` resolves.** Each entry is an existing artifact `id` **or** a declared
-   external-ref prefix (v0 allowlist: `brief-§…`). *FAIL → name the dangling reference.*
+4. **`depends_on` resolves.** Each entry is an existing artifact `id`, a declared external-ref
+   prefix (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
+   registry (mapping to a successor). *FAIL → name the dangling reference.*
 5. **Directional flow (load-bearing, A1/B1).** No `ratified` artifact `depends_on` a `draft`
    artifact. *FAIL → name the ratified→draft edge.*
 6. **Required body sections per type** (`spec-0001` §4): `spec`/`invariant-set` →

@@ -92,8 +92,9 @@ checklist from this spec, not from the producer (B3). Its checks:
 1. Frontmatter present; all required fields present and well-typed.
 2. `type` is declared (open field — must carry a `scope` + a rubric); `status` ∈ allowed.
 3. `id` unique across the corpus.
-4. Every `depends_on` resolves to an existing artifact `id` **or** a declared external ref;
-   no dangling references.
+4. Every `depends_on` resolves to an existing artifact `id`, a declared external ref, **or** a
+   **retired id** in the invariant-set's Identifiers registry (mapping to its successor); no
+   dangling references.
 5. **Directional flow (load-bearing, A1/B1):** no `ratified` artifact `depends_on` a
    `draft` artifact.
 6. Required body sections present per type (§4).
