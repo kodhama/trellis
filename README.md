@@ -19,7 +19,7 @@ generalization risk (one project so far) remains the central open question.
 
 - [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md) — the full thesis
   (read §10 verdict, §11 start-here, §12 operating method first).
-- [`invariants/bonsai-invariants-v1.md`](invariants/bonsai-invariants-v1.md) — the
+- [`core/invariants/bonsai-invariants-v1.md`](core/invariants/bonsai-invariants-v1.md) — the
   load-bearing core (ratified): *Bonsai's invariants — our synthesis, v1* (structural gate ·
   operating layer · dials · floors). v0 kept as a superseded diff.
 - [`decisions/`](decisions/) — append-only decision records (`0001–0008`, ratified).

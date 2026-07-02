@@ -4,18 +4,19 @@
 > development process* — it fits, teaches, adapts, and guards whatever methodology a
 > project uses, while enforcing a small set of invariants. It is **not** a process; it is
 > the layer above the steps. See `agentic-dev-meta-layer-brief.md` (in this repo) for the
-> full thesis and `invariants/bonsai-invariants-v1.md` for the load-bearing core (ratified).
+> full thesis and `core/invariants/bonsai-invariants-v1.md` for the load-bearing core (ratified).
 
 > **We build Bonsai with Bonsai.** This file is a deliberately tiny instance of the seed
 > operating method (brief §12). It dogfoods our own invariants from commit one. Friction
 > we hit while following it *is product research* — record it, don't route around it.
 
-> **Which layer is this? (under review — decision `0005`).** Bonsai self-hosts, so two
-> layers must not be conflated: **Bonsai-core** (the shippable product — invariants, spine,
-> ingestion engine, gates) vs **the methodology used to build Bonsai** (this file). The
-> proposed resolution: *this file is the build methodology — instance #1, the first
-> methodology Bonsai supervises — not Bonsai's product agent-instructions.* Bonsai-core
-> lives in its own namespace. Pending ratification of `0005`, treat this file as Layer B.
+> **Which layer is this? (decision `0005`, ratified; reorg underway).** Bonsai self-hosts, so
+> two layers must not be conflated: **Bonsai-core** (the shippable product — invariants, spine,
+> gates) now lives in **`core/`**; **the methodology used to build Bonsai** is the repo root
+> (this file, `decisions/`, `research/`, `specs/`). *This file is Layer B — instance #1, the
+> first methodology Bonsai supervises — not Bonsai's product agent-instructions.* The `core/`
+> migration is incremental: `invariants/` moved in first; the conformance sub-agent's product
+> home (`core/agents/`) waits on the delivery slice (`0012`).
 
 ## The iron rule (most important design constraint)
 

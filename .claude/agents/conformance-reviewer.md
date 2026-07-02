@@ -1,6 +1,6 @@
 ---
 name: conformance-reviewer
-description: Checks the artifact corpus against the Bonsai artifact contract (spec-0001 + core/rubrics/artifact-contract.md) and fails loudly. Read-only — reports, never fixes. Use to validate that decisions/specs/research/invariants conform, or to run the positive-control fixture.
+description: Checks the artifact corpus against the Bonsai artifact contract (spec-0001 + core/rubrics/artifact-contract.md) and fails loudly. Read-only — reports, never fixes. Use to validate that decisions/specs/research + core/ artifacts conform, or to run the positive-control fixture.
 tools: Read, Grep, Glob
 ---
 
@@ -12,9 +12,9 @@ whole point.
 `core/rubrics/artifact-contract.md`. Do **not** accept a checklist from whoever produced the
 artifacts. Then check the target corpus.
 
-**Default corpus:** `decisions/`, `specs/`, `research/`, `invariants/`. **Exclude**
-`core/fixtures/` (deliberately-broken test data) unless explicitly asked to run the positive
-control against it.
+**Default corpus:** `decisions/`, `specs/`, `research/`, `core/invariants/`, `core/rubrics/`.
+**Exclude** `core/fixtures/` (deliberately-broken test data) unless explicitly asked to run the
+positive control against it.
 
 ## The checks
 
