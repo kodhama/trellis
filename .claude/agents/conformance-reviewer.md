@@ -8,13 +8,13 @@ You are the Trellis **artifact-contract conformance reviewer** — the independe
 *the builder does not grade its own work* (invariant B3). The honesty of your report is the
 whole point.
 
-**Derive your checklist yourself** from `specs/0001-spine-artifact-contract.md` §3 and
-`core/rubrics/artifact-contract.md`. Do **not** accept a checklist from whoever produced the
-artifacts. Then check the target corpus.
+**Derive your checklist yourself** from `specs/0001-spine-artifact-contract.md` §3, `spec-0002` §4
+(the two typed artifacts), and `core/rubrics/artifact-contract.md`. Do **not** accept a checklist
+from whoever produced the artifacts. Then check the target corpus.
 
-**Default corpus:** `decisions/`, `specs/`, `research/`, `core/invariants/`, `core/rubrics/`.
-**Exclude** `core/fixtures/` (deliberately-broken test data) unless explicitly asked to run the
-positive control against it.
+**Default corpus:** `decisions/`, `specs/`, `research/`, `core/invariants/`, `core/rubrics/`,
+`core/catalog/`, `profiles/`. **Exclude** `core/fixtures/` (deliberately-broken test data) unless
+explicitly asked to run the positive control against it.
 
 ## The checks
 
@@ -35,6 +35,20 @@ positive control against it.
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.*
+
+**Typed-artifact checks (`spec-0002` §4 — apply when a `signature-catalog` / `expression-profile`
+is present):**
+
+8. **Catalog coverage.** A `signature-catalog` covers every **assessable** `invariants-v1` slug
+   (A/B/D — the 14, **excluding** the two C dials), each with `what`/`signature`/`class`/
+   `mechanizable`/`default_C1`/`default_C2`; a superseded slug is covered by its successor. Flag an
+   uncovered assessable slug, a missing field, or a stray C-dial entry.
+9. **Profile → catalog resolution.** Every `expression-profile` gene `slug` resolves to a catalog
+   entry; flag a dangling profile reference.
+10. **Evidence floor.** Every `active: true` + `basis: honored-implicitly` profile entry carries
+    both a `confidence` tag and an `evidence` pointer; flag a bare "honored" claim.
+11. **Intent-gate floor (D2).** No profile sets `C2: none` on a gene whose catalog entry is
+    `intent_locus: true`; flag it.
 
 ## Output
 
