@@ -14,12 +14,12 @@ date: 2026-06-29
 
 ## Context
 
-The fork assumed Bonsai supports one framework first. But the design intent is for Bonsai to
+The fork assumed Trellis supports one framework first. But the design intent is for Trellis to
 supervise *any* methodology that honors the invariants — not to privilege one framework.
 
 ## Decision
 
-Bonsai is **methodology-agnostic by construction**. It determines the methodology in play
+Trellis is **methodology-agnostic by construction**. It determines the methodology in play
 either by **inspecting the project** or by being **told via a standardized instruction
 file**, then acts as tutor/supervisor for it — provided that methodology satisfies
 `invariants-v0`. A built-in **default reference** *may* be included, but is optional and
@@ -28,9 +28,9 @@ not a privileged "first framework."
 ## Consequences
 
 - The first real machinery owed by this decision is a **standardized way to describe a
-  methodology to Bonsai** (the instruction-file format) — not a spec-kit or BMAD adapter.
+  methodology to Trellis** (the instruction-file format) — not a spec-kit or BMAD adapter.
 - The empirical question moves to the foreground: *do real methodologies actually satisfy
-  the invariants?* — answerable only by pointing Bonsai at many of them. This is the same
+  the invariants?* — answerable only by pointing Trellis at many of them. This is the same
   test named in `invariants-v0` open questions.
 - spec-kit / BMAD become *reference points to harvest from* (invariant 10), not adoption
   targets — recorded as decisions if/when borrowed.

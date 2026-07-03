@@ -51,18 +51,18 @@ Every non-code artifact opens with YAML frontmatter:
 external-ref prefix (v0 allowlist: `brief-§…`). Anything else is a **dangling reference** →
 fail.
 
-**Types are open (`decision-0003`, `research-0003`).** Bonsai does not impose a fixed type
+**Types are open (`decision-0003`, `research-0003`).** Trellis does not impose a fixed type
 set — a methodology brings its own (`spec`/`requirements`/`PRD`/`changes` are one function
-under many names). Bonsai ships a **soft seed spine** — `spec` · `plan` · `tasks` ·
+under many names). Trellis ships a **soft seed spine** — `spec` · `plan` · `tasks` ·
 `decision` · `research-note` · `feedback` · `rubric` · `invariant-set` — extensible by a
 recorded decision. Each type carries a **`scope`**, so the layer split (`decision-0005`) is
 enforceable at the type level:
 
 - **`core-methodology`** — shipped to any supervised project: `decision`, `spec`, `plan`,
   `tasks`, `research-note`, `rubric`, object-level `feedback`.
-- **`bonsai-product`** — Bonsai's own content, not per-project-instantiated: `invariant-set`;
+- **`trellis-product`** — Trellis's own content, not per-project-instantiated: `invariant-set`;
   the contract + the type/rubric definitions.
-- **`bonsai-meta`** — specific to evolving Bonsai: the `decision-0009` feedback-*on-Bonsai*.
+- **`trellis-meta`** — specific to evolving Trellis: the `decision-0009` feedback-*on-Trellis*.
 
 On install, **only `core-methodology` types ship.**
 
@@ -79,7 +79,7 @@ with `supersedes`).
 **Deferred — a *core* decision, not a v0 omission.** An execution-layer **`approved`** state
 (B3 conformance face — implementation that passed independent conformance) is part of the
 product's contract, but its model is undecided: *a third document status, or a gate-outcome
-on a change rather than a status?* Because the lifecycle is `bonsai-product` scope we do not
+on a change rather than a status?* Because the lifecycle is `trellis-product` scope we do not
 guess it now — it is decided when the conformance-to-upstream slice is built. v0 has no
 execution-layer artifacts, so the question is not yet live.
 
@@ -131,7 +131,7 @@ a host's behavior, even though the binding is built when delivery is:
 - **Mechanism (v0, Claude plugin):** the conformance check fires via **hooks** (on the host's
   commit/PR/Write events), skills are **model-invoked**, and an optional **default agent** can
   shape the host's behavior.
-- **Composition (load-bearing):** Bonsai **augments, never clobbers** the host's existing
+- **Composition (load-bearing):** Trellis **augments, never clobbers** the host's existing
   `CLAUDE.md`/instructions — coexist, and record any change to them as a surfaced decision.
 - **Activation level = the C1 dial, surfaced** (`0008`): *available + referenced* → *hooks
   fire* → *default agent*, chosen by the user, never silently maximal.

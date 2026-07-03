@@ -4,7 +4,7 @@ type: rubric
 status: draft
 depends_on: [spec-0001]
 owner: gundi
-scope: bonsai-product
+scope: trellis-product
 ---
 
 # Rubric — artifact-contract conformance
@@ -20,7 +20,7 @@ scope: bonsai-product
    well-typed (`depends_on` is a list; `status` a string; etc.). *FAIL → name the missing/
    malformed field.*
 2. **`type` declared; `status` allowed.** `type` is a non-empty string carrying a `scope`
-   (`core-methodology` / `bonsai-product` / `bonsai-meta`) and a rubric *(scope/rubric may be
+   (`core-methodology` / `trellis-product` / `trellis-meta`) and a rubric *(scope/rubric may be
    declared centrally, not per-file)*; `status ∈ {draft, ratified, superseded}` (v0 — no
    `approved` yet, `spec-0001` §2).
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*

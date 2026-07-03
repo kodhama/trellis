@@ -34,7 +34,7 @@ And where do the invariant *definitions* break against real frameworks?
 | **BMAD** | PARTIAL — ordered phases via workflows (PRD→arch→epics→stories); not hard-enforced | PARTIAL — planning artifacts gate implementation; "code reviews" in build phase | PARTIAL→PASS — human planning collaboration is core (mandatory-ness undocumented) | **PARTIAL→PASS** — **distinct roles**: Developer (Amelia) vs reviewer/QA, optional Test Architect (Murat) |
 | **SpecSwarm** *(Tier 2)* | PARTIAL — `spec→plan→tasks→implement`; recommended, not enforced | PARTIAL→PASS — 80/100 quality gate **mandatory before merge**; `--quick`/`--minimal` skip sub-gates | PARTIAL — upfront decisions touchpoint (`/ss:decisions`) + clarification Qs; no formal sign-off | **PASS** — **fresh-context adversarial `spec-mentor`** (spec-vs-code) + per-task verifier, both **distinct from the implementer** |
 
-Secondary (`3 provenance`, a `bonsai-design` invariant, noted for interest): **OpenSpec is
+Secondary (`3 provenance`, a `trellis-design` invariant, noted for interest): **OpenSpec is
 strongest** — versioned spec library + change deltas (ADDED/MODIFIED/REMOVED) + dated archive
 preserving "the proposal explaining *why*, the design explaining *how*." Kiro/BMAD medium;
 Spec Kit weak.
@@ -59,19 +59,19 @@ Two cross-cutting patterns worth keeping:
 
 The strict reading makes everything PARTIAL/ABSENT — which would suggest the gate is too
 harsh. It isn't, once we read it through the invariant set's own
-`methodology`-vs-`bonsai-design` split:
+`methodology`-vs-`trellis-design` split:
 
 - **What the admission gate should test (structure / `methodology`):** does the process
   *have* directional stages, defined handover points, an intent locus, and a place where
   verification can attach? On this reading **all four largely PASS** — the structure is
   there.
-- **What the frameworks LACK (enforcement / `bonsai-design`):** consume-only-ratified,
+- **What the frameworks LACK (enforcement / `trellis-design`):** consume-only-ratified,
   *mandatory non-skippable* gates, and *producer ≠ verifier* independent checking. This is
-  exactly the layer the invariant set says **Bonsai supplies**.
+  exactly the layer the invariant set says **Trellis supplies**.
 
 So the Step 1 result is not "the frameworks fail" — it's "**the frameworks supply the
-structure; Bonsai supplies the enforcement.**" That both *validates the methodology/bonsai-
-design distinction* and *defines Bonsai's wedge precisely*: turn expressed→enforced, and add
+structure; Trellis supplies the enforcement.**" That both *validates the methodology/trellis-
+design distinction* and *defines Trellis's wedge precisely*: turn expressed→enforced, and add
 the independent verifier none of them have.
 
 ## Tier 2 addendum — SpecSwarm: the independent verifier exists in the wild
@@ -95,14 +95,14 @@ silent-failure-hunter, type-design-analyzer). `confidence: high` (repo README; `
 
 ## Candidate refinements for Step 2 (the bidirectional payoff)
 
-1. **Expressed vs Enforced is a first-class axis — but enforcement is a *dial*, not Bonsai's
+1. **Expressed vs Enforced is a first-class axis — but enforcement is a *dial*, not Trellis's
    fixed stance (decision `0008`).** Re-score every gate property on *enforcement strength*:
    `expressed` (documented) / `default-on-but-skippable` / `enforced`. The admission gate
-   (methodology) tests only that the structure is *expressed*. Bonsai can move it toward
+   (methodology) tests only that the structure is *expressed*. Trellis can move it toward
    *enforced* — but that strictness is an **opt-in layer** (enterprise/assurance), never
    forced, so speed-first users aren't alienated. **The actual floor is surfacing, not
    enforcement:** a skip is allowed if it is made *visible/conscious* (extends invariant 7,
-   loud failure). That — "surface the choice" — may be the sharpest statement of Bonsai's
+   loud failure). That — "surface the choice" — may be the sharpest statement of Trellis's
    value, sharper than "enforce."
 2. **Skippable gate ≠ gate (invariant 2).** A gate that an optional fast-path bypasses does
    not satisfy "a gate at every handover." Define mandatory-vs-optional explicitly.
@@ -120,7 +120,7 @@ silent-failure-hunter, type-design-analyzer). `confidence: high` (repo README; `
 
 - Every framework × property cell has a verdict; unscored frameworks were filled by targeted
   fetch, not left blank or guessed (BMAD's gaps are flagged, not hidden).
-- The analysis distinguishes *structure* (gate) from *enforcement* (Bonsai's layer) rather
+- The analysis distinguishes *structure* (gate) from *enforcement* (Trellis's layer) rather
   than collapsing them into one pass/fail.
 
 ## Open questions (carried into Step 2)
@@ -131,7 +131,7 @@ silent-failure-hunter, type-design-analyzer). `confidence: high` (repo README; `
   enforced ordering? If a framework rejects directional flow on principle, does it clear even
   the structural admission gate — or is it the first true gate failure?
 - **Should provenance (invariant 3) move toward the gate** after all? OpenSpec shows it can
-  be a framework's *strength*, not just something Bonsai retrofits (the contested call from
+  be a framework's *strength*, not just something Trellis retrofits (the contested call from
   the invariant set).
 - **BMAD verification depth:** is its reviewer/QA role a *genuine* independent check (own
   checklist, distinct context) or nominal? Needs a closer look to confirm the PASS.

@@ -21,7 +21,7 @@ axis*: how much the user adapts a baseline.
 ## Decision
 
 Treat conductor↔author as a **single continuous dial the user controls** — how much they
-want to adapt a baseline methodology. Bonsai must support sitting anywhere on it. In the
+want to adapt a baseline methodology. Trellis must support sitting anywhere on it. In the
 limit, the project carries **enough seeds to spawn a coherent methodology organically**,
 using others only as reference.
 

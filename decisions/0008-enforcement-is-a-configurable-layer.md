@@ -8,14 +8,14 @@ owner: gundi
 date: 2026-06-29
 ---
 
-# 0008 — Enforcement is a configurable layer; Bonsai surfaces, the org configures
+# 0008 — Enforcement is a configurable layer; Trellis surfaces, the org configures
 
 **Raised by:** the maintainer, reflecting on Step 1's "frameworks express but don't enforce"
 finding — flagging that **strict enforcement was a hypothesis, not a locked design choice.**
 
 ## Context
 
-Step 1 (`research-0002`) framed Bonsai's wedge as "turn expressed → enforced." Taken as a
+Step 1 (`research-0002`) framed Trellis's wedge as "turn expressed → enforced." Taken as a
 mandate, that over-indexes on strictness and would **alienate users who don't want it**
 (speed-first startups), narrowing the market the project deliberately kept open (decision
 `0004`, buyer-neutral). The frameworks themselves already show the better pattern (SpecSwarm:
@@ -23,29 +23,29 @@ a mandatory-by-default gate *with* surfaced `--quick` skip).
 
 ## Decision (direction — draft, for future reasoning)
 
-- **Enforcement strength is a dial, not Bonsai's fixed stance.** Extends decision `0002`
+- **Enforcement strength is a dial, not Trellis's fixed stance.** Extends decision `0002`
   (adaptation as a dial) to the *enforcement* axis: `expressed` → `default-on-but-skippable`
   → `enforced`. Strictness/assurance is an **opt-in layer** aimed at B2B/enterprise; it must
   stay optional so speed-first users aren't lost.
-- **The non-negotiable is *surfacing*, not enforcing.** Bonsai may allow skipping a gate,
+- **The non-negotiable is *surfacing*, not enforcing.** Trellis may allow skipping a gate,
   but the skip must be **surfaced** — a conscious, visible choice, never silent. This is the
   real floor (extends invariant 7, loud-failure / no silent degradation). The hard invariant
   is *transparency*; enforcement rides configurably on top.
 - **Skipping leverages the underlying framework's own skip machinery** where it exists (Kiro
   Quick Plan, Spec Kit lean path, SpecSwarm `--quick`). Skipping may be a feature *of the
-  framework* (surfaced by Bonsai) or offered *by Bonsai* even where the framework lacks it —
+  framework* (surfaced by Trellis) or offered *by Trellis* even where the framework lacks it —
   but always consciously.
-- **Target UX is conversational.** The user asks "what's the next step?"; Bonsai answers
-  "it's X — and you may skip it," and choosing skip invokes the underlying skip. Bonsai is a
+- **Target UX is conversational.** The user asks "what's the next step?"; Trellis answers
+  "it's X — and you may skip it," and choosing skip invokes the underlying skip. Trellis is a
   conversational guide/tutor over the framework (Pillar III, onboarding, made concrete).
 - **The gatekeeper is configurable.** For each gate, *who enforces it* is a setting:
-  **independent agent | human | none**. Bonsai's *opinion* may be a recommendation on which
+  **independent agent | human | none**. Trellis's *opinion* may be a recommendation on which
   gatekeeper fits the context (enterprise intent gate → human; conformance → independent
   agent; speed → none) — but the choice is the org's.
 
 ## Consequences
 
-- Reframes the Step 1 wedge: Bonsai's value is **making the gate/skip choice explicit and
+- Reframes the Step 1 wedge: Trellis's value is **making the gate/skip choice explicit and
   configurable + surfacing it**, not forcing strictness. ("Surface the choice" > "enforce.")
 - Invariant 5 gains a config dimension: gatekeeper ∈ {agent, human, none}; **"none" is a
   door we optionally open**, permitted only when the skip is surfaced.

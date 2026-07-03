@@ -1,26 +1,26 @@
-# Bonsai — operating method (seed)
+# Trellis — operating method (seed)
 
-> **What Bonsai is.** A shippable, portable pack that supervises an *agentic software-
+> **What Trellis is.** A shippable, portable pack that supervises an *agentic software-
 > development process* — it fits, teaches, adapts, and guards whatever methodology a
 > project uses, while enforcing a small set of invariants. It is **not** a process; it is
 > the layer above the steps. See `agentic-dev-meta-layer-brief.md` (in this repo) for the
-> full thesis and `core/invariants/bonsai-invariants-v1.md` for the load-bearing core (ratified).
+> full thesis and `core/invariants/trellis-invariants-v1.md` for the load-bearing core (ratified).
 
-> **We build Bonsai with Bonsai.** This file is a deliberately tiny instance of the seed
+> **We build Trellis with Trellis.** This file is a deliberately tiny instance of the seed
 > operating method (brief §12). It dogfoods our own invariants from commit one. Friction
 > we hit while following it *is product research* — record it, don't route around it.
 
-> **Which layer is this? (decision `0005`, ratified; reorg underway).** Bonsai self-hosts, so
-> two layers must not be conflated: **Bonsai-core** (the shippable product — invariants, spine,
-> gates) now lives in **`core/`**; **the methodology used to build Bonsai** is the repo root
+> **Which layer is this? (decision `0005`, ratified; reorg underway).** Trellis self-hosts, so
+> two layers must not be conflated: **Trellis-core** (the shippable product — invariants, spine,
+> gates) now lives in **`core/`**; **the methodology used to build Trellis** is the repo root
 > (this file, `decisions/`, `research/`, `specs/`). *This file is Layer B — instance #1, the
-> first methodology Bonsai supervises — not Bonsai's product agent-instructions.* The `core/`
+> first methodology Trellis supervises — not Trellis's product agent-instructions.* The `core/`
 > migration is incremental: `invariants/` moved in first; the conformance sub-agent's product
 > home (`core/agents/`) waits on the delivery slice (`0012`).
 
 ## The iron rule (most important design constraint)
 
-Bonsai must **always ground out in concrete, project-specific artifacts** — a real
+Trellis must **always ground out in concrete, project-specific artifacts** — a real
 instructions file, real gates, real sub-agents. If it ever just *describes* process
 instead of *producing and enforcing* it, it has failed. Same rule applies to this repo:
 prefer producing a checkable artifact over writing about one. **And it applies to our own
@@ -61,7 +61,7 @@ rule you can't exemplify is probably vaporware.*
 ## Naming guardrail (research discipline, applied to ourselves)
 
 If we ever name the invariant set authoritatively, attribute it clearly as **our
-synthesis** — never imply pre-existing provenance. For now it is exactly *"Bonsai's
+synthesis** — never imply pre-existing provenance. For now it is exactly *"Trellis's
 invariants — our synthesis, v1."* Eponymous framing is a deliberate *later* decision, made
 only once the set's durability is proven across multiple instances.
 

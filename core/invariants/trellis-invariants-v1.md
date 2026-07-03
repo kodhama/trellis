@@ -8,7 +8,7 @@ supersedes: invariants-v0
 ratified: 2026-06-29
 ---
 
-# Bonsai's Invariants — our synthesis, v1 (ratified 2026-06-29)
+# Trellis's Invariants — our synthesis, v1 (ratified 2026-06-29)
 
 > **Provenance & honesty (load-bearing).** Still **our synthesis** — *not* externally
 > attributed; do not name it authoritatively (the §4 "Keel's invariants" canary). v1 revises
@@ -20,7 +20,7 @@ ratified: 2026-06-29
 
 > **What v1 changes, in one breath:** v0 was a flat list of 9. v1 splits it into a small
 > **structural gate** (what a methodology must *have the shape for*), a **configurable
-> operating layer** (what Bonsai supplies on top), **two dials** (how strict, who enforces),
+> operating layer** (what Trellis supplies on top), **two dials** (how strict, who enforces),
 > and **two floors** (the two things never configurable to "off"). The driving evidence:
 > real frameworks have the *structure* but not the *enforcement* — so enforcement is a dial,
 > and the true floor is **surfacing**, not enforcing.
@@ -31,11 +31,11 @@ ratified: 2026-06-29
 
 - **A. Structural invariants — the admission gate (`methodology`).** Properties a target
   methodology must be *shaped to allow*. Checked at ingestion (`decision-0003`); if absent,
-  Bonsai fails loudly — out of contract.
-- **B. Operating invariants — what Bonsai supplies (`bonsai-design`).** Guarantees a
-  Bonsai-assisted project gets *because* it adopted Bonsai. Not admission criteria.
+  Trellis fails loudly — out of contract.
+- **B. Operating invariants — what Trellis supplies (`trellis-design`).** Guarantees a
+  Trellis-assisted project gets *because* it adopted Trellis. Not admission criteria.
 - **C. Two configuration dials.** Per gate: *how strict* (enforcement strength) and *who
-  enforces* (gatekeeper identity). This is what keeps Bonsai buyer-neutral (`decision-0004`).
+  enforces* (gatekeeper identity). This is what keeps Trellis buyer-neutral (`decision-0004`).
 - **D. Two floors.** The only things that can never be configured off.
 
 Durability tags carry forward (`durable` / `strong, less settled`); tags are claims to be
@@ -84,7 +84,7 @@ the historical-reference exemption lets append-only decisions keep the old id, `
 
 ## A. Structural invariants — the admission gate (`methodology`)
 
-*Small by design. A methodology that has these shapes can be supervised; Bonsai supplies the
+*Small by design. A methodology that has these shapes can be supervised; Trellis supplies the
 rest. Validated: Spec Kit, Kiro, BMAD, OpenSpec, SpecSwarm all clear A1–A3; Cursor Rules
 fails A1/A2 (pure config, no flow) — the negative control that proves the gate discriminates;
 pattern-level guidance (Claude Agent SDK) clears it if it carries the shape, not only if it
@@ -106,7 +106,7 @@ names stages.*
 
 ---
 
-## B. Operating invariants — what Bonsai supplies (`bonsai-design`)
+## B. Operating invariants — what Trellis supplies (`trellis-design`)
 
 - **B1. Directional-graph maintenance** — *durable.* The dependency graph of **artifacts and
   rules** is kept **consistent and minimal**, information flowing one way (decreasing
@@ -131,14 +131,14 @@ names stages.*
   re-propagation — the four operations of keeping the graph true and minimal.*
 - **B2. Enforce a gate at each handover** — *durable.* Apply the verification gate at every
   A2 handover. *Real frameworks leave gates skippable (Kiro Quick Plan, Spec Kit lean path);
-  Bonsai makes the gate real* — at the strictness of dial C1, and **any skip is surfaced**
+  Trellis makes the gate real* — at the strictness of dial C1, and **any skip is surfaced**
   (floor D1).
 - **B3. Independent judgment — the assessor is independent of what it assesses** — *durable.*
   One principle, two faces:
   - **Conformance face — "the builder does not grade itself":** whatever produces work is
     never its sole judge; the verifier ≠ the producer and derives its own checklist from the
-    approved upstream. *Reclassified from a `methodology` gate (v0-5) to `bonsai-design`* —
-    Step 1 showed spec-driven tools *lack* it, so Bonsai *supplies* it. *Proven implementable:
+    approved upstream. *Reclassified from a `methodology` gate (v0-5) to `trellis-design`* —
+    Step 1 showed spec-driven tools *lack* it, so Trellis *supplies* it. *Proven implementable:
     SpecSwarm's fresh-context adversarial `spec-mentor` (`research-0002`).* Gatekeeper by C2.
   - **Intent face — the agent does not flatter the human** *(merged from B11):* the agent's
     assessments **track the evidence, not the human's preferences** — disagreement and risks
@@ -182,7 +182,7 @@ Per gate, two settings — the mechanism that lets one invariant structure serve
 speed-first startup and an assurance-first enterprise (`decision-0004`):
 
 - **C1. Enforcement strength:** `expressed` (documented only) → `default-on-but-skippable`
-  → `enforced`. Bonsai can move a methodology's expressed structure toward enforced; that
+  → `enforced`. Trellis can move a methodology's expressed structure toward enforced; that
   strictness is **opt-in**, never forced.
 - **C2. Gatekeeper identity:** `independent-agent | human | none`. Who applies B3's check at
   this gate. `none` is permitted **only when the skip is surfaced** (floor D1), and **never**
@@ -198,10 +198,10 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 - **D1. Transparency over silent action** — *the candidate hard floor.* Every consequential
   choice is **surfaced**: a skipped gate, a missing capability, a degraded result, a relaxed
   setting. **Generalizes v0-7 (loud failure) to also cover the conscious skip** (`0008`):
-  Bonsai may *allow* skipping, but never *silently*. Likewise a failed verification is
+  Trellis may *allow* skipping, but never *silently*. Likewise a failed verification is
   **escalated visibly, never silently abandoned** (the durable half of the former B10;
   bounded retry-before-escalation is an operating *practice*, not an invariant). This is
-  plausibly **the sharpest one-line statement of Bonsai's value — "surface the choice," not
+  plausibly **the sharpest one-line statement of Trellis's value — "surface the choice," not
   "enforce the choice."**
 - **D2. The intent gate never fully opens** — *durable* (v0-4 core). At the intent locus (A3),
   C2 can never be `none`: a human (or, by ratchet, an independent check the human authorized)
@@ -214,7 +214,7 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 
 - The **admission gate (A) is small** (4 structural properties) and is the *only* set
   `decision-0003`'s ingestion check uses.
-- Each operating invariant (B) is something Bonsai *supplies*, not something the methodology
+- Each operating invariant (B) is something Trellis *supplies*, not something the methodology
   must already have.
 - Strictness and gatekeeper are **dials with surfaced defaults**, not hard-coded — so the
   same set serves startup and enterprise (`decision-0004`).
@@ -238,7 +238,7 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   it on the strength of `0008`; ratification should confirm or fold it back.
 - **Does A4 over-constrain pattern-level methodologies** (e.g. Agent SDK) that have no explicit
   "approved" state — or is a loose/implicit ratification enough to clear the gate?
-- **Provenance (B4): bonsai-design or sometimes structural?** OpenSpec shows it can be a
+- **Provenance (B4): trellis-design or sometimes structural?** OpenSpec shows it can be a
   framework's *strength* — the v0 contested call, still open.
 - **The dials (C) need a second instance.** They are `provisional` from one evidence round;
   validate against instance #2 (still the N=1 risk, `decision-0001`).

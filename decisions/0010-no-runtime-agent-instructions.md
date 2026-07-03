@@ -8,16 +8,16 @@ date: 2026-06-29
 ratified: 2026-06-29
 ---
 
-# 0010 — Bonsai imposes no runtime; it ships as agent instructions (CLI is optional support)
+# 0010 — Trellis imposes no runtime; it ships as agent instructions (CLI is optional support)
 
 **Raised by:** the maintainer, catching a category error while scoping the spine — I had
-framed Bonsai's conformance check as a Python/Node *script*, treating Bonsai as a code tool.
+framed Trellis's conformance check as a Python/Node *script*, treating Trellis as a code tool.
 It isn't.
 
 ## Context
 
 While scoping the spine, the conformance check was being designed as a runnable *script* —
-which presumes Bonsai is a program with a runtime. Bonsai is a supervisor **pack**
+which presumes Trellis is a program with a runtime. Trellis is a supervisor **pack**
 (guardrails, rubrics, sub-agents) interpreted by whatever agentic surface a project uses, so a
 runtime requirement would contradict both its nature and its portability goal (`decision-0001`).
 
@@ -27,7 +27,7 @@ absence. Substance unchanged; permitted under the append-only rule, which protec
 
 ## Decision
 
-- Bonsai's **resources** — rules, sub-agents, skills, rubrics, conventions (including the
+- Trellis's **resources** — rules, sub-agents, skills, rubrics, conventions (including the
   artifact contract and its conformance check) — are **agent instructions that require no
   runtime**. They are interpreted by whatever agentic surface the project already uses (Claude
   Code, Cursor, …) and **composed into that surface** (`CLAUDE.md` / `.claude/` / `AGENTS.md`),
@@ -39,7 +39,7 @@ absence. Substance unchanged; permitted under the append-only rule, which protec
   feedback issue (`decision-0009`). It is **support only, never a runtime dependency**: the
   methodology runs without it.
 - Any deterministic helper a project wants for hard CI gating is written in **the target
-  project's own stack** — never a runtime Bonsai imposes.
+  project's own stack** — never a runtime Trellis imposes.
 
 ## Consequences
 

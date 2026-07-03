@@ -10,7 +10,7 @@ ratified: 2026-06-29
 
 # 0012 — Delivery: own Claude-plugin marketplace (v0) → support CLI (v1) → git-copy always
 
-**Raised by:** the maintainer — given Bonsai ships as runtime-free instructions (`0010`),
+**Raised by:** the maintainer — given Trellis ships as runtime-free instructions (`0010`),
 *how* is it delivered, and how is it **activated** (hooked into host behavior, not merely
 present)?
 
@@ -24,8 +24,8 @@ Verified from the Claude Code docs: a plugin **marketplace** is just a git repo 
 
 ## Decision
 
-- **v0 — host our own Claude-Code plugin marketplace** (`marketplace.json` in the Bonsai
-  repo). Bundles Bonsai's resources (skills, sub-agents, hooks, optional default-agent). No
+- **v0 — host our own Claude-Code plugin marketplace** (`marketplace.json` in the Trellis
+  repo). Bundles Trellis's resources (skills, sub-agents, hooks, optional default-agent). No
   gatekeeping; fastest to dogfooding; **the plugin repo = where `0009`'s feedback PRs land =
   the update channel** (push → users `/plugin marketplace update`).
 - **v1 — a support CLI** (`0010`) that adapts/wires the pack into non-plugin surfaces
@@ -40,7 +40,7 @@ Verified from the Claude Code docs: a plugin **marketplace** is just a git repo 
 
 ## Consequences
 
-- **Delivery is parallel to the spine, not a prerequisite** — self-hosting (building Bonsai
+- **Delivery is parallel to the spine, not a prerequisite** — self-hosting (building Trellis
   in a Claude Code repo) needs no install.
 - **The spine spec must specify the activation/wiring contract** (which hooks/skills/default-
   agent per dial level; how it composes with the host `CLAUDE.md` without clobbering).

@@ -15,7 +15,7 @@ date: 2026-06-29
 ## Context
 
 Startups and enterprises differ in the *kind* of gates, steps, and artifacts they need —
-but the premise is that **both ride the same invariants**. If that holds, Bonsai is
+but the premise is that **both ride the same invariants**. If that holds, Trellis is
 organically suited to both, and buyer selection is downstream parameterization, not a fork
 to resolve now. This is an untested hypothesis — which is precisely the point of the
 project.

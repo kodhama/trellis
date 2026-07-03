@@ -22,7 +22,7 @@ business-model fork.
 
 ## Decision
 
-Bonsai is built as a **self-serve, shippable, portable pack** — something that can be
+Trellis is built as a **self-serve, shippable, portable pack** — something that can be
 dropped into other projects. We **validate it by dogfooding our own project**, not by
 running a consulting practice. Reaching external instances #2/#3 remains the key risk to
 attack (brief §7), but it is *not* gated behind a consulting engagement.

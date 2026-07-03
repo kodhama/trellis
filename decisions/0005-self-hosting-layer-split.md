@@ -8,35 +8,35 @@ owner: gundi
 date: 2026-06-29
 ---
 
-# 0005 — Bonsai self-hosts: separate Bonsai-core from the build methodology
+# 0005 — Trellis self-hosts: separate Trellis-core from the build methodology
 
-**Raised by:** the maintainer's question — *is `CLAUDE.md` Bonsai's product agent-
-instructions, or the instructions to build the Bonsai pack?*
+**Raised by:** the maintainer's question — *is `CLAUDE.md` Trellis's product agent-
+instructions, or the instructions to build the Trellis pack?*
 
 ## Context
 
-We dogfood: we build Bonsai with Bonsai. That creates two layers `CLAUDE.md` currently
+We dogfood: we build Trellis with Trellis. That creates two layers `CLAUDE.md` currently
 conflates:
 
-- **Layer A — Bonsai-core (the product):** the shippable pack — invariants, the spine, the
+- **Layer A — Trellis-core (the product):** the shippable pack — invariants, the spine, the
   methodology-ingestion engine, gates, the conformance sub-agent. Ships into *other*
   projects. Contains *"how to supervise any methodology."*
 - **Layer B — the build methodology:** our own stages, gates, decisions, operating method —
   *a specific methodology*.
 
 The relationship is **stratified, not circular** (the compiler-compiling-itself shape):
-Bonsai-core is the supervisor; "how we build Bonsai" is just the *first methodology that
-Bonsai-core supervises*. Core never contains "how to build Bonsai" — it contains "how to
+Trellis-core is the supervisor; "how we build Trellis" is just the *first methodology that
+Trellis-core supervises*. Core never contains "how to build Trellis" — it contains "how to
 supervise any methodology," and our build methodology is *data fed to it* (instance #1).
 
 ## Decision
 
-- **Bonsai-core (Layer A)** and **the Bonsai-build methodology (Layer B)** are distinct and
+- **Trellis-core (Layer A)** and **the Trellis-build methodology (Layer B)** are distinct and
   must not leak into each other. The product must never ship our internal build cruft.
-- **`CLAUDE.md` is Layer B** — the build methodology, **not** Bonsai's product agent-
-  instructions. It is reframed as **instance #1**: the first methodology Bonsai supervises,
+- **`CLAUDE.md` is Layer B** — the build methodology, **not** Trellis's product agent-
+  instructions. It is reframed as **instance #1**: the first methodology Trellis supervises,
   to be expressed in the standard instruction-file format (decision `0003`) once it exists.
-- **Bonsai-core lives in its own namespace** (proposed `core/`; `invariants/` is its first
+- **Trellis-core lives in its own namespace** (proposed `core/`; `invariants/` is its first
   content). Exact layout TBD.
 
 ## Consequences
@@ -50,7 +50,7 @@ supervise any methodology," and our build methodology is *data fed to it* (insta
 
 ## Open questions
 
-- Exact namespace names (`core/` vs `pack/` vs `bonsai/`); when to physically reorg (now vs
+- Exact namespace names (`core/` vs `pack/` vs `trellis/`); when to physically reorg (now vs
   after the spine).
 - Does instance #1 (our own process) actually pass the admission gate? If not, that is
   either a bug in our process or a signal about the gate — both are findings.

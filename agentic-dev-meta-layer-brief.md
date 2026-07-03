@@ -6,8 +6,8 @@
 > it's worth building. Much of the thinking is *extracted from a real project*
 > ("Math Quest", referenced throughout as the **source project**), which turns out to
 > be an unintentional working prototype of the idea. Name for the thing:
-> **Bonsai** — keep a process *minimal, deliberately pruned, and shaped to fit, yet alive
-> and adapting*: the art of bonsai (start small, prune relentlessly, shape to the
+> **Trellis** — keep a process *minimal, deliberately pruned, and shaped to fit, yet alive
+> and adapting*: the art of trellis (start small, prune relentlessly, shape to the
 > specimen, never let it sprawl). The self-improvement loop's "prefer retiring" is
 > pruning; "start minimal, add on friction" is cultivation. Not a spec; a brief to
 > argue with.
@@ -109,19 +109,19 @@ everything else is machinery around it.
     explicit decision — not a wholesale identity to inherit.
 
 If these are genuinely invariant — and I think 1–8 clearly are, 9–10 are strong — then
-Bonsai has bedrock. The product is: **encode these, make everything else adaptable.**
+Trellis has bedrock. The product is: **encode these, make everything else adaptable.**
 
 > **A naming lever for later (use it honestly).** A memorable, authoritative-sounding
 > name for *this set* — the way "Conway's Law" or "Postel's Law" travels — is a real
 > adoption move; eponymous framing borrows a citability that "ten properties of agentic
 > dev" never gets. Treat it as a *deliberate later decision*, distinct from the product
-> name (Bonsai), and made only once the set's durability is proven across instances.
+> name (Trellis), and made only once the set's durability is proven across instances.
 > **Hard guardrail** (this project's own research discipline — sources + confidence tags,
 > loud-failure over silent degradation): if you name them authoritatively, attribute the
 > set clearly as *our synthesis*, never implying pre-existing provenance. An
 > authoritative tone manufactures false credibility — the author of this brief briefly
 > mistook an invented codename ("Keel's invariants") for an established concept, which is
-> the canary. For now they are exactly: **"Bonsai's invariants — our synthesis, v0."**
+> the canary. For now they are exactly: **"Trellis's invariants — our synthesis, v0."**
 
 ## 5. The four pillars
 
@@ -146,9 +146,9 @@ source project has 1, 2, and 4 working and 3 only as a seed.
   (invariant 8). This is the enterprise-trust pillar.
 
 **Two operating modes** (the "point it at BMAD or spec-kit" idea, made concrete):
-- *Conductor mode:* you adopt an existing methodology; Bonsai runs it, enforces its gates,
+- *Conductor mode:* you adopt an existing methodology; Trellis runs it, enforces its gates,
   teaches it, and flags when a step is being skipped or has gone stale.
-- *Author mode:* you have no fixed methodology; Bonsai proposes a minimal fitted process
+- *Author mode:* you have no fixed methodology; Trellis proposes a minimal fitted process
   from the parts catalog, omitting steps you don't need and *suggesting new steps when
   friction warrants* — exactly how the source project built its own operating model.
 
@@ -160,7 +160,7 @@ assets to harvest (each is a process-agnostic embodiment of an invariant):
 
 | Source-project asset | Invariant it embodies | Harvest as |
 |---|---|---|
-| **Artifact contract** — YAML frontmatter (`id/type/status/depends_on/rubric/owner`); `draft → gated → approved` lifecycle; "never consume a draft"; mandatory `Acceptance criteria` + `Open questions` | 1, 3 (directional flow, provenance) | The core data model of Bonsai — a portable artifact schema + lifecycle |
+| **Artifact contract** — YAML frontmatter (`id/type/status/depends_on/rubric/owner`); `draft → gated → approved` lifecycle; "never consume a draft"; mandatory `Acceptance criteria` + `Open questions` | 1, 3 (directional flow, provenance) | The core data model of Trellis — a portable artifact schema + lifecycle |
 | **Stage taxonomy** — stages defined by *nature of work + how output is verified*, explicitly marked "provisional, evolves with friction" | 1, 2, 10 | A *template* (take the shape, not the specific five stages) |
 | **Gate-authority model** — human at intent, agent-autonomous at execution under conformance gates, *ratcheting* on track record, intent gate "never opens" | 4 | The authority-boundary engine + the ratchet mechanism |
 | **`conformance-reviewer`** — independent, read-only, derives its own checklist from the approved upstream, "builder doesn't grade itself," honesty clause | 5 | A reusable verification sub-agent template |
@@ -186,7 +186,7 @@ I'd be doing you a disservice to only sell it. The real hazards:
 
 - **Abstraction → vaporware.** "Process-agnostic meta-layer" can float free of anything
   concrete and become a philosophy deck. **Mitigation, and the single most important
-  design rule:** Bonsai must *always ground out* in concrete, project-specific artifacts (a
+  design rule:** Trellis must *always ground out* in concrete, project-specific artifacts (a
   generated instructions file, real gates, real sub-agents). If it ever just *describes*
   process instead of *producing and enforcing* it, it has failed. The source project is
   proof it can be concrete — keep it that way.
@@ -268,14 +268,14 @@ forks" the first act and building the fork-independent spine first.
    enforcement. Every version of this product needs it regardless of any fork, so it is
    the correct first build under any uncertainty.
 4. **Dogfood from commit one:** adopt §12 as *this project's own* operating method
-   immediately. The first real validation of Bonsai is whether building Bonsai with Bonsai's
+   immediately. The first real validation of Trellis is whether building Trellis with Trellis's
    invariants feels right; friction you hit *is* product research, so record it (§12's
    self-improvement rule).
 5. **Then proceed in MVP order** (§8): independent-verification sub-agent → the
    self-improvement loop → the author-mode demo — surfacing each fork as it becomes
    decision-relevant rather than all at once.
 
-The headline demo to aim at (proves the core bet): **point Bonsai at one reference
+The headline demo to aim at (proves the core bet): **point Trellis at one reference
 framework (spec-kit or BMAD) and have it produce a *fitted, minimal* operating file +
 gates for a sample project, explaining every inclusion and omission.**
 

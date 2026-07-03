@@ -12,7 +12,7 @@ ratified: 2026-07-01
 
 ## Context
 
-Invariants are Bonsai's core **architecture**, so a change to one is an architecture
+Invariants are Trellis's core **architecture**, so a change to one is an architecture
 *decision* — the natural fit is an **ADR** (append-only, context/decision/consequences),
 which reuses our existing `decisions/` infrastructure and beats the alternatives (git history
 isn't first-class/auditable; a plain changelog records *what* but not *why*; versioned files
@@ -49,7 +49,7 @@ ships (`decision-0005`), the file should be a clean, installable, **compiled** s
 | # | Change | Why | Source |
 |---|---|---|---|
 | 1 | Split flat list into **A/B + dials + floors** | Step 1: frameworks have structure, not enforcement | `research-0002` |
-| 2 | **Reclassified Independent Verification** (v0-5) `methodology` → `bonsai-design` | spec-driven tools lack it; Bonsai supplies it; SpecSwarm proves it implementable | `research-0002` |
+| 2 | **Reclassified Independent Verification** (v0-5) `methodology` → `trellis-design` | spec-driven tools lack it; Trellis supplies it; SpecSwarm proves it implementable | `research-0002` |
 | 3 | Split "gate at every handover" (v0-2) into **A2 (points exist)** + **B2 (enforced)** | enforced ≠ merely defined; skippable gates puncture it | `research-0002` |
 | 4 | Added **A4 ratifiable/checkable artifacts** | it's what B1/B3/B4 act on | synthesis |
 | 5 | **Enforcement demoted to a dial (C1)** | strictness was a hypothesis; keep speed-first users | `decision-0008` |

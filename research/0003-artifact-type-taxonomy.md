@@ -18,7 +18,7 @@ owner: gundi
 ## The question
 
 The maintainer asked: are **artifact types** (decision, spec, research, feedback, …) invariant
-across methodologies — should Bonsai aim for a fixed type *set*?
+across methodologies — should Trellis aim for a fixed type *set*?
 
 ## What the methodologies use (from `0001`/`0002`)
 
@@ -52,7 +52,7 @@ lifecycle + a rubric), not a fixed type *enum*.**
 ## Conclusion (consistent with `decision-0003`, methodology-agnostic)
 
 - **The contract is the invariant; `type` is an *open* field the methodology populates.**
-  Bonsai should **not** impose a closed type set — it accepts whatever types a methodology
+  Trellis should **not** impose a closed type set — it accepts whatever types a methodology
   defines and requires only that each satisfies the contract (and carries a rubric).
 - There *is* a **soft recurring spine** — *spec/contract · plan · tasks · standing-principles ·
   decision-record* — worth shipping as **seed/default types**, while staying extensible.
@@ -70,8 +70,8 @@ per-type rule.)*
   incl. ones not yet examined: Cursor/Devin/Claude-SDK have *no* artifact types — pattern-
   level) would either confirm the soft spine or refine it. Run only if the seed-type set
   proves contentious.
-- **Is "standing principles" (constitution/standards) a seed type, or Bonsai-product content
-  (like `invariant-set`)?** It straddles — a project's constitution is per-project; Bonsai's
+- **Is "standing principles" (constitution/standards) a seed type, or Trellis-product content
+  (like `invariant-set`)?** It straddles — a project's constitution is per-project; Trellis's
   invariants are product. Decide when seeding types.
 - **Does the soft spine hold for non-spec-driven archetypes** (multi-agent/BMAD roles,
   autonomous agents)? BMAD's roles aren't artifacts; autonomous agents have ~none.

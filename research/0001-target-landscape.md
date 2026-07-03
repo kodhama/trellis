@@ -80,7 +80,7 @@ and archetype diversity.
   parallel subagents, each given objective/output-format/tool-guidance/task-boundaries).
   Claude Code subagents = Markdown + YAML frontmatter, isolated context, scoped tools.
   *Caveat: framed as **patterns/guidance**, softer than a fixed methodology — tests
-  differently than a rigid staged framework.* **Note: this is the substrate Bonsai itself
+  differently than a rigid staged framework.* **Note: this is the substrate Trellis itself
   runs on — testing it is partly testing our own foundation.** Sources: anthropic.com
   engineering posts; code.claude.com/docs/sub-agents.
 - **claude-sub-agent** (zhsama) — `confidence: high`. Community SDD on Claude Code subagents
