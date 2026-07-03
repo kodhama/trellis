@@ -94,7 +94,7 @@ supervisor rendered as a garden object.
 
 ## Open questions
 
-- **Ratify `decision-0015`** (the rename record) at the intent gate — currently `draft`.
+- ~~Ratify `decision-0015`~~ — **done** (ratified 2026-07-03 by the maintainer).
 - Which Part-1 changes graduate to decisions first? (Candidate order: expression-profile artifact →
   delivery-axes extension of `decision-0012` → compute-default-gate-set into the spine.)
 - Follow-ups from the rename (`decision-0015`): local working-directory name; auto-memory files;

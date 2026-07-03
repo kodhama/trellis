@@ -1,10 +1,11 @@
 ---
 id: decision-0015
 type: decision
-status: draft
-depends_on: [research-0008, brief-§4, invariants-v1]
+status: ratified
+depends_on: [brief-§4, invariants-v1]
 owner: gundi
 date: 2026-07-03
+ratified: 2026-07-03
 ---
 
 # 0015 — Rename the product Bonsai → Trellis (option B: now, not staged)
@@ -47,8 +48,11 @@ artifact `id`s (`invariants-v1`, `decision-*`, `research-*`) carry no product na
   say "Bonsai"; (c) open GitHub issue bodies (#22–#28) still say "bonsai" (historical; optional).
 - The staged path (option A) and its guardrail reasoning are preserved in `research-0008` as the
   record of what was weighed — the recommendation was A; the maintainer chose B.
-- **`draft` pending ratification at the intent gate (D2):** a rename is an intent-layer act, so the
-  builder does not self-ratify — the maintainer ratifies.
+- **Ratified at the intent gate (D2), 2026-07-03**, by the maintainer's explicit permission this
+  session — a rename is an intent-layer act, so the builder does not self-ratify. Note:
+  `research-0008` (which informed this) remains `draft`; it is *informing context*, not a consumed
+  upstream, so this ratified decision depends only on ratified/external refs (`brief-§4`,
+  `invariants-v1`) — no ratified→draft edge.
 
 ## Supersedes / superseded by
 
