@@ -171,32 +171,32 @@ own methodology, so it honors the invariants without Trellis present. Floors sti
 ratified D2). That both lenses **and** the maintainer's
 own SCT framing land on this same switch is strong evidence the axis is real. `inferred`.
 
-> The delivery model below (supervisor/consultant + the payload axis + how the dials are set) is
+> The delivery model below (supervisor/advisor + the payload axis + how the dials are set) is
 > **consolidated and extended in [[research-0007]] (deliverable 2.4)** — kept here as the thread's
 > origin; 0007 is canonical.
 
-**Refinement (maintainer, 2026-07) — it's really a *relationship* axis: supervisor vs. consultant.**
+**Refinement (maintainer, 2026-07) — it's really a *relationship* axis: supervisor vs. advisor.**
 Overlay-vs-morph is the surface of a deeper delivery fork:
 - **Supervisor** — Trellis *installed and live* (push): constrains at runtime, stays current via the
   delivery channel (`decision-0012`), **cleanly removable**.
-- **Consultant** — Trellis *not installed* (pull): the host's own agents **consult** Trellis as an
+- **Advisor** — Trellis *not installed* (pull): the host's own agents **consult** Trellis as an
   external reference and internalize what applies — no runtime dependency to review, secure, or remove;
   the effect is baked in (its kinship with M2).
 This **reframes 2.4**: delivery is not only "which C1 activation level" (0012's push spectrum) but a
-top-level **supervisor(push/installed) vs. consultant(pull/referenced)** fork — extending 0012's lowest
+top-level **supervisor(push/installed) vs. advisor(pull/referenced)** fork — extending 0012's lowest
 "available + referenced" rung into a genuine pull relationship where Trellis is never a host component.
-**Datapoint (`verified`, user report; genealogically tainted):** the maintainer already runs consultant
+**Datapoint (`verified`, user report; genealogically tainted):** the maintainer already runs advisor
 mode at work — pointing opencode agents at the Trellis repo (via authenticated `gh`) to mine ideas for a
 *company* project, **without** installing a dependency or clearing the compliance question an install
 triggers. *Transferable insight:* **referencing a repo sits below the compliance/vendor-review radar an
-installed dependency trips** — so consultant may be the lower-friction enterprise on-ramp (§7, new
+installed dependency trips** — so advisor may be the lower-friction enterprise on-ramp (§7, new
 angle). *Taint not hidden:* the frictionless-*trust* half is same-person; the *compliance-radar* half is
 structural. One person, one datapoint — but a real N≥2-ish signal (`decision-0009`/#28; pattern
-shareable, specifics consent-gated). **Caveats consultant mode must design for:** (a) iron rule — advice
+shareable, specifics consent-gated). **Caveats advisor mode must design for:** (a) iron rule — advice
 must still yield *concrete host artifacts* or it's a philosophy deck (§7); (b) B3 — no runtime ⇒
 independent verification isn't automatic; the advice must *install* a checker or invariant-5 lapses; (c)
-staleness — a consultant result can't auto-update, so it forks from upstream Trellis as Trellis evolves.
-Net: M2/consultant is **elevated from a deferred option to an open strategic fork with a datapoint** —
+staleness — a advisor result can't auto-update, so it forks from upstream Trellis as Trellis evolves.
+Net: M2/advisor is **elevated from a deferred option to an open strategic fork with a datapoint** —
 appetite unknown, but no longer clearly second. Owed to 2.4.
 
 ## Limits — where the analogy breaks (first-class)

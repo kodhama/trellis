@@ -12,7 +12,7 @@ owner: gundi
 > **Method & honesty.** The open issues #22–#28 came from a *dry run* — pointing agents on other
 > projects at Trellis to see what would help. This note groups them into five clusters and gives each
 > a **problem + solution direction + next action**, using the vocabulary the research built
-> (expression profile, signature catalog, supervisor/consultant, the two delivery axes). Ratified 2026-07-03 — accepting the *triage*, not a commitment to each proposed build. The
+> (expression profile, signature catalog, supervisor/advisor, the two delivery axes). Ratified 2026-07-03 — accepting the *triage*, not a commitment to each proposed build. The
 > solution directions are `inferred` design proposals, not decisions. Briefs are deliberately light —
 > the point is to enable iteration, not to pre-decide builds.
 
@@ -34,7 +34,7 @@ two primitives **first**; then each cluster is a consumer of them rather than a 
   (read-only) detects the project's *implicit* profile against the **signature catalog**,
   confidence-tagged, loud-failure-biased ("assert-and-verify," never silently "assume honored") →
   **Apply** composes the *minimal* overlay at the human-ratified profile — **Model 1 (epigenetic
-  overlay / supervisor)** by default (augment-never-clobber, `spec-0001` §5), with **consultant ×
+  overlay / supervisor)** by default (augment-never-clobber, `spec-0001` §5), with **advisor ×
   expressed-only** ([[research-0007]]) as the lighter, PR-reviewed alternative. Detection heuristics
   live in the catalog (`trellis-core`), not the CLI. Keep producer ≠ ratifier ≠ verifier separate.
 - **Next action.** Spec the expression-profile artifact + the signature catalog first (shared with
@@ -81,7 +81,7 @@ two primitives **first**; then each cluster is a consumer of them rather than a 
   standalone artifact) **+ the host's expression profile**; they live Trellis-owned, track provenance,
   and **regenerate/supersede on process change** (never silently drift). **Delivery caveat
   ([[research-0007]]):** tutoring needs a runtime, so it is a **supervisor-mode** feature —
-  consultant/pull mode can't tutor live. Scope as an experiment; validate it isn't noise.
+  advisor/pull mode can't tutor live. Scope as an experiment; validate it isn't noise.
 - **Next action.** Defer until the catalog exists (cluster 1); then a small experiment on one host's
   gates. Interactive-only.
 
@@ -92,7 +92,7 @@ two primitives **first**; then each cluster is a consumer of them rather than a 
   skipped.
 - **Solution direction.** Specify "Trellis-lite" as a **named default expression profile** (a
   differentiated cell type, [[research-0005]]), *not* an ad-hoc rule list — the behavioral genes
-  travel precisely because they need no machinery. It is the **consultant × expressed-only** cell
+  travel precisely because they need no machinery. It is the **advisor × expressed-only** cell
   ([[research-0007]]) — the lowest-friction wedge. #22's own "which granularity" ambiguity is
   dissolved by the two axes: *which* invariants are expressed (portable) vs. *how* each is
   instantiated (the heavy pipeline). This cluster is the seed that generated the whole model.

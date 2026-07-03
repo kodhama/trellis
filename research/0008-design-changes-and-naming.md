@@ -32,7 +32,7 @@ already argued in a note — this consolidates them as the design proposal (adop
 3. **Compute the default gate-set** — formalize the mechanizable fragment (A1/A4/B1-flow/B2) as a
    spec K and compute the default enforcement as its supremal controllable sublanguage; feed it to
    the conformance sub-agent. *([[research-0006]] Proposal — the most concrete, iron-rule-friendly move.)*
-4. **Extend delivery to two axes** — supervisor/consultant × payload-depth, with the "converge at
+4. **Extend delivery to two axes** — supervisor/advisor × payload-depth, with the "converge at
    +mechanism" caveat. *([[research-0007]]; a decision extending `decision-0012` when the fork is called.)*
 5. **Bounded context needs an explicit observer** — B5 operations act on a *projection*; the
    `depends_on` + provenance graph *is* the state-estimator, and must be good enough to decide on.
@@ -86,7 +86,7 @@ supervisor rendered as a garden object.
 
 - The **invariant-set** framing stays *"our synthesis, v1"* (only the possessive updates to
   "Trellis's invariants") — the guardrail's actual target is untouched.
-- Genetics/DES terms remain **internal vocabulary** (expression profile, supervisor/consultant,
+- Genetics/DES terms remain **internal vocabulary** (expression profile, supervisor/advisor,
   observer), not the product name.
 
 ## Acceptance criteria

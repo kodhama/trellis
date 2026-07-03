@@ -86,7 +86,7 @@ decision explicitly permits): Axis A and Axis B are **instance-level**, not per-
 
 | Field | Req | Rule |
 |---|---|---|
-| `delivery_relationship` | ✓ | Axis A: `supervisor` (push/installed/live) \| `consultant` (pull/referenced) |
+| `delivery_relationship` | ✓ | Axis A: `supervisor` (push/installed/live) \| `advisor` (pull/referenced) |
 | `payload_depth` | ✓ | Axis B: `expressed-only` \| `+latent` \| `+mechanism` (self-regulating) |
 | `application_model` | ✓ | `M1-overlay` (default; augment-never-clobber) \| `M2-morph` (deferred option) — `research-0005/0006` |
 
@@ -173,7 +173,7 @@ Added checks (they compose with `spec-0001`'s existing seven):
 subset — expressed, no pipeline machinery — is *a profile*, not a bespoke rule list:
 
 ```
-delivery_relationship: consultant   payload_depth: expressed-only   application_model: M1-overlay
+delivery_relationship: advisor   payload_depth: expressed-only   application_model: M1-overlay
 profile:
   - slug: inv-independent-judgment  active: true  C1: default-on-but-skippable  C2: human
     basis: to-be-added

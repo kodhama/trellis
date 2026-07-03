@@ -1,7 +1,8 @@
 ---
 id: decision-0017
 type: decision
-status: draft
+status: ratified
+ratified: 2026-07-03
 depends_on: [invariants-v1, research-0005, research-0006, research-0007, research-0008, decision-0015, brief-§4]
 owner: gundi
 date: 2026-07-03
@@ -79,21 +80,20 @@ The maintainer's steer: normalize around **Trellis's identity + the invariant/ge
 
 ## Consequences
 
-- **A rename sweep is owed** (`consultant → advisor`, ~38 hits / 6 files: research 0006–0009,
-  `spec-0002`, `profile-trellis-self`). **Deferred until the maintainer confirms the term** — the name
-  is the seed; sweeping an unratified name risks full rework.
+- **Rename sweep DONE** — `consultant → advisor` across research 0006–0009 + `spec-0002`. The
+  `consultant-mode-work-usage` memory datapoint keeps its name (a proper-noun reference to a specific
+  episode, not the generic term).
 - **The conformance check learns the `lexicon` type** (rubric + `conformance-reviewer` updated).
-- **`lexicon-v1` is the store** — built as `draft` alongside this decision; the maintainer ratifies
-  both (D2). The agent authored them and does not self-ratify (B3).
-- **Draft** — the naming is intent-layer (D2, the naming guardrail `brief-§4`); this records the
-  proposal + the alternatives for the maintainer's call.
+- **`lexicon-v1` is the store** — **ratified 2026-07-03** alongside this decision (maintainer's D2
+  confirm).
+- **Ratified 2026-07-03** — the naming is intent-layer (D2, the naming guardrail `brief-§4`); the
+  maintainer confirmed `advisor` and the three-register model.
 
 ## Open questions
 
-- **Pull-end name (D2 — awaiting confirm):** `advisor` (**recommended** — role-noun parallel with
-  `supervisor`, precise) · `frame`/`cutting` (garden-consistent object-noun pair, retires
-  "supervisor") · `cutting` alone (rejected — object vs. `supervisor`'s agent-noun) · `reference`
-  (collides with B8) · keep `consultant`. The maintainer's call; the sweep waits on it.
+- **Pull-end name — RESOLVED (2026-07-03): `advisor`.** Role-noun parallel with `supervisor`;
+  precise (consulted, no live authority). Rejected: `cutting` (object vs. agent-noun), `frame`/`cutting`
+  (would retire "supervisor"), `reference` (B8 collision), keep `consultant`.
 - **Split `supervisor`?** Proposed: no — the delivery end and the DES role are the same metaphor.
   Revisit if the overload bites in practice.
 - **Axis B (payload depth) terms** — `expressed-only / +latent / +mechanism` — left as-is for now;

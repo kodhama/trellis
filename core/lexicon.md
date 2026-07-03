@@ -1,10 +1,11 @@
 ---
 id: lexicon-v1
 type: lexicon
-status: draft
+status: ratified
 depends_on: [decision-0017, invariants-v1]
 owner: gundi
 scope: trellis-product
+ratified: 2026-07-03
 ---
 
 # Trellis lexicon — v1 (the Rosetta store)
@@ -28,9 +29,8 @@ scope: trellis-product
 > gene-talk stays *our-synthesis teaching metaphor*, never a provenance claim. Research notes keep their
 > lens vocabulary; current-truth/product artifacts use the **canonical** column and link here.
 
-> **Status `draft` — awaiting ratification (D2).** The agent authored this; the builder does not
-> self-ratify (B3). The one term still *under decision* is the pull-end dial name (see the ⚑ row and
-> `decision-0017` open questions).
+> **Ratified 2026-07-03 (D2).** The maintainer confirmed the three-register model and the delivery
+> dial names (`supervisor` / `advisor`); the `consultant → advisor` sweep is done.
 
 ## Canonical terms
 
@@ -51,12 +51,12 @@ scope: trellis-product
 | **overlay** (Model 1) | epigenetic overlay | (external supervision) | — | apply Trellis *without editing the host's files* (augment-never-clobber) · `research-0005/0006` |
 | **morph** (Model 2) | genome edit / genetic assimilation | modify the plant | — | apply Trellis by *rewriting the host's methodology* (baked in) · `research-0006` §R6 |
 | **supervisor** (dial end) | — | — | supervisor (push/installed/live) | delivery relationship: Trellis installed and running live · `research-0007` |
-| ⚑ **advisor** *(proposed — was "consultant")* | — | — | consultant (pull/referenced) | delivery relationship: Trellis *consulted* from outside, no live authority; the host internalizes its guidance and acts on its own — no runtime tie · `research-0007` |
+| **advisor** *(formerly "consultant")* | — | — | (was consultant) | delivery relationship: Trellis *consulted* from outside, no live authority; the host internalizes its guidance and acts on its own — no runtime tie · `research-0007` |
 
-*⚑ = the one term still awaiting the maintainer's confirm (`decision-0017`). Until then the corpus
-still says "consultant"; this lexicon records `consultant → advisor` as the proposed canonical.
-`advisor` is the role-noun parallel to `supervisor`; the garden-consistent alternative is `frame` /
-`cutting` (both object-nouns, retiring "supervisor").*
+*`advisor` (ratified 2026-07-03) is the role-noun parallel to `supervisor`; `consultant` is retired
+(kept only in `decision-0017` as the historical record, and in the `consultant-mode-work-usage` memory
+name). The two ends are asymmetric — live = active agent, pull = consulted source — so the pair is
+role-register, not garden (`decision-0017`).*
 
 ## Notes on two overloads (why the mapping is what it is)
 
@@ -74,10 +74,6 @@ still says "consultant"; this lexicon records `consultant → advisor` as the pr
 
 ## Open questions
 
-- **The pull-end dial name (awaiting confirm)** — `advisor` (**recommended**: role-noun parallel to
-  `supervisor`) vs `frame`/`cutting` (garden-consistent, retires "supervisor") vs `reference` (collides
-  with `inv-reference-relationship`/B8) vs keep `consultant`. Owed to `decision-0017` (D2); the rename
-  sweep waits on it.
 - **Payload-depth (Axis B)** terms (`expressed-only / +latent / +mechanism`) are not yet
   canonicalized — parked until they prove confusing.
 - **Versioning:** is one revise-in-place `lexicon-v1` right, or should canonical-term changes be
