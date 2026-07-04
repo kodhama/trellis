@@ -38,6 +38,13 @@ ratified: 2026-06-29
   enforces* (gatekeeper identity). This is what keeps Trellis buyer-neutral (`decision-0004`).
 - **D. Two floors.** The only things that can never be configured off.
 
+**Cross-cutting theme — *drift is allowed, but never silent* (`decision-0020`).** Several invariants
+are one idea seen from different angles: directional-flow + graph-maintenance keep *artifacts* from
+drifting, `inv-reference-relationship` keeps you from drifting from a *framework*, self-improvement
+makes evolution *deliberate rather than drift*, and **D1 (transparency)** is the floor that makes all
+of it *never silent*. It is D1 generalized across every kind of drift — not a separate rule
+(minimal-first), a lens on the set.
+
 Durability tags carry forward (`durable` / `strong, less settled`); tags are claims to be
 falsified. The **C/D additions are tagged `provisional`** — they come from a single round of
 evidence (`research-0002`) plus a fresh design hypothesis (`0008`), and need a second
@@ -61,12 +68,12 @@ slug-supersede, not an ordinal gap.
 | `inv-handover-points` | A2 | |
 | `inv-intent-locus` | A3 | |
 | `inv-ratifiable-artifacts` | A4 | |
-| `inv-graph-maintenance` | B1 | absorbed `inv-self-improvement` + the backprop reflex |
+| `inv-graph-maintenance` | B1 | absorbed the backprop reflex; `inv-self-improvement` **restored to B6** (`decision-0018`) |
 | `inv-gate-at-handover` | B2 | |
 | `inv-independent-judgment` | B3 | absorbed `inv-epistemic-integrity` (intent face) |
 | `inv-auditable-archive` | B4 | |
 | `inv-bounded-context` | B5 | |
-| `inv-self-improvement` | B6 | **superseded_by `inv-graph-maintenance`** |
+| `inv-self-improvement` | B6 | **restored, first-class** (`decision-0018`); neighbor to B1, shares `inv-prune-bias` |
 | `inv-minimal-first` | B7 | |
 | `inv-reference-relationship` | B8 | |
 | `inv-clarify-before-commit` | B9 | |
@@ -152,10 +159,23 @@ names stages.*
   field's best instance.*
 - **B5. Bounded context** — *durable.* Each operation reads only its declared inputs, never
   the whole archive.
-- **B6 (`inv-self-improvement`) → superseded_by `inv-graph-maintenance` (B1).** Self-improvement
-  — trigger-driven repair + prune of *rules* — is the rules facet of graph maintenance. Any
-  reference to B6 / `inv-self-improvement` (e.g. decisions `0009`/`0011`) resolves to B1 via the
-  registry — no decision is edited to chase the merge.
+- **B6. Self-improvement — the process learns from friction and gets better** — *provisional*
+  (**restored to first-class**, `decision-0018`; the earlier B6→B1 merge kept the prune mechanic but
+  lost the *"evolve"* pillar — brief invariant 9 / Pillar II). *One principle, two faces — like B3:*
+  - **Checkable floor — `inv-propagation-surfaced` (SI-1):** the improvement signals a change or a
+    work session throws off are **surfaced through the project's chosen channel** — asked (B9) or
+    inferred (Assess), **never assumed** — never silently dropped, with any retirement/update in the
+    same change. *Surfacing is the floor (an application of D1); silence is the only violation.*
+  - **Dispositional face** *(weakly checkable, lives in sub-agent design + system prompts, as B3's
+    intent face does):* the agent **proactively notices** a signal and proposes *both* the fix *and* a
+    standing trigger, inferring the channel from context, **asking not acting**.
+  - Carries **`inv-ride-existing-rituals` (SI-2)** — surfacing rides the work you already do, never a
+    separate ceremony — and **`inv-prune-bias` (SI-3)** — retire over add; the trigger set never grows
+    monotonically (the **shared hinge with B1**). *(e.g. a pipeline failing on the same step with no
+    correction; a PR raising open questions with no follow-up; a rule that hasn't fired → retire it.)*
+  **Neighbor to B1 (`inv-graph-maintenance`):** B1 keeps the graph *true* (referential integrity); B6
+  makes the process *better* (adaptation). *Backported from math-quest, which kept these
+  trellis-compatible; concrete engine in `decision-0018`.*
 - **B7. Minimal-first** — *strong, less settled.* Smallest process that works; add a step
   only when friction reveals the boundary. *(v0's "reference-not-adoption" split out to B8 —
   strict single-framework adoption is legitimate, so "never inherit wholesale" was too strong.)*

@@ -33,7 +33,7 @@ scope: core-methodology
 
 ## Profile
 
-*All 14 assessable genes are active and honored natively — unsurprising for the reference organism
+*All 15 assessable genes are active and honored natively — unsurprising for the reference organism
 (see the discount above). Each `evidence` points at a real artifact in this repo.*
 
 | slug | active | C1 | C2 | basis | confidence | evidence |
@@ -47,6 +47,7 @@ scope: core-methodology
 | `inv-independent-judgment` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | `conformance-reviewer` is read-only + distinct from producer; ran independently this session |
 | `inv-auditable-archive` | true | enforced | independent-agent | honored-implicitly | verified | `decisions/` append-only; `decision-0014` splits current-truth from change-history |
 | `inv-bounded-context` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | sub-agents scoped to declared inputs (conformance-reviewer corpus; narrow tool sets) |
+| `inv-self-improvement` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0018` restored it after friction (the B6→B1 merge lost "evolve"); the conformance check caught *this row's own absence* and it was added in the same change |
 | `inv-minimal-first` | true | expressed | human | honored-implicitly | verified | `CLAUDE.md`: "a deliberately tiny instance of the seed operating method" |
 | `inv-reference-relationship` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0002` adopt/adapt as a dial; framework analysis recorded (`research-0002`) |
 | `inv-clarify-before-commit` | true | default-on-but-skippable | human | honored-implicitly | verified | `## Open questions` in every artifact; the delivery-axis + dial-coverage frictions were surfaced, not guessed |

@@ -53,9 +53,8 @@ scope: trellis-product
 *Apply only when a `signature-catalog` / `expression-profile` is in the corpus.*
 
 8. **Catalog coverage.** A `signature-catalog` has an entry for every **assessable**
-   `invariants-v1` slug (A/B/D — the 14, **excluding** the two C dials `dial-enforcement-strength`
-   / `dial-gatekeeper`); a **superseded** slug (`inv-self-improvement`) is covered by its successor,
-   not separately. Each entry carries `what` / `signature` / `class` / `mechanizable` /
+   `invariants-v1` slug (A/B/D — the 15, **excluding** the two C dials `dial-enforcement-strength`
+   / `dial-gatekeeper`). Each entry carries `what` / `signature` / `class` / `mechanizable` /
    `default_C1` / `default_C2`. *FAIL → name the uncovered assessable slug or missing field; a
    present C-dial entry is also a FAIL.*
 9. **Profile → catalog resolution.** Every `expression-profile` gene `slug` resolves to a

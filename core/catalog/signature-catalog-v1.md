@@ -20,11 +20,11 @@ scope: trellis-product
 > (`decision-0013`). This is the artifact **Assess** (#23) detects against and **tutoring** (#27)
 > generates explain-cards from. `trellis-product` scope — one, shipped; not per-instance.
 
-> **Coverage (spec-0002 §1, AC1).** Covers the **14 assessable invariants** — A structural, B
-> operating, D floors. It **excludes the two C dials** (`dial-enforcement-strength`,
-> `dial-gatekeeper`): a project does not "honor a dial implicitly"; the dials are the *axes each
-> entry is set along* — the **columns of a profile**, not rows of this catalog. `inv-self-improvement`
-> (B6) is **superseded_by** `inv-graph-maintenance` (B1) and is covered there, not as its own entry.
+> **Coverage (spec-0002 §1, AC1).** Covers the **15 assessable invariants** — A structural, B
+> operating (incl. **B6 `inv-self-improvement`**, restored first-class per `decision-0018`), D floors.
+> It **excludes the two C dials** (`dial-enforcement-strength`, `dial-gatekeeper`): a project does not
+> "honor a dial implicitly"; the dials are the *axes each entry is set along* — the **columns of a
+> profile**, not rows of this catalog.
 
 > **On `mechanizable`.** `true` marks the SCT-computable fragment (`research-0006` §Proposal) —
 > structurally checkable. `false` marks a **behavioral gene** (`research-0005`) whose signature is a
@@ -70,7 +70,7 @@ scope: trellis-product
 
 ### B — operating (what Trellis supplies) · class `trellis-design`
 
-- **`inv-graph-maintenance`** (B1) *(absorbs former B6 `inv-self-improvement`)*
+- **`inv-graph-maintenance`** (B1) *(neighbor of B6; shares `inv-prune-bias`)*
   - what: the dependency graph of artifacts **and rules** kept consistent and minimal, information
     flowing one way; trigger-driven; append-only records superseded, never edited-in-substance.
   - signature: a `depends_on` graph; supersede/retire records; dependents re-reviewed on upstream
@@ -78,6 +78,16 @@ scope: trellis-product
   - class: `trellis-design`  ·  mechanizable: `true` (the **flow** facet — no ratified consumes a
     draft; forward/backward/prune are judgment)  ·  intent_locus: `false`
   - default_C1: `enforced`  ·  default_C2: `independent-agent`
+
+- **`inv-self-improvement`** (B6) *(restored first-class, `decision-0018`; neighbor of B1)*
+  - what: the process learns from friction and gets better — improvement signals are surfaced and
+    acted on, deliberately, so a glitch does not happen twice.
+  - signature: a trigger format (`condition → action`) stored where it fires; improvement signals
+    surfaced through the project's **chosen channel** (asked/inferred, never assumed); retirement in
+    the same change; prune-bias (the trigger set does not grow monotonically).
+  - class: `trellis-design`  ·  mechanizable: `false` (behavioral gene; the SI-1 surfacing floor is
+    checkable against the declared channel, the proactive-notice disposition is not)  ·  intent_locus: `false`
+  - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
 
 - **`inv-gate-at-handover`** (B2)
   - what: apply the verification gate at every A2 handover; any skip is **surfaced** (D1).
@@ -157,8 +167,7 @@ scope: trellis-product
 
 ## Acceptance criteria
 
-- Covers all **14 assessable** slugs (A1–A4, B1–B5, B7–B9, D1–D2); the two C dials are excluded by
-  design; the superseded `inv-self-improvement` is covered under `inv-graph-maintenance`.
+- Covers all **15 assessable** slugs (A1–A4, B1–B9, D1–D2); the two C dials are excluded by design.
 - Every entry carries `what` · `signature` · `class` · `mechanizable` · `default_C1` · `default_C2`
   (+ `intent_locus` where `true`).
 - Every `default_C2` on an `intent_locus: true` entry is **not** `none` (D2).

@@ -68,7 +68,7 @@ keyed by its **stable slug** (`decision-0013`). Fields:
 
 **Coverage is a gate (AC1) — the *assessable* invariants, not the dials.** The catalog covers
 every **assessable** invariant slug: the A structural set, the B operating set, and the D floors
-(14 slugs — `inv-directional-flow` … `floor-intent-gate`). It **excludes the two C dials**
+(15 slugs — `inv-directional-flow` … `floor-intent-gate`). It **excludes the two C dials**
 (`dial-enforcement-strength`, `dial-gatekeeper`): a project does not "honor a dial implicitly" —
 the dials are the *axes the catalog's entries are set along* (they are columns of a profile, not
 rows of the catalog). A missing *assessable* slug is a conformance failure; the two dials are
@@ -128,7 +128,7 @@ Added checks (they compose with `spec-0001`'s existing seven):
 
 1. **Type registry.** `signature-catalog` (`scope: trellis-product`) and `expression-profile`
    (`scope: core-methodology`) are declared types with the required sections below.
-2. **Catalog coverage (AC1).** Every *assessable* `invariants-v1` slug (A/B/D — the 14, excluding
+2. **Catalog coverage (AC1).** Every *assessable* `invariants-v1` slug (A/B/D — the 15, excluding
    the two C dials) has a catalog entry carrying all §1 required fields; a superseded slug is
    covered by its successor. *FAIL → name the uncovered assessable slug / missing field.*
 3. **Profile→catalog resolution (AC2).** Every profile `slug` resolves to a catalog entry — a
@@ -198,11 +198,10 @@ one schema serves #22 (minimize), #23/#24 (assess/apply), #28 (diff).
 
 ## Acceptance criteria
 
-- **AC1 — catalog covers every assessable invariant.** The catalog covers every A/B/D slug (14),
-  each with `what/signature/class/mechanizable/default_C1/default_C2`; a missing assessable slug or
-  field fails the check (§4.2). The two C dials are excluded by design (they are the axes, not
-  entries); a superseded slug (`inv-self-improvement` → `inv-graph-maintenance`) is covered by its
-  successor, not a separate entry.
+- **AC1 — catalog covers every assessable invariant.** The catalog covers every A/B/D slug (15,
+  incl. `inv-self-improvement` restored per `decision-0018`), each with
+  `what/signature/class/mechanizable/default_C1/default_C2`; a missing assessable slug or field fails
+  the check (§4.2). The two C dials are excluded by design (they are the axes, not entries).
 - **AC2 — profiles resolve.** Every profile gene references a catalog slug; an unresolved slug is a
   named dangling reference (§4.3).
 - **AC3 — no silent "honored".** Every `active + honored-implicitly` entry carries a `confidence`
