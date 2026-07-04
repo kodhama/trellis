@@ -2,7 +2,7 @@
 id: spec-0003
 type: spec
 status: draft
-depends_on: [spec-0001, spec-0002, signature-catalog-v1, decision-0010, decision-0012, decision-0019, invariants-v1]
+depends_on: [spec-0001, spec-0002, signature-catalog-v1, decision-0010, decision-0012, decision-0019, decision-0023, invariants-v1]
 owner: gundi
 rubric: spec-quality
 ---
@@ -62,6 +62,32 @@ without activation).
    examples become the reference the host's agents consult; the profile's dials say *which* invariants
    at *what* strength. Composed onto the host (below), the host's agents follow them — by reading
    instructions, no runtime dependency on Trellis.
+
+## 2b. The setup CLI — the interactive front door (`decision-0023`)
+
+The advisor flow (§2) is driven by a **Go setup CLI** (single binary, `curl … | sh`, no package
+manager — `decision-0023`), run once. It is **setup tooling, not a runtime**. Its interactive flow:
+
+1. **Detect the harness.** The CLI detects the host's agent harness (v0: **Claude Code** — `.claude/` /
+   `CLAUDE.md` / the `claude` binary). *v0 assumes CLI harnesses; Claude-only.* If one **is** detected
+   there is **no choice to offer** (there is only one); if **none** is found, the CLI **exits with a
+   clear message** rather than guessing. Multiple/other harnesses → deferred, Claude favored.
+2. **Pick the expression profile** — the posture **A conductor · B author-adapt · seed · Custom**
+   (§2 step 1), which seeds a profile.
+3. **Pick the install mode:**
+   - **M1 — alongside (overlay, default, v0):** Trellis installs *next to* the project's existing
+     instructions and is **called from them** — augment-never-clobber (`spec-0001` §5).
+   - **M2 — rewrite (morph, the v0-next stacked follow-up):** rewrite the project's own machinery to
+     **bake in** the profile's invariants. **Always on a fresh git branch, opened as a PR for the
+     maintainer** — never in place; if **no git repo** is detected, the CLI **hard-warns / refuses**.
+     Carries a **"keep embedded behaviors" dial** — does the rewrite *keep* the host's existing
+     behaviors or *replace* them with the profile's (default **keep**).
+
+**Edge cases the build must handle:** an **existing `CLAUDE.md`** (M1 appends a Trellis section — never
+silent overwrite); **idempotent re-run** (no double-apply); **Custom** profile (edit-after, or
+interactive dials); **clean uninstall** (AC4). **Supervisor mode** (installed, live gates): when the
+harness + files point to Claude, the **plugin route** (`decision-0012`) is favored; other harness
+surfaces deferred.
 
 ## 3. Activation / wiring (executes `spec-0001` §5)
 
