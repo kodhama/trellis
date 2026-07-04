@@ -77,6 +77,7 @@ rather than something to route around. See [`CLAUDE.md`](CLAUDE.md).
 
 ## License
 
-**Open-core** is the intended model: the core permissively licensed so you can read, fork, and run it
-— that's the whole point of Advisor mode — with the installed supervisor and hosted services under a
-commercial license. The specific license is being finalized; a `LICENSE` file will land with it.
+**[MIT](LICENSE)** — free and open (`decision-0019`). Read it, fork it, run it; that's the whole point
+of Advisor mode. The Apache-2.0 upgrade path stays open should an enterprise / open-core future ever
+make the patent + trademark grant worth it (cheap while single-owner). Any future monetization is
+*services* (a managed supervisor, hosted conformance, compliance) — never a paywall on the invariants.

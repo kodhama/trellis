@@ -59,7 +59,10 @@ keyed by its **stable slug** (`decision-0013`). Fields:
 |---|---|---|
 | `slug` | ✓ | a slug in the `invariants-v1` registry; **must resolve** (a superseded slug resolves through the registry) |
 | `what` | ✓ | one line — what the invariant is |
+| `why` | ✓ | the goal / benefit in one line, **agents-first** (`decision-0020`) — the benefits page renders this |
 | `signature` | ✓ | the **observable tells** that a project honors it *implicitly* — the field Assess detects against (the genome annotation) |
+| `honored` | ✓ | what a project looks like **with** the invariant (a concrete with-case) |
+| `violated` | ✓ | the failure **without** it (the concrete without-case) |
 | `class` | ✓ | the invariant's own class: `methodology` (A) · `trellis-design` (B) · `dial` (C) · `floor` (D) |
 | `mechanizable` | ✓ | `true` for the SCT-computable fragment (`inv-directional-flow`, `inv-ratifiable-artifacts`, `inv-graph-maintenance` flow-facet, `inv-gate-at-handover`); `false` for the behavioral genes (`inv-independent-judgment`, `inv-clarify-before-commit`, `floor-transparency`) — `research-0006` §Limits partitions the set |
 | `default_C1` | ✓ | default enforcement strength ∈ `{expressed, default-on-but-skippable, enforced}` (`decision-0008`) |
@@ -68,12 +71,18 @@ keyed by its **stable slug** (`decision-0013`). Fields:
 
 **Coverage is a gate (AC1) — the *assessable* invariants, not the dials.** The catalog covers
 every **assessable** invariant slug: the A structural set, the B operating set, and the D floors
-(15 slugs — `inv-directional-flow` … `floor-intent-gate`). It **excludes the two C dials**
-(`dial-enforcement-strength`, `dial-gatekeeper`): a project does not "honor a dial implicitly" —
-the dials are the *axes the catalog's entries are set along* (they are columns of a profile, not
-rows of the catalog). A missing *assessable* slug is a conformance failure; the two dials are
-correctly absent. *(Friction, recorded: the first-draft schema said "every slug"; populating the
-catalog surfaced that dials are not gate-like invariants — fixed here before ratification.)*
+(14 slugs — `inv-directional-flow` … `floor-intent-gate`; B8 collapsed into D1, `decision-0021`). It
+**excludes the two C dials** (`dial-enforcement-strength`, `dial-gatekeeper`): a project does not
+"honor a dial implicitly" — the dials are the *axes the catalog's entries are set along* (columns of a
+profile, not rows). A missing *assessable* slug is a conformance failure; the two dials are correctly
+absent.
+
+**Examples are required and stay in sync (the meta-rule, `decision-0020`).** Every entry carries `why`
++ `honored` + `violated`; **a change that adds or edits an invariant without updating its examples is a
+conformance failure** (§4). Presence is the enforceable floor; that a change didn't leave an example
+stale is the substantive check (weakly checkable, like SI-1). This is the iron rule + referential
+integrity applied to the rule-set itself — and **the landing/benefits page derives from these fields**,
+so a page claim always has a rule behind it.
 
 ## 2. The expression-profile schema (`core-methodology`, one per instance)
 
@@ -128,9 +137,11 @@ Added checks (they compose with `spec-0001`'s existing seven):
 
 1. **Type registry.** `signature-catalog` (`scope: trellis-product`) and `expression-profile`
    (`scope: core-methodology`) are declared types with the required sections below.
-2. **Catalog coverage (AC1).** Every *assessable* `invariants-v1` slug (A/B/D — the 15, excluding
-   the two C dials) has a catalog entry carrying all §1 required fields; a superseded slug is
-   covered by its successor. *FAIL → name the uncovered assessable slug / missing field.*
+2. **Catalog coverage + examples (AC1, `decision-0020`).** Every *assessable* `invariants-v1` slug
+   (A/B/D — the 14, excluding the two C dials; a collapsed slug is covered by its successor) has a
+   catalog entry carrying **all §1 required fields, including `why` / `honored` / `violated`**. *FAIL →
+   name the uncovered assessable slug or the entry missing a field (a bare entry with no `why`/example
+   is a fail).*
 3. **Profile→catalog resolution (AC2).** Every profile `slug` resolves to a catalog entry — a
    profile gene with no catalog annotation is a **dangling reference** (`spec-0001` check 4). *FAIL
    → name the unresolved slug.*
@@ -198,10 +209,11 @@ one schema serves #22 (minimize), #23/#24 (assess/apply), #28 (diff).
 
 ## Acceptance criteria
 
-- **AC1 — catalog covers every assessable invariant.** The catalog covers every A/B/D slug (15,
-  incl. `inv-self-improvement` restored per `decision-0018`), each with
-  `what/signature/class/mechanizable/default_C1/default_C2`; a missing assessable slug or field fails
-  the check (§4.2). The two C dials are excluded by design (they are the axes, not entries).
+- **AC1 — catalog covers every assessable invariant, with goal + examples.** The catalog covers every
+  A/B/D slug (**14** — `inv-self-improvement` restored `decision-0018`, `inv-reference-relationship`
+  collapsed into D1 `decision-0021`), each with `what` / **`why`** / `signature` / **`honored`** /
+  **`violated`** / `class` / `mechanizable` / `default_C1` / `default_C2`; a missing assessable slug or
+  field (including a missing example) fails the check (§4.2). The two C dials are excluded by design.
 - **AC2 — profiles resolve.** Every profile gene references a catalog slug; an unresolved slug is a
   named dangling reference (§4.3).
 - **AC3 — no silent "honored".** Every `active + honored-implicitly` entry carries a `confidence`

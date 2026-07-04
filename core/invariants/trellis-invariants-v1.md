@@ -40,10 +40,11 @@ ratified: 2026-06-29
 
 **Cross-cutting theme — *drift is allowed, but never silent* (`decision-0020`).** Several invariants
 are one idea seen from different angles: directional-flow + graph-maintenance keep *artifacts* from
-drifting, `inv-reference-relationship` keeps you from drifting from a *framework*, self-improvement
-makes evolution *deliberate rather than drift*, and **D1 (transparency)** is the floor that makes all
-of it *never silent*. It is D1 generalized across every kind of drift — not a separate rule
-(minimal-first), a lens on the set.
+drifting, self-improvement makes evolution *deliberate rather than drift*, and **D1 (transparency)** is
+the floor that makes all of it *never silent* — **including divergence from a framework you claim to
+follow** (the case the retired B8 named, now a D1 example, `decision-0021`). It is D1 generalized
+across every kind of drift — not a separate rule (minimal-first), a lens on the set. *(This theme is
+why B8 collapsed: a "no silent drift from your framework" rule adds no mechanism D1 lacks.)*
 
 Durability tags carry forward (`durable` / `strong, less settled`); tags are claims to be
 falsified. The **C/D additions are tagged `provisional`** — they come from a single round of
@@ -75,11 +76,11 @@ slug-supersede, not an ordinal gap.
 | `inv-bounded-context` | B5 | |
 | `inv-self-improvement` | B6 | **restored, first-class** (`decision-0018`); neighbor to B1, shares `inv-prune-bias` |
 | `inv-minimal-first` | B7 | |
-| `inv-reference-relationship` | B8 | |
+| `inv-reference-relationship` | B8 | **collapsed → `floor-transparency` (D1) + `decision-0002` dial** (`decision-0021`); id resolves to D1 |
 | `inv-clarify-before-commit` | B9 | |
 | `dial-enforcement-strength` | C1 | |
 | `dial-gatekeeper` | C2 | |
-| `floor-transparency` | D1 | absorbed `inv-bounded-correction` (escalate-don't-abandon) |
+| `floor-transparency` | D1 | absorbed `inv-bounded-correction` (escalate-don't-abandon) + `inv-reference-relationship` (framework-divergence, `decision-0021`) |
 | `floor-intent-gate` | D2 | |
 
 **Retired artifact ids** (file deleted; the id resolves to its successor via this registry —
@@ -179,11 +180,12 @@ names stages.*
 - **B7. Minimal-first** — *strong, less settled.* Smallest process that works; add a step
   only when friction reveals the boundary. *(v0's "reference-not-adoption" split out to B8 —
   strict single-framework adoption is legitimate, so "never inherit wholesale" was too strong.)*
-- **B8. The reference relationship is explicit, recorded, and surfaced** — *provisional.* How
-  much the operating model **adopts** one framework vs **adapts**/synthesizes from several
-  (`decision-0002`) is a free choice — but the choice, and every *divergence* from a
-  reference, is a recorded decision (B4) and surfaced (D1), never silent drift. *(Replaces
-  v0's "never adopt wholesale," which wrongly foreclosed the conductor end — the Spec Kit case.)*
+- **B8 (`inv-reference-relationship`) → collapsed** (`decision-0021`). It had **no mechanism of its
+  own**: the adopt-vs-adapt *free choice* is the **`decision-0002`** dial; *recorded* is B4; *surfaced,
+  never silent drift* is **D1** / the no-silent-drift theme. So it was D1 + B4 + the dial applied to
+  the object "external frameworks." Retired; the *divergence-from-a-framework* case is a **D1** example
+  (above), the adopt/adapt choice stays **`decision-0002`**'s dial. Any reference to B8 resolves to D1
+  via the registry — no decision is edited to chase the collapse.
 - **B9. Clarify before commit** — *strong (new, from framework analysis).* Ambiguity in an
   upstream artifact is actively **surfaced and resolved** — usually by asking the human —
   before downstream consumes it; ambiguity is never silently resolved by guessing.

@@ -1,17 +1,18 @@
 ---
 id: profile-trellis-self
 type: expression-profile
-status: draft
+status: ratified
 depends_on: [signature-catalog-v1, invariants-v1]
 owner: gundi
 scope: core-methodology
+ratified: 2026-07-04
 ---
 
 # Expression profile — Trellis-self (the self-hosting instance)
 
-> **Status `draft` — awaiting your ratification (D2).** This is an **assessment**, and I (the agent)
-> produced it. Per `inv-independent-judgment` / D2 the producer does not ratify its own assessment —
-> it is `draft` pending the maintainer's gate. It is the **first worked instance** of the
+> **Ratified via merge (`decision-0022`).** This is an **assessment** the agent produced; the
+> maintainer's **merge of this PR is the ratification** (D2) — the producer proposes, the merge accepts.
+> It is the **first worked instance** of the
 > `expression-profile` schema (`spec-0002`), authored by hand (Assess does not exist yet, cluster 1).
 
 > **Honest discount (load-bearing, not hidden).** Trellis-self is the **reference organism** — the
@@ -33,8 +34,9 @@ scope: core-methodology
 
 ## Profile
 
-*All 15 assessable genes are active and honored natively — unsurprising for the reference organism
-(see the discount above). Each `evidence` points at a real artifact in this repo.*
+*All 14 assessable genes are active and honored natively — unsurprising for the reference organism
+(see the discount above; `inv-reference-relationship` collapsed into D1, `decision-0021`). Each
+`evidence` points at a real artifact in this repo.*
 
 | slug | active | C1 | C2 | basis | confidence | evidence |
 |---|---|---|---|---|---|---|
@@ -49,10 +51,9 @@ scope: core-methodology
 | `inv-bounded-context` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | sub-agents scoped to declared inputs (conformance-reviewer corpus; narrow tool sets) |
 | `inv-self-improvement` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0018` restored it after friction (the B6→B1 merge lost "evolve"); the conformance check caught *this row's own absence* and it was added in the same change |
 | `inv-minimal-first` | true | expressed | human | honored-implicitly | verified | `CLAUDE.md`: "a deliberately tiny instance of the seed operating method" |
-| `inv-reference-relationship` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0002` adopt/adapt as a dial; framework analysis recorded (`research-0002`) |
 | `inv-clarify-before-commit` | true | default-on-but-skippable | human | honored-implicitly | verified | `## Open questions` in every artifact; the delivery-axis + dial-coverage frictions were surfaced, not guessed |
 | `floor-transparency` | true | enforced | human | honored-implicitly | verified | `CLAUDE.md` "Loud failure"; this session surfaced the merge conflict + catalog friction rather than papering over |
-| `floor-intent-gate` | true | enforced | human | honored-implicitly | verified | `CLAUDE.md` "Gates: Human approval at the intent layer"; this profile is left `draft` for exactly that gate |
+| `floor-intent-gate` | true | enforced | human | honored-implicitly | verified | `CLAUDE.md` "Gates: Human approval at the intent layer"; this profile is ratified by the maintainer's merge — the intent gate, exercised (`decision-0022`) |
 
 *(The two C dials are not rows here — they are the `C1`/`C2` columns above. Catalog excludes them by
 design, `signature-catalog-v1`.)*
@@ -64,10 +65,12 @@ design, `signature-catalog-v1`.)*
   the N=1 caveat above governs any wider claim.
 - **The behavioral genes** (`inv-independent-judgment` intent face, `inv-clarify-before-commit`,
   `floor-transparency`) are the hardest to evidence — I ground them in the `CLAUDE.md` rule **plus a
-  demonstrated instance from this very session** (surfacing frictions, leaving this profile draft),
-  which is the strongest honest evidence available short of a longitudinal audit.
-- **`floor-intent-gate` is the live demonstration:** this profile sits `draft` precisely so a human
-  ratifies it — the gate is exercised, not asserted.
+  demonstrated instance from this very session** (surfacing frictions, and this profile authored as a
+  proposal for the maintainer's gate), which is the strongest honest evidence short of a longitudinal
+  audit.
+- **`floor-intent-gate` is the live demonstration:** the producer proposed this profile and the
+  **maintainer's merge ratifies it** (`decision-0022`, merge=ratify) — the gate is exercised, not
+  asserted.
 - **This profile is the seed for the cross-instance diff (#28):** entry #1 in the eventual N=1→N
   table. Its value is as a *baseline to diff against*, not as corroboration.
 
