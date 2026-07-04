@@ -50,17 +50,26 @@ loop **rides the work you already do** (never a separate ceremony), retires a tr
 actions it, records a successor *only* if a genuinely new boundary appeared, and **prefers retiring to
 adding**. Always **subordinate to product work**.
 
-**What a trigger looks like — points of information for improvement** (few-shot, per the iron rule; a
-project surfaces the ones its practice actually throws off):
+**What a trigger looks like — concrete "points of information for improvement"** (few-shot per the iron
+rule; some are GitHub-shaped — they show the *shape* of a signal, not a required tool, and each project
+surfaces the ones its own practice throws off):
 
+- a **PR that raises open questions but opens no follow-up** → the questions rot, unowned ;
+- a **pipeline failing on the same step, run after run, with no corrective action** → the process
+  isn't self-healing ;
+- a change that **actioned a parked item without retiring it** → the exact friction that hardened this
+  loop from prose to invariant (math-quest) ;
+- a **direct push to `main` carrying unreviewed code** → a missing mechanical guard, not a scolding
+  (math-quest wired a pre-push hook after one) ;
+- a **"manually verified" flag** with no issue to automate it → tracked debt that resurfaces only by
+  luck ;
 - a **gate skipped** under deadline → was the gate wrong, or the deadline? ;
 - **a human overriding Trellis and being right** — the gold signal, a labeled correction
   (`decision-0009`) ;
 - **the same ambiguity clarified twice** → fix the upstream, don't re-clarify (B9) ;
-- a **"manually verified" flag** → tracked debt: automate or accept it, don't let it rot ;
-- a **rule that hasn't fired** in a while → candidate to retire (prune-bias) ;
-- a **recurring divergence** from a reference framework → record it (B8) ;
-- **friction at the same handover, repeatedly** → the gate or the artifact contract needs work.
+- a **test that breaks on a valid refactor** (over-pins) → loosen or retire it ;
+- a **rule / trigger that hasn't fired in a while** → candidate to retire (prune-bias) ;
+- **repeated friction at the same handover** → the gate or the artifact contract needs work.
 
 **The invariants (intent-defined; slugs kept math-quest-compatible so they import, not rewrite):**
 
