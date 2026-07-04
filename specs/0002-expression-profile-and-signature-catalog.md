@@ -61,8 +61,8 @@ keyed by its **stable slug** (`decision-0013`). Fields:
 | `what` | ✓ | one line — what the invariant is |
 | `why` | ✓ | the goal / benefit in one line, **agents-first** (`decision-0020`) — the benefits page renders this |
 | `signature` | ✓ | the **observable tells** that a project honors it *implicitly* — the field Assess detects against (the genome annotation) |
-| `honored` | ✓ | what a project looks like **with** the invariant (a concrete with-case) |
-| `violated` | ✓ | the failure **without** it (the concrete without-case) |
+| `honored` | ✓ | **≥2** concrete with-cases, **each drawn from a different layer** (CI / spec / research / code / UI / ops …) and tagged with it — so the principle reads as general, not domain-specific (`decision-0020`) |
+| `violated` | ✓ | **≥2** concrete without-cases, likewise spanning different layers |
 | `class` | ✓ | the invariant's own class: `methodology` (A) · `trellis-design` (B) · `dial` (C) · `floor` (D) |
 | `mechanizable` | ✓ | `true` for the SCT-computable fragment (`inv-directional-flow`, `inv-ratifiable-artifacts`, `inv-graph-maintenance` flow-facet, `inv-gate-at-handover`); `false` for the behavioral genes (`inv-independent-judgment`, `inv-clarify-before-commit`, `floor-transparency`) — `research-0006` §Limits partitions the set |
 | `default_C1` | ✓ | default enforcement strength ∈ `{expressed, default-on-but-skippable, enforced}` (`decision-0008`) |
@@ -77,12 +77,16 @@ every **assessable** invariant slug: the A structural set, the B operating set, 
 profile, not rows). A missing *assessable* slug is a conformance failure; the two dials are correctly
 absent.
 
-**Examples are required and stay in sync (the meta-rule, `decision-0020`).** Every entry carries `why`
-+ `honored` + `violated`; **a change that adds or edits an invariant without updating its examples is a
-conformance failure** (§4). Presence is the enforceable floor; that a change didn't leave an example
-stale is the substantive check (weakly checkable, like SI-1). This is the iron rule + referential
-integrity applied to the rule-set itself — and **the landing/benefits page derives from these fields**,
-so a page claim always has a rule behind it.
+**Examples are required, diverse, and stay in sync (the meta-rule, `decision-0020`).** Every entry
+carries `why` + `honored` + `violated`, and **each of `honored`/`violated` carries ≥2 examples from
+different layers** (CI / spec / research / code / UI / ops …). Diversity is the point: one example
+reads as domain-specific; two-plus across layers show the principle *generalizes* (which is what lets
+an agent recognize the invariant in a context it hasn't seen); a 3rd only when it teaches a genuinely
+new layer, never padding. **A change that edits an invariant without updating its examples is a
+conformance failure** (§4). Presence + count is the enforceable floor; not-left-stale is the
+substantive check (weakly checkable, like SI-1). The iron rule + referential integrity applied to the
+rule-set itself — and **the landing/benefits page derives from these fields**, so a page claim always
+has a rule behind it.
 
 ## 2. The expression-profile schema (`core-methodology`, one per instance)
 
