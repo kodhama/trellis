@@ -44,6 +44,9 @@ rule you can't exemplify is probably vaporware.*
 - **Gates.** Human approval at the **intent** layer (vision, decisions, the invariant
   set). **Independent verification** at the **execution** layer (a conformance check
   against the approved upstream before merge — *the builder does not grade itself*).
+  **Ratification rides the merge (`decision-0022`):** a PR carries the `draft → ratified`
+  flip in its diff, and **merging *is* the ratification** — no draft is left un-ratified on
+  `main` past the PR that introduced it (flip it, or keep it clearly WIP).
 - **Work.** One logical change per PR; descriptive, linear history; diffs small enough to
   review on a phone.
 - **Self-improvement.** Triggers, not vigilance (invariant 8): when friction reveals a
