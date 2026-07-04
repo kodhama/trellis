@@ -93,6 +93,34 @@ field** (per-instance, like the dials; `spec-0002`). This keeps it methodology-a
 exactly SI-1 instantiated for a project that lives in GitHub PRs — concrete evidence the intent /
 mechanism split is real, not hand-waving.*
 
+**The target behavior — a disposition, not only a floor.** SI-1 is the *checkable* floor (were the
+signals surfaced through the chosen channel?). The real aspiration sits above it and mirrors **B3's two
+faces** — a checkable conformance face plus an **intent face that lives in system prompts, weakly
+checkable.** The target disposition: the agent **proactively notices** an improvement signal mid-work
+and **proposes two things at once** — the immediate fix *and* a standing trigger so the class is caught
+next time — **inferring the channel from the signal's own context**, and **asking**, never acting
+silently (B9 / D2 consent, `decision-0009`).
+
+*The north-star example (maintainer):* on a PR that raised open questions with nothing tracking them —
+
+> "I noticed this PR has open questions but nothing to act on them. Want me to open GitHub issues for
+> them now — and add a standing trigger so it's caught in future?"
+
+Two things this adds beyond "surface the signal":
+
+- **The loop bootstraps itself** — the agent doesn't only *follow* triggers, it *proposes creating*
+  them ("…and in the future?"), subordinate to the human's yes.
+- **Channel inference is contextual, per-occurrence** — "GitHub issues" is *inferred* here (the signal
+  landed on a GitHub PR the agent could see), then offered — never globally assumed. On a non-GitHub
+  project the same disposition infers a different surface.
+
+**Honest limit (the maintainer flagged it; load-bearing, not a footnote).** This proactive-notice
+disposition is **weakly checkable** — it lives in sub-agent design, system prompts, and few-shot
+examples, not a mechanical gate. A meta-rule can set the surfacing floor (SI-1) and *shape* the
+disposition with examples, but it cannot *guarantee* an agent reliably notices. Recorded as the
+**target, not a claim**: *"not sure a meta-rule triggers this, but that's the aim."* (Same honesty as
+B3's intent face and its positive-control open question.)
+
 **Placement (the fork — maintainer's call, D2).** Recommended: **keep the B1 umbrella** (graph
 maintenance) and attach SI-1/2/3 as **named, first-class self-improvement invariants under it** — the
 framing is shared with math-quest and is fine; what was missing is the concrete engine. The
@@ -133,6 +161,11 @@ D2 / `decision-0014`: significant invariant changes are recorded as ADRs, then a
   in the change record," or refuse to assume and ask? (Leaning: ask, then a minimal default.)
 - **Slug clarity:** keep `inv-propagation-surfaced` (math-quest lineage) or rename to
   `inv-improvement-surfaced` now that it's intent-defined and broader than change-propagation?
+- **Instilling & verifying the disposition (the hard one).** The proactive-notice behavior is weakly
+  checkable — how is it instilled (sub-agent prompt + few-shot from the trigger examples above), and
+  can it be **positive-controlled** (a seeded signal the agent *should* catch)? Direct extension of the
+  B3 positive-control open question in `invariants-v1`. The honest answer today: *this is a target we
+  may only partly reach with rules.*
 - **`inv-prune-bias` vs. B1's existing prune-bias** — consolidate to one statement, don't double-count.
 - **Does this reopen the B6→B1 merge decision itself?** This ADR *refines* it (restores the concrete
   engine) rather than superseding it; confirm that's the right relationship at ratification.
