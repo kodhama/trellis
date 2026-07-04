@@ -1,10 +1,11 @@
 ---
 id: decision-0020
 type: decision
-status: draft
-depends_on: [spec-0002, invariants-v1, signature-catalog-v1, decision-0002, decision-0009, brief-§7]
+status: ratified
+depends_on: [spec-0002, invariants-v1, decision-0002, decision-0009, brief-§7]
 owner: gundi
 date: 2026-07-04
+ratified: 2026-07-04
 ---
 
 # 0020 — Goals & examples are baked into the rules; the landing page is a derived view
