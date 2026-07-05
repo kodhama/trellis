@@ -128,7 +128,7 @@ func renderHeader(plan Plan) string {
 		"## This project's profile\n\n" +
 		"@profile.md\n\n" +
 		"## Reference\n\n" +
-		"The **active rules are in the profile above** — always in context, so they govern every turn. The full *why* and with/without examples for each, plus the invariants not active here, live in `.trellis/invariants.md`; read it for the detail behind a rule.\n"
+		"The **active rules are in the profile above** — always in context, each with its primary **✗ failure** for grounding, so they govern every turn. The full *why* and the rest of the with/without pairs, plus the invariants not active here, live in `.trellis/invariants.md`; read it for the detail behind a rule.\n"
 }
 
 // renderProfile is the tunable readout: posture, active invariants, dials. The
@@ -144,8 +144,9 @@ func renderProfile(plan Plan) string {
 	b.WriteString("- gatekeeper (C2): detected from this project, not preset (decision-0024)\n")
 	b.WriteString(fmt.Sprintf("- install mode: %s\n", plan.Mode.Name))
 	b.WriteString("\n## Active invariants — follow these\n\n")
-	b.WriteString("In force for this project, at the enforcement lean above. The *why* and with/without " +
-		"examples for each (and the invariants not active here) are in `.trellis/invariants.md`.\n\n")
+	b.WriteString("In force for this project, at the enforcement lean above — each with its primary " +
+		"**✗ failure to avoid** inline for grounding. The full *why* and the rest of the with/without " +
+		"pairs (and the invariants not active here) are in `.trellis/invariants.md`.\n\n")
 	b.WriteString(activeRuleLines(plan))
 	b.WriteString("\nEdit this file to tune the profile; `CLAUDE.md` imports `.trellis/trellis.md`, which imports this.\n")
 	return b.String()
@@ -156,6 +157,7 @@ func renderProfile(plan Plan) string {
 // the inline overlay block.
 func activeRuleLines(plan Plan) string {
 	rules := invariantRules()
+	fails := invariantPrimaryFailure()
 	active := plan.Profile.Active
 	if len(active) == 0 { // postures A/B: all assessable invariants
 		active = sortedKeys(rules)
@@ -167,8 +169,52 @@ func activeRuleLines(plan Plan) string {
 		} else {
 			b.WriteString(fmt.Sprintf("- **%s**\n", slug))
 		}
+		if f := fails[slug]; f != "" {
+			b.WriteString(fmt.Sprintf("    ✗ %s\n", f)) // the primary failure to avoid (decision-0031)
+		}
 	}
 	return b.String()
+}
+
+// invariantPrimaryFailure parses the bundled catalog for each invariant's FIRST
+// `violated` example — the primary failure to avoid, always-loaded as one line of
+// grounding under the rule (decision-0031). Curation is by ordering: the example we
+// want always-loaded is placed first; only one is pulled, to stay terse.
+func invariantPrimaryFailure() map[string]string {
+	slugRe := regexp.MustCompile("^- \\*\\*`([a-z][a-z-]*)`\\*\\*")
+	tagRe := regexp.MustCompile(`^- \*\([^)]*\)\* (.*)`)
+	fails := map[string]string{}
+	var cur string
+	var buf []string
+	inViolated, have := false, false
+	flush := func() {
+		if cur != "" && len(buf) > 0 && fails[cur] == "" {
+			fails[cur] = strings.TrimSpace(strings.Join(buf, " "))
+		}
+		buf = nil
+	}
+	for _, ln := range strings.Split(invariantsRef, "\n") {
+		if m := slugRe.FindStringSubmatch(ln); m != nil {
+			flush()
+			cur, inViolated, have = m[1], false, false
+			continue
+		}
+		t := strings.TrimSpace(ln)
+		switch {
+		case t == "- violated:":
+			inViolated = true
+		case inViolated && !have && tagRe.MatchString(t):
+			buf = []string{tagRe.FindStringSubmatch(t)[1]}
+			have = true
+		case have && strings.HasPrefix(t, "- "): // the 2nd example or the next field ends it
+			flush()
+			inViolated = false
+		case have && t != "": // a continuation line of the first example
+			buf = append(buf, t)
+		}
+	}
+	flush()
+	return fails
 }
 
 // invariantRules parses the bundled catalog into slug → its one-line `what` rule —
