@@ -43,7 +43,8 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 	sc := bufio.NewScanner(in)
 
 	// Mode first — it decides what the rest of setup even needs to detect.
-	mKey, err := ask(in, sc, w, "install mode", *modeKey, modeOptions(), "m1")
+	mKey, err := ask(in, sc, w, "How should Trellis attach to your project?",
+		"holds a few invariants; respects your methodology otherwise", *modeKey, modeOptions(), "m1")
 	if err != nil {
 		return err
 	}
@@ -69,7 +70,8 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		}
 	}
 
-	pKey, err := ask(in, sc, w, "profile", *profileKey, profileOptions(), "b")
+	pKey, err := ask(in, sc, w, "How strict should Trellis be?",
+		"the posture seeds your profile — tune it in .trellis/ afterward", *profileKey, profileOptions(), "b")
 	if err != nil {
 		return err
 	}
@@ -118,25 +120,58 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 // the --target flag if given, else a prompt over the known files, defaulting to one
 // already present (else CLAUDE.md). M1 needs no harness — the target file is the story.
 func chooseTarget(in io.Reader, sc *bufio.Scanner, w io.Writer, preset, dir string) (InstructionFile, error) {
-	detected := detectInstructionFiles(dir)
-	def := instructionFiles[0].Name // CLAUDE.md
-	if len(detected) > 0 {
-		def = detected[0].Name
-		names := make([]string, len(detected))
-		for i, f := range detected {
-			names[i] = f.Name
+	// --target wins (automation) and may name any known file (created if absent).
+	if preset != "" {
+		f, ok := instructionFileByName(preset)
+		if !ok {
+			return InstructionFile{}, fmt.Errorf("unknown --target %q (known: %s)", preset, knownTargetNames())
 		}
-		fmt.Fprintf(w, "found instruction file(s): %s\n", strings.Join(names, ", "))
-	} else {
-		fmt.Fprintf(w, "no instruction file found — will create %s\n", def)
+		return f, nil
 	}
-	key, err := ask(in, sc, w, "instruction file (M1 target)", preset, targetOptions(), def)
-	if err != nil {
-		return InstructionFile{}, err
+
+	// Otherwise offer ONLY the instruction files actually present — the registry is just
+	// the checklist of what to look for. None present → create CLAUDE.md or exit.
+	detected := detectInstructionFiles(dir)
+	switch len(detected) {
+	case 0:
+		key, err := ask(in, sc, w, "No agent-instructions file found here.",
+			"Trellis needs one file to attach to.", "",
+			[]option{
+				{"create", "create CLAUDE.md and add the Trellis section"},
+				{"exit", "I'll add an instructions file myself"},
+			}, "create")
+		if err != nil {
+			return InstructionFile{}, err
+		}
+		if key == "exit" {
+			return InstructionFile{}, fmt.Errorf("no instructions file — nothing written; add one (e.g. CLAUDE.md) and re-run")
+		}
+		f, _ := instructionFileByName("CLAUDE.md")
+		return f, nil
+	case 1:
+		fmt.Fprintf(w, "found %s — Trellis will extend it\n\n", detected[0].Name)
+		return detected[0], nil
+	default:
+		opts := make([]option, len(detected))
+		for i, f := range detected {
+			opts[i] = option{f.Name, importKind(f)}
+		}
+		key, err := ask(in, sc, w, "Which instructions file should Trellis extend?",
+			"only files present here are offered", "", opts, detected[0].Name)
+		if err != nil {
+			return InstructionFile{}, err
+		}
+		f, _ := instructionFileByName(key)
+		return f, nil
 	}
-	f, _ := instructionFileByName(key)
-	fmt.Fprintf(w, "target: %s (%s)\n\n", f.Name, importKind(f))
-	return f, nil
+}
+
+func knownTargetNames() string {
+	names := make([]string, len(instructionFiles))
+	for i, f := range instructionFiles {
+		names[i] = f.Name
+	}
+	return strings.Join(names, ", ")
 }
 
 // resolveModel picks the model for the chosen mode. M2 (morph) is model-driven, so
@@ -152,7 +187,8 @@ func resolveModel(in io.Reader, sc *bufio.Scanner, w io.Writer, preset string, m
 		m, _ := modelByKey("none")
 		return m, nil
 	}
-	key, err := ask(in, sc, w, "model", preset, morphModelOptions(), "high")
+	key, err := ask(in, sc, w, "Which model drives the rewrite?",
+		"M2 rewrites your instructions on a git branch", preset, morphModelOptions(), "high")
 	if err != nil {
 		return Model{}, err
 	}
@@ -163,7 +199,7 @@ func resolveModel(in io.Reader, sc *bufio.Scanner, w io.Writer, preset string, m
 // ask resolves one choice. If preset is non-empty it is validated and used with no
 // prompt (the flag path); otherwise the options are printed and a line is read from
 // sc, with empty input taking def. An out-of-set answer is a loud error (D1).
-func ask(in io.Reader, sc *bufio.Scanner, w io.Writer, label, preset string, opts []option, def string) (string, error) {
+func ask(in io.Reader, sc *bufio.Scanner, w io.Writer, title, hint, preset string, opts []option, def string) (string, error) {
 	keys := make([]string, len(opts))
 	for i, o := range opts {
 		keys[i] = o.key
@@ -171,7 +207,7 @@ func ask(in io.Reader, sc *bufio.Scanner, w io.Writer, label, preset string, opt
 
 	if preset != "" {
 		if !contains(keys, preset) {
-			return "", fmt.Errorf("invalid %s %q (choose one of %s)", label, preset, strings.Join(keys, ", "))
+			return "", fmt.Errorf("invalid choice %q (choose one of %s)", preset, strings.Join(keys, ", "))
 		}
 		return preset, nil
 	}
@@ -179,17 +215,20 @@ func ask(in io.Reader, sc *bufio.Scanner, w io.Writer, label, preset string, opt
 	// A real terminal gets the arrow-key selector; pipes, CI, and tests fall through to
 	// the line-based prompt below, so the deterministic path is unchanged (decision-0030).
 	if inF, outF, ok := ttyPair(in, w); ok {
-		key, err := selectInteractive(inF, outF, label, opts, def)
+		key, err := selectInteractive(inF, outF, title, hint, opts, def)
 		if err != nil {
 			return "", err
 		}
 		if !contains(keys, key) {
-			return "", fmt.Errorf("invalid %s %q", label, key)
+			return "", fmt.Errorf("invalid choice %q", key)
 		}
 		return key, nil
 	}
 
-	fmt.Fprintf(w, "%s:\n", label)
+	fmt.Fprintf(w, "%s\n", title)
+	if hint != "" {
+		fmt.Fprintf(w, "  %s\n", hint)
+	}
 	for _, o := range opts {
 		marker := "  "
 		if o.key == def {
@@ -204,14 +243,14 @@ func ask(in io.Reader, sc *bufio.Scanner, w io.Writer, label, preset string, opt
 			fmt.Fprintln(w, def)
 			return def, nil
 		}
-		return "", fmt.Errorf("no input for %s and no default available", label)
+		return "", fmt.Errorf("no input for %q and no default available", title)
 	}
 	ans := strings.TrimSpace(sc.Text())
 	if ans == "" {
 		ans = def
 	}
 	if !contains(keys, ans) {
-		return "", fmt.Errorf("invalid %s %q (choose one of %s)", label, ans, strings.Join(keys, ", "))
+		return "", fmt.Errorf("invalid choice %q (choose one of %s)", ans, strings.Join(keys, ", "))
 	}
 	fmt.Fprintln(w)
 	return ans, nil

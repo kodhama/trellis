@@ -49,14 +49,6 @@ func detectInstructionFiles(dir string) []InstructionFile {
 	return found
 }
 
-func targetOptions() []option {
-	opts := make([]option, len(instructionFiles))
-	for i, f := range instructionFiles {
-		opts[i] = option{f.Name, importKind(f)}
-	}
-	return opts
-}
-
 // importKind describes how the overlay attaches to a file, for display.
 func importKind(f InstructionFile) string {
 	if f.Imports {

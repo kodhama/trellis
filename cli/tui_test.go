@@ -15,13 +15,13 @@ func TestTTYPair_NonFileIsNotInteractive(t *testing.T) {
 	}
 }
 
-func TestPaint_RespectsNoColor(t *testing.T) {
+func TestPalette_RespectsNoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
-	if got := paint(ansiGreen, "hi"); got != "hi" {
-		t.Errorf("NO_COLOR set should strip color, got %q", got)
+	if p := newPalette(); p.g("hi") != "hi" {
+		t.Errorf("NO_COLOR set should strip color, got %q", p.g("hi"))
 	}
 	t.Setenv("NO_COLOR", "")
-	if got := paint(ansiGreen, "hi"); !strings.Contains(got, ansiGreen) || !strings.Contains(got, ansiReset) {
-		t.Errorf("color should wrap when NO_COLOR is unset, got %q", got)
+	if p := newPalette(); p.g("hi") == "hi" || !strings.Contains(p.g("hi"), "hi") {
+		t.Errorf("color should wrap the text when NO_COLOR is unset, got %q", p.g("hi"))
 	}
 }

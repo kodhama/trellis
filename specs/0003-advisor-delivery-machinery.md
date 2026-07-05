@@ -87,11 +87,12 @@ manager — `decision-0023`), run once. It is **setup tooling, not a runtime**. 
      Carries a **"keep embedded behaviors" dial** — *keep* the host's existing behaviors or *replace*
      them with the profile's (default **keep**).
 2. **Detect what the mode needs.**
-   - **M1** detects the **instruction files** present and picks the target — `CLAUDE.md` (native
-     `@import`), or one of `AGENTS.md` / `GEMINI.md` / `.github/copilot-instructions.md` / `.clinerules`
-     (rules **inlined**, no import to lean on; `research-0010`). `--target` selects non-interactively
-     (`decision-0029`). No binary; if none is present, it **creates** the chosen file. Directory-based
-     conventions (Cursor, Continue) are a separate follow-up (`research-0010`).
+   - **M1** offers **only the instruction files actually present** — the registry (`CLAUDE.md`,
+     `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.clinerules`; `research-0010`) is just
+     the checklist of what to look for. Several present → pick one; one → use it; **none → create
+     `CLAUDE.md` or exit**. The overlay is native `@import` for `CLAUDE.md`, rules **inlined** otherwise.
+     `--target` selects non-interactively (`decision-0029`). No binary. Directory-based conventions
+     (Cursor, Continue) remain a separate follow-up (`research-0010`).
    - **M2** detects the **harness binary** that drives the rewrite (v0: **Claude Code** — the `claude`
      binary; `.claude/` / `CLAUDE.md` corroborate). *v0 assumes CLI harnesses; Claude-only.* If **none**
      is found, the CLI **exits with a clear message** rather than guessing. Multiple/other harnesses →
