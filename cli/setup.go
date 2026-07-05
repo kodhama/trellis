@@ -267,8 +267,8 @@ func printPlan(w io.Writer, p Plan) {
 	} else {
 		row("target", p.Target.Name+"  "+pal.d(importKind(p.Target)))
 	}
-	row("profile", p.Profile.Name)
-	row("mode", p.Mode.Name)
+	row("profile", p.Profile.Short)
+	row("mode", p.Mode.Short)
 	row("model", p.Model.Name)
 }
 

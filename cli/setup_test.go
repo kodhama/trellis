@@ -19,7 +19,7 @@ func TestSetupNoHarnessM1Works(t *testing.T) {
 	if err != nil {
 		t.Fatalf("m1 setup should work with no harness binary present: %v", err)
 	}
-	if !strings.Contains(out, "M1 · alongside") {
+	if !strings.Contains(out, "alongside") {
 		t.Errorf("expected an m1 plan (M1 must work with no harness binary), got:\n%s", out)
 	}
 }
@@ -39,7 +39,7 @@ func TestSetupWithFlags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("setup with flags: %v", err)
 	}
-	for _, want := range []string{"detected harness", "A · conductor", "M2 · rewrite", "high-reasoning", "setup plan"} {
+	for _, want := range []string{"detected harness", "conductor", "rewrite", "high-reasoning", "setup plan"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("plan missing %q in:\n%s", want, out)
 		}
@@ -53,7 +53,7 @@ func TestSetupDefaultsOnEmptyInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("setup with defaults: %v", err)
 	}
-	for _, want := range []string{"B · author-adapt", "M1 · alongside", "no model"} {
+	for _, want := range []string{"author-adapt", "alongside", "no model"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("defaulted plan missing %q in:\n%s", want, out)
 		}
@@ -67,7 +67,7 @@ func TestSetupInteractive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("interactive setup: %v", err)
 	}
-	for _, want := range []string{"seed", "M2 · rewrite", "balanced"} {
+	for _, want := range []string{"seed", "rewrite", "balanced"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("interactive plan missing %q in:\n%s", want, out)
 		}
