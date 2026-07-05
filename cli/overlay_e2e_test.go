@@ -62,7 +62,7 @@ func TestE2E_M1_ClaudeTargetImports(t *testing.T) {
 
 	c := readFile(t, filepath.Join(dir, "CLAUDE.md"))
 	mustHave(t, c, "Keep this.", trellisBegin, "@.trellis/trellis.md")
-	mustLack(t, c, "inv-directional-flow") // rules live in .trellis/, imported not inlined
+	mustLack(t, c, "settled ground") // rules live in .trellis/, imported not inlined
 	if _, err := os.Stat(filepath.Join(dir, ".trellis", "invariants.md")); err != nil {
 		t.Errorf("did not bundle the invariant reference: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestE2E_M1_AgentsTargetInlines(t *testing.T) {
 	mustHave(t, out, "inlines the rules (no @import)")
 
 	a := readFile(t, filepath.Join(dir, "AGENTS.md"))
-	mustHave(t, a, "House rule.", trellisBegin, "without its human approval", "inv-directional-flow")
+	mustHave(t, a, "House rule.", trellisBegin, "Follow the rules below", "settled ground")
 	mustLack(t, a, "@.trellis/trellis.md")
 	if _, err := os.Stat(filepath.Join(dir, "CLAUDE.md")); !os.IsNotExist(err) {
 		t.Error("targeting AGENTS.md must not create CLAUDE.md")
@@ -151,7 +151,7 @@ func TestE2E_M1_EveryRegisteredTargetGetsTheBlock(t *testing.T) {
 			if f.Imports {
 				mustHave(t, body, "@.trellis/trellis.md")
 			} else {
-				mustHave(t, body, "inv-directional-flow") // rules inlined, not imported
+				mustHave(t, body, "settled ground") // rules inlined, not imported
 				mustLack(t, body, "@.trellis/trellis.md")
 			}
 		})

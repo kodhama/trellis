@@ -32,3 +32,23 @@ func TestInvariantPrimaryFailureCoverCatalog(t *testing.T) {
 		t.Errorf("inv-directional-flow primary failure looks wrong: %q", got)
 	}
 }
+
+// TestInvariantDirectivesCoverCatalog guards decision-0034: every invariant carries an
+// imperative, host-agent-facing directive for the block — and it must not leak the
+// Trellis-internal codes a host agent can't resolve.
+func TestInvariantDirectivesCoverCatalog(t *testing.T) {
+	dirs := invariantDirectives()
+	if len(dirs) != 14 {
+		t.Errorf("expected 14 directives parsed from the catalog, got %d: %v", len(dirs), sortedKeys(dirs))
+	}
+	for slug, d := range dirs {
+		if d == "" {
+			t.Errorf("%s has an empty directive", slug)
+		}
+		for _, code := range []string{"(A1)", "(A2)", "(A3)", "(A4)", "(B2)", "(C2)", "(D1)", "decision-0", "invariant B"} {
+			if strings.Contains(d, code) {
+				t.Errorf("directive for %s leaks internal code %q: %s", slug, code, d)
+			}
+		}
+	}
+}

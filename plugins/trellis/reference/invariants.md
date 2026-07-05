@@ -49,6 +49,7 @@ ratified: 2026-07-04
 - **`inv-directional-flow`** (A1)
   - what: one-way stages of decreasing ambiguity (research → decisions → contracts → implementation
     → validation); downstream never consumes a draft.
+  - directive: Build only on settled ground — an approved spec or a made decision, never a draft that's still changing under you. If your input isn't settled, or you can't tell whether it is, ask before you build on it.
   - why: agents always build on **settled** ground — ambiguity only decreases, so no one codes against
     a spec that is still moving.
   - signature: ordered stage folders or a defined pipeline; artifacts carry a stage/`status`; **no
@@ -65,6 +66,7 @@ ratified: 2026-07-04
 
 - **`inv-handover-points`** (A2)
   - what: defined transitions between stages, each a place a gate *can* attach.
+  - directive: Work in reviewable steps with clear stopping points — a plan, a spec, a PR — not one unbroken stream. Leave seams where the work can be paused and checked.
   - why: development moves in **discrete** steps with boundaries, not one fluid blur — the seams are
     where work can be stopped, inspected, and handed on. (A1 is *which way* work moves; this is *that
     it moves in steps*.)
@@ -82,6 +84,7 @@ ratified: 2026-07-04
 - **`inv-intent-locus`** (A3)
   - what: humans own intent/values *somewhere identifiable* — a process with no human intent locus is
     not targetable for accountable development.
+  - directive: Make sure a human owns the goal of what you're doing. Don't chase a proxy metric or ship something no human has confirmed is the right thing to build.
   - why: an **accountable human owns the goal**, so a wrong *direction* gets caught before it is built.
   - signature: an accountable human `owner` on artifacts; a human sign-off/approval point (CODEOWNERS,
     a required review, a ratification step).
@@ -98,6 +101,7 @@ ratified: 2026-07-04
 - **`inv-ratifiable-artifacts`** (A4)
   - what: upstream can reach an **approved** state downstream consumes; outputs are **checkable
     against** it.
+  - directive: Build against a fixed, approved target with a clear pass/fail for "done" — not a vague or moving one. If there's no agreed definition of done, get one first.
   - why: you build against a **stable, approved target with a real pass/fail criterion** — not a
     moving one, and not "looks done to me."
   - signature: a `status` lifecycle (draft → approved/ratified); artifacts with acceptance criteria a
@@ -116,6 +120,7 @@ ratified: 2026-07-04
 - **`inv-graph-maintenance`** (B1) *(neighbor of B6; shares `inv-prune-bias`)*
   - what: the dependency graph of artifacts **and rules** kept consistent and minimal, information
     flowing one way; trigger-driven; append-only records superseded, never edited-in-substance.
+  - directive: When you change something, update everything that depends on it — and if you can't tell what depends on it, say so rather than assume nothing does. If you find a past decision is wrong or missing, fix the decision — don't just patch around it.
   - why: the knowledge base **stays coherent for the agents reading it**, and a discovery deep in the
     code **repairs the decision that should have known it** (backprop) — which happens more than people
     admit.
@@ -138,6 +143,7 @@ ratified: 2026-07-04
 - **`inv-self-improvement`** (B6) *(restored first-class, `decision-0018`; neighbor of B1)*
   - what: the process learns from friction and gets better — improvement signals are surfaced and
     acted on, deliberately, so a glitch does not happen twice.
+  - directive: When something breaks or causes friction, fix the root cause so it can't happen twice — don't just re-run it and move on.
   - why: **a process glitch never happens twice** — friction becomes a fix, not a recurring tax.
   - signature: a trigger format (`condition → action`) stored where it fires; improvement signals
     surfaced through the project's **chosen channel** (asked/inferred, never assumed); retirement in
@@ -155,6 +161,7 @@ ratified: 2026-07-04
 
 - **`inv-gate-at-handover`** (B2)
   - what: apply the verification gate at every A2 handover; any skip is **surfaced** (D1).
+  - directive: Don't skip the review or verification step before handing work on. If you have to skip it, say so out loud — never let it silently not happen.
   - why: the review **actually fires** (not quietly skipped under deadline) — and if it is skipped,
     you can *see* it was.
   - signature: a check/review fires at each handoff (CI gate, required review); skips are logged, not
@@ -171,6 +178,7 @@ ratified: 2026-07-04
 - **`inv-independent-judgment`** (B3) *(two faces: conformance + intent)*
   - what: the assessor is independent of what it assesses — the builder does not grade itself
     (conformance face); the agent does not flatter the human (intent face).
+  - directive: Don't rule your own work correct — tell the human an independent review is needed and let someone (or something) other than the author check it. And don't just agree to please the human; say what you actually think, problems included.
   - why: **the builder doesn't grade its own homework**, and the agent **names the risk** instead of
     flattering the plan — so verification and the intent gate are real, not decorative.
   - signature: a verifier **distinct from the producer** (fresh-context review agent); reviews record
@@ -189,6 +197,7 @@ ratified: 2026-07-04
 
 - **`inv-auditable-archive`** (B4)
   - what: provenance + immutable decision history + consolidated current-truth.
+  - directive: Record why decisions are made and keep that history — don't edit past decisions in place and lose the reasoning. "Why is it this way?" should be answerable later.
   - why: you can always answer **"why is it this way?"** — decisions are not lost or quietly rewritten.
   - signature: append-only decision records; retained change history (git); a current-truth doc kept
     separate from its change log.
@@ -206,6 +215,7 @@ ratified: 2026-07-04
 
 - **`inv-bounded-context`** (B5)
   - what: each operation reads only its declared inputs, never the whole archive.
+  - directive: Pull in only the inputs the task actually needs — don't dump the whole codebase into context. If you're unsure what's relevant, ask rather than grabbing everything.
   - why: agents decide on **sharp, relevant context** instead of drowning in everything — better calls,
     and it scales as the archive grows.
   - signature: operations/agents declare their inputs (`depends_on`, scoped context); sub-agents with
@@ -223,6 +233,7 @@ ratified: 2026-07-04
 - **`inv-minimal-first`** (B7)
   - what: the smallest process that works; add a step only when friction reveals the boundary; bias to
     retire over add.
+  - directive: Prefer the smallest thing that works. Don't add process, tooling, or abstraction until it's clearly needed — lean toward removing over adding.
   - why: **no ceremony for its own sake** — every step has earned its place, so the process stays light.
   - signature: a deliberately small rule/process set; steps added with recorded justification; retired
     rules pruned rather than accumulated.
@@ -238,6 +249,7 @@ ratified: 2026-07-04
 - **`inv-clarify-before-commit`** (B9)
   - what: ambiguity in an upstream is actively surfaced and resolved (usually by asking the human)
     before downstream consumes it; never silently guessed.
+  - directive: If a requirement, spec, or input is ambiguous, ask before you build — don't quietly pick one reading and risk building the wrong thing.
   - why: **agents ask instead of guessing** — you don't discover three files later that they took the
     wrong reading of a vague spec.
   - signature: open-questions sections; clarifying exchanges recorded before build starts; a
@@ -257,6 +269,7 @@ ratified: 2026-07-04
   - what: every consequential choice is **surfaced** — a skipped gate, a missing capability, a degraded
     result, a relaxed setting, a divergence from a framework you claim to follow; a failed verification
     is escalated visibly, never silently abandoned. **Drift is allowed, but never silent.**
+  - directive: Say every consequential choice out loud — a skipped step, a missing capability, a degraded result, a workaround, a place you diverged from the plan. Never quietly work around a problem.
   - why: **nothing consequential happens silently** — you learn about the shortcut *when it is taken*,
     not when it breaks in production.
   - signature: skips/degradations logged and visible; loud-failure on a missing tool/source; no silent
@@ -277,6 +290,7 @@ ratified: 2026-07-04
   - what: the intent gate never fully opens — at the intent locus (A3), `C2` can never be `none`; a
     human (or, by ratchet, a human-authorized independent check) is mandatory. The one place an
     upstream that is itself *wrong* gets caught.
+  - directive: Never finalize, ship, or merge something a human is meant to approve without that approval. When you reach such a point, stop and get sign-off. Unsure whether a human must approve? Assume yes.
   - why: **"is this the right thing to build?" always has a human behind it** — the one call you never
     hand fully to the machine.
   - signature: a mandatory human approval at the intent/ratification point; no fully-automated intent
@@ -295,7 +309,7 @@ ratified: 2026-07-04
 
 - Covers all **14 assessable** slugs (A1–A4, B1–B7, B9, D1–D2 — B8 collapsed into D1, `decision-0021`);
   the two C dials are excluded by design.
-- Every entry carries `what` · **`why`** · `signature` · **`honored`** · **`violated`** · `class` ·
+- Every entry carries `what` · **`directive`** · **`why`** · `signature` · **`honored`** · **`violated`** · `class` ·
   `mechanizable` · `default_C1` · `default_C2` (+ `intent_locus` where `true`), and `honored`/`violated`
   are **≥2 matched pairs** — `violated[i]` and `honored[i]` share a use case (same layer tag, same
   order), forming one *without → with* pair (`decision-0027`). A missing `why` / `honored` / `violated`,

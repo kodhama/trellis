@@ -58,7 +58,8 @@ keyed by its **stable slug** (`decision-0013`). Fields:
 | Field | Req | Rule |
 |---|---|---|
 | `slug` | ✓ | a slug in the `invariants-v1` registry; **must resolve** (a superseded slug resolves through the registry) |
-| `what` | ✓ | one line — what the invariant is |
+| `what` | ✓ | one line — what the invariant is (the dictionary voice; the reference + benefits page render this) |
+| `directive` | ✓ | one line — the **imperative, host-agent-facing** instruction the always-loaded block renders; self-contained, no internal codes (`decision-0034`) |
 | `why` | ✓ | the goal / benefit in one line, **agents-first** (`decision-0020`) — the benefits page renders this |
 | `signature` | ✓ | the **observable tells** that a project honors it *implicitly* — the field Assess detects against (the genome annotation) |
 | `honored` | ✓ | the **with** side of **≥2 matched pairs** — the fixed version; `honored[i]` pairs with `violated[i]` (same use case + layer tag, same order; `decision-0027`) |
@@ -215,7 +216,7 @@ one schema serves #22 (minimize), #23/#24 (assess/apply), #28 (diff).
 
 - **AC1 — catalog covers every assessable invariant, with goal + examples.** The catalog covers every
   A/B/D slug (**14** — `inv-self-improvement` restored `decision-0018`, `inv-reference-relationship`
-  collapsed into D1 `decision-0021`), each with `what` / **`why`** / `signature` / **`honored`** /
+  collapsed into D1 `decision-0021`), each with `what` / **`directive`** / **`why`** / `signature` / **`honored`** /
   **`violated`** / `class` / `mechanizable` / `default_C1` / `default_C2`; a missing assessable slug or
   field (including a missing example) fails the check (§4.2). The two C dials are excluded by design.
 - **AC2 — profiles resolve.** Every profile gene references a catalog slug; an unresolved slug is a
