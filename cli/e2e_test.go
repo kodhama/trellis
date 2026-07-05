@@ -35,8 +35,8 @@ func TestE2E_M1_ApplyToSampleProject(t *testing.T) {
 	if !strings.Contains(c, trellisBegin) || !strings.Contains(c, "@.trellis/trellis.md") {
 		t.Error("e2e did not install the minimal trellis import block")
 	}
-	if header := readFile(t, filepath.Join(dir, ".trellis", "trellis.md")); !strings.Contains(header, "without its human approval") {
-		t.Error("e2e did not write the B2 surfacing behavior into the header")
+	if header := readFile(t, filepath.Join(dir, ".trellis", "trellis.md")); !strings.Contains(header, "Follow the rules below") {
+		t.Error("e2e did not write the imperative governance header")
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".trellis", "invariants.md")); err != nil {
 		t.Error("e2e did not bundle the invariant reference")

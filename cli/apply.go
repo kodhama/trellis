@@ -82,17 +82,44 @@ func applyM1(dir string, plan Plan) (string, error) {
 		"  updated %s (%s)\n", target.Name, attach), nil
 }
 
+// strengthLine turns the profile's C1 lean into a plain-language instruction the host
+// agent can act on — no jargon (decision-0034).
+func strengthLine(c1 string) string {
+	switch c1 {
+	case "enforced":
+		return "**Firmly** — treat these as hard requirements. Follow them as written; don't skip or soften one without the human's explicit say-so."
+	case "expressed":
+		return "**As guidance** — keep these front of mind and lean toward them; they are the intent, not hard gates."
+	default: // default-on-but-skippable
+		return "**By default** — follow them unless you have a clear, specific reason not to, and when you deviate say so out loud rather than doing it silently."
+	}
+}
+
+// governanceHeader is the imperative framing shared by the CLAUDE.md header and the
+// inline (AGENTS.md) block: what this is, that the agent must follow it, and how
+// strictly — self-contained, no Trellis-internal codes (decision-0034).
+func governanceHeader(plan Plan) string {
+	return "# How to work in this project\n\n" +
+		"You are working in a project that follows **Trellis** — a small, load-bearing set of working rules on top of the project's own process. **Follow the rules below as you work here.** They add guardrails; they don't replace this project's own instructions.\n\n" +
+		"**How strictly to follow them:** " + strengthLine(plan.Profile.C1Lean) + "\n"
+}
+
+// rulesBody is the active rules (each an imperative directive + the ✗ failure it
+// prevents). Shared by profile.md and the inline block.
+func rulesBody(plan Plan) string {
+	return "## The rules — do these\n\n" +
+		"Each is a rule to follow, then the ✗ failure it prevents:\n\n" +
+		activeRuleLines(plan)
+}
+
 // renderInlineBlock is the M1 footprint for instruction files WITHOUT @import support
-// (e.g. AGENTS.md): the governance behavior + active rules are inlined directly, since
-// there is nothing to import. The full why + examples still live in .trellis/invariants.md
-// (a plain path a reader can open). Re-run `trellis setup` to refresh after a profile change.
+// (e.g. AGENTS.md): the whole thing is inlined and self-contained. The reasoning +
+// examples still live in .trellis/invariants.md, but the block stands on its own.
 func renderInlineBlock(plan Plan) string {
 	return trellisBegin + "\n" +
-		"This project is governed by **Trellis** (see `.trellis/`). Its rules are inlined here — this file does not support `@import`:\n\n" +
-		"**Key behavior:** surface any **human-gated handover performed without its human approval** (invariant B2). Agent-gated handovers proceed silently. Gatekeepers are whatever this project already declares — respected, not imposed (decision-0024).\n\n" +
-		"**Active invariants — follow these:**\n" +
-		activeRuleLines(plan) +
-		"\nFull *why* + with/without examples: `.trellis/invariants.md`. Re-run `trellis setup` to refresh these after a profile change.\n" +
+		governanceHeader(plan) + "\n" +
+		rulesBody(plan) +
+		"\nThe reasoning and more examples behind each rule are in `.trellis/invariants.md` — but the rules above are complete on their own. Re-run `trellis setup` after changing the profile.\n" +
 		trellisEnd
 }
 
@@ -114,7 +141,7 @@ func upsertBlock(content, block string) string {
 // a native @import of the header. Everything else lives in .trellis/.
 func renderClaudeBlock() string {
 	return trellisBegin + "\n" +
-		"This project is governed by **Trellis** (see the `.trellis/` folder). Its rules are imported here:\n" +
+		"This project follows **Trellis** — working rules you are expected to follow while you work here. They are imported below:\n" +
 		"@.trellis/trellis.md\n" +
 		trellisEnd
 }
@@ -122,13 +149,9 @@ func renderClaudeBlock() string {
 // renderHeader is the entry point CLAUDE.md imports: the intro + the governance
 // behavior, then it pulls in the profile and points at the invariant reference.
 func renderHeader(plan Plan) string {
-	return "# Trellis governance\n\n" +
-		"This project is supervised by **Trellis**, a governance layer over your existing process: it holds a small set of invariants at the strengths this project has adopted, and otherwise respects your methodology.\n\n" +
-		"**Key behavior:** surface any **human-gated handover performed without its human approval** (invariant B2). Agent-gated handovers proceed silently. Gatekeepers are whatever this project already declares — respected, not imposed (decision-0024).\n\n" +
-		"## This project's profile\n\n" +
+	return governanceHeader(plan) + "\n" +
 		"@profile.md\n\n" +
-		"## Reference\n\n" +
-		"The **active rules are in the profile above** — always in context, each with its primary **✗ failure** for grounding, so they govern every turn. The full *why* and the rest of the with/without pairs, plus the invariants not active here, live in `.trellis/invariants.md`; read it for the detail behind a rule.\n"
+		"---\nThe reasoning and more examples behind each rule are in `.trellis/invariants.md`; the rules stand on their own.\n"
 }
 
 // renderProfile is the tunable readout: posture, active invariants, dials. The
@@ -137,43 +160,67 @@ func renderHeader(plan Plan) string {
 // the active invariants as concise *rules* — not just names — so they genuinely
 // govern every turn. The full why + examples stay on-demand in invariants.md.
 func renderProfile(plan Plan) string {
-	var b strings.Builder
-	b.WriteString("# Trellis expression profile\n\n")
-	b.WriteString(fmt.Sprintf("- posture: %s — %s\n", plan.Profile.Name, plan.Profile.Description))
-	b.WriteString(fmt.Sprintf("- enforcement (C1) lean: `%s`\n", plan.Profile.C1Lean))
-	b.WriteString("- gatekeeper (C2): detected from this project, not preset (decision-0024)\n")
-	b.WriteString(fmt.Sprintf("- install mode: %s\n", plan.Mode.Name))
-	b.WriteString("\n## Active invariants — follow these\n\n")
-	b.WriteString("In force for this project, at the enforcement lean above — each with its primary " +
-		"**✗ failure to avoid** inline for grounding. The full *why* and the rest of the with/without " +
-		"pairs (and the invariants not active here) are in `.trellis/invariants.md`.\n\n")
-	b.WriteString(activeRuleLines(plan))
-	b.WriteString("\nEdit this file to tune the profile; `CLAUDE.md` imports `.trellis/trellis.md`, which imports this.\n")
-	return b.String()
+	return rulesBody(plan) +
+		"\n(Generated from your profile — edit `.trellis/` and re-run `trellis setup` to change these.)\n"
 }
 
-// activeRuleLines renders the active invariants as "- **slug** — <rule>" lines from the
-// bundled catalog (decision-0026: rules always in context). Shared by the profile and
-// the inline overlay block.
+// activeRuleLines renders the active invariants as imperative, self-contained directives
+// (decision-0034 — no internal codes/slugs), each with its primary ✗ failure for
+// grounding (decision-0031). Shared by the profile and the inline overlay block.
 func activeRuleLines(plan Plan) string {
-	rules := invariantRules()
+	dirs := invariantDirectives()
 	fails := invariantPrimaryFailure()
 	active := plan.Profile.Active
 	if len(active) == 0 { // postures A/B: all assessable invariants
-		active = sortedKeys(rules)
+		active = sortedKeys(dirs)
 	}
 	var b strings.Builder
 	for _, slug := range active {
-		if r := rules[slug]; r != "" {
-			b.WriteString(fmt.Sprintf("- **%s** — %s\n", slug, r))
-		} else {
-			b.WriteString(fmt.Sprintf("- **%s**\n", slug))
+		d := dirs[slug]
+		if d == "" {
+			continue
 		}
+		b.WriteString(fmt.Sprintf("- %s\n", d))
 		if f := fails[slug]; f != "" {
-			b.WriteString(fmt.Sprintf("    ✗ %s\n", f)) // the primary failure to avoid (decision-0031)
+			b.WriteString(fmt.Sprintf("    ✗ %s\n", f))
 		}
 	}
 	return b.String()
+}
+
+// invariantDirectives parses the bundled catalog for each invariant's `directive` — the
+// imperative, host-agent-facing instruction shown in the always-loaded block (decision-0034).
+func invariantDirectives() map[string]string {
+	slugRe := regexp.MustCompile("^- \\*\\*`([a-z][a-z-]*)`\\*\\*")
+	dirs := map[string]string{}
+	var cur string
+	var buf []string
+	collecting := false
+	flush := func() {
+		if cur != "" && len(buf) > 0 {
+			dirs[cur] = strings.TrimSpace(strings.Join(buf, " "))
+		}
+		buf, collecting = nil, false
+	}
+	for _, ln := range strings.Split(invariantsRef, "\n") {
+		if m := slugRe.FindStringSubmatch(ln); m != nil {
+			flush()
+			cur = m[1]
+			continue
+		}
+		t := strings.TrimSpace(ln)
+		switch {
+		case strings.HasPrefix(t, "- directive:"):
+			buf = []string{strings.TrimSpace(strings.TrimPrefix(t, "- directive:"))}
+			collecting = true
+		case collecting && strings.HasPrefix(t, "- "): // next field ends the directive
+			flush()
+		case collecting && t != "":
+			buf = append(buf, t)
+		}
+	}
+	flush()
+	return dirs
 }
 
 // invariantPrimaryFailure parses the bundled catalog for each invariant's FIRST

@@ -34,24 +34,24 @@ func TestApplyM1WritesOverlay(t *testing.T) {
 	// CLAUDE.md: minimal — a human line + the header import, and no governance
 	// content duplicated into the host's file.
 	c := readFile(t, filepath.Join(dir, "CLAUDE.md"))
-	for _, want := range []string{trellisBegin, trellisEnd, "@.trellis/trellis.md", "governed by **Trellis**"} {
+	for _, want := range []string{trellisBegin, trellisEnd, "@.trellis/trellis.md", "follows **Trellis**"} {
 		if !strings.Contains(c, want) {
 			t.Errorf("CLAUDE.md missing %q", want)
 		}
 	}
-	if strings.Contains(c, "without its human approval") {
-		t.Error("governance content should live in .trellis/, not in CLAUDE.md")
+	if strings.Contains(c, "settled ground") {
+		t.Error("the rules should live in .trellis/, not be inlined into CLAUDE.md")
 	}
-	// The header carries the behavior and imports the sibling profile.
+	// The header carries the imperative framing + strength and imports the profile.
 	header := readFile(t, filepath.Join(dir, ".trellis", "trellis.md"))
-	for _, want := range []string{"without its human approval", "@profile.md"} {
+	for _, want := range []string{"Follow the rules below", "@profile.md"} {
 		if !strings.Contains(header, want) {
 			t.Errorf(".trellis/trellis.md missing %q", want)
 		}
 	}
-	// The profile carries the active set; the bundled reference carries the catalog.
-	if prof := readFile(t, filepath.Join(dir, ".trellis", "profile.md")); !strings.Contains(prof, "inv-directional-flow") {
-		t.Errorf(".trellis/profile.md missing the active invariants: %q", prof)
+	// The profile carries the active directives; the bundled reference carries the catalog.
+	if prof := readFile(t, filepath.Join(dir, ".trellis", "profile.md")); !strings.Contains(prof, "settled ground") {
+		t.Errorf(".trellis/profile.md missing the active directives: %q", prof)
 	}
 	if inv := readFile(t, filepath.Join(dir, ".trellis", "invariants.md")); !strings.Contains(inv, "inv-directional-flow") {
 		t.Error(".trellis/invariants.md should contain the bundled invariant reference")
