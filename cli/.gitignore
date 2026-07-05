@@ -1,0 +1,3 @@
+# built binaries (go build names them after the dir/module, or via -o)
+/cli
+/trellis

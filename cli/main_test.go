@@ -2,8 +2,7 @@ package main
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -38,21 +37,19 @@ func TestRunUnknownCommand(t *testing.T) {
 }
 
 func TestSetupNoHarness(t *testing.T) {
-	// A dir with no harness: setup must fail loudly rather than guess (D1).
+	// No harness executable: setup must fail loudly rather than guess (D1).
+	withLookPath(t, func(string) (string, error) { return "", exec.ErrNotFound })
 	var buf bytes.Buffer
 	if err := run(&buf, []string{"setup", "--dir", t.TempDir()}); err == nil {
-		t.Fatal("setup on a dir with no harness should return an error")
+		t.Fatal("setup should error when no harness executable is present")
 	}
 }
 
 func TestSetupDetectsHarness(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# host"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	withLookPath(t, func(string) (string, error) { return "/usr/local/bin/claude", nil })
 	var buf bytes.Buffer
-	if err := run(&buf, []string{"setup", "--dir", dir}); err != nil {
-		t.Fatalf("setup with a CLAUDE.md should succeed, got %v", err)
+	if err := run(&buf, []string{"setup", "--dir", t.TempDir()}); err != nil {
+		t.Fatalf("setup should succeed when claude is present, got %v", err)
 	}
 	if !strings.Contains(buf.String(), "detected harness") {
 		t.Errorf("setup output should report the detected harness, got %q", buf.String())

@@ -65,8 +65,10 @@ func setup(w io.Writer, args []string) error {
 	}
 	h, ok := detectHarness(*dir)
 	if !ok {
-		return fmt.Errorf("no supported agent harness detected in %q — v0 supports Claude Code "+
-			"(expected a .claude/ directory or a CLAUDE.md); nothing to set up", *dir)
+		if hasClaudeProjectFiles(*dir) {
+			return fmt.Errorf("this looks like a Claude Code project, but the `claude` CLI isn't on PATH — install Claude Code and re-run")
+		}
+		return fmt.Errorf("no supported agent harness found — v0 rides Claude Code; install the `claude` CLI and re-run (looked in %q)", *dir)
 	}
 	fmt.Fprintf(w, "detected harness: %s (%s)\n", h.Name, h.Detail)
 	fmt.Fprintln(w, "next: pick an expression profile — A conductor / B author-adapt / seed / Custom (upcoming step)")
