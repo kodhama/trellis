@@ -32,7 +32,7 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
 	fs.SetOutput(w)
 	dir := fs.String("dir", ".", "project directory to set up")
-	profileKey := fs.String("profile", "", "posture: a|b|seed|custom")
+	profileKey := fs.String("profile", "", "posture: a|b")
 	modeKey := fs.String("mode", "", "install mode: m1|m2")
 	targetKey := fs.String("target", "", "M1 instruction file to augment: CLAUDE.md|AGENTS.md")
 	modelKey := fs.String("model", "", "model: high|balanced|cheap|none")

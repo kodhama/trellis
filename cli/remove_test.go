@@ -15,7 +15,7 @@ func setupOverlay(t *testing.T, dir, hostContent string) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := applyM1(dir, planFor("seed")); err != nil {
+	if _, err := applyM1(dir, planFor("b")); err != nil {
 		t.Fatal(err)
 	}
 }

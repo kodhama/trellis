@@ -44,13 +44,19 @@ func TestLookups(t *testing.T) {
 	}
 }
 
-func TestSeedIsMinimalConductorIsAll(t *testing.T) {
-	seed, _ := profileByKey("seed")
-	if len(seed.Active) == 0 {
-		t.Error("seed should name an explicit minimal active set")
+func TestOfferedProfilesAreAllActive(t *testing.T) {
+	// seed/custom are parked (decision-0033); the two offered postures both activate
+	// all invariants (nil Active) — they differ in stance/lean, not the active set.
+	if len(allProfiles) != 2 {
+		t.Errorf("expected exactly the two offered postures, got %d", len(allProfiles))
 	}
-	a, _ := profileByKey("a")
-	if a.Active != nil {
-		t.Error("conductor (a) should be all-active (nil Active), not a subset")
+	for _, k := range []string{"a", "b"} {
+		p, _ := profileByKey(k)
+		if p.Active != nil {
+			t.Errorf("profile %q should be all-active (nil Active)", k)
+		}
+	}
+	if _, ok := profileByKey("seed"); ok {
+		t.Error("seed should no longer resolve (parked)")
 	}
 }

@@ -25,7 +25,7 @@ func readFile(t *testing.T, path string) string {
 
 func TestApplyM1WritesOverlay(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := applyM1(dir, planFor("seed")); err != nil {
+	if _, err := applyM1(dir, planFor("b")); err != nil {
 		t.Fatalf("applyM1: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".trellis", "profile.md")); err != nil {

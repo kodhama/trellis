@@ -32,18 +32,13 @@ type Model struct {
 	Description string
 }
 
-// seedActive is the structural core the `seed` posture starts from (spec-0003 §2 /
-// the two floors + the admission-gate structurals), ratcheting up over time.
-var seedActive = []string{
-	"floor-transparency", "floor-intent-gate",
-	"inv-directional-flow", "inv-handover-points", "inv-ratifiable-artifacts",
-}
-
+// Two opinionated postures are offered. `seed` (minimal-start) and `custom` (a per-dial
+// dialog) are parked until they earn their own UI (decision-0033). Both postures below
+// activate all invariants — they differ in stance/lean, not (yet) in the active set;
+// the `Active` subset field stays for when `seed` returns.
 var allProfiles = []Profile{
-	{Key: "a", Name: "A · conductor", Short: "conductor", Description: "adopt the framework strictly", C1Lean: "enforced"},
-	{Key: "b", Name: "B · author-adapt", Short: "author-adapt", Description: "evolve as you go; self-improvement enforced", C1Lean: "default-on-but-skippable"},
-	{Key: "seed", Name: "seed", Short: "seed", Description: "start minimal, ratchet up", C1Lean: "expressed", Active: seedActive},
-	{Key: "custom", Name: "Custom", Short: "custom", Description: "start from seed and edit afterwards", C1Lean: "expressed", Active: seedActive},
+	{Key: "a", Name: "A · conductor", Short: "conductor", Description: "hold every invariant firmly — strict, by-the-book", C1Lean: "enforced"},
+	{Key: "b", Name: "B · author-adapt", Short: "author-adapt", Description: "same invariants, but adapt as you go — self-improvement leads", C1Lean: "default-on-but-skippable"},
 }
 
 var allModes = []Mode{

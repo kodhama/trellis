@@ -26,7 +26,7 @@ func seedFile(t *testing.T, dir, name, content string) {
 
 func mustApplyM1(t *testing.T, dir, target string) string {
 	t.Helper()
-	out, err := run2("", "setup", "--dir", dir, "--profile", "seed", "--mode", "m1", "--target", target, "--apply")
+	out, err := run2("", "setup", "--dir", dir, "--profile", "b", "--mode", "m1", "--target", target, "--apply")
 	if err != nil {
 		t.Fatalf("m1 apply --target %s: %v", target, err)
 	}

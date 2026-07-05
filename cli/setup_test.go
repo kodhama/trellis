@@ -63,11 +63,11 @@ func TestSetupDefaultsOnEmptyInput(t *testing.T) {
 func TestSetupInteractive(t *testing.T) {
 	claudePresent(t)
 	// Answer the prompts in order: mode, profile, model (decision-0029: mode first).
-	out, err := run2("m2\nseed\nbalanced\n", "setup", "--dir", t.TempDir())
+	out, err := run2("m2\nb\nbalanced\n", "setup", "--dir", t.TempDir())
 	if err != nil {
 		t.Fatalf("interactive setup: %v", err)
 	}
-	for _, want := range []string{"seed", "rewrite", "balanced"} {
+	for _, want := range []string{"author-adapt", "rewrite", "balanced"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("interactive plan missing %q in:\n%s", want, out)
 		}

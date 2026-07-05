@@ -18,7 +18,7 @@ func TestE2E_M1_ApplyToSampleProject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := run2("", "setup", "--dir", dir, "--profile", "seed", "--mode", "m1", "--apply")
+	out, err := run2("", "setup", "--dir", dir, "--profile", "b", "--mode", "m1", "--apply")
 	if err != nil {
 		t.Fatalf("e2e setup --apply: %v", err)
 	}
@@ -136,7 +136,7 @@ func judgeSurfacing(t *testing.T, model, diff string) bool {
 func TestE2E_DryRunWritesNothing(t *testing.T) {
 	claudePresent(t)
 	dir := t.TempDir()
-	out, err := run2("", "setup", "--dir", dir, "--profile", "seed", "--mode", "m1")
+	out, err := run2("", "setup", "--dir", dir, "--profile", "b", "--mode", "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
