@@ -1,0 +1,6 @@
+{
+  "name": "trellis",
+  "description": "A governance layer for agentic software development: compose a small set of invariants onto your project and keep your agents honest.",
+  "version": "0.1.0",
+  "author": { "name": "gundisalwa" }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "trellis",
+  "owner": { "name": "gundisalwa" },
+  "description": "Trellis — a governance layer for agentic software development.",
+  "plugins": [
+    {
+      "name": "trellis",
+      "source": "./plugins/trellis",
+      "description": "Install and consult Trellis in a Claude Code project: the invariants, expressed at your strength."
+    }
+  ]
+}

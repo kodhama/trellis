@@ -29,6 +29,17 @@ onto your project:
 
 Nothing is written without `--apply` (or your `y` at the prompt). Built from [`cli/`](cli/) (Go).
 
+**Or install it as a Claude Code plugin** (no binary) — covers the M1 overlay natively:
+
+```
+/plugin marketplace add gundisalwa/trellis
+/plugin install trellis@trellis
+/trellis:setup
+```
+
+The CLI additionally offers the M2 morph and non-Claude harnesses; the plugin lives in
+[`plugins/trellis`](plugins/trellis).
+
 ## The model
 
 Deliberately tiny — small enough that a newcomer, human or agent, can read it and know how to make a
