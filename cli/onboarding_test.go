@@ -2,12 +2,16 @@ package main
 
 import "testing"
 
-func TestSuggestModelKey(t *testing.T) {
-	if got := suggestModelKey("m2"); got != "high" {
-		t.Errorf("m2 should suggest high, got %q", got)
+func TestMorphModelOptionsExcludeNone(t *testing.T) {
+	// M2 (morph) is model-driven — "none" must never be offered (there is no
+	// deterministic rewrite). Guards the coherence between the menu and the paths.
+	for _, o := range morphModelOptions() {
+		if o.key == "none" {
+			t.Fatal("morph model options must not include 'none'")
+		}
 	}
-	if got := suggestModelKey("m1"); got != "none" {
-		t.Errorf("m1 should suggest none, got %q", got)
+	if len(morphModelOptions()) == 0 {
+		t.Fatal("morph should offer at least one model")
 	}
 }
 

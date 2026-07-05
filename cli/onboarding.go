@@ -55,15 +55,6 @@ var allModels = []Model{
 	{Key: "none", Name: "no model (deterministic)", Alias: "", Description: "plain file editing — enough for M1"},
 }
 
-// suggestModelKey keys the model suggestion off the install mode (decision from the
-// setup design): morph needs real reasoning; the overlay needs none.
-func suggestModelKey(modeKey string) string {
-	if modeKey == "m2" {
-		return "high"
-	}
-	return "none"
-}
-
 func profileByKey(k string) (Profile, bool) {
 	for _, p := range allProfiles {
 		if p.Key == k {
@@ -107,10 +98,16 @@ func modeOptions() []option {
 	return opts
 }
 
-func modelOptions() []option {
-	opts := make([]option, len(allModels))
-	for i, m := range allModels {
-		opts[i] = option{m.Key, m.Name}
+// morphModelOptions are the reasoning tiers offered for M2 (morph). "none" is
+// intentionally excluded: there is no deterministic rewrite, so a morph always
+// needs a model.
+func morphModelOptions() []option {
+	var opts []option
+	for _, m := range allModels {
+		if m.Key == "none" {
+			continue
+		}
+		opts = append(opts, option{m.Key, m.Name})
 	}
 	return opts
 }

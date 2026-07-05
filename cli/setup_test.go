@@ -61,18 +61,39 @@ func TestSetupInteractive(t *testing.T) {
 	}
 }
 
-func TestSetupModelSuggestionKeyedToMode(t *testing.T) {
+func TestSetupM2DefaultsHigh(t *testing.T) {
 	claudePresent(t)
-	// M2 with empty model input -> defaults to the suggested high-reasoning model.
+	// M2 with empty model input -> defaults to the high-reasoning model.
 	out, err := run2("a\nm2\n\n", "setup", "--dir", t.TempDir())
 	if err != nil {
 		t.Fatalf("setup: %v", err)
 	}
-	if !strings.Contains(out, "suggested model: high") {
-		t.Errorf("expected the model suggestion to be high for m2, got:\n%s", out)
-	}
 	if !strings.Contains(out, "high-reasoning") {
 		t.Errorf("empty model input on m2 should default to high-reasoning, got:\n%s", out)
+	}
+}
+
+func TestSetupM2RejectsNone(t *testing.T) {
+	claudePresent(t)
+	// morph has no deterministic path -> --model none must be a loud error.
+	if _, err := run2("", "setup", "--dir", t.TempDir(), "--mode", "m2", "--model", "none"); err == nil {
+		t.Fatal("mode m2 with --model none should be an error")
+	}
+}
+
+func TestSetupM1IsDeterministic(t *testing.T) {
+	claudePresent(t)
+	// M1 asks no model question and is forced to 'none'.
+	out, err := run2("", "setup", "--dir", t.TempDir(), "--mode", "m1")
+	if err != nil {
+		t.Fatalf("m1 setup: %v", err)
+	}
+	if !strings.Contains(out, "deterministic overlay") || !strings.Contains(out, "no model") {
+		t.Errorf("m1 should report a deterministic, model-less overlay, got:\n%s", out)
+	}
+	// A real model on m1 is a loud error, not a silently-ignored choice.
+	if _, err := run2("", "setup", "--dir", t.TempDir(), "--mode", "m1", "--model", "high"); err == nil {
+		t.Fatal("mode m1 with --model high should be an error")
 	}
 }
 

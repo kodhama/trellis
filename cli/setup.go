@@ -58,16 +58,34 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 	}
 	mode, _ := modeByKey(mKey)
 
-	suggest := suggestModelKey(mode.Key)
-	fmt.Fprintf(w, "(mode %s → suggested model: %s)\n", mode.Key, suggest)
-	mdlKey, err := ask(sc, w, "model", *modelKey, modelOptions(), suggest)
+	model, err := resolveModel(sc, w, *modelKey, mode)
 	if err != nil {
 		return err
 	}
-	model, _ := modelByKey(mdlKey)
 
 	printPlan(w, Plan{Harness: h, Profile: profile, Mode: mode, Model: model})
 	return nil
+}
+
+// resolveModel picks the model for the chosen mode. M2 (morph) is model-driven, so
+// it offers the reasoning tiers (default high) and rejects "none" — there is no
+// deterministic rewrite. M1 (overlay) is deterministic, so there is no model to pick,
+// and a real --model is a loud error rather than a silently-ignored choice.
+func resolveModel(sc *bufio.Scanner, w io.Writer, preset string, mode Mode) (Model, error) {
+	if mode.Key != "m2" {
+		if preset != "" && preset != "none" {
+			return Model{}, fmt.Errorf("mode %s is a deterministic overlay; --model %q does not apply (only 'none')", mode.Key, preset)
+		}
+		fmt.Fprintln(w, "mode m1 → deterministic overlay, no model needed")
+		m, _ := modelByKey("none")
+		return m, nil
+	}
+	key, err := ask(sc, w, "model", preset, morphModelOptions(), "high")
+	if err != nil {
+		return Model{}, err
+	}
+	m, _ := modelByKey(key)
+	return m, nil
 }
 
 // ask resolves one choice. If preset is non-empty it is validated and used with no
