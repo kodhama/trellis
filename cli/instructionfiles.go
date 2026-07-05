@@ -14,11 +14,18 @@ type InstructionFile struct {
 	Imports bool
 }
 
-// instructionFiles are the known agent-instruction files, in preference order:
-// CLAUDE.md leads (native @import); AGENTS.md is the portable inline fallback.
+// instructionFiles are the known single-file agent-instruction targets, in preference
+// order (research-0010). Only CLAUDE.md keeps Imports: true — inline can't silently
+// fail to resolve (D1), so every other tool gets the rules inlined even where it could
+// import. AGENTS.md is the cross-tool standard (Codex, Copilot, Devin/Cascade, Windsurf).
+// Directory-based conventions (Cursor .cursor/rules/, Continue .continue/rules/) and
+// opt-in ones (Aider CONVENTIONS.md) need a different apply path — see research-0010.
 var instructionFiles = []InstructionFile{
-	{"CLAUDE.md", true},
-	{"AGENTS.md", false},
+	{"CLAUDE.md", true},                        // Claude Code (@import)
+	{"AGENTS.md", false},                       // Codex, Copilot, Devin/Cascade, Windsurf
+	{"GEMINI.md", false},                       // Gemini CLI
+	{".github/copilot-instructions.md", false}, // GitHub Copilot
+	{".clinerules", false},                     // Cline (single-file form)
 }
 
 func instructionFileByName(n string) (InstructionFile, bool) {

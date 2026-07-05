@@ -57,6 +57,9 @@ func applyM1(dir string, plan Plan) (string, error) {
 		target = instructionFiles[0] // default CLAUDE.md (e.g. a plan with no target set)
 	}
 	targetPath := filepath.Join(dir, target.Name)
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil { // e.g. .github/ for Copilot
+		return "", fmt.Errorf("creating parent dir for %s: %w", target.Name, err)
+	}
 	existing := ""
 	if b, err := os.ReadFile(targetPath); err == nil {
 		existing = string(b)
