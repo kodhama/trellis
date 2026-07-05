@@ -32,9 +32,20 @@ func TestApplyM1WritesOverlay(t *testing.T) {
 		t.Errorf(".trellis/profile.md not written: %v", err)
 	}
 	c := readFile(t, filepath.Join(dir, "CLAUDE.md"))
-	for _, want := range []string{trellisBegin, trellisEnd, "Trellis governance", "without its human approval"} {
+	for _, want := range []string{trellisBegin, trellisEnd, "@.trellis/profile.md"} {
 		if !strings.Contains(c, want) {
 			t.Errorf("CLAUDE.md missing %q", want)
+		}
+	}
+	// The CLAUDE.md footprint stays minimal — governance content lives in the
+	// profile (single source), not duplicated into the host's file.
+	if strings.Contains(c, "without its human approval") {
+		t.Error("governance content should live in .trellis/profile.md, not in CLAUDE.md")
+	}
+	prof := readFile(t, filepath.Join(dir, ".trellis", "profile.md"))
+	for _, want := range []string{"without its human approval", "Active invariants", "inv-directional-flow"} {
+		if !strings.Contains(prof, want) {
+			t.Errorf(".trellis/profile.md missing %q", want)
 		}
 	}
 }
