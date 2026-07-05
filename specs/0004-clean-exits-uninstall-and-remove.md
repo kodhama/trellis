@@ -40,8 +40,10 @@ mode isn't built yet.
 Detect what `setup` left, and reverse it **per mode**.
 
 - **M1 (overlay) — deterministic, clean.** Delete the `.trellis/` directory and strip the delimited
-  Trellis block from `CLAUDE.md` (between the managed markers), leaving everything else **byte-for-byte
-  as it was** — augment-never-clobber, in reverse. Idempotent; if nothing is there, say so and no-op.
+  Trellis block from **whichever instruction file(s) setup attached to** — `CLAUDE.md`, `AGENTS.md`,
+  `GEMINI.md`, … (`decision-0029`); the block markers are the same in each — leaving everything else
+  **byte-for-byte as it was** — augment-never-clobber, in reverse. Idempotent; if nothing is there,
+  say so and no-op.
 - **M2 (morph) — git rollback, warned.** A morph rewrote the project's **own** files; Trellis cannot
   cleanly reverse that. So `remove` **does not mutate history**: it prints a **loud destructive
   warning**, reports the **rollback commit reference saved at apply time**, and gives the git command

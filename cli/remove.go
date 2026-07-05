@@ -11,8 +11,9 @@ import (
 )
 
 // remove undoes `setup` on a project (spec-0004 §2). M1 (overlay) reverses
-// deterministically — delete .trellis/ and strip the CLAUDE.md block, leaving the
-// rest byte-for-byte. M2 (morph) rewrote the project's own files and cannot be
+// deterministically — delete .trellis/ and strip the block from whichever instruction
+// file setup attached to (CLAUDE.md, AGENTS.md, …), leaving the rest byte-for-byte.
+// M2 (morph) rewrote the project's own files and cannot be
 // cleanly reversed, so remove warns loudly and reports the rollback ref recorded at
 // apply time; it never mutates git history.
 func remove(in io.Reader, w io.Writer, args []string) error {
@@ -25,11 +26,13 @@ func remove(in io.Reader, w io.Writer, args []string) error {
 	}
 
 	tdir := filepath.Join(*dir, ".trellis")
-	claudePath := filepath.Join(*dir, "CLAUDE.md")
 	rollbackPath := filepath.Join(tdir, "rollback")
 
-	overlay := fileExists(filepath.Join(tdir, "trellis.md")) || claudeHasBlock(claudePath) // M1
-	morph := fileExists(rollbackPath)                                                      // M2 marker
+	// The overlay may have attached to any known instruction file (decision-0029), not
+	// just CLAUDE.md — strip the block from every one that carries it.
+	blocked := instructionFilesWithBlock(*dir)
+	overlay := fileExists(filepath.Join(tdir, "trellis.md")) || len(blocked) > 0 // M1
+	morph := fileExists(rollbackPath)                                            // M2 marker
 
 	if !overlay && !morph {
 		fmt.Fprintf(w, "no Trellis install found in %q — nothing to remove\n", *dir)
@@ -50,8 +53,8 @@ func remove(in io.Reader, w io.Writer, args []string) error {
 	}
 
 	fmt.Fprintf(w, "\nWill delete %s", tdir)
-	if claudeHasBlock(claudePath) {
-		fmt.Fprint(w, " and strip the Trellis block from CLAUDE.md")
+	if len(blocked) > 0 {
+		fmt.Fprintf(w, " and strip the Trellis block from %s", strings.Join(blocked, ", "))
 	}
 	fmt.Fprintln(w, ".")
 	if !*yes && !askYesNo(in, w, "Proceed?") {
@@ -62,33 +65,47 @@ func remove(in io.Reader, w io.Writer, args []string) error {
 	if err := os.RemoveAll(tdir); err != nil {
 		return fmt.Errorf("removing .trellis/: %w", err)
 	}
-	if err := stripClaudeBlock(claudePath); err != nil {
-		return err
+	for _, name := range blocked {
+		if err := stripBlockFromFile(filepath.Join(*dir, name)); err != nil {
+			return err
+		}
 	}
 	fmt.Fprintln(w, "removed the Trellis overlay.")
 	return nil
 }
 
-// stripClaudeBlock removes the delimited Trellis block from CLAUDE.md, preserving
-// everything outside the markers. If nothing but the block remains, the file (which
-// setup created) is removed; otherwise the host's content is written back.
-func stripClaudeBlock(path string) error {
+// instructionFilesWithBlock returns the known instruction files in dir that carry the
+// Trellis block (by relative name), so remove strips exactly those.
+func instructionFilesWithBlock(dir string) []string {
+	var out []string
+	for _, f := range instructionFiles {
+		if fileHasBlock(filepath.Join(dir, f.Name)) {
+			out = append(out, f.Name)
+		}
+	}
+	return out
+}
+
+// stripBlockFromFile removes the delimited Trellis block from an instruction file,
+// preserving everything outside the markers. If nothing but the block remains, the file
+// (which setup created) is removed; otherwise the host's content is written back.
+func stripBlockFromFile(path string) error {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("reading CLAUDE.md: %w", err)
+		return fmt.Errorf("reading %s: %w", path, err)
 	}
 	out := stripBlock(string(b))
 	if strings.TrimSpace(out) == "" {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("removing CLAUDE.md: %w", err)
+			return fmt.Errorf("removing %s: %w", path, err)
 		}
 		return nil
 	}
 	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
-		return fmt.Errorf("writing CLAUDE.md: %w", err)
+		return fmt.Errorf("writing %s: %w", path, err)
 	}
 	return nil
 }
@@ -113,7 +130,7 @@ func stripBlock(content string) string {
 	}
 }
 
-func claudeHasBlock(path string) bool {
+func fileHasBlock(path string) bool {
 	b, err := os.ReadFile(path)
 	return err == nil && strings.Contains(string(b), trellisBegin)
 }

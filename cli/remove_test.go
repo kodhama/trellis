@@ -38,6 +38,38 @@ func TestRemoveM1CleansUpAndPreservesHost(t *testing.T) {
 	}
 }
 
+func TestRemoveStripsNonClaudeTarget(t *testing.T) {
+	// setup can attach to AGENTS.md (decision-0029); remove must strip that block too,
+	// not just CLAUDE.md — else it leaves a stale Trellis section behind.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Agents\n\nHouse rule.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	agents, _ := instructionFileByName("AGENTS.md")
+	plan := planFor("b")
+	plan.Target = agents
+	if _, err := applyM1(dir, plan); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(readFile(t, filepath.Join(dir, "AGENTS.md")), trellisBegin) {
+		t.Fatal("precondition: the block should be in AGENTS.md")
+	}
+
+	if _, err := run2("y\n", "remove", "--dir", dir); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	a := readFile(t, filepath.Join(dir, "AGENTS.md"))
+	if strings.Contains(a, trellisBegin) {
+		t.Error("remove must strip the Trellis block from AGENTS.md")
+	}
+	if !strings.Contains(a, "House rule.") {
+		t.Error("host content in AGENTS.md must be preserved")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".trellis")); !os.IsNotExist(err) {
+		t.Error(".trellis/ should be gone")
+	}
+}
+
 func TestRemoveM1Idempotent(t *testing.T) {
 	dir := t.TempDir()
 	setupOverlay(t, dir, "# P\n\nrules\n")
