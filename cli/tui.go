@@ -69,13 +69,13 @@ func padTo(s string, n int) string {
 // its label is bold + default-foreground so it's always readable. ↑/↓ or j/k move,
 // enter selects, q/Ctrl-C cancels. The terminal is restored on every exit path.
 func selectInteractive(in, out *os.File, title, hint string, opts []option, def string) (string, error) {
-	cur, maxKey := 0, 0
+	cur, maxName := 0, 0
 	for i, o := range opts {
 		if o.key == def {
 			cur = i
 		}
-		if len(o.key) > maxKey {
-			maxKey = len(o.key)
+		if len(o.name) > maxName {
+			maxName = len(o.name)
 		}
 	}
 	p := newPalette()
@@ -91,29 +91,30 @@ func selectInteractive(in, out *os.File, title, hint string, opts []option, def 
 	defer term.Restore(int(in.Fd()), old)
 
 	footer := p.d("↑↓ move   ⏎ select   q quit")
-	printed := 2 + len(opts) // title + footer + options
+	// title + [hint] + blank + options + blank + footer
+	printed := 3 + len(opts)
 	if hint != "" {
 		printed++
 	}
 
 	drawRow := func(i int, o option) {
-		key := padTo(o.key, maxKey)
+		name := padTo(o.name, maxName)
 		if i != cur {
-			fmt.Fprintf(out, "  %s  %s\r\n", key, p.d(o.label))
+			fmt.Fprintf(out, "  %s   %s\r\n", name, p.d(o.desc))
 			return
 		}
 		if !p.on {
-			fmt.Fprintf(out, "❯ %s  %s\r\n", key, o.label)
+			fmt.Fprintf(out, "❯ %s   %s\r\n", name, o.desc)
 			return
 		}
 		// One SGR run with no mid-line reset, so the gray band spans the whole row:
-		// gray bg · bold-green arrow · bold default-fg key · dim description · fill.
-		fill := width - (2 + len(key) + 2 + len(o.label))
+		// gray bg · bold-green arrow · bold default-fg name · dim description · fill.
+		fill := width - (2 + len(name) + 3 + len(o.desc))
 		if fill < 0 {
 			fill = 0
 		}
-		fmt.Fprintf(out, "%s\x1b[1;32m❯ \x1b[39m%s\x1b[22m  \x1b[2m%s\x1b[22m%s\x1b[0m\r\n",
-			p.sel, key, o.label, padTo("", fill))
+		fmt.Fprintf(out, "%s\x1b[1;32m❯ \x1b[39m%s\x1b[22m   \x1b[2m%s\x1b[22m%s\x1b[0m\r\n",
+			p.sel, name, o.desc, padTo("", fill))
 	}
 
 	draw := func(first bool) {
@@ -124,9 +125,11 @@ func selectInteractive(in, out *os.File, title, hint string, opts []option, def 
 		if hint != "" {
 			fmt.Fprintf(out, "%s\r\n", p.d(hint))
 		}
+		fmt.Fprint(out, "\r\n") // breathing room under the question
 		for i, o := range opts {
 			drawRow(i, o)
 		}
+		fmt.Fprint(out, "\r\n") // and above the footer
 		fmt.Fprintf(out, "%s\r\n", footer)
 	}
 	draw(true)
@@ -141,7 +144,7 @@ func selectInteractive(in, out *os.File, title, hint string, opts []option, def 
 		switch {
 		case n == 1 && (b[0] == '\r' || b[0] == '\n'):
 			fmt.Fprintf(out, "\x1b[%dA\r\x1b[J", printed) // collapse to one confirmed line
-			fmt.Fprintf(out, "%s %s\r\n", p.b(title), p.g(opts[cur].key))
+			fmt.Fprintf(out, "%s %s\r\n", p.b(title), p.g(opts[cur].name))
 			return opts[cur].key, nil
 		case n == 1 && (b[0] == 3 || b[0] == 'q'): // Ctrl-C / q
 			fmt.Fprint(out, "\r\n")

@@ -17,8 +17,9 @@ type Plan struct {
 	Model   Model
 }
 
-// option is a single selectable choice shown in an interactive prompt.
-type option struct{ key, label string }
+// option is a single selectable choice: key is returned (and typed in the line path),
+// name is the bold display label, desc the dim column beside it.
+type option struct{ key, name, desc string }
 
 // setup runs the interactive setup flow (spec-0003 §2b, decision-0029): mode first,
 // because the mode decides what to detect — M2 (morph) drives a harness binary to
@@ -137,8 +138,8 @@ func chooseTarget(in io.Reader, sc *bufio.Scanner, w io.Writer, preset, dir stri
 		key, err := ask(in, sc, w, "No agent-instructions file found here.",
 			"Trellis needs one file to attach to.", "",
 			[]option{
-				{"create", "create CLAUDE.md and add the Trellis section"},
-				{"exit", "I'll add an instructions file myself"},
+				{"create", "Create CLAUDE.md", "add the Trellis section to it"},
+				{"exit", "Exit", "I'll add an instructions file myself"},
 			}, "create")
 		if err != nil {
 			return InstructionFile{}, err
@@ -154,7 +155,7 @@ func chooseTarget(in io.Reader, sc *bufio.Scanner, w io.Writer, preset, dir stri
 	default:
 		opts := make([]option, len(detected))
 		for i, f := range detected {
-			opts[i] = option{f.Name, importKind(f)}
+			opts[i] = option{f.Name, f.Name, importKind(f)}
 		}
 		key, err := ask(in, sc, w, "Which instructions file should Trellis extend?",
 			"only files present here are offered", "", opts, detected[0].Name)
@@ -234,7 +235,7 @@ func ask(in io.Reader, sc *bufio.Scanner, w io.Writer, title, hint, preset strin
 		if o.key == def {
 			marker = "* "
 		}
-		fmt.Fprintf(w, "%s%s — %s\n", marker, o.key, o.label)
+		fmt.Fprintf(w, "%s%s  %s — %s\n", marker, o.key, o.name, o.desc)
 	}
 	fmt.Fprintf(w, "choose [%s] (default %s): ", strings.Join(keys, "/"), def)
 

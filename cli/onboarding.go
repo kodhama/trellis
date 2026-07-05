@@ -5,19 +5,22 @@ package main
 // decision-0024 the gatekeeper is *detected and respected* from the project, not
 // chosen by a preset.
 
-// Profile is an onboarding posture that seeds an expression profile.
+// Profile is an onboarding posture that seeds an expression profile. Name is the full
+// label used in the plan/summary; Short is the bold word shown in the picker.
 type Profile struct {
 	Key         string
 	Name        string
+	Short       string
 	Description string
 	C1Lean      string   // default enforcement for active invariants (C2 is detected, not preset)
 	Active      []string // active invariant slugs; nil means "all assessable"
 }
 
-// Mode is an install mode (spec-0003 §2b).
+// Mode is an install mode (spec-0003 §2b). Short is the picker label.
 type Mode struct {
 	Key         string
 	Name        string
+	Short       string
 	Description string
 }
 
@@ -37,15 +40,15 @@ var seedActive = []string{
 }
 
 var allProfiles = []Profile{
-	{Key: "a", Name: "A · conductor", Description: "adopt the framework strictly", C1Lean: "enforced"},
-	{Key: "b", Name: "B · author-adapt", Description: "evolve as you go; self-improvement enforced", C1Lean: "default-on-but-skippable"},
-	{Key: "seed", Name: "seed", Description: "start minimal, ratchet up", C1Lean: "expressed", Active: seedActive},
-	{Key: "custom", Name: "Custom", Description: "start from seed and edit afterwards", C1Lean: "expressed", Active: seedActive},
+	{Key: "a", Name: "A · conductor", Short: "conductor", Description: "adopt the framework strictly", C1Lean: "enforced"},
+	{Key: "b", Name: "B · author-adapt", Short: "author-adapt", Description: "evolve as you go; self-improvement enforced", C1Lean: "default-on-but-skippable"},
+	{Key: "seed", Name: "seed", Short: "seed", Description: "start minimal, ratchet up", C1Lean: "expressed", Active: seedActive},
+	{Key: "custom", Name: "Custom", Short: "custom", Description: "start from seed and edit afterwards", C1Lean: "expressed", Active: seedActive},
 }
 
 var allModes = []Mode{
-	{Key: "m1", Name: "M1 · alongside", Description: "install next to your instructions (augment-not-clobber, deterministic)"},
-	{Key: "m2", Name: "M2 · rewrite", Description: "rewrite your machinery on a git branch (model-driven)"},
+	{Key: "m1", Name: "M1 · alongside", Short: "alongside", Description: "install next to your instructions (augment-not-clobber, deterministic)"},
+	{Key: "m2", Name: "M2 · rewrite", Short: "rewrite", Description: "rewrite your machinery on a git branch (model-driven)"},
 }
 
 var allModels = []Model{
@@ -85,7 +88,7 @@ func modelByKey(k string) (Model, bool) {
 func profileOptions() []option {
 	opts := make([]option, len(allProfiles))
 	for i, p := range allProfiles {
-		opts[i] = option{p.Key, p.Name + " — " + p.Description}
+		opts[i] = option{p.Key, p.Short, p.Description}
 	}
 	return opts
 }
@@ -93,7 +96,7 @@ func profileOptions() []option {
 func modeOptions() []option {
 	opts := make([]option, len(allModes))
 	for i, m := range allModes {
-		opts[i] = option{m.Key, m.Name + " — " + m.Description}
+		opts[i] = option{m.Key, m.Short, m.Description}
 	}
 	return opts
 }
@@ -107,7 +110,7 @@ func morphModelOptions() []option {
 		if m.Key == "none" {
 			continue
 		}
-		opts = append(opts, option{m.Key, m.Name})
+		opts = append(opts, option{m.Key, m.Alias, m.Description})
 	}
 	return opts
 }
