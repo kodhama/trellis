@@ -88,9 +88,13 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		}
 		fmt.Fprint(w, summary)
 		return nil
-	default:
-		// M2 morph is the next slice; refuse loudly rather than pretend it applied.
-		return fmt.Errorf("M2 (morph) apply is not implemented yet — the next slice (v0-next); nothing written")
+	default: // m2
+		summary, err := applyM2(*dir, plan)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(w, summary)
+		return nil
 	}
 }
 
