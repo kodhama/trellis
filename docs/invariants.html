@@ -91,6 +91,15 @@
   .pane.without .tag { color: var(--without-ink); }
   .ex { margin-top: 11px; font-size: 0.92rem; }
   .ex:first-of-type { margin-top: 12px; }
+  .pairs{margin-top:20px;display:grid;gap:12px}
+  .stack{border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .stack .case{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--chip-ink);background:var(--chip);padding:7px 13px}
+  .stack .s{padding:12px 13px;font-size:.92rem;display:flex;gap:12px}
+  .stack .s.wo{background:var(--without-bg)}
+  .stack .s.wi{background:var(--with-bg);border-top:1px solid var(--line)}
+  .stack .s .lbl{flex:none;width:58px}
+  .lbl{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+  .lbl.wo{color:var(--without-ink)} .lbl.wi{color:var(--with-ink)}
   .layer { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--chip-ink); background: var(--chip); border-radius: 5px; padding: 1px 6px; margin-right: 7px; vertical-align: 1px; }
 
   .dials { margin-top: 16px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
@@ -143,68 +152,72 @@
       <div class="card-top"><span class="code">A1</span><span class="name">Directional flow</span></div>
       <p class="what">One-way stages of decreasing ambiguity (research → decisions → contracts → implementation → validation); downstream never consumes a draft.</p>
       <p class="why"><b>Why:</b> agents always build on <b>settled</b> ground — ambiguity only decreases, so no one codes against a spec that is still moving.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">spec</span>implementation reads an approved spec; a ratified doc never depends on a draft.</p>
-          <p class="ex"><span class="layer">research</span>a synthesis note cites only ratified findings, not drafts still under review.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">code</span>an agent builds against a spec still being edited; it shifts, and the work is built on a version that no longer exists.</p>
-          <p class="ex"><span class="layer">ui</span>a screen is built from a mockup still in review; the mockup changes and the build is silently wrong.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">spec</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an agent builds against a spec still being edited; it shifts, and the work is built on a version that no longer exists.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>implementation reads only the approved spec; a ratified doc never depends on a draft.</span></div>
       </div>
-      <p class="dials"><b>default:</b> enforced · independent-agent</p>
+      <div class="stack">
+        <div class="case">research</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a decision cites a draft finding that is later refuted — it stood on sand.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a synthesis cites only ratified findings, not drafts still under review.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> enforced · independent-agent</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">A2</span><span class="name">Handover points</span></div>
       <p class="what">Defined transitions between stages, each a place a gate can attach. (A1 is which way work moves; this is that it moves in steps.)</p>
       <p class="why"><b>Why:</b> development moves in <b>discrete</b> steps with boundaries, not one fluid blur — the seams are where work can be stopped, inspected, and handed on.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">dev</span>a plan is "done," a spec "approved," a change "ready" — defined seams you can pause at.</p>
-          <p class="ex"><span class="layer">ci</span>each pipeline stage is a gate a check can attach to (lint → test → build → deploy).</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">dev</span>vibe-coding melts prompt → code → prompt into one stream with no seam to inspect or gate.</p>
-          <p class="ex"><span class="layer">ci</span>one monolithic script does build+test+deploy with no checkpoint to stop or roll back at.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">dev</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>vibe-coding melts prompt → code → prompt into one stream with no seam to inspect or gate.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a plan is "done," a spec "approved," a change "ready" — defined seams you can pause at.</span></div>
       </div>
-      <p class="dials"><b>default:</b> enforced · independent-agent</p>
+      <div class="stack">
+        <div class="case">CI</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>one monolithic script does build+test+deploy with no checkpoint to stop or roll back at.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>each pipeline stage is a gate a check can attach to (lint → test → build → deploy).</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> enforced · independent-agent</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">A3</span><span class="name">Intent locus</span></div>
       <p class="what">Humans own intent and values somewhere identifiable — a process with no human intent locus can't be held accountable.</p>
       <p class="why"><b>Why:</b> an <b>accountable human owns the goal</b>, so a wrong <em>direction</em> gets caught before it's built.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">product</span>every feature traces to an accountable human owner; the "why" is a recorded decision.</p>
-          <p class="ex"><span class="layer">research</span>a direction has a named human sponsor who can say "that's not what we're after."</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">product</span>agents optimize a proxy metric no human owns, and ship the wrong thing efficiently.</p>
-          <p class="ex"><span class="layer">ops</span>an automated system changes behavior with no human accountable for the intent behind it.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">product</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>agents optimize a proxy metric no human owns, and ship the wrong thing efficiently.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>every feature traces to an accountable human owner; the "why" is a recorded decision.</span></div>
       </div>
-      <p class="dials"><b>default:</b> enforced · human <span class="muted">(intent gate — never "nobody")</span></p>
+      <div class="stack">
+        <div class="case">research</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a research direction runs with no human sponsor and drifts somewhere no one intended.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a research direction has a named human sponsor who can say "that's not what we're after."</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> enforced · human <span class="muted">(intent gate — never "nobody")</span></p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">A4</span><span class="name">Ratifiable artifacts</span></div>
       <p class="what">Upstream can reach an approved state downstream consumes; outputs are checkable against it.</p>
       <p class="why"><b>Why:</b> you build against a <b>stable, approved target with a real pass/fail criterion</b> — not a moving one, and not "looks done to me."</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">spec</span>a spec reaches ratified, carries acceptance criteria, and work is graded against it.</p>
-          <p class="ex"><span class="layer">data</span>a schema is versioned; downstream validates against the approved version, not HEAD.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">spec</span>nothing is ever "final," so implementation chases a spec that keeps moving under it.</p>
-          <p class="ex"><span class="layer">design</span>a design system has no "released" state, so teams build against inconsistent snapshots.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">spec</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>nothing is ever "final," so implementation chases a spec that keeps moving under it.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a spec reaches ratified, carries acceptance criteria, and work is graded against it.</span></div>
       </div>
-      <p class="dials"><b>default:</b> enforced · independent-agent</p>
+      <div class="stack">
+        <div class="case">data</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>there is no released schema version, so services validate against inconsistent snapshots.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a schema is versioned; downstream validates against the approved version, not HEAD.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> enforced · independent-agent</p>
     </div>
 
   </div></div>
@@ -220,140 +233,144 @@
       <div class="card-top"><span class="code">B1</span><span class="name">Graph maintenance</span></div>
       <p class="what">The dependency graph of artifacts and rules kept consistent and minimal; append-only records superseded, never edited in substance.</p>
       <p class="why"><b>Why:</b> the knowledge base <b>stays coherent for the agents reading it</b>, and a discovery deep in the code <b>repairs the decision that should have known it</b> (backprop).</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">docs</span>a repaired decision re-reviews its specs → plans → code, in turn.</p>
-          <p class="ex"><span class="layer">code</span>a build uncovering a missing decision creates the record instead of patching around it.</p>
-          <p class="ex"><span class="layer">research</span>a downstream finding that contradicts an upstream note updates the note, not just the finding.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">docs</span>a decision changes but its dependent specs are never updated — they silently diverge.</p>
-          <p class="ex"><span class="layer">data</span>a migration isn't propagated to the docs, so the docs now describe a DB that no longer exists.</p>
-          <p class="ex"><span class="layer">rules</span>a stale lint rule keeps firing long after the pattern it guarded was removed.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">docs</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a decision changes but its dependent specs are never updated — they silently diverge.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a repaired decision re-reviews its specs → plans → code, in turn.</span></div>
       </div>
-      <p class="dials"><b>default:</b> enforced · independent-agent</p>
+      <div class="stack">
+        <div class="case">research</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a finding contradicts an upstream note, but only the finding is recorded — the note stays wrong and agents keep reading it.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a downstream finding that contradicts an upstream note updates the note, not just the finding (backprop).</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> enforced · independent-agent</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">B2</span><span class="name">Gate at handover</span></div>
       <p class="what">Apply the verification gate at every handover; any skip is surfaced.</p>
       <p class="why"><b>Why:</b> the review <b>actually fires</b> (not quietly skipped under deadline) — and if it is skipped, you can <em>see</em> it was.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">ci</span>a conformance check + review fire on every PR; a deliberate skip is recorded, not hidden.</p>
-          <p class="ex"><span class="layer">release</span>a promotion gate blocks an artifact that didn't pass the prior stage.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">dev</span>the review is "optional," so under deadline it silently doesn't happen and a defect ships.</p>
-          <p class="ex"><span class="layer">spec</span>a spec goes straight to implementation with no sign-off, and no record it was skipped.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">CI</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>the review is "optional," so under deadline it silently doesn't happen and a defect ships.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a conformance check + review fire on every PR; a deliberate skip is recorded, not hidden.</span></div>
       </div>
-      <p class="dials"><b>default:</b> default-on-but-skippable · independent-agent</p>
+      <div class="stack">
+        <div class="case">release</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an artifact is promoted straight to prod with no gate, and no record the check was skipped.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a promotion gate blocks anything that didn't pass the prior stage's sign-off.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> default-on-but-skippable · independent-agent</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">B3</span><span class="name">Independent judgment</span></div>
       <p class="what">The assessor is independent of what it assesses — the builder doesn't grade itself, and the agent doesn't flatter the human.</p>
       <p class="why"><b>Why:</b> the <b>builder doesn't grade its own homework</b>, and the agent <b>names the risk</b> instead of flattering the plan — so verification and the intent gate are real, not decorative.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">review</span>a read-only reviewer, distinct from the author, derives its own checklist and reports what's wrong — even when inconvenient.</p>
-          <p class="ex"><span class="layer">research</span>findings are adversarially verified by a separate pass, not self-certified.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">code</span>the agent that wrote the code decides the code is good.</p>
-          <p class="ex"><span class="layer">product</span>the agent agrees with a flawed plan to please the stakeholder, and it sails through.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">review</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>the agent that wrote the code reviews its own code and decides it's good.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a read-only reviewer, distinct from the author, derives its own checklist and reports what's wrong — even when inconvenient.</span></div>
       </div>
-      <p class="dials"><b>default:</b> default-on-but-skippable · independent-agent</p>
+      <div class="stack">
+        <div class="case">research</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an agent certifies its own findings (or agrees with a flawed plan to please you), and it sails through.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>findings are adversarially verified by a separate pass, not self-certified.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> default-on-but-skippable · independent-agent</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">B4</span><span class="name">Auditable archive</span></div>
       <p class="what">Provenance + immutable decision history + a consolidated current-truth.</p>
       <p class="why"><b>Why:</b> you can always answer <b>"why is it this way?"</b> — decisions are not lost or quietly rewritten.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">adr</span>decisions are append-only and link their rationale; superseding writes a new record.</p>
-          <p class="ex"><span class="layer">code</span>git history + a current-truth doc kept separate from its changelog.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">adr</span>a decision is edited in place and its rationale lost; months later it's re-litigated from scratch.</p>
-          <p class="ex"><span class="layer">infra</span>an undocumented prod change, so no one can say why it's configured this way.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">ADR</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a decision is edited in place and its rationale lost; months later it is re-litigated from scratch.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>decisions are append-only and link their rationale; superseding writes a new record.</span></div>
       </div>
-      <p class="dials"><b>default:</b> enforced · independent-agent</p>
+      <div class="stack">
+        <div class="case">infra</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an undocumented prod change, so no one can say why it is configured this way.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>every prod change carries provenance — git history + a current-truth doc — so "why" is always answerable.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> enforced · independent-agent</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">B5</span><span class="name">Bounded context</span></div>
       <p class="what">Each operation reads only its declared inputs, never the whole archive.</p>
       <p class="why"><b>Why:</b> agents decide on <b>sharp, relevant context</b> instead of drowning in everything — better calls, and it scales as the archive grows.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">agent</span>a sub-agent gets exactly its declared inputs and decides crisply within them.</p>
-          <p class="ex"><span class="layer">data</span>a query reads a scoped view, not the whole warehouse.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">agent</span>an op dumps the entire repo into context, dilutes the signal, and decides on noise.</p>
-          <p class="ex"><span class="layer">code</span>a function reaches into global state instead of its parameters, and breaks when the state moves.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">agent</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an op dumps the entire repo into context, dilutes the signal, and decides on noise.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a sub-agent gets exactly its declared inputs and decides crisply within them.</span></div>
       </div>
-      <p class="dials"><b>default:</b> default-on-but-skippable · independent-agent</p>
+      <div class="stack">
+        <div class="case">data</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a query scans the whole warehouse, drowns in irrelevant rows, and gets slower as it grows.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a query reads a scoped view, not the whole warehouse.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> default-on-but-skippable · independent-agent</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">B6</span><span class="name">Self-improvement</span></div>
       <p class="what">The process learns from friction and gets better — improvement signals are surfaced and acted on, so a glitch doesn't happen twice.</p>
       <p class="why"><b>Why:</b> <b>a process glitch never happens twice</b> — friction becomes a fix, not a recurring tax.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">ci</span>a flaky test recurs → a trigger is filed, the root cause fixed, the trigger retired in the same change.</p>
-          <p class="ex"><span class="layer">process</span>a repeated review miss becomes a checklist item that rides the PR you already write.</p>
-          <p class="ex"><span class="layer">research</span>a recurring dead-end is recorded so the next inquiry skips it instead of re-walking it.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">ci</span>the same pipeline step fails weekly and everyone just re-runs it, forever.</p>
-          <p class="ex"><span class="layer">process</span>a PR raises open questions with no follow-up and they rot, unowned.</p>
-          <p class="ex"><span class="layer">onboarding</span>the same confusion hits every new contributor because no one wrote the lesson down.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">CI</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>the same pipeline step fails weekly and everyone just re-runs it, forever.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a flaky test recurs → a trigger is filed, the root cause fixed, the trigger retired in the same change.</span></div>
       </div>
-      <p class="dials"><b>default:</b> default-on-but-skippable · human</p>
+      <div class="stack">
+        <div class="case">process</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a PR raises the same open question every time, with no follow-up, and it rots unowned.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a repeated review miss becomes a checklist item that rides the PR you already write.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> default-on-but-skippable · human</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">B7</span><span class="name">Minimal first</span></div>
       <p class="what">The smallest process that works; add a step only when friction reveals the boundary; bias to retire over add.</p>
       <p class="why"><b>Why:</b> <b>no ceremony for its own sake</b> — every step has earned its place, so the process stays light.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">process</span>a deliberately tiny rule set; a new step lands only with a recorded reason.</p>
-          <p class="ex"><span class="layer">tooling</span>a build config with no unused steps; a dependency pulled in only when needed.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">process</span>a heavyweight methodology copied wholesale, most steps cargo-culted.</p>
-          <p class="ex"><span class="layer">code</span>a whole framework pulled in to use one function.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">process</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a heavyweight methodology copied wholesale, most steps cargo-culted.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a deliberately tiny rule set; a new step lands only with a recorded reason.</span></div>
       </div>
-      <p class="dials"><b>default:</b> expressed · human</p>
+      <div class="stack">
+        <div class="case">tooling</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a whole framework pulled in to use one function; the build carries steps no one remembers.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a build config with no unused steps; a dependency pulled in only when needed.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> expressed · human</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">B9</span><span class="name">Clarify before commit</span></div>
       <p class="what">Ambiguity in an upstream is surfaced and resolved (usually by asking a human) before downstream consumes it — never silently guessed.</p>
       <p class="why"><b>Why:</b> <b>agents ask instead of guessing</b> — you don't discover three files later that they took the wrong reading of a vague spec.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">spec</span>an agent flags a vague requirement and resolves it before coding.</p>
-          <p class="ex"><span class="layer">ui</span>a designer confirms an ambiguous interaction before building it.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">code</span>an agent silently picks one reading of a vague spec, builds it, and it's the wrong one.</p>
-          <p class="ex"><span class="layer">data</span>an ambiguous metric definition is guessed, and the dashboard is subtly, confidently wrong.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">spec</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an agent silently picks one reading of a vague spec, builds it, and it's the wrong one.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>an agent flags a vague requirement and resolves it before coding.</span></div>
       </div>
-      <p class="dials"><b>default:</b> default-on-but-skippable · human</p>
+      <div class="stack">
+        <div class="case">data</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an ambiguous metric definition is guessed, and the dashboard is subtly, confidently wrong.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>an ambiguous metric definition is confirmed with a human before the dashboard is built.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> default-on-but-skippable · human</p>
     </div>
 
   </div></div>
@@ -369,36 +386,36 @@
       <div class="card-top"><span class="code">D1</span><span class="name">Transparency</span></div>
       <p class="what">Every consequential choice is surfaced — a skipped gate, a missing capability, a degraded result, a divergence from a framework you claim to follow. Drift is allowed, but never silent.</p>
       <p class="why"><b>Why:</b> <b>nothing consequential happens silently</b> — you learn about the shortcut <em>when it's taken</em>, not when it breaks in production.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">ci</span>a skipped gate is logged; a missing tool halts loudly, not silently.</p>
-          <p class="ex"><span class="layer">framework</span>"we diverge from Spec Kit here" is a recorded decision, so an agent knows where you follow the book and where you don't.</p>
-          <p class="ex"><span class="layer">ops</span>a degraded fallback (cache miss, retry, downgrade) is surfaced, not swallowed.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">code</span>an agent silently falls back to a degraded path; you learn when it breaks in prod.</p>
-          <p class="ex"><span class="layer">framework</span>the team quietly drifts from the methodology it claims to follow.</p>
-          <p class="ex"><span class="layer">infra</span>an error is swallowed and resurfaces later as a mystery outage.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">framework</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>the team quietly drifts from the methodology it claims to follow.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>"we diverge from Spec Kit here" is a recorded decision, so an agent knows where you follow the book and where you don't.</span></div>
       </div>
-      <p class="dials"><b>floor:</b> enforced (non-configurable to off) · human</p>
+      <div class="stack">
+        <div class="case">ops</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>an agent silently falls back to a degraded path or swallows an error — you learn when it breaks in prod.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a degraded fallback (cache miss, retry, downgrade) is surfaced, not swallowed.</span></div>
+      </div>
+      </div><p class="dials"><b>floor:</b> enforced (non-configurable to off) · human</p>
     </div>
 
     <div class="card">
       <div class="card-top"><span class="code">D2</span><span class="name">The intent gate</span></div>
       <p class="what">The intent gate never fully opens — at the intent locus, a human (or a human-authorized independent check) is always mandatory. The one place an upstream that is itself wrong gets caught.</p>
       <p class="why"><b>Why:</b> <b>"is this the right thing to build?" always has a human behind it</b> — the one call you never hand fully to the machine.</p>
-      <div class="wo">
-        <div class="pane with"><span class="tag">With</span>
-          <p class="ex"><span class="layer">product</span>a human ratifies at the intent gate (here: the maintainer's merge).</p>
-          <p class="ex"><span class="layer">release</span>no deploy ships a feature no human approved, however green the pipeline.</p>
-        </div>
-        <div class="pane without"><span class="tag">Without</span>
-          <p class="ex"><span class="layer">product</span>a fully-automated pipeline ships something technically correct that no human confirmed was the right thing.</p>
-          <p class="ex"><span class="layer">research</span>an agent auto-adopts a conclusion no human sponsored.</p>
-        </div>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">product</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a fully-automated pipeline ships something technically correct that no human confirmed was the right thing.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a human ratifies at the intent gate (here: the maintainer's merge).</span></div>
       </div>
-      <p class="dials"><b>floor:</b> enforced (non-configurable to off) · human (never "nobody")</p>
+      <div class="stack">
+        <div class="case">release</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a deploy auto-promotes a change no human approved, on green tests alone.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>no deploy ships a feature no human approved, however green the pipeline.</span></div>
+      </div>
+      </div><p class="dials"><b>floor:</b> enforced (non-configurable to off) · human (never "nobody")</p>
     </div>
 
   </div></div>
