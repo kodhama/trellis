@@ -43,7 +43,7 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 	sc := bufio.NewScanner(in)
 
 	// Mode first — it decides what the rest of setup even needs to detect.
-	mKey, err := ask(sc, w, "install mode", *modeKey, modeOptions(), "m1")
+	mKey, err := ask(in, sc, w, "install mode", *modeKey, modeOptions(), "m1")
 	if err != nil {
 		return err
 	}
@@ -64,18 +64,18 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		fmt.Fprintf(w, "detected harness: %s (%s)\n\n", h.Name, h.Detail)
 	} else {
 		fmt.Fprintf(w, "mode m1 → deterministic overlay; no harness needed\n")
-		if target, err = chooseTarget(sc, w, *targetKey, *dir); err != nil {
+		if target, err = chooseTarget(in, sc, w, *targetKey, *dir); err != nil {
 			return err
 		}
 	}
 
-	pKey, err := ask(sc, w, "profile", *profileKey, profileOptions(), "b")
+	pKey, err := ask(in, sc, w, "profile", *profileKey, profileOptions(), "b")
 	if err != nil {
 		return err
 	}
 	profile, _ := profileByKey(pKey)
 
-	model, err := resolveModel(sc, w, *modelKey, mode)
+	model, err := resolveModel(in, sc, w, *modelKey, mode)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 // chooseTarget resolves the M1 instruction file to augment (decision-0029 follow-up):
 // the --target flag if given, else a prompt over the known files, defaulting to one
 // already present (else CLAUDE.md). M1 needs no harness — the target file is the story.
-func chooseTarget(sc *bufio.Scanner, w io.Writer, preset, dir string) (InstructionFile, error) {
+func chooseTarget(in io.Reader, sc *bufio.Scanner, w io.Writer, preset, dir string) (InstructionFile, error) {
 	detected := detectInstructionFiles(dir)
 	def := instructionFiles[0].Name // CLAUDE.md
 	if len(detected) > 0 {
@@ -130,7 +130,7 @@ func chooseTarget(sc *bufio.Scanner, w io.Writer, preset, dir string) (Instructi
 	} else {
 		fmt.Fprintf(w, "no instruction file found — will create %s\n", def)
 	}
-	key, err := ask(sc, w, "instruction file (M1 target)", preset, targetOptions(), def)
+	key, err := ask(in, sc, w, "instruction file (M1 target)", preset, targetOptions(), def)
 	if err != nil {
 		return InstructionFile{}, err
 	}
@@ -143,7 +143,7 @@ func chooseTarget(sc *bufio.Scanner, w io.Writer, preset, dir string) (Instructi
 // it offers the reasoning tiers (default high) and rejects "none" — there is no
 // deterministic rewrite. M1 (overlay) is deterministic, so there is no model to pick,
 // and a real --model is a loud error rather than a silently-ignored choice.
-func resolveModel(sc *bufio.Scanner, w io.Writer, preset string, mode Mode) (Model, error) {
+func resolveModel(in io.Reader, sc *bufio.Scanner, w io.Writer, preset string, mode Mode) (Model, error) {
 	if mode.Key != "m2" {
 		if preset != "" && preset != "none" {
 			return Model{}, fmt.Errorf("mode %s is a deterministic overlay; --model %q does not apply (only 'none')", mode.Key, preset)
@@ -152,7 +152,7 @@ func resolveModel(sc *bufio.Scanner, w io.Writer, preset string, mode Mode) (Mod
 		m, _ := modelByKey("none")
 		return m, nil
 	}
-	key, err := ask(sc, w, "model", preset, morphModelOptions(), "high")
+	key, err := ask(in, sc, w, "model", preset, morphModelOptions(), "high")
 	if err != nil {
 		return Model{}, err
 	}
@@ -163,7 +163,7 @@ func resolveModel(sc *bufio.Scanner, w io.Writer, preset string, mode Mode) (Mod
 // ask resolves one choice. If preset is non-empty it is validated and used with no
 // prompt (the flag path); otherwise the options are printed and a line is read from
 // sc, with empty input taking def. An out-of-set answer is a loud error (D1).
-func ask(sc *bufio.Scanner, w io.Writer, label, preset string, opts []option, def string) (string, error) {
+func ask(in io.Reader, sc *bufio.Scanner, w io.Writer, label, preset string, opts []option, def string) (string, error) {
 	keys := make([]string, len(opts))
 	for i, o := range opts {
 		keys[i] = o.key
@@ -174,6 +174,19 @@ func ask(sc *bufio.Scanner, w io.Writer, label, preset string, opts []option, de
 			return "", fmt.Errorf("invalid %s %q (choose one of %s)", label, preset, strings.Join(keys, ", "))
 		}
 		return preset, nil
+	}
+
+	// A real terminal gets the arrow-key selector; pipes, CI, and tests fall through to
+	// the line-based prompt below, so the deterministic path is unchanged (decision-0030).
+	if inF, outF, ok := ttyPair(in, w); ok {
+		key, err := selectInteractive(inF, outF, label, opts, def)
+		if err != nil {
+			return "", err
+		}
+		if !contains(keys, key) {
+			return "", fmt.Errorf("invalid %s %q", label, key)
+		}
+		return key, nil
 	}
 
 	fmt.Fprintf(w, "%s:\n", label)
