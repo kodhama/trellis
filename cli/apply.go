@@ -1,28 +1,53 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
+// The invariant reference shipped in the overlay. Kept in sync from the single
+// source in core/ by the generate step below (run `go generate ./...` in cli/).
+//
+//go:generate cp ../core/catalog/signature-catalog-v1.md assets/invariants.md
+//
+//go:embed assets/invariants.md
+var invariantsRef string
+
 // The M1 overlay writes into CLAUDE.md between these markers only. Everything
 // outside them is the host's and is never touched (augment-never-clobber); a
 // re-run replaces what is between them (idempotent).
 const (
-	trellisBegin = "<!-- trellis:begin (managed — edit .trellis/profile.md, not this block) -->"
+	trellisBegin = "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->"
 	trellisEnd   = "<!-- trellis:end -->"
 )
 
-// applyM1 performs the deterministic M1 overlay: write .trellis/profile.md and
-// upsert the delimited Trellis block in CLAUDE.md. No model — plain file editing.
+// applyM1 performs the deterministic M1 overlay: write the .trellis/ bundle
+// (a header, the profile, the invariant reference) and add a minimal import of
+// the header to CLAUDE.md. No model — plain file editing.
+//
+// Layout (imports resolve relative to the importing file — verified against the
+// Claude Code docs):
+//
+//	CLAUDE.md      -> @.trellis/trellis.md      (header, auto-loaded)
+//	.trellis/trellis.md -> @profile.md          (profile, auto-loaded)
+//	                    -> `.trellis/invariants.md` (backticked = read on demand)
 func applyM1(dir string, plan Plan) (string, error) {
-	if err := os.MkdirAll(filepath.Join(dir, ".trellis"), 0o755); err != nil {
+	tdir := filepath.Join(dir, ".trellis")
+	if err := os.MkdirAll(tdir, 0o755); err != nil {
 		return "", fmt.Errorf("creating .trellis/: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".trellis", "profile.md"), []byte(renderProfile(plan)), 0o644); err != nil {
-		return "", fmt.Errorf("writing profile: %w", err)
+	bundle := map[string]string{
+		"trellis.md":    renderHeader(plan),
+		"profile.md":    renderProfile(plan),
+		"invariants.md": invariantsRef,
+	}
+	for name, content := range bundle {
+		if err := os.WriteFile(filepath.Join(tdir, name), []byte(content), 0o644); err != nil {
+			return "", fmt.Errorf("writing .trellis/%s: %w", name, err)
+		}
 	}
 
 	claudePath := filepath.Join(dir, "CLAUDE.md")
@@ -36,8 +61,9 @@ func applyM1(dir string, plan Plan) (string, error) {
 		return "", fmt.Errorf("writing CLAUDE.md: %w", err)
 	}
 
-	return fmt.Sprintf("applied (M1 overlay):\n  wrote %s\n  updated %s (trellis block)\n",
-		filepath.Join(".trellis", "profile.md"), "CLAUDE.md"), nil
+	return "applied (M1 overlay):\n" +
+		"  wrote .trellis/{trellis,profile,invariants}.md\n" +
+		"  updated CLAUDE.md (imports .trellis/trellis.md)\n", nil
 }
 
 // upsertBlock replaces the delimited trellis block in content if present, else
@@ -54,31 +80,42 @@ func upsertBlock(content, block string) string {
 	return strings.TrimRight(content, "\n") + "\n\n" + block + "\n"
 }
 
+// renderClaudeBlock is the minimal CLAUDE.md footprint: a human-readable line plus
+// a native @import of the header. Everything else lives in .trellis/.
+func renderClaudeBlock() string {
+	return trellisBegin + "\n" +
+		"This project is governed by **Trellis** (see the `.trellis/` folder). Its rules are imported here:\n" +
+		"@.trellis/trellis.md\n" +
+		trellisEnd
+}
+
+// renderHeader is the entry point CLAUDE.md imports: the intro + the governance
+// behavior, then it pulls in the profile and points at the invariant reference.
+func renderHeader(plan Plan) string {
+	return "# Trellis governance\n\n" +
+		"This project is supervised by **Trellis**, a governance layer over your existing process: it holds a small set of invariants at the strengths this project has adopted, and otherwise respects your methodology.\n\n" +
+		"**Key behavior:** surface any **human-gated handover performed without its human approval** (invariant B2). Agent-gated handovers proceed silently. Gatekeepers are whatever this project already declares — respected, not imposed (decision-0024).\n\n" +
+		"## This project's profile\n\n" +
+		"@profile.md\n\n" +
+		"## Invariant reference\n\n" +
+		"Full definitions — what each invariant is, why it matters, and how it's honored vs violated — live in `.trellis/invariants.md`. Read it when you need the detail behind a rule.\n"
+}
+
+// renderProfile is the tunable readout: posture, active invariants, dials. The
+// governance behavior lives in the header (single source), not here.
+func renderProfile(plan Plan) string {
+	return "# Trellis expression profile\n\n" +
+		fmt.Sprintf("- posture: %s — %s\n", plan.Profile.Name, plan.Profile.Description) +
+		fmt.Sprintf("- enforcement (C1) lean: `%s`\n", plan.Profile.C1Lean) +
+		fmt.Sprintf("- active invariants: %s\n", activeList(plan)) +
+		"- gatekeeper (C2): detected from this project, not preset (decision-0024)\n" +
+		fmt.Sprintf("- install mode: %s\n", plan.Mode.Name) +
+		"\nEdit this file to tune the profile; `CLAUDE.md` imports `.trellis/trellis.md`, which imports this.\n"
+}
+
 func activeList(plan Plan) string {
 	if len(plan.Profile.Active) == 0 {
 		return "all assessable invariants"
 	}
 	return strings.Join(plan.Profile.Active, ", ")
-}
-
-// renderClaudeBlock is the minimal CLAUDE.md footprint: just a native @import of
-// the profile between the markers. All the actual content lives in
-// .trellis/profile.md (single source — no duplication into the host's file).
-func renderClaudeBlock() string {
-	return trellisBegin + "\n@.trellis/profile.md\n" + trellisEnd
-}
-
-// renderProfile is the single source of truth the @import pulls in: the posture,
-// the active invariants, and the governance behavior the agent follows.
-func renderProfile(plan Plan) string {
-	return "# Trellis expression profile\n\n" +
-		fmt.Sprintf("This project is supervised by **Trellis** (posture: %s — %s).\n\n", plan.Profile.Name, plan.Profile.Description) +
-		fmt.Sprintf("## Active invariants (enforcement C1: `%s`)\n\n- %s\n\n", plan.Profile.C1Lean, activeList(plan)) +
-		"## Key behavior\n\n" +
-		"Surface any **human-gated handover performed without its human approval** (invariant B2). Agent-gated handovers proceed silently.\n\n" +
-		"Gatekeepers are whatever this project already declares — **respected, not imposed** (decision-0024).\n\n" +
-		"## Dials\n\n" +
-		"- gatekeeper (C2): detected from this project, not preset (decision-0024)\n" +
-		fmt.Sprintf("- install mode: %s\n\n", plan.Mode.Name) +
-		"---\nGenerated by `trellis setup`. Edit *this* file to tune the profile; `CLAUDE.md` only imports it.\n"
 }

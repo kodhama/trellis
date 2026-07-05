@@ -31,12 +31,14 @@ func TestE2E_M1_ApplyToSampleProject(t *testing.T) {
 	if !strings.Contains(c, "Existing rules.") {
 		t.Error("e2e clobbered the sample's CLAUDE.md")
 	}
-	if !strings.Contains(c, trellisBegin) || !strings.Contains(c, "@.trellis/profile.md") {
+	if !strings.Contains(c, trellisBegin) || !strings.Contains(c, "@.trellis/trellis.md") {
 		t.Error("e2e did not install the minimal trellis import block")
 	}
-	prof := readFile(t, filepath.Join(dir, ".trellis", "profile.md"))
-	if !strings.Contains(prof, "without its human approval") {
-		t.Error("e2e did not write the B2 surfacing behavior into the profile")
+	if header := readFile(t, filepath.Join(dir, ".trellis", "trellis.md")); !strings.Contains(header, "without its human approval") {
+		t.Error("e2e did not write the B2 surfacing behavior into the header")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".trellis", "invariants.md")); err != nil {
+		t.Error("e2e did not bundle the invariant reference")
 	}
 }
 
