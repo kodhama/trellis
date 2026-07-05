@@ -52,6 +52,11 @@ rule you can't exemplify is probably vaporware.*
 - **Self-improvement.** Triggers, not vigilance (invariant 8): when friction reveals a
   missing rule, add it *where it fires*, **prefer retiring to adding**, keep it subordinate
   to the work. This file is the first trigger home.
+- **Derived resources stay in sync (`decision-0028`).** When you change a *source* — the
+  catalog, a spec, the CLI's command set — update everything that **derives** from it in the
+  same change. A source names its derivatives (so you see them at the edit), and a check
+  guards each pair. If you edit something and can't name what derives from it, that's the
+  question to ask. (This is B1 made salient: the graph, pointed forward.)
 - **Loud failure.** If a required tool, source, or verification is missing, stop *loudly*.
   Never emit plausible-but-unverified output.
 - **Epistemic integrity (no sycophancy).** Assessments track the evidence, not the

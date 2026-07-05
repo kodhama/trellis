@@ -36,6 +36,12 @@ ratified: 2026-07-04
 > a `honored`/`violated` pair, and **a change that edits an invariant without updating its examples is
 > a conformance failure** (`decision-0020` meta-rule — the iron rule applied to the rule-set itself).
 
+> **Derived resources — sync them on any change (`decision-0028`).** This catalog is the single source.
+> It is **rendered** to [`docs/invariants.html`](../../docs/invariants.html) (the pairs as cards) and
+> **copied verbatim** to `cli/assets/invariants.md` + `plugins/trellis/reference/invariants.md` (the
+> bundled reference). Change an example here → regenerate all three. A CI check enforces it
+> (`cli/sync_test.go`) — but this note is here so you see the dependents *before* the check does.
+
 ## Entries
 
 ### A — structural (admission gate) · class `methodology`

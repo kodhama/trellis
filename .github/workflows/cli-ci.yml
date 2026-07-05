@@ -9,10 +9,10 @@ name: cli-ci
 # code changes.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
 
 jobs:
   build-test:
