@@ -133,3 +133,27 @@ func TestE2E_M1_UnknownTargetErrors(t *testing.T) {
 		t.Fatal("an unknown --target should be a loud error")
 	}
 }
+
+// Every registered target gets the managed block (import for CLAUDE.md, rules inlined
+// otherwise). Table-driven over the registry, so a newly added file (research-0010) is
+// covered automatically — and parent dirs like .github/ are created.
+func TestE2E_M1_EveryRegisteredTargetGetsTheBlock(t *testing.T) {
+	for _, f := range instructionFiles {
+		f := f
+		t.Run(f.Name, func(t *testing.T) {
+			noClaude(t)
+			dir := t.TempDir()
+			out := mustApplyM1(t, dir, f.Name)
+			mustHave(t, out, "applied (M1 overlay)")
+
+			body := readFile(t, filepath.Join(dir, f.Name))
+			mustHave(t, body, trellisBegin, trellisEnd)
+			if f.Imports {
+				mustHave(t, body, "@.trellis/trellis.md")
+			} else {
+				mustHave(t, body, "inv-directional-flow") // rules inlined, not imported
+				mustLack(t, body, "@.trellis/trellis.md")
+			}
+		})
+	}
+}
