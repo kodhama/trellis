@@ -64,6 +64,12 @@ without activation).
    at *what* strength. Composed onto the host (below), the host's agents follow them — by reading
    instructions, no runtime dependency on Trellis.
 
+**Gatekeeping is detect-and-respect (`decision-0024`).** Assess reads which handovers a project treats
+as human- vs agent-gated and **respects them** — it never imposes a per-gate map (that is v2). Trellis's
+contribution is invariant **B2** made real: **surface a human-gated handover that runs without its human
+approval** — one-directional (agent gates proceed silently, and human approval on an agent gate is
+never sought). The profile's `C2` is exactly this detected readout, not a Trellis-imposed choice.
+
 ## 2b. The setup CLI — the interactive front door (`decision-0023`)
 
 The advisor flow (§2) is driven by a **Go setup CLI** (single binary, `curl … | sh`, no package
@@ -99,7 +105,7 @@ surfaces deferred.
   fire* → *default agent*, chosen by the maintainer at onboarding, **never silently maximal**. The
   posture (A/B/seed) sets the initial dials.
 - **Model 1 overlay by default** (`research-0005/0006`): set the host's expression profile without
-  editing its files; morph (M2) is not a v0 option.
+  editing its files; morph (M2) is the **v0-next** follow-up (§2b), not dropped.
 
 ## 4. No runtime (`decision-0010`)
 
