@@ -87,9 +87,10 @@ manager — `decision-0023`), run once. It is **setup tooling, not a runtime**. 
      Carries a **"keep embedded behaviors" dial** — *keep* the host's existing behaviors or *replace*
      them with the profile's (default **keep**).
 2. **Detect what the mode needs.**
-   - **M1** targets an **instruction file** (v0: `CLAUDE.md`; detecting/choosing among instruction
-     files — `AGENTS.md`, etc. — is a stacked follow-up). No binary; if there is nothing to attach to,
-     offer to create `CLAUDE.md`.
+   - **M1** detects the **instruction files** present and picks the target — `CLAUDE.md` (native
+     `@import` of the overlay) or `AGENTS.md` (rules **inlined**, since it has no import); `--target`
+     selects it non-interactively (`decision-0029`). No binary; if none is present, it **creates** the
+     chosen file.
    - **M2** detects the **harness binary** that drives the rewrite (v0: **Claude Code** — the `claude`
      binary; `.claude/` / `CLAUDE.md` corroborate). *v0 assumes CLI harnesses; Claude-only.* If **none**
      is found, the CLI **exits with a clear message** rather than guessing. Multiple/other harnesses →

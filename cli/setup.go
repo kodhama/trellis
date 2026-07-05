@@ -11,6 +11,7 @@ import (
 // Plan is the outcome of onboarding — what a later `apply` step will act on.
 type Plan struct {
 	Harness Harness
+	Target  InstructionFile // M1 only: the instruction file the overlay augments
 	Profile Profile
 	Mode    Mode
 	Model   Model
@@ -32,6 +33,7 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 	dir := fs.String("dir", ".", "project directory to set up")
 	profileKey := fs.String("profile", "", "posture: a|b|seed|custom")
 	modeKey := fs.String("mode", "", "install mode: m1|m2")
+	targetKey := fs.String("target", "", "M1 instruction file to augment: CLAUDE.md|AGENTS.md")
 	modelKey := fs.String("model", "", "model: high|balanced|cheap|none")
 	applyFlag := fs.Bool("apply", false, "write the changes (default is a dry run)")
 	if err := fs.Parse(args); err != nil {
@@ -48,8 +50,9 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 	mode, _ := modeByKey(mKey)
 
 	// Detect only what the chosen mode needs: M2 drives a harness binary to rewrite
-	// the project; M1 is a deterministic file overlay and needs no binary (decision-0029).
+	// the project; M1 augments an instruction file and needs no binary (decision-0029).
 	var h Harness
+	var target InstructionFile
 	if mode.Key == "m2" {
 		var ok bool
 		if h, ok = detectHarness(*dir); !ok {
@@ -60,7 +63,10 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		}
 		fmt.Fprintf(w, "detected harness: %s (%s)\n\n", h.Name, h.Detail)
 	} else {
-		fmt.Fprintf(w, "mode m1 → deterministic overlay of CLAUDE.md; no harness needed\n\n")
+		fmt.Fprintf(w, "mode m1 → deterministic overlay; no harness needed\n")
+		if target, err = chooseTarget(sc, w, *targetKey, *dir); err != nil {
+			return err
+		}
 	}
 
 	pKey, err := ask(sc, w, "profile", *profileKey, profileOptions(), "b")
@@ -74,7 +80,7 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		return err
 	}
 
-	plan := Plan{Harness: h, Profile: profile, Mode: mode, Model: model}
+	plan := Plan{Harness: h, Target: target, Profile: profile, Mode: mode, Model: model}
 	printPlan(w, plan)
 
 	doApply := *applyFlag
@@ -106,6 +112,31 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		fmt.Fprint(w, summary)
 		return nil
 	}
+}
+
+// chooseTarget resolves the M1 instruction file to augment (decision-0029 follow-up):
+// the --target flag if given, else a prompt over the known files, defaulting to one
+// already present (else CLAUDE.md). M1 needs no harness — the target file is the story.
+func chooseTarget(sc *bufio.Scanner, w io.Writer, preset, dir string) (InstructionFile, error) {
+	detected := detectInstructionFiles(dir)
+	def := instructionFiles[0].Name // CLAUDE.md
+	if len(detected) > 0 {
+		def = detected[0].Name
+		names := make([]string, len(detected))
+		for i, f := range detected {
+			names[i] = f.Name
+		}
+		fmt.Fprintf(w, "found instruction file(s): %s\n", strings.Join(names, ", "))
+	} else {
+		fmt.Fprintf(w, "no instruction file found — will create %s\n", def)
+	}
+	key, err := ask(sc, w, "instruction file (M1 target)", preset, targetOptions(), def)
+	if err != nil {
+		return InstructionFile{}, err
+	}
+	f, _ := instructionFileByName(key)
+	fmt.Fprintf(w, "target: %s (%s)\n\n", f.Name, importKind(f))
+	return f, nil
 }
 
 // resolveModel picks the model for the chosen mode. M2 (morph) is model-driven, so
@@ -178,7 +209,7 @@ func printPlan(w io.Writer, p Plan) {
 	if p.Harness.Name != "" {
 		fmt.Fprintf(w, "  harness: %s\n", p.Harness.Name)
 	} else {
-		fmt.Fprintf(w, "  target:  CLAUDE.md (deterministic overlay)\n")
+		fmt.Fprintf(w, "  target:  %s (%s overlay)\n", p.Target.Name, importKind(p.Target))
 	}
 	fmt.Fprintf(w, "  profile: %s — %s\n", p.Profile.Name, p.Profile.Description)
 	fmt.Fprintf(w, "  mode:    %s — %s\n", p.Mode.Name, p.Mode.Description)

@@ -52,20 +52,45 @@ func applyM1(dir string, plan Plan) (string, error) {
 		}
 	}
 
-	claudePath := filepath.Join(dir, "CLAUDE.md")
+	target := plan.Target
+	if target.Name == "" {
+		target = instructionFiles[0] // default CLAUDE.md (e.g. a plan with no target set)
+	}
+	targetPath := filepath.Join(dir, target.Name)
 	existing := ""
-	if b, err := os.ReadFile(claudePath); err == nil {
+	if b, err := os.ReadFile(targetPath); err == nil {
 		existing = string(b)
 	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("reading CLAUDE.md: %w", err)
-	}
-	if err := os.WriteFile(claudePath, []byte(upsertBlock(existing, renderClaudeBlock())), 0o644); err != nil {
-		return "", fmt.Errorf("writing CLAUDE.md: %w", err)
+		return "", fmt.Errorf("reading %s: %w", target.Name, err)
 	}
 
-	return "applied (M1 overlay):\n" +
-		"  wrote .trellis/{trellis,profile,invariants}.md\n" +
-		"  updated CLAUDE.md (imports .trellis/trellis.md)\n", nil
+	// Files with @import get a one-line import; others get the rules inlined, since
+	// there is nothing to import (decision-0029 follow-up).
+	block, attach := renderClaudeBlock(), "imports .trellis/trellis.md"
+	if !target.Imports {
+		block, attach = renderInlineBlock(plan), "inlines the rules (no @import)"
+	}
+	if err := os.WriteFile(targetPath, []byte(upsertBlock(existing, block)), 0o644); err != nil {
+		return "", fmt.Errorf("writing %s: %w", target.Name, err)
+	}
+
+	return fmt.Sprintf("applied (M1 overlay):\n"+
+		"  wrote .trellis/{trellis,profile,invariants}.md\n"+
+		"  updated %s (%s)\n", target.Name, attach), nil
+}
+
+// renderInlineBlock is the M1 footprint for instruction files WITHOUT @import support
+// (e.g. AGENTS.md): the governance behavior + active rules are inlined directly, since
+// there is nothing to import. The full why + examples still live in .trellis/invariants.md
+// (a plain path a reader can open). Re-run `trellis setup` to refresh after a profile change.
+func renderInlineBlock(plan Plan) string {
+	return trellisBegin + "\n" +
+		"This project is governed by **Trellis** (see `.trellis/`). Its rules are inlined here — this file does not support `@import`:\n\n" +
+		"**Key behavior:** surface any **human-gated handover performed without its human approval** (invariant B2). Agent-gated handovers proceed silently. Gatekeepers are whatever this project already declares — respected, not imposed (decision-0024).\n\n" +
+		"**Active invariants — follow these:**\n" +
+		activeRuleLines(plan) +
+		"\nFull *why* + with/without examples: `.trellis/invariants.md`. Re-run `trellis setup` to refresh these after a profile change.\n" +
+		trellisEnd
 }
 
 // upsertBlock replaces the delimited trellis block in content if present, else
@@ -109,12 +134,6 @@ func renderHeader(plan Plan) string {
 // the active invariants as concise *rules* — not just names — so they genuinely
 // govern every turn. The full why + examples stay on-demand in invariants.md.
 func renderProfile(plan Plan) string {
-	rules := invariantRules()
-	active := plan.Profile.Active
-	if len(active) == 0 { // postures A/B: all assessable invariants
-		active = sortedKeys(rules)
-	}
-
 	var b strings.Builder
 	b.WriteString("# Trellis expression profile\n\n")
 	b.WriteString(fmt.Sprintf("- posture: %s — %s\n", plan.Profile.Name, plan.Profile.Description))
@@ -124,6 +143,21 @@ func renderProfile(plan Plan) string {
 	b.WriteString("\n## Active invariants — follow these\n\n")
 	b.WriteString("In force for this project, at the enforcement lean above. The *why* and with/without " +
 		"examples for each (and the invariants not active here) are in `.trellis/invariants.md`.\n\n")
+	b.WriteString(activeRuleLines(plan))
+	b.WriteString("\nEdit this file to tune the profile; `CLAUDE.md` imports `.trellis/trellis.md`, which imports this.\n")
+	return b.String()
+}
+
+// activeRuleLines renders the active invariants as "- **slug** — <rule>" lines from the
+// bundled catalog (decision-0026: rules always in context). Shared by the profile and
+// the inline overlay block.
+func activeRuleLines(plan Plan) string {
+	rules := invariantRules()
+	active := plan.Profile.Active
+	if len(active) == 0 { // postures A/B: all assessable invariants
+		active = sortedKeys(rules)
+	}
+	var b strings.Builder
 	for _, slug := range active {
 		if r := rules[slug]; r != "" {
 			b.WriteString(fmt.Sprintf("- **%s** — %s\n", slug, r))
@@ -131,7 +165,6 @@ func renderProfile(plan Plan) string {
 			b.WriteString(fmt.Sprintf("- **%s**\n", slug))
 		}
 	}
-	b.WriteString("\nEdit this file to tune the profile; `CLAUDE.md` imports `.trellis/trellis.md`, which imports this.\n")
 	return b.String()
 }
 
