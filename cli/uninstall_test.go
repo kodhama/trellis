@@ -57,3 +57,27 @@ func TestUninstallYesFlag(t *testing.T) {
 		t.Error("--yes should remove without a prompt")
 	}
 }
+
+func TestUninstallDefersToHomebrew(t *testing.T) {
+	// A Homebrew-managed binary (under a Cellar) must NOT be deleted — even with --yes —
+	// or brew's records go inconsistent. uninstall points at `brew uninstall` instead.
+	bin := filepath.Join(t.TempDir(), "Cellar", "trellis", "0.2.12", "bin", "trellis")
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	withExecutablePath(t, func() (string, error) { return bin, nil })
+
+	out, err := run2("", "uninstall", "--yes")
+	if err != nil {
+		t.Fatalf("uninstall: %v", err)
+	}
+	if _, err := os.Stat(bin); err != nil {
+		t.Error("a Homebrew-managed binary must NOT be removed by `trellis uninstall`")
+	}
+	if !strings.Contains(out, "brew uninstall") {
+		t.Errorf("expected a `brew uninstall` pointer, got:\n%s", out)
+	}
+}

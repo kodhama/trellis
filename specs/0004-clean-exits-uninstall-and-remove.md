@@ -29,6 +29,9 @@ mode isn't built yet.
 
 - Removes the running binary at its own path (`os.Executable`) after a confirmation (or `--yes`), and
   prints the path removed. On Unix, unlinking a running binary is safe (the inode frees on exit).
+- **Homebrew-managed installs are deferred, not deleted (`decision-0032`).** If the binary resolves
+  under a Homebrew `Cellar` (directly or via the `bin` symlink), `uninstall` does **not** remove it —
+  that would leave brew's records inconsistent — and instead points at `brew uninstall trellis`.
 - `install.sh` gains a mirrored `--uninstall` for parity with the curl install.
 - It removes **only the binary** — never a project's `.trellis/` (that's `remove`'s job); it says so.
 
