@@ -31,6 +31,7 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 	profileKey := fs.String("profile", "", "posture: a|b|seed|custom")
 	modeKey := fs.String("mode", "", "install mode: m1|m2")
 	modelKey := fs.String("model", "", "model: high|balanced|cheap|none")
+	applyFlag := fs.Bool("apply", false, "write the changes (default is a dry run)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -63,8 +64,34 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		return err
 	}
 
-	printPlan(w, Plan{Harness: h, Profile: profile, Mode: mode, Model: model})
-	return nil
+	plan := Plan{Harness: h, Profile: profile, Mode: mode, Model: model}
+	printPlan(w, plan)
+
+	doApply := *applyFlag
+	if !doApply {
+		fmt.Fprint(w, "\napply now? [y/N]: ")
+		if sc.Scan() {
+			a := strings.ToLower(strings.TrimSpace(sc.Text()))
+			doApply = a == "y" || a == "yes"
+		}
+	}
+	if !doApply {
+		fmt.Fprintln(w, "dry run — nothing written (re-run with --apply, or answer y)")
+		return nil
+	}
+
+	switch mode.Key {
+	case "m1":
+		summary, err := applyM1(*dir, plan)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(w, summary)
+		return nil
+	default:
+		// M2 morph is the next slice; refuse loudly rather than pretend it applied.
+		return fmt.Errorf("M2 (morph) apply is not implemented yet — the next slice (v0-next); nothing written")
+	}
 }
 
 // resolveModel picks the model for the chosen mode. M2 (morph) is model-driven, so
