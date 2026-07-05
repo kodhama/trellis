@@ -234,6 +234,11 @@
       </div>
       <p class="tnote">The installer just drops a single binary — it doesn't run anything on its own; you run <code>trellis setup</code>. Remove it any time: <code>trellis remove</code> inside a project, or <code>trellis uninstall</code> for the binary.</p>
 
+      <p class="tnote" style="margin-top:20px"><strong style="color:var(--text)">On Claude Code?</strong> Skip the binary — add it as a plugin (covers the overlay natively):</p>
+      <pre class="fp-code" style="max-width:640px;margin-top:10px">/plugin marketplace add gundisalwa/trellis
+/plugin install trellis@trellis
+/trellis:setup</pre>
+
       <div class="cta">
         <a class="btn btn-primary" href="invariants.html">Explore the invariants →</a>
         <a class="btn btn-ghost" href="https://github.com/gundisalwa/trellis">View on GitHub →</a>
