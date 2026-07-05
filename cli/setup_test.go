@@ -11,11 +11,24 @@ func claudePresent(t *testing.T) {
 	withLookPath(t, func(string) (string, error) { return "/usr/local/bin/claude", nil })
 }
 
-func TestSetupNoHarness(t *testing.T) {
-	// No harness executable: setup must fail loudly rather than guess (D1).
+func TestSetupNoHarnessM1Works(t *testing.T) {
+	// M1 is a deterministic file overlay — it must NOT require the `claude` binary
+	// (decision-0029). The friction fix: you can overlay without installing the harness.
 	withLookPath(t, func(string) (string, error) { return "", exec.ErrNotFound })
-	if _, err := run2("", "setup", "--dir", t.TempDir()); err == nil {
-		t.Fatal("setup should error when no harness executable is present")
+	out, err := run2("", "setup", "--dir", t.TempDir(), "--mode", "m1")
+	if err != nil {
+		t.Fatalf("m1 setup should work with no harness binary present: %v", err)
+	}
+	if !strings.Contains(out, "M1 · alongside") || !strings.Contains(out, "no harness needed") {
+		t.Errorf("expected an m1 plan that needs no harness, got:\n%s", out)
+	}
+}
+
+func TestSetupNoHarnessM2Errors(t *testing.T) {
+	// M2 drives the harness to rewrite — with no `claude` on PATH it must fail loudly (D1).
+	withLookPath(t, func(string) (string, error) { return "", exec.ErrNotFound })
+	if _, err := run2("", "setup", "--dir", t.TempDir(), "--mode", "m2", "--model", "high"); err == nil {
+		t.Fatal("m2 setup should error when no harness executable is present")
 	}
 }
 
@@ -49,8 +62,8 @@ func TestSetupDefaultsOnEmptyInput(t *testing.T) {
 
 func TestSetupInteractive(t *testing.T) {
 	claudePresent(t)
-	// Answer the three prompts in order: profile, mode, model.
-	out, err := run2("seed\nm2\nbalanced\n", "setup", "--dir", t.TempDir())
+	// Answer the prompts in order: mode, profile, model (decision-0029: mode first).
+	out, err := run2("m2\nseed\nbalanced\n", "setup", "--dir", t.TempDir())
 	if err != nil {
 		t.Fatalf("interactive setup: %v", err)
 	}
@@ -63,8 +76,8 @@ func TestSetupInteractive(t *testing.T) {
 
 func TestSetupM2DefaultsHigh(t *testing.T) {
 	claudePresent(t)
-	// M2 with empty model input -> defaults to the high-reasoning model.
-	out, err := run2("a\nm2\n\n", "setup", "--dir", t.TempDir())
+	// M2 with empty model input -> defaults to the high-reasoning model. Order: mode, profile, model.
+	out, err := run2("m2\na\n\n", "setup", "--dir", t.TempDir())
 	if err != nil {
 		t.Fatalf("setup: %v", err)
 	}

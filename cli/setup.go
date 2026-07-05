@@ -19,11 +19,13 @@ type Plan struct {
 // option is a single selectable choice shown in an interactive prompt.
 type option struct{ key, label string }
 
-// setup runs the interactive setup flow (spec-0003 §2b): detect the harness, then
-// ask for a profile, an install mode, and a model (in that order, so the mode
-// informs the model suggestion). Each question can be answered non-interactively
-// with a flag (--profile/--mode/--model); anything omitted is prompted for on `in`.
-// Applying the plan (M1 deterministic / M2 model-driven) is a later step.
+// setup runs the interactive setup flow (spec-0003 §2b, decision-0029): mode first,
+// because the mode decides what to detect — M2 (morph) drives a harness binary to
+// rewrite the project, so it detects and requires one; M1 (overlay) edits instruction
+// files deterministically and needs no binary. Then a profile and (for M2) a model.
+// Each question can be preset with a flag (--mode/--profile/--model); anything omitted
+// is prompted for on `in`. Applying the plan (M1 deterministic / M2 model-driven) is a
+// later step.
 func setup(in io.Reader, w io.Writer, args []string) error {
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
 	fs.SetOutput(w)
@@ -36,28 +38,36 @@ func setup(in io.Reader, w io.Writer, args []string) error {
 		return err
 	}
 
-	h, ok := detectHarness(*dir)
-	if !ok {
-		if hasClaudeProjectFiles(*dir) {
-			return fmt.Errorf("this looks like a Claude Code project, but the `claude` CLI isn't on PATH — install Claude Code and re-run")
-		}
-		return fmt.Errorf("no supported agent harness found — v0 rides Claude Code; install the `claude` CLI and re-run (looked in %q)", *dir)
-	}
-	fmt.Fprintf(w, "detected harness: %s (%s)\n\n", h.Name, h.Detail)
-
 	sc := bufio.NewScanner(in)
+
+	// Mode first — it decides what the rest of setup even needs to detect.
+	mKey, err := ask(sc, w, "install mode", *modeKey, modeOptions(), "m1")
+	if err != nil {
+		return err
+	}
+	mode, _ := modeByKey(mKey)
+
+	// Detect only what the chosen mode needs: M2 drives a harness binary to rewrite
+	// the project; M1 is a deterministic file overlay and needs no binary (decision-0029).
+	var h Harness
+	if mode.Key == "m2" {
+		var ok bool
+		if h, ok = detectHarness(*dir); !ok {
+			if hasClaudeProjectFiles(*dir) {
+				return fmt.Errorf("mode m2 rewrites via the harness, but the `claude` CLI isn't on PATH — install Claude Code and re-run (or use --mode m1)")
+			}
+			return fmt.Errorf("mode m2 needs a harness to drive the rewrite — v0 rides Claude Code; install the `claude` CLI and re-run, or use --mode m1 (looked in %q)", *dir)
+		}
+		fmt.Fprintf(w, "detected harness: %s (%s)\n\n", h.Name, h.Detail)
+	} else {
+		fmt.Fprintf(w, "mode m1 → deterministic overlay of CLAUDE.md; no harness needed\n\n")
+	}
 
 	pKey, err := ask(sc, w, "profile", *profileKey, profileOptions(), "b")
 	if err != nil {
 		return err
 	}
 	profile, _ := profileByKey(pKey)
-
-	mKey, err := ask(sc, w, "install mode", *modeKey, modeOptions(), "m1")
-	if err != nil {
-		return err
-	}
-	mode, _ := modeByKey(mKey)
 
 	model, err := resolveModel(sc, w, *modelKey, mode)
 	if err != nil {
@@ -165,7 +175,11 @@ func ask(sc *bufio.Scanner, w io.Writer, label, preset string, opts []option, de
 
 func printPlan(w io.Writer, p Plan) {
 	fmt.Fprintln(w, "setup plan:")
-	fmt.Fprintf(w, "  harness: %s\n", p.Harness.Name)
+	if p.Harness.Name != "" {
+		fmt.Fprintf(w, "  harness: %s\n", p.Harness.Name)
+	} else {
+		fmt.Fprintf(w, "  target:  CLAUDE.md (deterministic overlay)\n")
+	}
 	fmt.Fprintf(w, "  profile: %s — %s\n", p.Profile.Name, p.Profile.Description)
 	fmt.Fprintf(w, "  mode:    %s — %s\n", p.Mode.Name, p.Mode.Description)
 	fmt.Fprintf(w, "  model:   %s\n", p.Model.Name)

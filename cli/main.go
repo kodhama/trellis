@@ -1,9 +1,9 @@
 // Command trellis is the setup CLI for the Trellis governance layer.
 //
-// It is *setup tooling, not a runtime* (decision-0010): you run it once to detect
-// your agent harness, pick an expression profile, and compose Trellis onto the
-// project; your agents then follow the resulting instructions with no dependency
-// on this binary. See specs/0003 §2b for the interactive flow.
+// It is *setup tooling, not a runtime* (decision-0010): you run it once to pick an
+// install mode, detect what that mode needs (a harness only for the M2 rewrite), pick
+// an expression profile, and compose Trellis onto the project; your agents then follow
+// the resulting instructions with no dependency on this binary. See specs/0003 §2b.
 package main
 
 import (
@@ -65,7 +65,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, `trellis — setup CLI for the Trellis governance layer
 
 usage:
-  trellis setup      interactive setup: detect harness, pick a profile, mode, and model
+  trellis setup      interactive setup: pick a mode, detect what it needs (harness for m2), a profile, a model
   trellis remove     undo setup in a project (removes the .trellis overlay)
   trellis uninstall  remove the trellis binary
   trellis version    print the version

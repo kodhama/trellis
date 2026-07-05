@@ -75,20 +75,27 @@ never sought). The profile's `C2` is exactly this detected readout, not a Trelli
 The advisor flow (§2) is driven by a **Go setup CLI** (single binary, `curl … | sh`, no package
 manager — `decision-0023`), run once. It is **setup tooling, not a runtime**. Its interactive flow:
 
-1. **Detect the harness.** The CLI detects the host's agent harness (v0: **Claude Code** — `.claude/` /
-   `CLAUDE.md` / the `claude` binary). *v0 assumes CLI harnesses; Claude-only.* If one **is** detected
-   there is **no choice to offer** (there is only one); if **none** is found, the CLI **exits with a
-   clear message** rather than guessing. Multiple/other harnesses → deferred, Claude favored.
-2. **Pick the expression profile** — the posture **A conductor · B author-adapt · seed · Custom**
-   (§2 step 1), which seeds a profile.
-3. **Pick the install mode:**
+1. **Pick the install mode first (`decision-0029`)** — the mode decides what the rest of setup even
+   needs to detect:
    - **M1 — alongside (overlay, default, v0):** Trellis installs *next to* the project's existing
-     instructions and is **called from them** — augment-never-clobber (`spec-0001` §5).
+     instructions and is **called from them** — augment-never-clobber (`spec-0001` §5). It is a
+     **deterministic file overlay and needs no harness binary**; requiring one to overlay was friction
+     we hit and removed (`decision-0029`).
    - **M2 — rewrite (morph, the v0-next stacked follow-up):** rewrite the project's own machinery to
      **bake in** the profile's invariants. **Always on a fresh git branch, opened as a PR for the
      maintainer** — never in place; if **no git repo** is detected, the CLI **hard-warns / refuses**.
-     Carries a **"keep embedded behaviors" dial** — does the rewrite *keep* the host's existing
-     behaviors or *replace* them with the profile's (default **keep**).
+     Carries a **"keep embedded behaviors" dial** — *keep* the host's existing behaviors or *replace*
+     them with the profile's (default **keep**).
+2. **Detect what the mode needs.**
+   - **M1** targets an **instruction file** (v0: `CLAUDE.md`; detecting/choosing among instruction
+     files — `AGENTS.md`, etc. — is a stacked follow-up). No binary; if there is nothing to attach to,
+     offer to create `CLAUDE.md`.
+   - **M2** detects the **harness binary** that drives the rewrite (v0: **Claude Code** — the `claude`
+     binary; `.claude/` / `CLAUDE.md` corroborate). *v0 assumes CLI harnesses; Claude-only.* If **none**
+     is found, the CLI **exits with a clear message** rather than guessing. Multiple/other harnesses →
+     deferred, Claude favored.
+3. **Pick the expression profile** — the posture **A conductor · B author-adapt · seed · Custom**
+   (§2 step 1), which seeds a profile. M2 also picks a reasoning **model** (M1 is deterministic — none).
 
 **Edge cases the build must handle:** an **existing `CLAUDE.md`** (M1 appends a Trellis section — never
 silent overwrite); **idempotent re-run** (no double-apply); **Custom** profile (edit-after, or
