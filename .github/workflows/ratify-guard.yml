@@ -1,0 +1,40 @@
+name: ratify-guard
+
+# decision-0022 / decision-0028: merge = ratification, so the draft→ratified flip must
+# ride the PR — a decision/spec must not land on main still `draft`. This fails a
+# *ready* PR that introduces or touches a `status: draft` decision or spec. Draft PRs
+# are exempt: marking a PR as draft is the sanctioned "keep it clearly WIP" escape.
+#
+# It checks only the files the PR touches (not pre-existing drafts elsewhere), so it
+# catches the drift at the point it's introduced without failing on unrelated state.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+jobs:
+  ratify-guard:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail on a draft decision/spec in a ready PR
+        run: |
+          set -eu
+          git fetch origin "${{ github.base_ref }}" --quiet
+          changed="$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- 'decisions/*.md' 'specs/*.md' || true)"
+          bad=""
+          for f in $changed; do
+            [ -f "$f" ] || continue   # deleted in the PR
+            if grep -q '^status: draft$' "$f"; then bad="$bad $f"; fi
+          done
+          if [ -n "$bad" ]; then
+            echo "::error::This PR is ready to merge but touches decisions/specs still marked 'status: draft'."
+            echo "merge=ratify (decision-0022): flip them to 'ratified' in this PR, or convert the PR to a draft to keep them WIP."
+            for f in $bad; do echo "  · $f"; done
+            exit 1
+          fi
+          echo "ok — no un-ratified decision/spec introduced by this ready PR"
