@@ -22,14 +22,17 @@ an **overlay** — a `.trellis/` bundle (your profile + the full invariant refer
 
 ## What it bundles
 
-- **`skills/setup`** — the `/trellis:setup` skill (the overlay install, done natively).
+- **`skills/setup`** — `/trellis:setup`: install the overlay (done natively, no binary).
+- **`skills/remove`** — `/trellis:remove`: cleanly reverse it (delete `.trellis/`, strip the `CLAUDE.md`
+  block, touch nothing else).
 - **`reference/invariants.md`** — the full signature catalog: every invariant with its *why* and a
   with/without example.
 
 ## Removing it
 
-Delete the `.trellis/` folder and the `<!-- trellis:begin … -->` block from `CLAUDE.md`. (If you also
-use the [Trellis CLI](https://github.com/gundisalwa/trellis), `trellis remove` does exactly that.)
+Run `/trellis:remove` — it deletes `.trellis/` and strips the managed `CLAUDE.md` block, leaving your
+own content intact. (The [Trellis CLI](https://github.com/gundisalwa/trellis)'s `trellis remove` does
+the same, and additionally handles the git rollback for an M2 morph.)
 
 ## Plugin vs CLI
 
