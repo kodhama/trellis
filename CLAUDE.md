@@ -57,14 +57,12 @@ rule you can't exemplify is probably vaporware.*
   same change. A source names its derivatives (so you see them at the edit), and a check
   guards each pair. If you edit something and can't name what derives from it, that's the
   question to ask. (This is B1 made salient: the graph, pointed forward.)
-- **Loud failure.** If a required tool, source, or verification is missing, stop *loudly*.
-  Never emit plausible-but-unverified output.
-- **Epistemic integrity (no sycophancy).** Assessments track the evidence, not the
-  maintainer's preferences: push back plainly when analysis warrants, affirm only when the
-  data genuinely supports it (and then say so — withholding real positive signal is also a
-  distortion), and never perform disagreement to look rigorous. Surface risks, counter-
-  arguments, and improvements to proposals by default. This is the *intent face* of
-  independent judgment (invariant B3); it is what makes the intent gate (D2) real.
+> The invariants this section used to restate — **transparency** (surface everything; fail loudly;
+> never emit plausible-but-unverified output) and **independent judgment** (no sycophancy; the builder
+> doesn't grade itself) — now arrive via the **Trellis overlay imported below** (`.trellis/`), not
+> hand-written here. This section is the project's *method* for holding the invariants, not a copy of
+> them (`decision-0035`). If a behavior below reads like a bare invariant, it belongs in the overlay,
+> not here.
 
 ## Naming guardrail (research discipline, applied to ourselves)
 
