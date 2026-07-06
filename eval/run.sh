@@ -33,6 +33,8 @@ scaffold() {  # $1 = target dir. Non-interactive per research-0011.
       mkdir -p "$1" && (cd "$1" && npx --yes cc-sdd@latest --claude-skills) ;;
     bmad) need npx "install node/npx for BMAD"
       mkdir -p "$1" && (cd "$1" && npx --yes bmad-method install --yes --tools claude-code --modules bmm) ;;
+    spec-kit-lite)  # Spec Kit's rules as a plain AGENTS.md — no CLI, works with subagent workers
+      mkdir -p "$1" && cp "$ROOT/eval/fixtures/spec-kit-lite.md" "$1/AGENTS.md" ;;
     # spec-swarm is intentionally absent — it installs only as an interactive Claude Code plugin
     # (research-0011), so it can't be scaffolded headlessly here.
     *) echo "FATAL: unknown FRAMEWORK '$FRAMEWORK' (spec-swarm is not scriptable — see research-0011)" >&2; exit 1 ;;
@@ -41,7 +43,7 @@ scaffold() {  # $1 = target dir. Non-interactive per research-0011.
 
 score() {  # $1 arm  $2 idx  $3 transcript  — one reviewer per rubric (extend to a panel via REPEATS)
   local arm="$1" i="$2" transcript="$3" base="$4"
-  for rubric in invariants "$FRAMEWORK"; do
+  for rubric in invariants "${FRAMEWORK%-lite}"; do
     local card="$ROOT/eval/scorecards/$rubric.md"
     [ -f "$card" ] || continue
     local rp; rp="$(mktemp)"
@@ -55,8 +57,14 @@ score() {  # $1 arm  $2 idx  $3 transcript  — one reviewer per rubric (extend 
 run_arm() {  # $1 arm (baseline|trellis)  $2 idx
   local arm="$1" i="$2" dir; dir="$(mktemp -d)"
   scaffold "$dir"
+  # seed the project-under-test this task needs (falls back to the shared base app)
+  local fix="$ROOT/eval/fixtures/$(basename "$TASK" .md)"
+  [ -d "$fix" ] || fix="$ROOT/eval/fixtures/sample-app"
+  cp -R "$fix"/. "$dir"/
+  # +Trellis arm only: apply the overlay, inlined into AGENTS.md so both subagent and claude -p
+  # workers see the directives (an @import wouldn't resolve for a bare subagent worker).
   [ "$arm" = "trellis" ] && (cd "$ROOT/cli" && go run . setup --dir "$dir" \
-      --profile a --mode m1 --target CLAUDE.md --apply) >/dev/null
+      --profile a --mode m1 --target AGENTS.md --apply) >/dev/null
   local base="$OUTDIR/$FRAMEWORK/$(basename "$TASK" .md)/$arm-$i"
   mkdir -p "$(dirname "$base")"
   local wp; wp="$(mktemp)"

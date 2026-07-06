@@ -43,9 +43,18 @@ Pluggable via env; defaults to Spec Kit + headless Claude. Needs the framework's
 (`uv` for Spec Kit, `npx` for BMAD) and a worker/reviewer agent (`claude`).
 
 ```sh
+# one (framework, task) cell:
 FRAMEWORK=spec-kit TASK=eval/tasks/01-ambiguous-feature.md REPEATS=3 ./eval/run.sh
+
+# the whole suite, one framework:
+for t in eval/tasks/*.md; do FRAMEWORK=spec-kit TASK="$t" REPEATS=3 ./eval/run.sh; done
 python3 eval/aggregate.py runs/           # Δ across the recorded runs
 ```
+
+Each run **auto-seeds the task's project-under-test** from `fixtures/` (see `fixtures/README.md`); both
+arms get the same fixture, so the only difference is the overlay. Use `FRAMEWORK=spec-kit-lite` for the
+no-CLI path (Spec Kit's rules as a plain `AGENTS.md`) — the fidelity ceiling for a bare subagent worker;
+full skill-driven fidelity needs a real scaffold + a `claude -p` worker.
 
 ## Honest limits (see `research-0011` open questions)
 
