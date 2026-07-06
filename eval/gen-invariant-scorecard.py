@@ -11,7 +11,8 @@ import pathlib
 root = pathlib.Path(__file__).resolve().parent.parent
 cat = (root / "core/catalog/signature-catalog-v1.md").read_text()
 
-entries = re.split(r"\n- \*\*`([a-z][a-z-]*)`\*\* \((\w+)\)", cat)
+# Entry headings are slug-only — the display codes are retired (decision-0038).
+entries = re.split(r"\n- \*\*`([a-z][a-z-]*)`\*\*", cat)
 out = [
     "# Invariant scorecard (auto-derived from the signature catalog)",
     "",
@@ -34,16 +35,20 @@ def violated(body):
 
 
 n = 0
-for i in range(1, len(entries), 3):
-    slug, code, body = entries[i], entries[i + 1], entries[i + 2]
+for i in range(1, len(entries), 2):
+    slug, body = entries[i], entries[i + 1]
     if "- directive:" not in body:
         continue
     n += 1
-    out += [f"## {code} · {slug}",
+    out += [f"## {slug}",
             f"- **rule:** {field(body, 'directive')}",
             "- **✗ look for:**"]
     out += [f"  - {v}" for v in violated(body)]
     out.append("")
+
+if n == 0:
+    sys.exit("FATAL: parsed 0 invariants from the catalog — did its heading format change? "
+             "Never write an empty scorecard silently (floor-transparency).")
 
 (root / "eval/scorecards/invariants.md").write_text("\n".join(out))
 print(f"regenerated eval/scorecards/invariants.md for {n} invariants", file=sys.stderr)
