@@ -103,10 +103,18 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 
 ## How we work
 
-We build Trellis with Trellis. Every non-code artifact carries frontmatter and a lifecycle
-(`draft → ratified`); decisions are append-only; **intent is human-gated and execution is
-independently verified** (the builder never grades itself); friction we hit becomes product research
-rather than something to route around. See [`CLAUDE.md`](CLAUDE.md).
+**This repo has two jobs, kept separate by the install boundary (`decision-0035`):** it *produces*
+Trellis — the invariants, catalog, CLI, and plugin, in `core/` — **and it is itself a Trellis-governed
+project**, installing Trellis through the official path (`trellis setup`) to govern its own work. So the
+invariants land in `.trellis/` via the same overlay any user gets (not hand-copied), and `CLAUDE.md`
+holds only the project's own *method* (the how). That's self-application, not self-reference — a compiler
+built, then run on itself. A CI guard keeps the committed overlay identical to what the product produces,
+so it can't drift.
+
+Every non-code artifact carries frontmatter and a lifecycle (`draft → ratified`); decisions are
+append-only; **intent is human-gated and execution is independently verified** (the builder never grades
+itself); friction we hit becomes product research rather than something to route around. See
+[`CLAUDE.md`](CLAUDE.md).
 
 ## License
 

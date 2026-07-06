@@ -95,3 +95,8 @@ only once the set's durability is proven across multiple instances.
   chosen to validate by dogfooding our own project first (decision `0001`)?
 - What is the smallest enforcement that makes "downstream consumes only ratified" real
   here — convention, a check, or a gate sub-agent? (Resolve when the spine is built.)
+
+<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->
+This project follows **Trellis** — working rules you are expected to follow while you work here. They are imported below:
+@.trellis/trellis.md
+<!-- trellis:end -->
