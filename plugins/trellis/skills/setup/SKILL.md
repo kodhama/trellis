@@ -30,6 +30,11 @@ Ask which posture fits; default to **B · author-adapt** if the user is unsure.
   concise rule** — its one-line description taken from the `what:` field of that invariant in
   `${CLAUDE_PLUGIN_ROOT}/reference/invariants.md`. The agent must always see what each active invariant
   *requires*, not just its name.
+- **`.trellis/version`** — the staleness stamp (`decision-0035`/`decision-0039`): one line naming
+  what generated this overlay. Run `git -C "${CLAUDE_PLUGIN_ROOT}" rev-parse --short HEAD` and write
+  `plugin@<sha>` (plugin versions are commit SHAs, `decision-0036`). If that fails (not a git
+  checkout), write `plugin@unknown` — an honest stamp beats none; an unstamped overlay is invisible
+  to every staleness check (`trellis status` and any future update surface).
 - **`.trellis/trellis.md`** — the header the project's agents read. It must contain, in this order:
   1. a one-line intro (this project is governed by Trellis);
   2. **the key behavior**, verbatim in spirit: *"Surface any human-gated handover performed without
@@ -57,6 +62,6 @@ If a `trellis:begin … trellis:end` block already exists, **replace only what i
 
 ## 4. Confirm
 
-Tell the user exactly what you wrote (`.trellis/{trellis,profile,invariants}.md` and the `CLAUDE.md`
-import block), and that they can remove it any time by deleting `.trellis/` and the block — or with
-`trellis remove` if they have the CLI. Do **not** attempt a morph (M2) here; that is the CLI's job.
+Tell the user exactly what you wrote (`.trellis/{trellis,profile,invariants}.md`, the
+`.trellis/version` stamp, and the `CLAUDE.md` import block), and that they can remove it any time by
+deleting `.trellis/` and the block — or with `trellis remove` if they have the CLI. Do **not** attempt a morph (M2) here; that is the CLI's job.
