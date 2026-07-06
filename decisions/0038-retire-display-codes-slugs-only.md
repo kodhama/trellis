@@ -46,7 +46,14 @@ Slugs carry their meaning in their name (`inv-independent-judgment` needs no reg
   copies (`cli/assets/`, `plugins/trellis/reference/`, `.trellis/invariants.md`),
   `docs/invariants.html` (card badges now show slugs; group letters dropped),
   `core/lexicon.md`, `profiles/trellis-self.md`, `README.md`, `CLAUDE.md`, the plugin setup
-  skill, `core/rubrics/artifact-contract.md`, and the `conformance-reviewer` agent.
+  skill, `core/rubrics/artifact-contract.md`, the `conformance-reviewer` agent, and the
+  **eval invariant scorecard** — `eval/scorecards/invariants.md` is a *derived resource of the
+  catalog* (`decision-0028`), so it migrates like the other derivatives: its generator
+  (`eval/gen-invariant-scorecard.py`) parsed entries *by the retired codes* and now parses
+  slug-only headings, emitting `## <slug>` sections (and failing loudly on a zero-entry parse
+  instead of writing an empty scorecard). *Honest note: the first push of this change
+  misclassified the scorecard as exempt; the `decision-0028` sync guard (`eval-scorecard-sync`)
+  went red and caught it — the derived-resource check doing exactly its job.*
 - **Named residuals (deliberate, not oversights):**
   - **`spec-0001`–`spec-0004` and the research notes** still carry codes in ratified prose —
     grandfathered by `decision-0013`, resolvable via the legacy map; migrate **opportunistically
@@ -55,8 +62,10 @@ Slugs carry their meaning in their name (`inv-independent-judgment` needs no reg
   - **Schema field names** `C1`/`C2`/`default_C1`/`default_C2` (`spec-0002` §1–2, the catalog
     entries, profile columns) are **identifiers, not display** — renaming them is a spec-0002
     schema amendment with a conformance-check cascade; see Open questions.
-  - **Go-internal names/comments** (`C1Lean` etc.) and the eval scorecards are
-    developer-internal; exempt.
+  - **Go-internal names/comments** (`C1Lean` etc.) are developer-internal; exempt. Past
+    **eval run outputs** (`eval/runs/`) are historical records of already-scored runs; exempt
+    like decisions. *(The live eval scorecard is NOT exempt — it is a derived resource and was
+    swept; see above.)*
 - The retired codes stay **frozen** — never reassigned to future invariants, so the legacy
   map can never become ambiguous.
 
