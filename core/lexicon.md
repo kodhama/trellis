@@ -24,12 +24,13 @@ ratified: 2026-07-03
 >   catalog = genome annotation) — how the machinery is *conveyed* (gene expression reads easier than
 >   "invariant"); promoted from "internal only" (`research-0008`);
 > - **invariant** = the precise substrate — **canonical for what is enforced.**
-> **Caveat:** gene does *not* go fully canonical — the analogy breaks at D2 (`research-0005` §Limits:
+> **Caveat:** gene does *not* go fully canonical — the analogy breaks at `floor-intent-gate`
+> (`research-0005` §Limits:
 > "no intent locus in a genome"), and the naming guardrail (`brief-§4`) forbids borrowing its authority;
 > gene-talk stays *our-synthesis teaching metaphor*, never a provenance claim. Research notes keep their
 > lens vocabulary; current-truth/product artifacts use the **canonical** column and link here.
 
-> **Ratified 2026-07-03 (D2).** The maintainer confirmed the three-register model and the delivery
+> **Ratified 2026-07-03 (`floor-intent-gate`).** The maintainer confirmed the three-register model and the delivery
 > dial names (`supervisor` / `advisor`); the `consultant → advisor` sweep is done.
 
 ## Canonical terms
@@ -40,11 +41,11 @@ ratified: 2026-07-03
 | **invariant** | gene | (a legal-behavior constraint) | — | one rule, by stable slug · `invariants-v1` |
 | **active** (expressed) | gene expression / expressed | enabled event | active | an invariant enforced in a given instance · `signature-catalog-v1`, profiles |
 | **latent** | latent / inert gene | (disabled event) | latent payload | present but not active here · `research-0007` |
-| **expression profile** | expression profile | control map / control policy | the profile | the per-instance readout (which invariants active × C1 × C2 × delivery) · `spec-0002` |
+| **expression profile** | expression profile | control map / control policy | the profile | the per-instance readout (which invariants active × strength × gatekeeper × delivery) · `spec-0002` |
 | **signature catalog** | genome annotation | — | — | the product-level dictionary of each invariant's "tells" · `signature-catalog-v1` |
-| **enforcement strength (C1)** | (expression level) | (policy parameter) | activation level | how strictly a gate is enforced: expressed → default-on-but-skippable → enforced · `decision-0008` |
-| **gatekeeper (C2)** | — | modular / decentralized supervisor | — | who applies a gate: independent-agent · human · none · `decision-0008` |
-| **floors (D1, D2)** | — | uncontrollable-event routing (D2) | — | the non-configurable minimums: transparency (D1), intent gate (D2) · `invariants-v1` |
+| **enforcement strength** (`dial-enforcement-strength`) | (expression level) | (policy parameter) | activation level | how strictly a gate is enforced: expressed → default-on-but-skippable → enforced · `decision-0008` |
+| **gatekeeper** (`dial-gatekeeper`) | — | modular / decentralized supervisor | — | who applies a gate: independent-agent · human · none · `decision-0008` |
+| **floors** (`floor-transparency`, `floor-intent-gate`) | — | uncontrollable-event routing (the intent-gate floor) | — | the non-configurable minimums: transparency, the intent gate · `invariants-v1` |
 | **supervisor** | (regulator) | supervisor *S* | supervisor (live/push end) | Trellis in its constraining role — enables/blocks the next steps · `research-0006` |
 | **host** | organism | plant *G* | host | the project Trellis supervises · `research-0006` |
 | **observer** | — | observer / state estimator | — | the estimate of project state a bounded-context op acts on = the `depends_on` graph · `research-0006` |

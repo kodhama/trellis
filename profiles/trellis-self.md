@@ -11,7 +11,7 @@ ratified: 2026-07-04
 # Expression profile — Trellis-self (the self-hosting instance)
 
 > **Ratified via merge (`decision-0022`).** This is an **assessment** the agent produced; the
-> maintainer's **merge of this PR is the ratification** (D2) — the producer proposes, the merge accepts.
+> maintainer's **merge of this PR is the ratification** (`floor-intent-gate`) — the producer proposes, the merge accepts.
 > It is the **first worked instance** of the
 > `expression-profile` schema (`spec-0002`), authored by hand (Assess does not exist yet, cluster 1).
 
@@ -35,7 +35,7 @@ ratified: 2026-07-04
 ## Profile
 
 *All 14 assessable genes are active and honored natively — unsurprising for the reference organism
-(see the discount above; `inv-reference-relationship` collapsed into D1, `decision-0021`). Each
+(see the discount above; `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`). Each
 `evidence` points at a real artifact in this repo.*
 
 | slug | active | C1 | C2 | basis | confidence | evidence |
@@ -49,13 +49,14 @@ ratified: 2026-07-04
 | `inv-independent-judgment` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | `conformance-reviewer` is read-only + distinct from producer; ran independently this session |
 | `inv-auditable-archive` | true | enforced | independent-agent | honored-implicitly | verified | `decisions/` append-only; `decision-0014` splits current-truth from change-history |
 | `inv-bounded-context` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | sub-agents scoped to declared inputs (conformance-reviewer corpus; narrow tool sets) |
-| `inv-self-improvement` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0018` restored it after friction (the B6→B1 merge lost "evolve"); the conformance check caught *this row's own absence* and it was added in the same change |
+| `inv-self-improvement` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0018` restored it after friction (the merge into `inv-graph-maintenance` lost "evolve"); the conformance check caught *this row's own absence* and it was added in the same change |
 | `inv-minimal-first` | true | expressed | human | honored-implicitly | verified | `CLAUDE.md`: "a deliberately tiny instance of the seed operating method" |
 | `inv-clarify-before-commit` | true | default-on-but-skippable | human | honored-implicitly | verified | `## Open questions` in every artifact; the delivery-axis + dial-coverage frictions were surfaced, not guessed |
 | `floor-transparency` | true | enforced | human | honored-implicitly | verified | `CLAUDE.md` "Loud failure"; this session surfaced the merge conflict + catalog friction rather than papering over |
 | `floor-intent-gate` | true | enforced | human | honored-implicitly | verified | `CLAUDE.md` "Gates: Human approval at the intent layer"; this profile is ratified by the maintainer's merge — the intent gate, exercised (`decision-0022`) |
 
-*(The two C dials are not rows here — they are the `C1`/`C2` columns above. Catalog excludes them by
+*(The two dials are not rows here — they are the `C1`/`C2` columns above (the schema field names,
+`spec-0002`). Catalog excludes them by
 design, `signature-catalog-v1`.)*
 
 ## Assessment notes
@@ -78,7 +79,7 @@ design, `signature-catalog-v1`.)*
 
 - **Is self-hosting `M2-morph` or a category of its own?** The host = the product, so overlay-vs-morph
   may not apply cleanly to the reference instance. Revisit when a real external `M1` profile exists.
-- **Do any genes deserve `C1: enforced` that are only `default-on-but-skippable` here** (B2, B3, B5)?
+- **Do any genes deserve `C1: enforced` that are only `default-on-but-skippable` here** (`inv-gate-at-handover`, `inv-independent-judgment`, `inv-bounded-context`)?
   This instance runs them near-strict; a lighter instance would dial down — which is the point of the
   profile. The right defaults are the catalog's open question, not this profile's.
 - **When Assess is built (cluster 1), does it reproduce this hand-authored profile** from the same

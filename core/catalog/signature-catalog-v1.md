@@ -9,7 +9,7 @@ ratified: 2026-07-04
 ---
 
 > **Ratified via merge (`decision-0022`).** The agent authored this; the maintainer's **merge of this
-> PR is the ratification** (D2) — the `draft → ratified` flip rides the reviewed diff. Coverage is
+> PR is the ratification** (`floor-intent-gate`) — the `draft → ratified` flip rides the reviewed diff. Coverage is
 > independently checked (AC1); the `signature` / `why` / example / dial calls embody judgment the
 > maintainer accepts by merging.
 
@@ -25,10 +25,10 @@ ratified: 2026-07-04
 > claim on the page without a rule behind it (`decision-0020`). Consumed by Assess (#23) and tutoring
 > (#27). `trellis-product` scope — one, shipped.
 
-> **Coverage (spec-0002 §1, AC1).** Covers the **14 assessable invariants** — A structural, B operating
-> (incl. **B6 `inv-self-improvement`**, `decision-0018`), D floors. `inv-reference-relationship` (B8)
-> was **collapsed into D1 + the adopt/adapt dial** (`decision-0021`) — its "divergence from a framework"
-> case lives in D1's example below. Excludes the two C dials (they are the *axes* entries are set
+> **Coverage (spec-0002 §1, AC1).** Covers the **14 assessable invariants** — the structural set, the
+> operating set (incl. **`inv-self-improvement`**, `decision-0018`), the floors. `inv-reference-relationship`
+> was **collapsed into `floor-transparency` + the adopt/adapt dial** (`decision-0021`) — its "divergence from a framework"
+> case lives in `floor-transparency`'s example below. Excludes the two dials (they are the *axes* entries are set
 > along, not rows).
 
 > **On `mechanizable`.** `true` marks the SCT-computable fragment — structurally checkable. `false`
@@ -44,9 +44,9 @@ ratified: 2026-07-04
 
 ## Entries
 
-### A — structural (admission gate) · class `methodology`
+### Structural — the admission gate · class `methodology`
 
-- **`inv-directional-flow`** (A1)
+- **`inv-directional-flow`**
   - what: one-way stages of decreasing ambiguity (research → decisions → contracts → implementation
     → validation); downstream never consumes a draft.
   - directive: Build only on settled ground — an approved spec or a made decision, never a draft that's still changing under you. If your input isn't settled, or you can't tell whether it is, ask before you build on it.
@@ -64,12 +64,12 @@ ratified: 2026-07-04
   - class: `methodology`  ·  mechanizable: `true`  ·  intent_locus: `false`
   - default_C1: `enforced`  ·  default_C2: `independent-agent`
 
-- **`inv-handover-points`** (A2)
+- **`inv-handover-points`**
   - what: defined transitions between stages, each a place a gate *can* attach.
   - directive: Work in reviewable steps with clear stopping points — a plan, a spec, a PR — not one unbroken stream. Leave seams where the work can be paused and checked.
   - why: development moves in **discrete** steps with boundaries, not one fluid blur — the seams are
-    where work can be stopped, inspected, and handed on. (A1 is *which way* work moves; this is *that
-    it moves in steps*.)
+    where work can be stopped, inspected, and handed on. (Directional flow is *which way* work moves;
+    this is *that it moves in steps*.)
   - signature: named handoffs (PR boundaries, stage transitions, review checkpoints), each with a
     before/after artifact.
   - honored:
@@ -81,7 +81,7 @@ ratified: 2026-07-04
   - class: `methodology`  ·  mechanizable: `true`  ·  intent_locus: `false`
   - default_C1: `enforced`  ·  default_C2: `independent-agent`
 
-- **`inv-intent-locus`** (A3)
+- **`inv-intent-locus`**
   - what: humans own intent/values *somewhere identifiable* — a process with no human intent locus is
     not targetable for accountable development.
   - directive: Make sure a human owns the goal of what you're doing. Don't chase a proxy metric or ship something no human has confirmed is the right thing to build.
@@ -96,9 +96,9 @@ ratified: 2026-07-04
     - *(research)* a research direction runs with no human sponsor and drifts somewhere no one intended.
   - class: `methodology`  ·  mechanizable: `false` (an `owner` field is checkable; *that it is a
     genuine intent locus* is judgment)  ·  **intent_locus: `true`**
-  - default_C1: `enforced`  ·  default_C2: `human` (never `none` — D2)
+  - default_C1: `enforced`  ·  default_C2: `human` (never `none` — `floor-intent-gate`)
 
-- **`inv-ratifiable-artifacts`** (A4)
+- **`inv-ratifiable-artifacts`**
   - what: upstream can reach an **approved** state downstream consumes; outputs are **checkable
     against** it.
   - directive: Build against a fixed, approved target with a clear pass/fail for "done" — not a vague or moving one. If there's no agreed definition of done, get one first.
@@ -115,9 +115,9 @@ ratified: 2026-07-04
   - class: `methodology`  ·  mechanizable: `true`  ·  intent_locus: `false`
   - default_C1: `enforced`  ·  default_C2: `independent-agent`
 
-### B — operating (what Trellis supplies) · class `trellis-design`
+### Operating — what Trellis supplies · class `trellis-design`
 
-- **`inv-graph-maintenance`** (B1) *(neighbor of B6; shares `inv-prune-bias`)*
+- **`inv-graph-maintenance`** *(neighbor of `inv-self-improvement`; shares `inv-prune-bias`)*
   - what: the dependency graph of artifacts **and rules** kept consistent and minimal, information
     flowing one way; trigger-driven; append-only records superseded, never edited-in-substance.
   - directive: When you change something, update everything that depends on it — and if you can't tell what depends on it, say so rather than assume nothing does. If you find a past decision is wrong or missing, fix the decision — don't just patch around it.
@@ -140,7 +140,7 @@ ratified: 2026-07-04
     judgment)  ·  intent_locus: `false`
   - default_C1: `enforced`  ·  default_C2: `independent-agent`
 
-- **`inv-self-improvement`** (B6) *(restored first-class, `decision-0018`; neighbor of B1)*
+- **`inv-self-improvement`** *(restored first-class, `decision-0018`; neighbor of `inv-graph-maintenance`)*
   - what: the process learns from friction and gets better — improvement signals are surfaced and
     acted on, deliberately, so a glitch does not happen twice.
   - directive: When something breaks or causes friction, fix the root cause so it can't happen twice — don't just re-run it and move on.
@@ -159,8 +159,8 @@ ratified: 2026-07-04
     declared channel; the proactive-notice disposition is not)  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
 
-- **`inv-gate-at-handover`** (B2)
-  - what: apply the verification gate at every A2 handover; any skip is **surfaced** (D1).
+- **`inv-gate-at-handover`**
+  - what: apply the verification gate at every handover point; any skip is **surfaced** (`floor-transparency`).
   - directive: Don't skip the review or verification step before handing work on. If you have to skip it, say so out loud — never let it silently not happen.
   - why: the review **actually fires** (not quietly skipped under deadline) — and if it is skipped,
     you can *see* it was.
@@ -175,7 +175,7 @@ ratified: 2026-07-04
   - class: `trellis-design`  ·  mechanizable: `true`  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `independent-agent`
 
-- **`inv-independent-judgment`** (B3) *(two faces: conformance + intent)*
+- **`inv-independent-judgment`** *(two faces: conformance + intent)*
   - what: the assessor is independent of what it assesses — the builder does not grade itself
     (conformance face); the agent does not flatter the human (intent face).
   - directive: Don't rule your own work correct — tell the human an independent review is needed and let someone (or something) other than the author check it. And don't just agree to please the human; say what you actually think, problems included.
@@ -195,7 +195,7 @@ ratified: 2026-07-04
     checkable)  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `independent-agent`
 
-- **`inv-auditable-archive`** (B4)
+- **`inv-auditable-archive`**
   - what: provenance + immutable decision history + consolidated current-truth.
   - directive: Record why decisions are made and keep that history — don't edit past decisions in place and lose the reasoning. "Why is it this way?" should be answerable later.
   - why: you can always answer **"why is it this way?"** — decisions are not lost or quietly rewritten.
@@ -213,7 +213,7 @@ ratified: 2026-07-04
     intent_locus: `false`
   - default_C1: `enforced`  ·  default_C2: `independent-agent`
 
-- **`inv-bounded-context`** (B5)
+- **`inv-bounded-context`**
   - what: each operation reads only its declared inputs, never the whole archive.
   - directive: Pull in only the inputs the task actually needs — don't dump the whole codebase into context. If you're unsure what's relevant, ask rather than grabbing everything.
   - why: agents decide on **sharp, relevant context** instead of drowning in everything — better calls,
@@ -230,7 +230,7 @@ ratified: 2026-07-04
     ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `independent-agent`
 
-- **`inv-minimal-first`** (B7)
+- **`inv-minimal-first`**
   - what: the smallest process that works; add a step only when friction reveals the boundary; bias to
     retire over add.
   - directive: Prefer the smallest thing that works. Don't add process, tooling, or abstraction until it's clearly needed — lean toward removing over adding.
@@ -246,7 +246,7 @@ ratified: 2026-07-04
   - class: `trellis-design`  ·  mechanizable: `false` (a disposition)  ·  intent_locus: `false`
   - default_C1: `expressed`  ·  default_C2: `human`
 
-- **`inv-clarify-before-commit`** (B9)
+- **`inv-clarify-before-commit`**
   - what: ambiguity in an upstream is actively surfaced and resolved (usually by asking the human)
     before downstream consumes it; never silently guessed.
   - directive: If a requirement, spec, or input is ambiguous, ask before you build — don't quietly pick one reading and risk building the wrong thing.
@@ -263,9 +263,9 @@ ratified: 2026-07-04
   - class: `trellis-design`  ·  mechanizable: `false` (behavioral gene)  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
 
-### D — floors (never configurable to "off") · class `floor`
+### Floors — never configurable to "off" · class `floor`
 
-- **`floor-transparency`** (D1) *(absorbs the framework-divergence case from retired B8, `decision-0021`)*
+- **`floor-transparency`** *(absorbs the framework-divergence case from retired `inv-reference-relationship`, `decision-0021`)*
   - what: every consequential choice is **surfaced** — a skipped gate, a missing capability, a degraded
     result, a relaxed setting, a divergence from a framework you claim to follow; a failed verification
     is escalated visibly, never silently abandoned. **Drift is allowed, but never silent.**
@@ -286,8 +286,8 @@ ratified: 2026-07-04
     `false`
   - default_C1: `enforced` (**floor — non-configurable to off**)  ·  default_C2: `human`
 
-- **`floor-intent-gate`** (D2)
-  - what: the intent gate never fully opens — at the intent locus (A3), `C2` can never be `none`; a
+- **`floor-intent-gate`**
+  - what: the intent gate never fully opens — at the intent locus (`inv-intent-locus`), `C2` can never be `none`; a
     human (or, by ratchet, a human-authorized independent check) is mandatory. The one place an
     upstream that is itself *wrong* gets caught.
   - directive: Never finalize, ship, or merge something a human is meant to approve without that approval. When you reach such a point, stop and get sign-off. Unsure whether a human must approve? Assume yes.
@@ -307,14 +307,14 @@ ratified: 2026-07-04
 
 ## Acceptance criteria
 
-- Covers all **14 assessable** slugs (A1–A4, B1–B7, B9, D1–D2 — B8 collapsed into D1, `decision-0021`);
-  the two C dials are excluded by design.
+- Covers all **14 assessable** slugs (the four structural, the eight remaining operating, the two floors — `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`);
+  the two dials are excluded by design.
 - Every entry carries `what` · **`directive`** · **`why`** · `signature` · **`honored`** · **`violated`** · `class` ·
   `mechanizable` · `default_C1` · `default_C2` (+ `intent_locus` where `true`), and `honored`/`violated`
   are **≥2 matched pairs** — `violated[i]` and `honored[i]` share a use case (same layer tag, same
   order), forming one *without → with* pair (`decision-0027`). A missing `why` / `honored` / `violated`,
   fewer than 2, or an unaligned pair is a conformance failure (`decision-0020` meta-rule).
-- Every `default_C2` on an `intent_locus: true` entry is **not** `none` (D2).
+- Every `default_C2` on an `intent_locus: true` entry is **not** `none` (`floor-intent-gate`).
 - Each `signature` is concrete enough for Assess to point at a real project tell; each pair reads as
   the *same situation broken then fixed* a newcomer would recognize, and the pairs span layers
   (CI / spec / research / code / ops …) so the invariant reads as general (the benefits page renders
@@ -324,12 +324,12 @@ ratified: 2026-07-04
 
 - **Structured signatures.** Signatures are prose; Assess may need them split into *mechanizable tells*
   (checkable) vs *judgment tells* (read-and-decide). Owed to the Assess build (cluster 1).
-- **A-invariant default dials.** A1–A4 are admission properties checked at *ingestion*, not per-gate;
-  expressing their strength as C1/C2 is a slight stretch. Fold in when the ingestion check
+- **Structural-invariant default dials.** The four structural invariants are admission properties checked at *ingestion*, not per-gate;
+  expressing their strength as per-gate dials is a slight stretch. Fold in when the ingestion check
   (`decision-0003`) is built.
 - **`why` audience.** One line serving agents-first *and* humans; revisit if the two registers pull
   apart.
-- **`mechanizable` breadth (a D2 judgment call).** This catalog marks `inv-handover-points` (A2) and
-  `inv-auditable-archive` (B4) `mechanizable: true` — *broader* than `spec-0002` §1's illustrative
+- **`mechanizable` breadth (an intent-gate judgment call).** This catalog marks `inv-handover-points` and
+  `inv-auditable-archive` `mechanizable: true` — *broader* than `spec-0002` §1's illustrative
   fragment. The call: *presence* of handover points / an append-only archive is structurally
   detectable. Flagged, not silently conformed.

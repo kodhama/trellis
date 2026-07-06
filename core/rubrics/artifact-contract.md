@@ -36,7 +36,7 @@ scope: trellis-product
 4. **`depends_on` resolves.** Each entry is an existing artifact `id`, a declared external-ref
    prefix (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
    registry (mapping to a successor). *FAIL → name the dangling reference.*
-5. **Directional flow (load-bearing, A1/B1).** No `ratified` artifact `depends_on` a `draft`
+5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** No `ratified` artifact `depends_on` a `draft`
    artifact. *FAIL → name the ratified→draft edge.*
 6. **Required body sections per type** (`spec-0001` §4, `spec-0002` §4): `spec`/`invariant-set` →
    Acceptance criteria + Open questions; `decision` → Context/Decision/Consequences;
@@ -44,7 +44,7 @@ scope: trellis-product
    criteria + Open questions; `expression-profile` → Delivery + Profile + Assessment notes +
    Open questions; `lexicon` → Canonical terms + Open questions; `feedback` → exempt. *FAIL → name the missing section.*
 7. **Supersede integrity.** A `superseded` artifact carries `superseded_by`; **revise-in-place**
-   docs (specs, invariants, research, rubrics) re-point to the successor. *Exemption (B4): an
+   docs (specs, invariants, research, rubrics) re-point to the successor. *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.* *FAIL → name the offender.*
@@ -54,26 +54,26 @@ scope: trellis-product
 *Apply only when a `signature-catalog` / `expression-profile` is in the corpus.*
 
 8. **Catalog coverage + examples (`decision-0020`).** A `signature-catalog` has an entry for every
-   **assessable** `invariants-v1` slug (A/B/D — the 14, **excluding** the two C dials; a collapsed
+   **assessable** `invariants-v1` slug (structural + operating + floors — the 14, **excluding** the two dials; a collapsed
    slug is covered by its successor). Each entry carries `what` / **`directive`** / **`why`** /
    `signature` / **`honored`** / **`violated`** / `class` / `mechanizable` / `default_C1` / `default_C2`, and
    **`honored`/`violated` are ≥2 matched pairs** — `violated[i]` and `honored[i]` share a use-case tag,
    same order (`decision-0027`). *FAIL → name the uncovered assessable slug, an entry missing a field
    (a missing `why`/`honored`/`violated` is a fail), a `honored`/`violated` with fewer than 2, or a pair
-   whose honored/violated layer tags don't align; a present C-dial entry is also a FAIL.*
+   whose honored/violated layer tags don't align; a present dial entry is also a FAIL.*
 9. **Profile → catalog resolution.** Every `expression-profile` gene `slug` resolves to a
    `signature-catalog` entry. *FAIL → name the unresolved slug (a dangling profile reference).*
 10. **Evidence floor (assert-and-verify).** In a profile, every `active: true` +
     `basis: honored-implicitly` entry carries **both** a `confidence` tag and an `evidence`
     pointer. *FAIL → name the bare "honored" claim with no evidence.*
-11. **Intent-gate floor (D2).** No profile sets `C2: none` on a gene whose catalog entry has
+11. **Intent-gate floor (`floor-intent-gate`).** No profile sets `C2: none` on a gene whose catalog entry has
     `intent_locus: true` (`inv-intent-locus`, `floor-intent-gate`). *FAIL → name the offending
     gene.*
 
 ## Honesty clause (math-quest)
 
 **Accurately listing the violations *is* success.** A run that hides drift to report "pass"
-has failed this rubric. Missing/unparseable input → halt loudly (D1), never a partial pass.
+has failed this rubric. Missing/unparseable input → halt loudly (`floor-transparency`), never a partial pass.
 
 ## How it is graded
 

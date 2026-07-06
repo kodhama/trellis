@@ -143,13 +143,13 @@
 
   <!-- A -->
   <div class="group"><div class="wrap">
-    <h2><span class="g-code">A</span> Structural gate</h2>
+    <h2>Structural gate</h2>
     <p>A four-point admission check: does the process even have the shape to be governed? If it lacks one, Trellis says so loudly.</p>
   </div></div>
   <div class="wrap"><div class="cards">
 
     <div class="card">
-      <div class="card-top"><span class="code">A1</span><span class="name">Directional flow</span></div>
+      <div class="card-top"><span class="code">inv-directional-flow</span><span class="name">Directional flow</span></div>
       <p class="what">One-way stages of decreasing ambiguity (research → decisions → contracts → implementation → validation); downstream never consumes a draft.</p>
       <p class="why"><b>Why:</b> agents always build on <b>settled</b> ground — ambiguity only decreases, so no one codes against a spec that is still moving.</p>
       <div class="pairs">
@@ -167,8 +167,8 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">A2</span><span class="name">Handover points</span></div>
-      <p class="what">Defined transitions between stages, each a place a gate can attach. (A1 is which way work moves; this is that it moves in steps.)</p>
+      <div class="card-top"><span class="code">inv-handover-points</span><span class="name">Handover points</span></div>
+      <p class="what">Defined transitions between stages, each a place a gate can attach. (Directional flow is which way work moves; this is that it moves in steps.)</p>
       <p class="why"><b>Why:</b> development moves in <b>discrete</b> steps with boundaries, not one fluid blur — the seams are where work can be stopped, inspected, and handed on.</p>
       <div class="pairs">
       <div class="stack">
@@ -185,7 +185,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">A3</span><span class="name">Intent locus</span></div>
+      <div class="card-top"><span class="code">inv-intent-locus</span><span class="name">Intent locus</span></div>
       <p class="what">Humans own intent and values somewhere identifiable — a process with no human intent locus can't be held accountable.</p>
       <p class="why"><b>Why:</b> an <b>accountable human owns the goal</b>, so a wrong <em>direction</em> gets caught before it's built.</p>
       <div class="pairs">
@@ -203,7 +203,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">A4</span><span class="name">Ratifiable artifacts</span></div>
+      <div class="card-top"><span class="code">inv-ratifiable-artifacts</span><span class="name">Ratifiable artifacts</span></div>
       <p class="what">Upstream can reach an approved state downstream consumes; outputs are checkable against it.</p>
       <p class="why"><b>Why:</b> you build against a <b>stable, approved target with a real pass/fail criterion</b> — not a moving one, and not "looks done to me."</p>
       <div class="pairs">
@@ -224,13 +224,13 @@
 
   <!-- B -->
   <div class="group"><div class="wrap">
-    <h2><span class="g-code">B</span> Operating layer</h2>
+    <h2>Operating layer</h2>
     <p>What Trellis actually supplies once a process is admissible: the gates, the checks, the memory, and the discipline that keeps agents honest.</p>
   </div></div>
   <div class="wrap"><div class="cards">
 
     <div class="card">
-      <div class="card-top"><span class="code">B1</span><span class="name">Graph maintenance</span></div>
+      <div class="card-top"><span class="code">inv-graph-maintenance</span><span class="name">Graph maintenance</span></div>
       <p class="what">The dependency graph of artifacts and rules kept consistent and minimal; append-only records superseded, never edited in substance.</p>
       <p class="why"><b>Why:</b> the knowledge base <b>stays coherent for the agents reading it</b>, and a discovery deep in the code <b>repairs the decision that should have known it</b> (backprop).</p>
       <div class="pairs">
@@ -248,7 +248,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">B2</span><span class="name">Gate at handover</span></div>
+      <div class="card-top"><span class="code">inv-gate-at-handover</span><span class="name">Gate at handover</span></div>
       <p class="what">Apply the verification gate at every handover; any skip is surfaced.</p>
       <p class="why"><b>Why:</b> the review <b>actually fires</b> (not quietly skipped under deadline) — and if it is skipped, you can <em>see</em> it was.</p>
       <div class="pairs">
@@ -266,7 +266,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">B3</span><span class="name">Independent judgment</span></div>
+      <div class="card-top"><span class="code">inv-independent-judgment</span><span class="name">Independent judgment</span></div>
       <p class="what">The assessor is independent of what it assesses — the builder doesn't grade itself, and the agent doesn't flatter the human.</p>
       <p class="why"><b>Why:</b> the <b>builder doesn't grade its own homework</b>, and the agent <b>names the risk</b> instead of flattering the plan — so verification and the intent gate are real, not decorative.</p>
       <div class="pairs">
@@ -284,7 +284,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">B4</span><span class="name">Auditable archive</span></div>
+      <div class="card-top"><span class="code">inv-auditable-archive</span><span class="name">Auditable archive</span></div>
       <p class="what">Provenance + immutable decision history + a consolidated current-truth.</p>
       <p class="why"><b>Why:</b> you can always answer <b>"why is it this way?"</b> — decisions are not lost or quietly rewritten.</p>
       <div class="pairs">
@@ -302,7 +302,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">B5</span><span class="name">Bounded context</span></div>
+      <div class="card-top"><span class="code">inv-bounded-context</span><span class="name">Bounded context</span></div>
       <p class="what">Each operation reads only its declared inputs, never the whole archive.</p>
       <p class="why"><b>Why:</b> agents decide on <b>sharp, relevant context</b> instead of drowning in everything — better calls, and it scales as the archive grows.</p>
       <div class="pairs">
@@ -320,7 +320,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">B6</span><span class="name">Self-improvement</span></div>
+      <div class="card-top"><span class="code">inv-self-improvement</span><span class="name">Self-improvement</span></div>
       <p class="what">The process learns from friction and gets better — improvement signals are surfaced and acted on, so a glitch doesn't happen twice.</p>
       <p class="why"><b>Why:</b> <b>a process glitch never happens twice</b> — friction becomes a fix, not a recurring tax.</p>
       <div class="pairs">
@@ -338,7 +338,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">B7</span><span class="name">Minimal first</span></div>
+      <div class="card-top"><span class="code">inv-minimal-first</span><span class="name">Minimal first</span></div>
       <p class="what">The smallest process that works; add a step only when friction reveals the boundary; bias to retire over add.</p>
       <p class="why"><b>Why:</b> <b>no ceremony for its own sake</b> — every step has earned its place, so the process stays light.</p>
       <div class="pairs">
@@ -356,7 +356,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">B9</span><span class="name">Clarify before commit</span></div>
+      <div class="card-top"><span class="code">inv-clarify-before-commit</span><span class="name">Clarify before commit</span></div>
       <p class="what">Ambiguity in an upstream is surfaced and resolved (usually by asking a human) before downstream consumes it — never silently guessed.</p>
       <p class="why"><b>Why:</b> <b>agents ask instead of guessing</b> — you don't discover three files later that they took the wrong reading of a vague spec.</p>
       <div class="pairs">
@@ -377,13 +377,13 @@
 
   <!-- D -->
   <div class="group"><div class="wrap">
-    <h2><span class="g-code">D</span> The two floors</h2>
+    <h2>The two floors</h2>
     <p>The only settings that never dial to zero. Everything else Trellis lets you tune; these two it holds firm.</p>
   </div></div>
   <div class="wrap"><div class="cards">
 
     <div class="card">
-      <div class="card-top"><span class="code">D1</span><span class="name">Transparency</span></div>
+      <div class="card-top"><span class="code">floor-transparency</span><span class="name">Transparency</span></div>
       <p class="what">Every consequential choice is surfaced — a skipped gate, a missing capability, a degraded result, a divergence from a framework you claim to follow. Drift is allowed, but never silent.</p>
       <p class="why"><b>Why:</b> <b>nothing consequential happens silently</b> — you learn about the shortcut <em>when it's taken</em>, not when it breaks in production.</p>
       <div class="pairs">
@@ -401,7 +401,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">D2</span><span class="name">The intent gate</span></div>
+      <div class="card-top"><span class="code">floor-intent-gate</span><span class="name">The intent gate</span></div>
       <p class="what">The intent gate never fully opens — at the intent locus, a human (or a human-authorized independent check) is always mandatory. The one place an upstream that is itself wrong gets caught.</p>
       <p class="why"><b>Why:</b> <b>"is this the right thing to build?" always has a human behind it</b> — the one call you never hand fully to the machine.</p>
       <div class="pairs">
