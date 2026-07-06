@@ -27,8 +27,9 @@ scope: trellis-product
    malformed field.*
 2. **`type` declared; `status` allowed.** `type` is a non-empty string carrying a `scope`
    (`core-methodology` / `trellis-product` / `trellis-meta`) and a rubric *(scope/rubric may be
-   declared centrally, not per-file)*; `status ∈ {draft, ratified, superseded}` (v0 — no
-   `approved` yet, `spec-0001` §2). Recognized typed artifacts include `signature-catalog`
+   declared centrally, not per-file)*; `status` belongs to the methodology's **declared
+   lifecycle** (`spec-0001` §2, `decision-0037` — for this repo:
+   `{draft, ratified, superseded}`). Recognized typed artifacts include `signature-catalog`
    (`trellis-product`), `expression-profile` (`core-methodology`) — `spec-0002` — and `lexicon`
    (`trellis-product`) — `decision-0017`.
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*

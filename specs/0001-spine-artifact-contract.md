@@ -2,7 +2,7 @@
 id: spec-0001
 type: spec
 status: ratified
-depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, research-0003]
+depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, research-0003]
 owner: gundi
 rubric: spec-quality
 ratified: 2026-06-30
@@ -42,9 +42,10 @@ Every non-code artifact opens with YAML frontmatter:
 |---|---|---|
 | `id` | ✓ | unique across the corpus; typed slug (`decision-0007`, `invariants-v1`, `spec-0001`) |
 | `type` | ✓ | **open field — methodology-defined**, not a closed enum (`research-0003`); each type carries a `scope` (below) + a rubric |
-| `status` | ✓ | v0: `draft` → `ratified` (+ `superseded`); `approved` deferred — see §2 |
+| `status` | ✓ | **open field — methodology-defined**, like `type` (`decision-0037`); must belong to the methodology's declared lifecycle, which must have the §2 shape. Trellis default: `draft` → `ratified` (+ `superseded`) |
 | `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root |
-| `owner` | ✓ | the accountable human |
+| `owner` | ✓ | the accountable human (the `inv-intent-locus` role). The *role* is contract; the *field* is mappable — a methodology whose `owner` means something else declares which field/mechanism carries the accountable human (`decision-0037`) |
+| `author` | — | optional: who wrote it (human or agent), distinct from accountability |
 | `date` / `ratified` / `supersedes` / `superseded_by` / `rubric` | — | optional |
 
 **External refs:** a `depends_on` entry that is not an artifact `id` must match a declared
@@ -68,20 +69,41 @@ On install, **only `core-methodology` types ship.**
 
 ## 2. Lifecycle
 
-v0 (intent layer only): `draft → ratified`; plus `ratified → superseded` (via a successor
-with `supersedes`).
+**The concrete status enum is methodology-defined, like types (`decision-0037`).** The
+contract requires a lifecycle **shape**, not names:
+
+- a **working state** downstream may not consume;
+- at least one **ratifiable state** — consumable, reachable only via **defined promotions**
+  (the structural prerequisite `inv-ratifiable-artifacts` acts on);
+- **the intent gate holds:** some ratified state is a human act — or a human-authorized,
+  recorded ratchet — whatever the enum is called (B3 intent face / D2);
+- **supersession is expressible**;
+- the methodology **declares** its enum + promotion rules; the conformance check verifies
+  `status` against that declaration. An undeclared status is a conformance failure; a
+  lifecycle without this shape fails the admission gate loudly.
+
+**Trellis's own lifecycle — the default / reference expression** (used by this repo, and
+composed onto a host that brings none): `draft → ratified`; plus `ratified → superseded`
+(via a successor with `supersedes`).
 
 - **`draft`** — in progress. **Not consumable** by downstream.
 - **`ratified`** — intent approved by the **human** (B3 intent face / D2). Consumable.
 - **`superseded`** — replaced; must carry `superseded_by`; **never** consumed as current truth
   (B4). Decisions are append-only: supersede, never edit a ratified one.
 
+*(Worked instance of the open contract, `decision-0037`: math-quest's `draft → gated →
+approved` — `gated` is rubric-self-checked and agent-consumable under a recorded ratchet,
+`approved` is the human merge = ratified. Same shape, different names.)*
+
 **Deferred — a *core* decision, not a v0 omission.** An execution-layer **`approved`** state
 (B3 conformance face — implementation that passed independent conformance) is part of the
 product's contract, but its model is undecided: *a third document status, or a gate-outcome
-on a change rather than a status?* Because the lifecycle is `trellis-product` scope we do not
-guess it now — it is decided when the conformance-to-upstream slice is built. v0 has no
-execution-layer artifacts, so the question is not yet live.
+on a change rather than a status?* Evidence so far (`decision-0037`): math-quest's
+conformance gate landed as a **PR gate-outcome**, not a status — while its `gated` shows a
+third *document* status working for the intent layer. Because the lifecycle is
+`trellis-product` scope we still do not guess Trellis's own answer here — it is decided when
+the conformance-to-upstream slice is built. v0 has no execution-layer artifacts, so the
+question is not yet live.
 
 ## 3. The conformance check (sub-agent + rubric — no script, `0010`)
 
@@ -90,7 +112,9 @@ A read-only sub-agent that takes the corpus (or one artifact + corpus) and appli
 checklist from this spec, not from the producer (B3). Its checks:
 
 1. Frontmatter present; all required fields present and well-typed.
-2. `type` is declared (open field — must carry a `scope` + a rubric); `status` ∈ allowed.
+2. `type` is declared (open field — must carry a `scope` + a rubric); `status` ∈ the
+   methodology's **declared lifecycle** (here: `{draft, ratified, superseded}`;
+   `decision-0037`).
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id`, a declared external ref, **or** a
    **retired id** in the invariant-set's Identifiers registry (mapping to its successor); no

@@ -23,7 +23,8 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`spec-000
 
 1. Frontmatter present; `id` / `type` / `status` / `depends_on` / `owner` present and
    well-typed (`depends_on` a list, etc.).
-2. `status ∈ {draft, ratified, superseded}` (no `approved` in v0).
+2. `status` ∈ the methodology's declared lifecycle (`spec-0001` §2, `decision-0037`) — for
+   this repo: `{draft, ratified, superseded}`.
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id`, a declared external-ref prefix
    (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
