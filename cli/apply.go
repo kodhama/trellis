@@ -45,6 +45,10 @@ func applyM1(dir string, plan Plan) (string, error) {
 		"trellis.md":    renderHeader(plan),
 		"profile.md":    renderProfile(plan),
 		"invariants.md": invariantsRef,
+		// The version that generated this overlay — the D1 staleness marker `trellis
+		// status` reads (decision-0035). Kept out of the rendered content so the repo's
+		// sync-guard diffs behavior, not the build number.
+		"version": version + "\n",
 	}
 	for name, content := range bundle {
 		if err := os.WriteFile(filepath.Join(tdir, name), []byte(content), 0o644); err != nil {

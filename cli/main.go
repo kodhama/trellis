@@ -48,6 +48,7 @@ func run(in io.Reader, out io.Writer, args []string) error {
 // dispatch, the usage text, and the docs-consistency check all read (decision-0025).
 var commands = map[string]func(in io.Reader, out io.Writer, args []string) error{
 	"setup":     setup,
+	"status":    status,
 	"remove":    remove,
 	"uninstall": uninstall,
 }
@@ -66,6 +67,7 @@ func usage(w io.Writer) {
 
 usage:
   trellis setup      interactive setup: pick a mode, detect what it needs (harness for m2), a profile, a model
+  trellis status     report whether a project's overlay is current with this binary
   trellis remove     undo setup in a project (removes the .trellis overlay)
   trellis uninstall  remove the trellis binary
   trellis version    print the version
