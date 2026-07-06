@@ -56,7 +56,7 @@ rule you can't exemplify is probably vaporware.*
   catalog, a spec, the CLI's command set — update everything that **derives** from it in the
   same change. A source names its derivatives (so you see them at the edit), and a check
   guards each pair. If you edit something and can't name what derives from it, that's the
-  question to ask. (This is B1 made salient: the graph, pointed forward.)
+  question to ask. (This is `inv-graph-maintenance` made salient: the graph, pointed forward.)
 > The invariants this section used to restate — **transparency** (surface everything; fail loudly;
 > never emit plausible-but-unverified output) and **independent judgment** (no sycophancy; the builder
 > doesn't grade itself) — now arrive via the **Trellis overlay imported below** (`.trellis/`), not
@@ -73,8 +73,9 @@ only once the set's durability is proven across multiple instances.
 
 ## Current state
 
-- **Intent layer: ratified.** `invariants-v1` is the ratified current-truth set (A1–A4 gate
-  · B1–B9 operating · C dials · D floors); decisions `0001–0008` are ratified; v0 superseded.
+- **Intent layer: ratified.** `invariants-v1` is the ratified current-truth set (the
+  structural admission gate · the operating set · the dials · the floors); decisions
+  `0001–0008` are ratified; v0 superseded.
 - **Research done:** Steps 0–2 (`research-0001` target landscape, `research-0002` gate-test
   of real frameworks); findings folded into v1.
 - **Machinery:** automated PR review live (decision `0007`).

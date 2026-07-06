@@ -46,14 +46,14 @@ The CLI additionally offers the M2 morph and non-Claude harnesses; the plugin li
 Deliberately tiny — small enough that a newcomer, human or agent, can read it and know how to make a
 change that will pass.
 
-- **A · Structural gate** — a four-point admission check (one-way flow, handover points, a human
+- **Structural gate** — a four-point admission check (one-way flow, handover points, a human
   intent locus, checkable artifacts). If a process lacks the shape, Trellis says so *loudly*.
-- **B · Operating layer** — what Trellis supplies: a gate at every handover, independent
+- **Operating layer** — what Trellis supplies: a gate at every handover, independent
   verification (*the builder does not grade itself*), an auditable archive, bounded context,
   clarify-before-commit.
-- **C · Two dials** — per gate: *how strict* (documented → default-on → enforced) and *who checks*
+- **Two dials** — per gate: *how strict* (documented → default-on → enforced) and *who checks*
   (an agent, a human, or nobody). The same core serves a weekend hack and a regulated pipeline.
-- **D · Two floors** — the only settings that never dial to zero: every consequential choice is
+- **Two floors** — the only settings that never dial to zero: every consequential choice is
   **surfaced**, and the **human intent gate never fully opens**.
 
 The full set: [`core/invariants/trellis-invariants-v1.md`](core/invariants/trellis-invariants-v1.md).
