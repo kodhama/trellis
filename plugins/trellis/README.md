@@ -27,6 +27,10 @@ an **overlay** — a `.trellis/` bundle (your profile + the full invariant refer
   block, touch nothing else).
 - **`reference/invariants.md`** — the full signature catalog: every invariant with its *why* and a
   with/without example.
+- **`hooks/`** — a `SessionStart` hook that stays quiet until the plugin updates past the overlay it
+  wrote (`decision-0039`), then nudges you once: *"the overlay may be stale — run `/trellis:setup`."*
+  Network-free (it compares the overlay's stamped `plugin@<sha>` to the installed plugin's HEAD), so it
+  can tell you the overlay is *behind the installed plugin*, not how far behind the marketplace.
 
 ## Removing it
 
