@@ -14,8 +14,8 @@ things non-negotiable — and surfaces every time something bends — without di
 ## Get started
 
 ```sh
-brew install gundisalwa/trellis/trellis                                                # Homebrew
-# or, any Unix:  curl -fsSL https://raw.githubusercontent.com/gundisalwa/trellis/main/install.sh | sh
+brew install kodhama/trellis/trellis                                                # Homebrew
+# or, any Unix:  curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
 trellis setup
 ```
 
@@ -33,7 +33,7 @@ Nothing is written without `--apply` (or your `y` at the prompt). Built from [`c
 **Or install it as a Claude Code plugin** (no binary) — covers the M1 overlay natively:
 
 ```
-/plugin marketplace add gundisalwa/trellis
+/plugin marketplace add kodhama/trellis
 /plugin install trellis@trellis
 /trellis:setup
 ```
@@ -59,7 +59,7 @@ change that will pass.
 The full set: [`core/invariants/trellis-invariants-v1.md`](core/invariants/trellis-invariants-v1.md).
 Every invariant with its **why** and a **with/without** example at several layers lives in the
 [**signature catalog**](core/catalog/signature-catalog-v1.md) — the single source (rendered readable on
-the [project site](https://gundisalwa.github.io/trellis/invariants.html)). The thesis behind it:
+the [project site](https://kodhama.github.io/trellis/invariants.html)). The thesis behind it:
 [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md).
 
 ## Two ways to run it

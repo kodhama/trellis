@@ -1,4 +1,4 @@
-module github.com/gundisalwa/trellis/cli
+module github.com/kodhama/trellis/cli
 
 go 1.22
 

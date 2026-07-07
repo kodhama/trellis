@@ -1,6 +1,6 @@
 {
   "name": "trellis",
-  "owner": { "name": "gundisalwa" },
+  "owner": { "name": "kodhama" },
   "description": "Trellis — a governance layer for agentic software development.",
   "plugins": [
     {

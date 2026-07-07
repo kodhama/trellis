@@ -71,5 +71,5 @@ jobs:
           curl -fsSL -X POST \
             -H "Authorization: Bearer $TAP_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/gundisalwa/homebrew-trellis/dispatches \
+            https://api.github.com/repos/kodhama/homebrew-trellis/dispatches \
             -d '{"event_type":"new-release"}'

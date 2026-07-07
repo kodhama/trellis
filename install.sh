@@ -1,7 +1,7 @@
 #!/bin/sh
 # Trellis setup CLI installer.
 #
-#   curl -fsSL https://raw.githubusercontent.com/gundisalwa/trellis/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
 #
 # No package manager: this downloads a single static binary from GitHub Releases
 # (decision-0023). Set TRELLIS_VERSION to pin a release; defaults to the latest.
@@ -10,7 +10,7 @@
 # Uninstall:  curl -fsSL .../install.sh | sh -s -- --uninstall
 set -eu
 
-REPO="gundisalwa/trellis"
+REPO="kodhama/trellis"
 BIN="trellis"
 VERSION="${TRELLIS_VERSION:-latest}"
 dir="${TRELLIS_INSTALL_DIR:-$HOME/.local/bin}"

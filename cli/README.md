@@ -20,7 +20,7 @@ CI runs `go build` / `go vet` / `go test` on every PR touching `cli/` (`.github/
 ## Install (once releases are published)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/gundisalwa/trellis/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
 ```
 
 Downloads a single binary from GitHub Releases — no npm/registry. Until releases exist, build

@@ -6,7 +6,7 @@ binary required.
 ## Install
 
 ```
-/plugin marketplace add gundisalwa/trellis
+/plugin marketplace add kodhama/trellis
 /plugin install trellis@trellis
 ```
 
@@ -35,11 +35,11 @@ an **overlay** — a `.trellis/` bundle (your profile + the full invariant refer
 ## Removing it
 
 Run `/trellis:remove` — it deletes `.trellis/` and strips the managed `CLAUDE.md` block, leaving your
-own content intact. (The [Trellis CLI](https://github.com/gundisalwa/trellis)'s `trellis remove` does
+own content intact. (The [Trellis CLI](https://github.com/kodhama/trellis)'s `trellis remove` does
 the same, and additionally handles the git rollback for an M2 morph.)
 
 ## Plugin vs CLI
 
-This plugin covers the **M1 overlay** natively inside Claude Code. The [CLI](https://github.com/gundisalwa/trellis)
+This plugin covers the **M1 overlay** natively inside Claude Code. The [CLI](https://github.com/kodhama/trellis)
 additionally offers **M2 (a model-driven morph on a git branch)** and works with harnesses beyond
 Claude Code. Same invariants, two delivery routes.
