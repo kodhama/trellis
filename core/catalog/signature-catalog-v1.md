@@ -117,7 +117,7 @@ ratified: 2026-07-04
 
 ### Operating — what Trellis supplies · class `trellis-design`
 
-- **`inv-graph-maintenance`** *(neighbor of `inv-self-improvement`; shares `inv-prune-bias`)*
+- **`inv-graph-maintenance`** *(neighbor of `inv-self-improvement`; shares its prune-bias signature — the trigger/rule set does not grow monotonically)*
   - what: the dependency graph of artifacts **and rules** kept consistent and minimal, information
     flowing one way; trigger-driven; append-only records superseded, never edited-in-substance.
   - directive: When you change something, update everything that depends on it — and if you can't tell what depends on it, say so rather than assume nothing does. If you find a past decision is wrong or missing, fix the decision — don't just patch around it.
@@ -170,8 +170,8 @@ ratified: 2026-07-04
   - violated:
     - *(CI)* the same pipeline step fails weekly and everyone just re-runs it, forever.
     - *(process)* a PR raises the same open question every time, with no follow-up, and it rots unowned.
-  - class: `trellis-design`  ·  mechanizable: `false` (the SI-1 surfacing floor is checkable against the
-    declared channel; the proactive-notice disposition is not)  ·  intent_locus: `false`
+  - class: `trellis-design`  ·  mechanizable: `false` (the surfacing floor — improvement signals reach the
+    declared channel — is checkable; the proactive-notice disposition is not)  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
 
 - **`inv-gate-at-handover`**
