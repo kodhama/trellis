@@ -1,11 +1,17 @@
 ---
 id: decision-0032
 type: decision
-status: ratified
+status: superseded
 depends_on: [decision-0023, decision-0028]
 owner: gundi
 ratified: 2026-07-05
 ---
+
+> **Superseded by `decision-0041`**: the tap is now the kodhama family's shared
+> `kodhama/homebrew-tap`, not a tap this product owns (`gundisalwa/homebrew-trellis`). This
+> decision's formula-sync mechanics (regeneration on release, the dispatch-token flow, the
+> `curl` fallback) still apply verbatim against the new tap — only the tap's address/ownership
+> changed. Content below is unedited, kept for the record.
 
 # 0032 — Homebrew as a second install channel, formula kept in sync with releases
 
