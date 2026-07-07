@@ -63,7 +63,7 @@ jobs:
             --generate-notes \
             --latest
       # Tell the Homebrew tap to re-pin its formula to the new release (decision-0032).
-      # No-op until TAP_DISPATCH_TOKEN (a fine-grained PAT for homebrew-trellis) is set;
+      # No-op until TAP_DISPATCH_TOKEN (a fine-grained PAT for homebrew-tap) is set;
       # the tap's own `Run workflow` bumps it manually in the meantime.
       - name: Notify the Homebrew tap
         if: ${{ env.TAP_TOKEN != '' }}
@@ -71,5 +71,5 @@ jobs:
           curl -fsSL -X POST \
             -H "Authorization: Bearer $TAP_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/kodhama/homebrew-trellis/dispatches \
+            https://api.github.com/repos/kodhama/homebrew-tap/dispatches \
             -d '{"event_type":"new-release"}'

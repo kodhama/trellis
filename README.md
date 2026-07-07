@@ -14,7 +14,7 @@ things non-negotiable — and surfaces every time something bends — without di
 ## Get started
 
 ```sh
-brew install kodhama/trellis/trellis                                                # Homebrew
+brew install kodhama/tap/trellis                                                    # Homebrew
 # or, any Unix:  curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
 trellis setup
 ```
