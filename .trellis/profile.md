@@ -32,18 +32,3 @@ Each is a rule to follow, then the ✗ failure it prevents:
     ✗ the same pipeline step fails weekly and everyone just re-runs it, forever.
 
 (Generated from your profile — edit `.trellis/` and re-run `trellis setup` to change these.)
-
-## Lifecycle mapping (decision-0042, adopted from the family per kodhama-0004)
-
-`draft → gated → approved (→ superseded)`, where:
-- `gated` = self-checked, agent-consumable. Consuming a `draft` remains
-  forbidden.
-- `approved` = human PR merge = the ratification act (nobody writes
-  `approved` into a PR's own diff; a post-merge bump commit records it).
-- `superseded` = replaced; carries a forward pointer, original content
-  never edited in place.
-
-Historical note: artifacts ratified before 2026-07-08 read
-`status: ratified` — the same state as `approved` under
-`decision-0037`'s declared equivalence; they are not relabeled
-(append-only).
