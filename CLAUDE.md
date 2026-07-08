@@ -15,7 +15,7 @@
 > gates) now lives in **`core/`**; **the methodology used to build Trellis** is the repo root
 > (this file, `decisions/`, `research/`, `specs/`). *This file is Layer B — instance #1, the
 > first methodology Trellis supervises — not Trellis's product agent-instructions.* The `core/`
-> migration is incremental: `invariants/` moved in first; the conformance sub-agent's product
+> migration is incremental: `invariants/` moved in first; the corpus-reviewer sub-agent's product
 > home (`core/agents/`) waits on the delivery slice (`0012`).
 
 ## The iron rule (most important design constraint)
@@ -97,6 +97,15 @@ only once the set's durability is proven across multiple instances.
   chosen to validate by dogfooding our own project first (decision `0001`)?
 - What is the smallest enforcement that makes "downstream consumes only ratified" real
   here — convention, a check, or a gate sub-agent? (Resolve when the spine is built.)
+
+<!-- grove:begin (managed by grove — edit .claude/agents/, not this block) -->
+trellis is **grove-managed**: work items here run as [grove](https://github.com/kodhama/grove)
+furrows. The eleven gardener roles live in `.claude/agents/` with placeholders resolved for
+this repo (gates from `cli-ci`; lifecycle per `decision-0042`); `corpus-reviewer` is trellis's
+own pre-existing corpus checker, continued as the reference instance of grove's role
+(grove adr-0001). Telemetry (`grove-status`) is not installed — wisp is not vendored here,
+and telemetry is optional by construction. grove plugin@6c8a8cc
+<!-- grove:end -->
 
 <!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->
 This project follows **Trellis** — working rules you are expected to follow while you work here. They are imported below:
