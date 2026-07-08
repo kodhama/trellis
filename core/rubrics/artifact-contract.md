@@ -28,16 +28,17 @@ scope: trellis-product
 2. **`type` declared; `status` allowed.** `type` is a non-empty string carrying a `scope`
    (`core-methodology` / `trellis-product` / `trellis-meta`) and a rubric *(scope/rubric may be
    declared centrally, not per-file)*; `status` belongs to the methodology's **declared
-   lifecycle** (`spec-0001` §2, `decision-0037` — for this repo:
-   `{draft, ratified, superseded}`). Recognized typed artifacts include `signature-catalog`
+   lifecycle** (`spec-0001` §2, `decision-0037`; adopted family-wide by
+   `decision-0042` — for this repo: `{draft, gated, approved, superseded}`,
+   with pre-0042 artifacts reading `ratified` = `approved`). Recognized typed artifacts include `signature-catalog`
    (`trellis-product`), `expression-profile` (`core-methodology`) — `spec-0002` — and `lexicon`
    (`trellis-product`) — `decision-0017`.
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*
 4. **`depends_on` resolves.** Each entry is an existing artifact `id`, a declared external-ref
    prefix (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
    registry (mapping to a successor). *FAIL → name the dangling reference.*
-5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** No `ratified` artifact `depends_on` a `draft`
-   artifact. *FAIL → name the ratified→draft edge.*
+5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** No `gated`/`approved` (or legacy
+   `ratified`) artifact `depends_on` a `draft` artifact. *FAIL → name the edge.*
 6. **Required body sections per type** (`spec-0001` §4, `spec-0002` §4): `spec`/`invariant-set` →
    Acceptance criteria + Open questions; `decision` → Context/Decision/Consequences;
    `research-note` → Open questions (+ sources); `signature-catalog` → Entries + Acceptance
@@ -45,7 +46,8 @@ scope: trellis-product
    Open questions; `lexicon` → Canonical terms + Open questions; `feedback` → exempt. *FAIL → name the missing section.*
 7. **Supersede integrity.** A `superseded` artifact carries `superseded_by`; **revise-in-place**
    docs (specs, invariants, research, rubrics) re-point to the successor. A **partially
-   superseded** artifact keeps `status: ratified` and carries `superseded_in_part_by`, whose
+   superseded** artifact keeps its pre-supersession status (`approved`, or legacy
+   `ratified`) and carries `superseded_in_part_by`, whose
    entries resolve like `depends_on` (`spec-0001` §2, `decision-0040`). *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
