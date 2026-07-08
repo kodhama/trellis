@@ -9,6 +9,18 @@ You are composing the **Trellis** governance layer onto the user's project as th
 overlay**: add a small bundle plus one import line, and **never touch anything else** (augment,
 never clobber). This mirrors `trellis setup --mode m1` but needs no binary — you do it directly.
 
+## 0. Prefer the deterministic writer (kodhama-0005: one contract, many writers)
+
+First check whether the trellis binary is installed: `command -v trellis`. **If it is, do not
+compose by hand** — run `trellis setup --mode m1 --apply` (or the closest non-interactive M1
+invocation `trellis setup --help` shows) and let the binary write the bundle: it is the canonical
+deterministic writer of the very same artifact this skill produces. Then skip to the final
+confirmation step and report what the binary wrote (including its version stamp). If the binary is
+absent, continue below — this skill is the fallback writer of the same contract (the `.trellis/`
+bundle + the CLAUDE.md import block + the version stamp), kept in sync with the binary **by
+contract, not by code**: if the bundle format changes, both writers change with it
+(`decision-0028` derived pairs; family rule `kodhama-0005`).
+
 ## 1. Pick a posture
 
 Ask which posture fits; default to **B · author-adapt** if the user is unsure.
