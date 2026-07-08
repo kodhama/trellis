@@ -1,7 +1,7 @@
 ---
 id: decision-0042
 type: decision
-status: gated
+status: approved  # ratified by PR #106 merge (2026-07-08) — first bump under the mechanic 0042 itself establishes
 depends_on: [decision-0022, decision-0037]
 owner: agent
 date: 2026-07-08
