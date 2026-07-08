@@ -2,10 +2,13 @@
 id: decision-0037
 type: decision
 status: ratified
+superseded_in_part_by: [decision-0042]
 depends_on: [spec-0001, invariants-v1, decision-0003, research-0003]
 owner: gundi
 ratified: 2026-07-06
 ---
+
+> **Superseded in part by `decision-0042` (2026-07-08):** trellis-self now adopts the family lifecycle (`draft → gated → approved (→ superseded)`, per `kodhama-0004-uniform-lifecycle`); the principle that statuses are methodology-defined stands — the declaring methodology is now the family's.
 
 # 0037 — Statuses are methodology-defined; the contract requires a ratifiable *shape*, not an enum
 

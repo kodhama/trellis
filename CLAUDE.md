@@ -30,8 +30,10 @@ rule you can't exemplify is probably vaporware.*
 ## Operating method
 
 - **Artifacts.** Every non-code document opens with frontmatter
-  (`id / type / status / depends_on / owner`). Statuses: `draft → ratified → approved`.
-  **Downstream consumes only ratified/approved upstream, never drafts.** Required body
+  (`id / type / status / depends_on / owner`). Statuses: `draft → gated → approved
+  (→ superseded)` — the family lifecycle (`decision-0042`); artifacts ratified before
+  2026-07-08 read `ratified`, the same state as `approved` under `decision-0037`'s
+  equivalence. **Downstream consumes only gated/approved upstream, never drafts.** Required body
   sections are **per-type** (not a blanket rule — a strategic decision has no "acceptance
   criteria"; ratification *is* its acceptance):
   - `decision` → `## Context` / `## Decision` / `## Consequences`
@@ -44,9 +46,10 @@ rule you can't exemplify is probably vaporware.*
 - **Gates.** Human approval at the **intent** layer (vision, decisions, the invariant
   set). **Independent verification** at the **execution** layer (a conformance check
   against the approved upstream before merge — *the builder does not grade itself*).
-  **Ratification rides the merge (`decision-0022`):** a PR carries the `draft → ratified`
-  flip in its diff, and **merging *is* the ratification** — no draft is left un-ratified on
-  `main` past the PR that introduced it (flip it, or keep it clearly WIP).
+  **Ratification rides the merge (`decision-0022`, as amended by `decision-0042`):** a PR
+  carries the `draft → gated` flip in its diff, **merging *is* the ratification**, and a
+  post-merge bump commit records `approved` — no draft is left on `main` past the PR that
+  introduced it (gate it, or keep it clearly WIP; never write `approved` in the PR itself).
 - **Work.** One logical change per PR; descriptive, linear history; diffs small enough to
   review on a phone.
 - **Self-improvement.** Triggers, not vigilance (invariant 8): when friction reveals a

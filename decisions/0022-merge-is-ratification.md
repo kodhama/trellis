@@ -2,11 +2,14 @@
 id: decision-0022
 type: decision
 status: ratified
+superseded_in_part_by: [decision-0042]
 depends_on: [invariants-v1, spec-0001, decision-0005, brief-§7]
 owner: gundi
 date: 2026-07-04
 ratified: 2026-07-04
 ---
+
+> **Superseded in part by `decision-0042` (2026-07-08):** the in-diff flip now goes `draft → gated`; merge remains the ratification act; a post-merge bump records `approved`.
 
 # 0022 — Merge = ratify: the ratified *state* is core, the ratification *workflow* is instance-specific
 
