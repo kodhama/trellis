@@ -9,13 +9,13 @@ import (
 
 // TestRepoOverlayIsCurrent is the self-application sync-guard (decision-0035),
 // reworked by #117 (kodhama-0007 slice 1): the repo's committed .trellis/ overlay is
-// now diffed against the vendored payload — the pre-rendered artifact — instead of a
-// fresh in-process render. TestVendoredPayloadIsCurrent pins the payload to the
-// generator, so the chain generator == payload == repo overlay keeps drift impossible
-// while the deterministic thing becomes the artifact, not a writer (kodhama-0007
-// rule 2: the repo's own overlay is a mechanical copy of the payload). The repo's
-// posture is a/conductor; the per-install `version` stamp stays excluded (gitignored —
-// it's not behavior, decision-0035).
+// diffed against the payload file set — a fresh in-process render (payloadFiles()),
+// the same render TestVendoredPayloadIsCurrent pins the vendored
+// plugins/trellis/reference/ copy to. The two guards together give
+// generator == vendored payload == repo overlay: drift stays impossible, and the
+// repo's own overlay is exactly a mechanical copy of the shipped artifact
+// (kodhama-0007 rule 2). The repo's posture is a/conductor; the per-install
+// `version` stamp stays excluded (gitignored — it's not behavior, decision-0035).
 //
 // Regenerate on failure:  (from cli/)  go run . setup --dir .. --profile a --mode m1 --target CLAUDE.md --apply
 func TestRepoOverlayIsCurrent(t *testing.T) {
