@@ -1,7 +1,7 @@
 # .claude/agents/ — vendored from grove
 
 Ready-to-drop-in Claude Code subagent definitions, one per cold-started
-gardener role, vendored from [kodhama/grove](https://github.com/kodhama/grove)
+agent role, vendored from [kodhama/grove](https://github.com/kodhama/grove)
 (`.claude/agents/`, `grove@6c8a8cc`) per grove's README §"Adopting grove
 in your project". Each file's canonical charter — the source of truth,
 carrying the provenance note — lives in grove's own `charters/` at the
@@ -29,15 +29,15 @@ from its old `conformance-reviewer` name, minimally aligned (family
 lifecycle per `decision-0042`), with its checks 8–11 kept as this repo's
 repo-typed extras.
 
-**`head-gardener.md` is scoped, not a full peer of the rest.** ADR-0030
+**`dispatcher.md` is scoped, not a full peer of the rest.** ADR-0030
 charters head-gardener as "cold-started: the interactive session (v0)"
 — sequencing a whole run requires state that survives across dozens of
 dispatches, which a one-shot subagent invocation cannot hold. The
-driving session remains the actual head-gardener across a run. This
+driving session remains the actual dispatcher across a run. This
 file is a narrow one-shot advisor for two bounded sub-judgments
 (workflow classification, next-dispatch recommendation) — see the
 file's own "Why this file is narrower" section and
-`https://github.com/kodhama/grove/blob/main/charters/head-gardener.md`
+`https://github.com/kodhama/grove/blob/main/charters/dispatcher.md`
 for the full role it does not replace.
 
 | File | Stage | Role |
@@ -52,4 +52,4 @@ for the full role it does not replace.
 | `corpus-reviewer.md` | standing audit | the artifact corpus vs. its declared contract; trellis's native instance |
 | `run-resumer.md` | remediation | resumes a run that died at its turn cap |
 | `propagation-remediator.md` | remediation | writes an honest missing propagation section |
-| `head-gardener.md` | dispatch | one-shot classify/next-dispatch advisor only — not a sequencer |
+| `dispatcher.md` | dispatch | one-shot classify/next-dispatch advisor only — not a sequencer |
