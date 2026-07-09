@@ -6,8 +6,10 @@ description: Install Trellis governance onto this project — pick a posture and
 # Set up Trellis in this project
 
 You are composing the **Trellis** governance layer onto the user's project as the **M1 "alongside"
-overlay**: add a small bundle plus one import line, and **never touch anything else** (augment,
-never clobber). This mirrors `trellis setup --mode m1` but needs no binary — you do it directly.
+overlay**: add a small bundle plus one import line, and **never touch anything outside the bundle or
+the markers below** (augment, never clobber — see the note on the bundle's own files in step 2, which
+are a different case: generated, not augmented). This mirrors `trellis setup --mode m1` but needs no
+binary — you do it directly.
 
 ## 0. Prefer the deterministic writer (kodhama-0005: one contract, many writers)
 
@@ -32,7 +34,19 @@ Ask which posture fits; default to **B · author-adapt** if the user is unsure.
   `inv-ratifiable-artifacts`) plus the two floors (`floor-transparency`, `floor-intent-gate`),
   enforcement `expressed`, ratcheting up over time.
 
-## 2. Write the `.trellis/` bundle (create the files; never overwrite the user's own)
+## 2. Write the `.trellis/` bundle (pure generated snapshot — always fully rewritten)
+
+**Every file below is a generated snapshot (decision-0035), not an augmented one.** Unlike the
+instructions file in step 3, these files carry no `trellis:begin`/`trellis:end` markers — a re-run
+(by you or the `trellis` binary) always rewrites each one whole. **Never hand-edit them, and never
+hand-append content to them**: a re-run destroys it, with no preservation and no marker to protect it
+(this happened for real, twice — kodhama/trellis#106→#111 on this repo's own self-hosted overlay, and
+kodhama/trellis#112 downstream, which is why the `trellis` binary now warns before overwriting a
+`profile.md` it finds with unrecognized trailing content — but this skill's own hand-composition path
+has no such check, so treat the warning as a backstop, not a substitute for not doing this). If a
+project wants to record its own project-specific expression of the invariants — a dial rationale, a
+mapping table, anything hand-authored — put it in the instructions file from step 3 instead, outside
+the `trellis:begin`/`trellis:end` markers, where hand-authored content genuinely is preserved.
 
 - **`.trellis/invariants.md`** — copy it from `${CLAUDE_PLUGIN_ROOT}/reference/invariants.md` (the full
   invariant reference; the user reads it on demand).

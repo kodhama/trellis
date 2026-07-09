@@ -96,6 +96,49 @@ func TestApplyM1Idempotent(t *testing.T) {
 	}
 }
 
+// kodhama/trellis#112: a hand-appended section below the generated block in
+// .trellis/profile.md was silently destroyed on the next `trellis setup -apply`,
+// with no warning. profile.md stays a pure generated snapshot (decision-0035) — this
+// only makes the loss visible, it doesn't preserve the content.
+func TestApplyM1WarnsBeforeOrphaningProfileContent(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := applyM1(dir, planFor("b")); err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(dir, ".trellis", "profile.md")
+	appended := readFile(t, profilePath) + "\n## project expression\n\nSome hand-authored, project-specific content.\n"
+	if err := os.WriteFile(profilePath, []byte(appended), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	summary, err := applyM1(dir, planFor("b"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(summary, "hand-authored content") || !strings.Contains(summary, "project expression") {
+		t.Errorf("expected a warning naming the lost content, got: %q", summary)
+	}
+	// The tool still fully regenerates the file — decision-0035 requires
+	// byte-identical output; the warning informs, it does not preserve.
+	if got := readFile(t, profilePath); strings.Contains(got, "project expression") {
+		t.Error("profile.md should still be fully regenerated after warning")
+	}
+}
+
+func TestApplyM1NoWarningOnPlainRerun(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := applyM1(dir, planFor("b")); err != nil {
+		t.Fatal(err)
+	}
+	summary, err := applyM1(dir, planFor("b"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(summary, "hand-authored content") {
+		t.Errorf("unmodified re-run should not warn, got: %q", summary)
+	}
+}
+
 func TestUpsertBlockReplaces(t *testing.T) {
 	content := "top\n\n" + trellisBegin + "\nOLD\n" + trellisEnd + "\n\nbottom\n"
 	out := upsertBlock(content, trellisBegin+"\nNEW\n"+trellisEnd)

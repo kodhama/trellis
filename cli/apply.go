@@ -41,6 +41,12 @@ func applyM1(dir string, plan Plan) (string, error) {
 	if err := os.MkdirAll(tdir, 0o755); err != nil {
 		return "", fmt.Errorf("creating .trellis/: %w", err)
 	}
+
+	// Read before we clobber: profile.md has no begin/end markers like the target
+	// instructions file does, so any hand-appended content here is about to be
+	// silently destroyed by the write below. Warn before that happens (kodhama/trellis#112).
+	warning := warnOrphanedProfileContent(tdir)
+
 	bundle := map[string]string{
 		"trellis.md":    renderHeader(plan),
 		"profile.md":    renderProfile(plan),
@@ -81,9 +87,44 @@ func applyM1(dir string, plan Plan) (string, error) {
 		return "", fmt.Errorf("writing %s: %w", target.Name, err)
 	}
 
-	return fmt.Sprintf("applied (M1 overlay):\n"+
+	return warning + fmt.Sprintf("applied (M1 overlay):\n"+
 		"  wrote .trellis/{trellis,profile,invariants}.md\n"+
 		"  updated %s (%s)\n", target.Name, attach), nil
+}
+
+// profileGeneratedSentinel is the exact trailing line renderProfile always emits.
+// The generator never writes anything after it, so content found past it in an
+// existing profile.md is unambiguously hand-authored, not generated.
+const profileGeneratedSentinel = "(Generated from your profile — edit `.trellis/` and re-run `trellis setup` to change these.)\n"
+
+// warnOrphanedProfileContent detects hand-appended content after the generated
+// sentinel in an existing .trellis/profile.md and returns a warning describing what
+// is about to be overwritten, or "" if the file is absent or carries none.
+//
+// profile.md is a pure generated snapshot (decision-0035): unlike the target
+// instructions file, which is only ever touched between its trellis:begin/end
+// markers (upsertBlock), profile.md has no such markers and applyM1 always rewrites
+// it whole. That's silent data loss for anyone who hand-appends project-specific
+// content below the generated block — which has happened for real, twice: in this
+// repo (#106 → reverted by #111) and downstream (kodhama/trellis#112). This does not
+// preserve the content — decision-0035 requires profile.md stay byte-identical to
+// the generator's output — it only makes the loss visible before it happens.
+func warnOrphanedProfileContent(tdir string) string {
+	b, err := os.ReadFile(filepath.Join(tdir, "profile.md"))
+	if err != nil {
+		return ""
+	}
+	i := strings.Index(string(b), profileGeneratedSentinel)
+	if i < 0 {
+		return ""
+	}
+	after := strings.TrimSpace(string(b)[i+len(profileGeneratedSentinel):])
+	if after == "" {
+		return ""
+	}
+	return "⚠ .trellis/profile.md has hand-authored content below the generated block, about to be overwritten and lost:\n\n" +
+		after + "\n\n" +
+		"profile.md is a pure generated snapshot (decision-0035) — trellis setup always rewrites it whole. Move project-specific content into your instructions file (e.g. CLAUDE.md) instead, outside the trellis:begin/end markers, where hand-authored content is preserved.\n\n"
 }
 
 // strengthLine turns the profile's C1 lean into a plain-language instruction the host
