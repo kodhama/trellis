@@ -21,7 +21,7 @@ var docSurfaces = []string{
 var proseAfterTrellis = map[string]bool{
 	"is": true, "a": true, "an": true, "the": true, "and": true, "or": true,
 	"on": true, "in": true, "to": true, "as": true, "for": true, "with": true,
-	"that": true, "governance": true,
+	"that": true, "governance": true, "mark": true,
 }
 
 // TestDocsClaimOnlyRealCommands enforces decision-0025: the docs must not advertise a
