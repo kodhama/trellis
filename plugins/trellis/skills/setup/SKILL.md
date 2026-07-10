@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Install or refresh Trellis governance on this project — read the posture, copy the pre-rendered payload from the plugin into .trellis/, patch the managed block in the instructions file, and verify against the shipped checksum manifest. Use when the user asks to set up, add, install, refresh, or apply Trellis in their repo.
+description: Install or refresh Trellis governance on this project — read the posture, copy the pre-rendered payload from the plugin into .trellis/, patch the managed block in the instructions file, and verify against the shipped checksum manifest. Also hosts the optional M2 morph (a model-driven rewrite of the project's own instructions, on a git branch) when the user explicitly asks for it. Use when the user asks to set up, add, install, refresh, apply, or morph Trellis in their repo.
 ---
 
 # Set up Trellis in this project
@@ -16,9 +16,12 @@ the `trellis:begin`/`trellis:end` markers, and **verify** against the shipped ch
 never compose, re-derive, paraphrase, or "fix up" bundle content — a prose re-derivation is a second
 writer, and second writers drift (that is the incident class behind kodhama/trellis#112). There is
 also **no binary to delegate to**: an earlier version of this skill preferred the `trellis` CLI as
-the canonical writer (`kodhama-0005` rule 2); `kodhama-0007` rule 6 superseded that in part — the
-deterministic thing is now the **artifact** (the payload + its manifest), not a privileged writer,
-so this skill copies directly.
+the canonical writer (`kodhama-0005` rule 2); `kodhama-0007` rule 6 superseded `kodhama-0005` in
+part, retiring rule 2 outright — the deterministic thing is now the **artifact** (the payload + its
+manifest), not a privileged writer, so this skill copies directly.
+
+(The one exception to "no model-driven work" is the **M2 morph** at the end of this file — and its
+scope is the project's *own* files, never bundle content.)
 
 ## The payload
 
@@ -32,7 +35,7 @@ In `${CLAUDE_PLUGIN_ROOT}/reference/`, where `<p>` is the posture key (`a` or `b
 | `expression-<p>.md` | `.trellis/expression.md` — **first run only** | the hand-owned declaration file's seed: frontmatter pre-filled (`profile: <p>`), body a commented stub. Copied only when the file is absent (step 1); a refresh never touches an existing one (`kodhama-0007` rule 4) |
 | `block-claude.md` | the managed block in `CLAUDE.md` | import style: one line + `@.trellis/trellis.md` |
 | `block-inline-<p>.md` | the managed block in a no-`@import` instructions file | inline style: the whole overlay, self-contained |
-| `version` | *(not installed)* | the payload's render stamp (`payload@…`); the project's `.trellis/version` is stamped at install time instead (step 4) |
+| `version` | `.trellis/version` | the payload's render stamp (`payload@…`), copied like any other payload file (step 4) — the staleness hook compares the two files (`decision-0043`) |
 | `checksums` | *(not installed)* | `shasum -a 256` manifest over the other files — the verify oracle (step 6) |
 
 ## 1. Determine the posture — from `.trellis/expression.md`, never a guess
@@ -97,13 +100,17 @@ Copy with `cp`, not by retyping content. Do not reword, reformat, trim, or annot
 files — step 6 checks them byte-for-byte against the manifest, and any "improvement" is a
 verification failure you will have to undo.
 
-## 4. Stamp `.trellis/version`
+## 4. Stamp `.trellis/version` — a copy, like everything else
 
-Run `git -C "${CLAUDE_PLUGIN_ROOT}" rev-parse --short HEAD` and write `plugin@<sha>` as the single
-line of `.trellis/version` (plugin versions are commit SHAs, `decision-0036`). If that fails (the
-plugin is not a git checkout), write `plugin@unknown` — an honest stamp beats none; an unstamped
-overlay is invisible to the staleness hook (`decision-0039`). Do **not** copy the payload's own
-`version` file here: `payload@…` is the render stamp, `plugin@<sha>` is the install stamp.
+```sh
+cp "${CLAUDE_PLUGIN_ROOT}/reference/version" .trellis/version
+```
+
+The payload's content-derived render stamp (`payload@…`) **is** the install stamp
+(`decision-0043`, superseding `decision-0039` rule 2's `plugin@<sha>` format): the bundled
+`SessionStart` staleness hook compares this file against the installed plugin's
+`reference/version` — file to file, no git, no binary — and nudges a refresh when they differ.
+An unstamped overlay is invisible to that check, so never skip this step.
 
 ## 5. Patch the instructions file (augment, never clobber)
 
@@ -143,13 +150,14 @@ sed -n \
   -e 's|  invariants\.md$|  .trellis/invariants.md|p' \
   -e 's|  profile-<p>\.md$|  .trellis/profile.md|p' \
   -e 's|  trellis-<p>\.md$|  .trellis/trellis.md|p' \
+  -e 's|  version$|  .trellis/version|p' \
   "${CLAUDE_PLUGIN_ROOT}/reference/checksums" | shasum -a 256 -c -
 ```
 
-All three lines must print `OK`. (`.trellis/version` and `.trellis/expression.md` are deliberately
-outside install-time verification: the stamp is per-install, and `expression.md` is hand-owned from
-the moment it is seeded — the payload's `expression-<p>.md` skeletons are manifest-covered like any
-payload file, but the installed copy is the project's to change.)
+All four lines must print `OK`. (`.trellis/expression.md` is deliberately outside install-time
+verification: it is hand-owned from the moment it is seeded — the payload's `expression-<p>.md`
+skeletons are manifest-covered like any payload file, but the installed copy is the project's to
+change.)
 
 **(b) Exactly one begin and one end marker** in the target:
 
@@ -189,12 +197,38 @@ failure beats a plausible-looking install.
 
 Tell the user: which posture was used and whether it was **read** from `expression.md` or **asked
 and seeded**; exactly what was written (`.trellis/{invariants,profile,trellis}.md`, the
-`.trellis/version` stamp, `expression.md` seeded or left untouched); which instructions file was
-patched and in which style; and the result of each verification check. They can remove it all any
-time with `/trellis:remove`, or by deleting `.trellis/` and the managed block.
+`.trellis/version` payload stamp, `expression.md` seeded or left untouched); which instructions
+file was patched and in which style; and the result of each verification check. They can remove it
+all any time with `/trellis:remove`, or by deleting `.trellis/` and the managed block.
 
-## Not this skill's job (yet)
+## M2 — morph (model-driven, only on explicit request)
 
-Do **not** attempt a morph (**M2** — the model-driven rewrite of the project's own instruction
-files) here. M2 hosting moves to this skill when the binary's M2 path retires (`kodhama-0007`
-rule 5, slice 4 — kodhama/trellis#120); until that lands, the CLI remains its only home.
+Everything above is the default, **M1** flow. **M2** rewrites the project's *own* instruction
+files to bake the invariants in — hosted here since the binary's M2 path retired with the binary
+channel (`kodhama-0007` rule 5, kodhama/trellis#120; the flow below ports `applym2.go`'s
+contract). Run it **only when the user explicitly asks** for a morph/rewrite — never as a default,
+and never combined silently with an M1 install.
+
+**The boundary stays absolute.** M2 is the one place in this skill where model-driven writing is
+sanctioned, and its scope is the project's own files (`CLAUDE.md`, rule/convention files). It is
+**not** bundle composition: `.trellis/` files and the managed block still come only from the
+payload via steps 3–6 above — a morph never writes, rewords, or "adapts" bundle content.
+
+1. **Refuse without git.** The rewrite must be reviewable and revertable. If the project is not a
+   git repository, stop: suggest `git init` first, or the M1 overlay instead.
+2. **Determine the posture** exactly as in step 1 above (read `expression.md`, or ask).
+3. **Record the rollback point, then branch.** Note the current commit
+   (`git rev-parse HEAD`), create and switch to a fresh branch `trellis/morph`
+   (`git checkout -b trellis/morph`), write the pre-morph SHA as the single line of
+   `.trellis/rollback`, and set a tag that survives a reset:
+   `git tag -f trellis-pre-morph <sha>`. Never morph the working branch in place.
+4. **Perform the rewrite yourself** (you are the model the binary used to shell out to). Rewrite
+   the project's instruction files to bake in the active invariants, **in the project's own voice
+   and structure**. Preserve the project's existing behaviors unless they directly conflict. The
+   single most important behavior to encode: **surface any human-gated handover performed without
+   its human approval**; agent-gated handovers proceed silently. Respect whatever gatekeeping the
+   project already declares — detect it, do not impose it. Keep the edits direct and reviewable.
+5. **Stop and hand the diff to the human.** Summarize what changed, point at the branch, and let
+   *them* review the diff and open/merge a PR — the merge is theirs, never yours. Reversal is
+   git's: `git reset --hard trellis-pre-morph` (or the SHA in `.trellis/rollback`), or simply
+   delete the branch.
