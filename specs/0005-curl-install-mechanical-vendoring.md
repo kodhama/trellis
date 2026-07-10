@@ -2,7 +2,7 @@
 id: spec-0005
 type: spec
 status: gated
-depends_on: [kodhama-0007-one-render-many-copiers, decision-0043]
+depends_on: [kodhama/kodhama-0007-one-render-many-copiers, decision-0043]
 owner: agent
 rubric: rubric-artifact-contract
 date: 2026-07-10
@@ -41,6 +41,15 @@ date: 2026-07-10
 > (an independently-built implementation of this corrected design, not built from this spec) as
 > an existence proof where its test suite happens to cover the same ground; noted inline where it
 > doesn't.
+
+> **Retrofit note (post-`kodhama/trellis#138`, this run).** `decision-0044` (approved, merged)
+> and its implementation in this repo's own `specs/0001` §1 (PR #137) established a qualified
+> `<repo>/<id>` form for cross-repo `depends_on` references; this spec's frontmatter cited
+> `kodhama-0007-one-render-many-copiers` unqualified. Retrofitted to
+> `kodhama/kodhama-0007-one-render-many-copiers` — `kodhama` is a member of the recognized
+> registry, `<id>` unchanged. See the new re-check appended to `## Rubric check` below: it
+> replaces the original check 4's flawed real-world-status reasoning with the declared
+> shape + registry-membership test `specs/0001` §1 actually specifies.
 
 ## Purpose
 
@@ -295,5 +304,22 @@ directly relevant to this edit:
 | 6. Required body sections per type | PASS | `## Acceptance criteria` and `## Open questions` both still present and non-empty; the edit added content to `## Test coverage`, which is not itself a rubric-required section but is the artifact this spec's own "each maps to an AC above" header commits to — now true for AC2, AC9, AC10 as well as the other seven. |
 | Honesty clause | Self-assessed honest | The existence-proof paragraph appended to the test-coverage table reports, without softening, that PR #129 has *no* automated equivalent for the AC2 or AC10 rows (only a narrower, single-path one for AC9) — cited as an achievability signal, not misrepresented as prior test coverage. A second, out-of-scope divergence between this spec's AC5 and PR #129's actual not-in-a-git-repo fallback behavior was also found during this run; it is not fixed here (targeted revision, not a rewrite) and is flagged instead in this run's report to the dispatching session. |
 
+### Re-check (post-`kodhama/trellis#138` retrofit, this run)
+
+`specs/0001` §1 was re-read fresh this run (the external-refs paragraph specifically) to confirm
+the recognized cross-repo form before re-grading — not assumed from memory of the first pass.
+
+| Check | Result | Note |
+|---|---|---|
+| 4. `depends_on` resolves | PASS | Re-graded against the mechanism `specs/0001` §1 actually declares — shape + registry-membership — not the referent's real-world status (the prior pass's error, see below). `kodhama/kodhama-0007-one-render-many-copiers`: matches the qualified `<repo>/<id>` shape; `kodhama` is a member of the recognized registry (`kodhama, trellis, grove, wisp, design-system, homebrew-tap, math-quest`); `<id>` (`kodhama-0007-one-render-many-copiers`) is cited exactly as declared in its home corpus — this is in fact `specs/0001` §1's own worked example, verbatim. Per that section's stated "Resolution depth (v0): shape + registry-membership only... no fetch-and-confirm-the-referent-actually-exists mechanism," the check stops there; that the referent also happens to carry `status: approved` in the kodhama repo (confirmed by direct read this run, for this run's own confidence only — not because the rubric requires it) is evidence beyond what this check tests. `decision-0043`: same-corpus id, not an external ref — resolves by ordinary corpus lookup, `status: gated`, unchanged from the original check. |
+
+**What was wrong with the original check 4 (as first written).** It graded the dependency's
+resolution PASS by reading the referent directly and reporting its real-world status
+(`approved`) — accurate as a fact, but not the test `specs/0001` §1 defines for an external
+ref, and it did not flag that the reference was unqualified (missing the `kodhama/` prefix) at
+the time, which is the actual defect `kodhama/trellis#138` filed. The re-check above applies
+the declared allowlist mechanism instead of the referent's live status.
+
 **Promotion: `draft → gated`.** `approved` happens only by human PR merge (`decision-0042`) —
-not set here.
+not set here. This retrofit does not change that: no frontmatter field other than the
+`depends_on` entry's qualification was touched, and the fix is corrective, not a new promotion.
