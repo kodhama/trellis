@@ -29,10 +29,12 @@ development. It fits whatever methodology your project already uses,
 teaches it to your coding agents, and enforces a small set of invariants —
 so a process glitch never has to happen twice.
 
-**Install block** (terminal pattern, two tabs — Claude Code / manual copy;
-the curl and Homebrew tabs retired with the end-user binary channel,
-`kodhama-0007` rule 5 / kodhama/trellis#120, and the family marketplace is
-the canonical front door per `kodhama-0002`):
+**Install block** (terminal pattern, three tabs — Claude Code / curl /
+manual copy; Homebrew and the binary installer retired with the end-user
+binary channel, `kodhama-0007` rule 5 / kodhama/trellis#120 — the curl tab
+returned in kodhama/trellis#124 as a thin mechanical writer of the same
+pre-rendered payload, no binary involved; the family marketplace is the
+canonical front door per `kodhama-0002`):
 
 - `cc` (Claude Code, default/active tab):
   ```
@@ -40,17 +42,21 @@ the canonical front door per `kodhama-0002`):
   > /plugin install trellis@kodhama
   > /trellis:setup    # the plugin covers the overlay natively
   ```
-- `manual` (any other harness):
+- `curl` (any harness, scripted):
+  ```
+  $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh    # detects your file, copies + verifies the pinned payload
+  ```
+- `manual` (any harness, zero code):
   ```
   $ git clone --depth 1 https://github.com/kodhama/trellis
   $ cp trellis/plugins/trellis/reference/... .trellis/    # copy, paste, shasum -c — see the README
   ```
 
 **Note under the terminal:** No binary, no runtime — the bundle is
-pre-rendered plain files with a checksum manifest; the plugin (or you)
-just copies and verifies them. Clean exits, always: `/trellis:remove`
-clears it from a project, and a bundled session hook tells you when the
-overlay is behind the installed plugin.
+pre-rendered plain files with a checksum manifest; the plugin (or the
+install script, or you) just copies and verifies them. Clean exits,
+always: `/trellis:remove` clears it from a project, and a bundled session
+hook tells you when the overlay is behind the installed plugin.
 
 **CTAs:**
 - Primary → `invariants.html` — "Explore the invariants →"

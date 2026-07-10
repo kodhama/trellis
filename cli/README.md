@@ -10,8 +10,9 @@ render once, at release; `#117`).
 (Homebrew/curl) and left the Go code's fate open; `decision-0043` (#120) resolved it: the code
 survives exactly as this generator plus its CI guards. The interactive `setup` TUI, `status`,
 `remove`, `uninstall`, and the binary's M2 path are gone — their live homes are the Claude Code
-plugin (`/trellis:setup`, `/trellis:remove`, the bundled staleness hook) and the manual copy path
-in the repo README. Still no runtime, same as ever (`decision-0010`): consuming projects depend on
+plugin (`/trellis:setup`, `/trellis:remove`, the bundled staleness hook), the root `install.sh`
+(the curl-path mechanical writer, #124 — tested from this package), and the manual copy path in
+the repo README. Still no runtime, same as ever (`decision-0010`): consuming projects depend on
 plain files, never on this binary.
 
 ## Build & test

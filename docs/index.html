@@ -298,6 +298,7 @@
           <i class="dot"></i><i class="dot"></i><i class="dot"></i>
           <div class="tabs" role="tablist" aria-label="Install method">
             <button class="tab active" role="tab" aria-selected="true" data-tab="cc">Claude Code</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
             <button class="tab" role="tab" aria-selected="false" data-tab="manual">manual copy</button>
           </div>
           <button class="copy" id="copyBtn" aria-label="Copy commands">copy</button>
@@ -307,12 +308,15 @@
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/trellis:setup<span class="cmt">    # the plugin covers the overlay natively</span></code></div>
         </div>
+        <div class="panel" data-panel="curl">
+          <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh<span class="cmt">    # detects your file, copies + verifies the pinned payload</span></code></div>
+        </div>
         <div class="panel" data-panel="manual">
           <div class="cmd"><code><span class="prompt">$ </span>git clone --depth 1 https://github.com/kodhama/trellis</code></div>
           <div class="cmd"><code><span class="prompt">$ </span>cp trellis/plugins/trellis/reference/... .trellis/<span class="cmt">    # copy, paste, shasum -c — see the README</span></code></div>
         </div>
       </div>
-      <p class="tnote">No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest; the plugin (or you) just copies and verifies them. Clean exits, always: <code>/trellis:remove</code> clears it from a project, and a bundled session hook tells you when the overlay is behind the installed plugin.</p>
+      <p class="tnote">No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest; the plugin (or the install script, or you) just copies and verifies them. Clean exits, always: <code>/trellis:remove</code> clears it from a project, and a bundled session hook tells you when the overlay is behind the installed plugin.</p>
 
       <div class="cta">
         <a class="btn btn-primary" href="invariants.html">Explore the invariants →</a>
@@ -491,6 +495,7 @@
 
     var commands = {
       cc: "/plugin marketplace add kodhama/kodhama\n/plugin install trellis@kodhama\n/trellis:setup",
+      curl: "curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh",
       manual: "git clone --depth 1 https://github.com/kodhama/trellis"
     };
     var activeTab = "cc";

@@ -30,9 +30,31 @@ Augment-never-clobber, idempotent, verified against a shipped checksum manifest.
 request it also runs the **M2 morph** — a model-driven rewrite of your own instructions, on a
 fresh git branch you review. The plugin lives in [`plugins/trellis`](plugins/trellis).
 
-**Any other harness — the manual copy path.** Every bundle file is pre-rendered plain text in
-[`plugins/trellis/reference/`](plugins/trellis/reference) (the payload, `kodhama-0007`: one
-render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) and copy:
+**Any other harness — the install script (the curl path,
+[#124](https://github.com/kodhama/trellis/issues/124)).** A thin mechanical writer of the same
+contract as `/trellis:setup` (`kodhama-0007`: one render, many copiers — it only copies the
+pre-rendered payload, pastes one block between the markers, and verifies; it composes nothing and
+installs no binary). It detects your instructions file (`CLAUDE.md` → import block, `AGENTS.md` →
+inline block; `--target` overrides), reads the posture from `.trellis/expression.md` when the
+project already declares one (zero prompts — CI-safe), and verifies every fetched byte against the
+payload pin baked into the script *before* writing anything — a mismatch fails loudly and installs
+nothing:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
+```
+
+Prefer to inspect before you run (or to pass flags — `--posture a|b`, `--target <file>`,
+`--non-interactive`):
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/kodhama/trellis/main/install.sh
+less install.sh && sh install.sh
+```
+
+**Or the manual copy path — zero code.** Every bundle file is pre-rendered plain text in
+[`plugins/trellis/reference/`](plugins/trellis/reference) (the payload). Pick a posture key
+(`a` = conductor, `b` = author-adapt) and copy:
 
 ```sh
 git clone --depth 1 https://github.com/kodhama/trellis /tmp/trellis
@@ -53,8 +75,9 @@ sed -n -e 's|  invariants\.md$|  .trellis/invariants.md|p' \
 ```
 
 No binary, no runtime — the assets are plain files, and anything can verify them with `shasum -c`
-against the shipped manifest. (The Homebrew/curl binary channel retired in `kodhama-0007` rule 5;
-the Go code in [`cli/`](cli/) survives as the release-time payload generator only.)
+against the shipped manifest. (The Homebrew/curl **binary** channel retired in `kodhama-0007`
+rule 5 and stays retired — the curl path above copies those same plain files, it installs no
+tooling; the Go code in [`cli/`](cli/) survives as the release-time payload generator only.)
 
 ## The model
 
@@ -98,6 +121,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 - **Shipped** — the **Claude Code plugin** (marketplace install, `/trellis:setup` /
   `/trellis:remove`, a bundled staleness hook) riding a **pre-rendered, checksum-manifested
   payload** (`kodhama-0007`: render once at release, writers only copy and verify), plus the
+  **curl install script** (a second mechanical writer of the same contract, #124) and the
   documented **manual copy path** for any other harness. It stands on the *spine* + an
   **independent conformance check** (`spec-0001`, running on this repo), the expression-profile +
   catalog **schema** (`spec-0002`), the machinery design (`spec-0003`), the populated catalog and
@@ -117,6 +141,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043` (#120). |
 | [`plugins/trellis/`](plugins/trellis/) | The **Claude Code plugin** — `/trellis:setup`, `/trellis:remove`, the staleness hook, and the vendored payload (`reference/`). |
+| [`install.sh`](install.sh) | The **curl-path install script** — a thin mechanical writer of the vendored payload for any harness (#124); pinned by content, tested from `cli/`. |
 | [`specs/`](specs/) | The spine (`0001`), the profile / catalog schema (`0002`), the delivery machinery (`0003`). |
 | [`decisions/`](decisions/) | Append-only decision records. |
 | [`research/`](research/) | Framework gate-tests + the genetics / control-theory lenses behind the design. |
