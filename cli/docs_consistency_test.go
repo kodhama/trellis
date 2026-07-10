@@ -8,11 +8,15 @@ import (
 
 // docSurfaces are the user-facing files whose claims must match the shipped product
 // (decision-0025). Paths are relative to this package dir (cli/).
-// install.sh retired with the end-user binary channel (#120, decision-0043).
+// install.sh returned in #124 as a plugin vendor script — a different, much smaller
+// artifact class than the end-user binary installer retired in #120/decision-0043
+// (see the note appended to decision-0043 §4); it is a doc surface in its own right
+// (its usage text references /trellis:setup) so it is checked here too.
 var docSurfaces = []string{
 	"../README.md",
 	"../docs/index.html",
 	"../docs/invariants.html",
+	"../install.sh",
 }
 
 // proseAfterTrellis are lowercase words that legitimately follow "trellis" in prose

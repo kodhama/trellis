@@ -7,14 +7,15 @@ name: cli-ci
 # regenerate-and-diff on the vendored payload, the repo's own overlay sync-guard,
 # the docs-consistency check, and the staleness-hook contract.
 
-# Paths include the doc surfaces (docs/, README, plugins/) so the docs-consistency
-# test (decision-0025) runs when a doc claim changes, not only on code changes.
+# Paths include the doc surfaces (docs/, README, install.sh, plugins/) so the
+# docs-consistency test (decision-0025) runs when a doc claim changes, not only on
+# code changes.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
 
 jobs:
   build-test:
