@@ -7,19 +7,21 @@ owner: agent
 date: 2026-07-10
 ---
 
-> **Gated — shaped by the maintainer's own input, not yet merged.** Originally authored during a
+> **Approved and merged.** Originally authored during a
 > session where the maintainer was away and unavailable for the normal interactive shaping
 > conversation (`shaper`-style back-and-forth) this family's process calls for before a new
 > decision is drafted; every genuinely open design choice was flagged rather than quietly
 > resolved. **On 2026-07-10 the maintainer weighed in directly on the four substantive open
 > questions** — delimiter, registry membership, retrofit vs. grandfather, and adoption scope —
 > now recorded as resolved rather than open in `## Open questions` below. That input is what
-> moves this decision from `draft` to `gated`: self-checked and shaped by the maintainer's actual
-> call, ready for the maintainer's own approval at the merge gate, not yet reached it. Per
-> `decision-0037` point 3 / the mapping this repo already declares in `CLAUDE.md`: `owner: agent`
-> here still means *authorship*, not accountability — the accountable human remains the
-> maintainer, exercised at the merge gate (`decision-0022`), which `gated` status does not presume
-> to reach on its own.
+> moved this decision from `draft` to `gated`: self-checked and shaped by the maintainer's actual
+> call, then approved at the merge gate — the maintainer's own merge of PR #133 (2026-07-10),
+> which is itself the ratification act (per this repo's own lifecycle mapping, `decision-0037`
+> point 3); PR #136 followed as frontmatter-only bookkeeping recording that bump
+> (`gated → approved`). Per that same mapping, already declared in `CLAUDE.md`: `owner: agent`
+> here still means *authorship*, not accountability — the accountable human was the maintainer,
+> exercised at the merge gate (`decision-0022`), which is exactly what happened via PR #133's
+> merge.
 >
 > **Two items were not specifically weighed and default to the draft's own recommendation** —
 > depth of resolution (v0: shape + registry-membership check only, no fetch-and-verify) and
@@ -28,11 +30,16 @@ date: 2026-07-10
 > questions` below — revisable if either assumption turns out wrong.
 >
 > **Self-illustration, not a defect.** This decision's own `depends_on` cites
-> `kodhama-0004-uniform-lifecycle` — a bare, unqualified cross-repo id. Under the *current*
-> contract (before this decision is approved and `spec-0001` is amended by a follow-on
-> contract-author pass), that is itself a dangling reference by the letter of rubric check 4.
-> It is left exactly as-is, on purpose: it is the live instance of the gap this decision is
-> about, not something to paper over while shaping the fix.
+> `kodhama-0004-uniform-lifecycle` — a bare, unqualified cross-repo id. This decision is now
+> `approved` and merged, and the follow-on contract-author pass it called for has since landed
+> too (`spec-0001` §1 amended via PR #137, merged 2026-07-10, to recognize the qualified
+> `<repo>/<id>` form). That amendment does not retroactively qualify this citation, though: it is
+> still bare and unqualified today, so under the now-ratified contract it remains a dangling
+> reference by the letter of rubric check 4. It is left exactly as-is here, on purpose: it was
+> the live instance of the gap this decision is about, not something to paper over while shaping
+> the fix — retrofitting it (to `kodhama/kodhama-0004-uniform-lifecycle`) is separate follow-on
+> work, the same class the Consequences section already scopes out for the other known dangling
+> references.
 
 # 0044 — Cross-repo `depends_on` references: a qualified `repo/id` form (proposal)
 
