@@ -4,7 +4,7 @@ type: spec
 status: ratified
 depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, research-0003]
 owner: gundi
-rubric: spec-quality
+rubric: rubric-artifact-contract
 ratified: 2026-06-30
 ---
 

@@ -5,7 +5,7 @@ status: ratified
 ratified: 2026-07-03
 depends_on: [decision-0016, invariants-v1, spec-0001, decision-0008, decision-0009, research-0005, research-0007, research-0009]
 owner: gundi
-rubric: spec-quality
+rubric: rubric-artifact-contract
 ---
 
 # Spec 0002 — The expression profile & the invariant-signature catalog: schema + lifecycle

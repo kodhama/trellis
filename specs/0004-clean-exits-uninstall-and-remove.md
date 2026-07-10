@@ -6,7 +6,7 @@ ratified: 2026-07-05
 superseded_in_part_by: [decision-0043]
 depends_on: [spec-0003, decision-0023, invariants-v1]
 owner: gundi
-rubric: spec-quality
+rubric: rubric-artifact-contract
 ---
 
 # Spec 0004 — Clean exits: uninstall (the CLI) and remove (from a project)
