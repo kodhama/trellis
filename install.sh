@@ -333,9 +333,6 @@ if [ "$scope" = "project" ]; then
   say "Review the new files, then commit them yourself if you want collaborators to"
   say "get them on clone — this script never runs git:"
   say "  git -C \"$git_root\" add .claude/skills/trellis && git -C \"$git_root\" commit -m 'chore: vendor the Trellis plugin'"
-else
-  say "Personal scope needs no trust dialog and is available in every project on"
-  say "this machine right away."
 fi
 say ""
 say "Then run /trellis:setup in the project you want to govern. That skill (the real"
