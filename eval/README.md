@@ -6,7 +6,7 @@ scored by an **independent reviewer** against two rubrics.
 
 ```
 scaffold framework X ─┬─ arm A (baseline)      ─┐
-                      └─ arm B (+ trellis setup) ┘
+                      └─ arm B (+ trellis overlay) ┘
         run a dev task with a worker agent  →  transcript per arm
         independent reviewer scores each transcript (blind to arm) against:
           · eval/scorecards/<framework>.md   — the framework's own rules

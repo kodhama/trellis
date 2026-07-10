@@ -1,9 +1,14 @@
-// Command trellis is the setup CLI for the Trellis governance layer.
+// Command trellis is the release-time payload generator for the Trellis governance
+// layer.
 //
-// It is *setup tooling, not a runtime* (decision-0010): you run it once to pick an
-// install mode, detect what that mode needs (a harness only for the M2 rewrite), pick
-// an expression profile, and compose Trellis onto the project; your agents then follow
-// the resulting instructions with no dependency on this binary. See specs/0003 §2b.
+// It is release tooling, not an end-user installer (decision-0043; kodhama-0007
+// slice 4, kodhama/trellis#120): `trellis payload` renders the pre-built M1 payload +
+// checksum manifest that ships vendored in plugins/trellis/reference/, and the tests
+// in this package are the CI guards that keep the vendored payload, the repo's own
+// overlay, and the docs in sync with the render. End users install Trellis via the
+// Claude Code plugin (/trellis:setup) or the documented manual copy path — never this
+// binary; the interactive setup/status/remove/uninstall commands retired with the
+// homebrew/curl distribution channel.
 package main
 
 import (
@@ -12,7 +17,8 @@ import (
 	"os"
 )
 
-// version is stamped at release time via -ldflags "-X main.version=...".
+// version is the build stamp (release builds used to set it via -ldflags; CI/dev
+// builds run as 0.0.0-dev — the payload carries its own content-derived stamp).
 var version = "0.0.0-dev"
 
 func main() {
@@ -46,12 +52,10 @@ func run(in io.Reader, out io.Writer, args []string) error {
 
 // commands is the canonical set of trellis subcommands — the single source the
 // dispatch, the usage text, and the docs-consistency check all read (decision-0025).
+// Generator-only since #120 (decision-0043): the end-user commands live on as the
+// plugin skills and the manual copy path, not here.
 var commands = map[string]func(in io.Reader, out io.Writer, args []string) error{
-	"setup":     setup,
-	"status":    status,
-	"remove":    remove,
-	"uninstall": uninstall,
-	"payload":   payload,
+	"payload": payload,
 }
 
 // commandNames returns every valid command word, including the built-in version/help.
@@ -64,14 +68,14 @@ func commandNames() map[string]bool {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, `trellis — setup CLI for the Trellis governance layer
+	fmt.Fprintln(w, `trellis — release-time payload generator for the Trellis governance layer
 
 usage:
-  trellis setup      interactive setup: pick a mode, detect what it needs (harness for m2), a profile, a model
-  trellis status     report whether a project's overlay is current with this binary
-  trellis remove     undo setup in a project (removes the .trellis overlay)
-  trellis uninstall  remove the trellis binary
   trellis payload    render the pre-built plugin payload + checksum manifest (release tooling)
   trellis version    print the version
-  trellis help       show this message`)
+  trellis help       show this message
+
+This is not the installer. Install Trellis via the Claude Code plugin
+(/plugin marketplace add kodhama/kodhama → /plugin install trellis@kodhama →
+/trellis:setup) or the manual copy path in the repo README.`)
 }

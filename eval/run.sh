@@ -63,8 +63,18 @@ run_arm() {  # $1 arm (baseline|trellis)  $2 idx
   cp -R "$fix"/. "$dir"/
   # +Trellis arm only: apply the overlay, inlined into AGENTS.md so both subagent and claude -p
   # workers see the directives (an @import wouldn't resolve for a bare subagent worker).
-  [ "$arm" = "trellis" ] && (cd "$ROOT/cli" && go run . setup --dir "$dir" \
-      --profile a --mode m1 --target AGENTS.md --apply) >/dev/null
+  # Mechanical copy of the pre-rendered payload — the manual copy path (kodhama-0007
+  # rule 2; the CLI's setup command retired in #120), posture a.
+  if [ "$arm" = "trellis" ]; then
+    local ref="$ROOT/plugins/trellis/reference"
+    mkdir -p "$dir/.trellis"
+    cp "$ref/invariants.md"   "$dir/.trellis/invariants.md"
+    cp "$ref/profile-a.md"    "$dir/.trellis/profile.md"
+    cp "$ref/trellis-a.md"    "$dir/.trellis/trellis.md"
+    cp "$ref/expression-a.md" "$dir/.trellis/expression.md"
+    cp "$ref/version"         "$dir/.trellis/version"
+    { [ -s "$dir/AGENTS.md" ] && printf '\n'; cat "$ref/block-inline-a.md"; printf '\n'; } >> "$dir/AGENTS.md"
+  fi
   local base="$OUTDIR/$FRAMEWORK/$(basename "$TASK" .md)/$arm-$i"
   mkdir -p "$(dirname "$base")"
   local wp; wp="$(mktemp)"

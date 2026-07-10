@@ -38,5 +38,5 @@ Each is a rule to follow, then the ✗ failure it prevents:
 - When something breaks or causes friction, fix the root cause so it can't happen twice — don't just re-run it and move on.
     ✗ the same pipeline step fails weekly and everyone just re-runs it, forever.
 
-If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/invariants.md` — the description and with/without examples — before deviating. Re-run `trellis setup` after changing the profile.
+If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/invariants.md` — the description and with/without examples — before deviating. After changing the profile, refresh the overlay — re-copy it from the Trellis payload (repo README, Install).
 <!-- trellis:end -->

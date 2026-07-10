@@ -36,19 +36,20 @@ func payloadFiles() map[string]string {
 		"block-claude.md": renderClaudeBlock(),
 	}
 	for _, p := range allProfiles {
-		plan := Plan{Profile: p}
-		files["trellis-"+p.Key+".md"] = renderHeader(plan)
-		files["profile-"+p.Key+".md"] = renderProfile(plan)
-		files["block-inline-"+p.Key+".md"] = renderInlineBlock(plan)
-		files["expression-"+p.Key+".md"] = renderExpressionSkeleton(plan)
+		files["trellis-"+p.Key+".md"] = renderHeader(p)
+		files["profile-"+p.Key+".md"] = renderProfile(p)
+		files["block-inline-"+p.Key+".md"] = renderInlineBlock(p)
+		files["expression-"+p.Key+".md"] = renderExpressionSkeleton(p)
 	}
 
 	// The payload's version stamp is derived from its own content: a vendored file
 	// cannot carry the commit sha that will contain it, and the generator's build
 	// version would make local regeneration nondeterministic. A content hash changes
 	// exactly when the payload changes — the "versioned payload" identity of
-	// kodhama-0007 rule 1. (The install-time .trellis/version stamp — plugin@<sha>,
-	// decision-0036/0039 — is the copier's job at install, not part of the payload.)
+	// kodhama-0007 rule 1. Since #120 (decision-0043) this stamp IS the install
+	// stamp: every writer copies it to .trellis/version, and the staleness hook
+	// compares the two files. (The plugin@<sha> install stamp of decision-0039
+	// rule 2 is superseded in part by decision-0043.)
 	files["version"] = "payload@" + manifestHash(files)[:12] + "\n"
 	files["checksums"] = manifestLines(files)
 	return files

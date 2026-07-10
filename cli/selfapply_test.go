@@ -17,7 +17,13 @@ import (
 // (kodhama-0007 rule 2). The repo's posture is a/conductor; the per-install
 // `version` stamp stays excluded (gitignored — it's not behavior, decision-0035).
 //
-// Regenerate on failure:  (from cli/)  go run . setup --dir .. --profile a --mode m1 --target CLAUDE.md --apply
+// Regenerate on failure — the manual copy path, applied to ourselves (#120: the
+// CLI's setup command retired; from the repo root, after `go run . payload --out
+// ../plugins/trellis/reference` in cli/):
+//
+//	cp plugins/trellis/reference/trellis-a.md    .trellis/trellis.md
+//	cp plugins/trellis/reference/profile-a.md    .trellis/profile.md
+//	cp plugins/trellis/reference/invariants.md   .trellis/invariants.md
 func TestRepoOverlayIsCurrent(t *testing.T) {
 	repoTrellis := filepath.Join("..", ".trellis")
 	if _, err := os.Stat(repoTrellis); err != nil {
@@ -32,10 +38,10 @@ func TestRepoOverlayIsCurrent(t *testing.T) {
 	} {
 		got, err := os.ReadFile(filepath.Join(repoTrellis, overlayName))
 		if err != nil {
-			t.Fatalf("repo overlay missing .trellis/%s — run `trellis setup` on the repo: %v", overlayName, err)
+			t.Fatalf("repo overlay missing .trellis/%s — copy it from the payload (see this test's doc comment): %v", overlayName, err)
 		}
 		if string(got) != payload[payloadName] {
-			t.Errorf(".trellis/%s is stale vs the payload's %s — re-run `trellis setup` on the repo (see this test's doc comment)", overlayName, payloadName)
+			t.Errorf(".trellis/%s is stale vs the payload's %s — re-copy it from the payload (see this test's doc comment)", overlayName, payloadName)
 		}
 	}
 
@@ -48,10 +54,10 @@ func TestRepoOverlayIsCurrent(t *testing.T) {
 	i := strings.Index(string(c), trellisBegin)
 	j := strings.Index(string(c), trellisEnd)
 	if i < 0 || j <= i {
-		t.Fatal("repo CLAUDE.md has no trellis:begin/end block — run `trellis setup` on the repo")
+		t.Fatal("repo CLAUDE.md has no trellis:begin/end block — paste the payload's block-claude.md")
 	}
 	if block := string(c)[i : j+len(trellisEnd)]; block != payload["block-claude.md"] {
-		t.Error("repo CLAUDE.md's managed block is stale vs the payload's block-claude.md — re-run `trellis setup` on the repo")
+		t.Error("repo CLAUDE.md's managed block is stale vs the payload's block-claude.md — re-paste it between the markers")
 	}
 }
 
