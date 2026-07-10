@@ -45,19 +45,15 @@ Code):
   Per `decision-0041` (ratified 2026-07-07), the tap is the family's
   (`kodhama/homebrew-tap`, installed as `kodhama/tap/trellis`), not a
   per-product tap trellis owns itself — this superseded `decision-0032`'s
-  original `gundisalwa/homebrew-trellis` shape. **Note for whoever next
-  regenerates a DS tag against this repo:** `kodhama/design-system`'s own
-  `patterns.md` (as of `v0.1.0`) still shows the pre-decision-0041 command
-  (`brew install kodhama/trellis/trellis`) in its Terminal pattern's
-  illustrative extract — that tag was cut ~3 minutes after the tap-rename
-  commit landed here and wasn't re-synced. This page keeps the *current*,
-  correct command below (install commands are this repo's own content, the
-  DS supplies no copy — see `lp-generator.md`), but the DS's example text
-  is stale and worth a heads-up upstream.
+  original `gundisalwa/homebrew-trellis` shape. (The heads-up previously
+  noted here — that `design-system`'s `patterns.md` still showed the
+  pre-decision-0041 command — was resolved in `design-system` `v0.2.0`,
+  commit `4f1e80f`; this page is stamped at that tag, so both sides now
+  agree.)
 - `cc` (Claude Code):
   ```
-  > /plugin marketplace add kodhama/trellis
-  > /plugin install trellis@trellis
+  > /plugin marketplace add kodhama/kodhama
+  > /plugin install trellis@kodhama
   > /trellis:setup    # the plugin covers the overlay natively
   ```
 

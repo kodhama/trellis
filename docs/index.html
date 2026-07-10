@@ -312,8 +312,8 @@
           <div class="cmd"><code><span class="prompt">$ </span>trellis setup<span class="cmt">    # then set it up in your project</span></code></div>
         </div>
         <div class="panel" data-panel="cc">
-          <div class="cmd"><code><span class="prompt">&gt; </span>/plugin marketplace add kodhama/trellis</code></div>
-          <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@trellis</code></div>
+          <div class="cmd"><code><span class="prompt">&gt; </span>/plugin marketplace add kodhama/kodhama</code></div>
+          <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/trellis:setup<span class="cmt">    # the plugin covers the overlay natively</span></code></div>
         </div>
       </div>
@@ -496,7 +496,7 @@
     var commands = {
       curl: "curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh\ntrellis setup",
       brew: "brew install kodhama/tap/trellis\ntrellis setup",
-      cc: "/plugin marketplace add kodhama/trellis\n/plugin install trellis@trellis\n/trellis:setup"
+      cc: "/plugin marketplace add kodhama/kodhama\n/plugin install trellis@kodhama\n/trellis:setup"
     };
     var activeTab = "curl";
     var tabs = document.querySelectorAll(".tab");

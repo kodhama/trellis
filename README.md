@@ -33,8 +33,8 @@ Nothing is written without `--apply` (or your `y` at the prompt). Built from [`c
 **Or install it as a Claude Code plugin** (no binary) — covers the M1 overlay natively:
 
 ```
-/plugin marketplace add kodhama/trellis
-/plugin install trellis@trellis
+/plugin marketplace add kodhama/kodhama
+/plugin install trellis@kodhama
 /trellis:setup
 ```
 

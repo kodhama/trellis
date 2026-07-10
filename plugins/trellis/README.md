@@ -6,8 +6,8 @@ binary required.
 ## Install
 
 ```
-/plugin marketplace add kodhama/trellis
-/plugin install trellis@trellis
+/plugin marketplace add kodhama/kodhama
+/plugin install trellis@kodhama
 ```
 
 Then run the setup skill in any project:
