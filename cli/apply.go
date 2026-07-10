@@ -35,6 +35,8 @@ const (
 //
 //	CLAUDE.md      -> @.trellis/trellis.md      (header, auto-loaded)
 //	.trellis/trellis.md -> @profile.md          (profile, auto-loaded)
+//	                    -> @expression.md       (the project's hand-owned expression, auto-loaded;
+//	                       kodhama-0007 rule 4 — seeded once by the copiers, never written here)
 //	                    -> `.trellis/invariants.md` (backticked = read on demand)
 func applyM1(dir string, plan Plan) (string, error) {
 	tdir := filepath.Join(dir, ".trellis")
@@ -122,9 +124,13 @@ func warnOrphanedProfileContent(tdir string) string {
 	if after == "" {
 		return ""
 	}
+	// The move-it-here pointer names .trellis/expression.md — the bundle's one
+	// hand-owned file (kodhama-0007 rule 4, #119). This supersedes PR #114's original
+	// wording, which pointed at the instructions file (e.g. CLAUDE.md) before the
+	// hand-owned home existed.
 	return "⚠ .trellis/profile.md has hand-authored content below the generated block, about to be overwritten and lost:\n\n" +
 		after + "\n\n" +
-		"profile.md is a pure generated snapshot (decision-0035) — trellis setup always rewrites it whole. Move project-specific content into your instructions file (e.g. CLAUDE.md) instead, outside the trellis:begin/end markers, where hand-authored content is preserved.\n\n"
+		"profile.md is a pure generated snapshot (decision-0035) — trellis setup always rewrites it whole. Move project-specific content into the body of .trellis/expression.md instead (the bundle's hand-owned file, kodhama-0007 rule 4): setup seeds it once, never rewrites it, and the overlay header keeps it always-loaded.\n\n"
 }
 
 // strengthLine turns the profile's C1 lean into a plain-language instruction the host
@@ -197,10 +203,17 @@ func renderClaudeBlock() string {
 }
 
 // renderHeader is the entry point CLAUDE.md imports: the intro + the governance
-// behavior, then it pulls in the profile and points at the invariant reference.
+// behavior, then it pulls in the profile, the project's own expression, and points
+// at the invariant reference. Ordering is rules first, then the expression
+// (kodhama-0007 rule 4 via #119 — always-loaded, matching how projects actually
+// used it: the hand-authored expression sat below the generated rules).
+// expression.md is hand-owned and is NOT written here: the copiers seed it once
+// (the setup skill's step 1); until a project seeds it, the import resolves to
+// nothing.
 func renderHeader(plan Plan) string {
 	return governanceHeader(plan) + "\n" +
-		"@profile.md\n\n" +
+		"@profile.md\n" +
+		"@expression.md\n\n" +
 		"---\n" + invariantsTrigger + "\n"
 }
 

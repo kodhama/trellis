@@ -54,3 +54,28 @@ func TestRepoOverlayIsCurrent(t *testing.T) {
 		t.Error("repo CLAUDE.md's managed block is stale vs the payload's block-claude.md — re-run `trellis setup` on the repo")
 	}
 }
+
+// TestRepoDeclaresExpression: kodhama/trellis#119 (kodhama-0007 rule 4) — the header
+// this repo's own overlay imports now carries `@expression.md`, so self-hosting parity
+// (decision-0035) requires the repo to hold its own hand-owned declaration file, with
+// frontmatter that machine-reads to the same posture TestRepoOverlayIsCurrent pins
+// (a/conductor). Only the frontmatter is asserted: the body is hand-owned and no test
+// may pin it (the ownership rule — 100% generated or 100% hand-owned, never mixed).
+func TestRepoDeclaresExpression(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("..", ".trellis", "expression.md"))
+	if err != nil {
+		t.Fatalf("repo overlay has no .trellis/expression.md — the header imports it (kodhama-0007 rule 4, #119): %v", err)
+	}
+	content := string(b)
+	if !strings.HasPrefix(content, "---\n") {
+		t.Fatalf(".trellis/expression.md must open with YAML frontmatter, got: %q", content[:min(len(content), 40)])
+	}
+	rest := content[len("---\n"):]
+	end := strings.Index(rest, "\n---")
+	if end < 0 {
+		t.Fatal(".trellis/expression.md frontmatter is unterminated")
+	}
+	if frontmatter := rest[:end]; !strings.Contains(frontmatter, "profile: a") {
+		t.Errorf(".trellis/expression.md frontmatter must declare `profile: a` (the posture the repo overlay is pinned to), got: %q", frontmatter)
+	}
+}

@@ -23,6 +23,31 @@ the project already declares one, asking nothing) and copies Trellis onto your p
 checksum manifest (`kodhama-0007`: the skill copies, it never composes). Augment-never-clobber;
 nothing else is touched, and it's idempotent.
 
+`.trellis/expression.md` is the bundle's one **hand-owned** file (`kodhama-0007` rule 4): its
+frontmatter declares the posture (the only machine-read line), and its body is where the project
+records how it expresses the invariants — dials, mappings, gate tables. Setup seeds it once and
+never rewrites it; the overlay header imports it, so what you write there stays always-loaded.
+
+## Migrating an older install (hand-authored content in `profile.md`)
+
+Overlays installed before `expression.md` existed sometimes carry the project's own expression
+appended to the generated `.trellis/profile.md` — the clobber target of
+[#112](https://github.com/kodhama/trellis/issues/112): a refresh rewrites that file whole. To
+migrate, once:
+
+1. Open `.trellis/profile.md`. Everything below its closing "(Generated from your profile …)"
+   line is yours — cut it.
+2. Create `.trellis/expression.md`: YAML frontmatter declaring your posture (`profile: a` or
+   `profile: b`), then your content as the body. (`/trellis:setup` offers this move itself when
+   it detects such content on a refresh.)
+3. Run `/trellis:setup` to refresh — it reads the posture from the frontmatter, asks nothing,
+   and rewrites the generated files.
+
+Done when (each checkable): `.trellis/profile.md` ends at its "(Generated from your profile …)"
+line; the skill's manifest check passes; `.trellis/expression.md` says exactly what you wrote
+(refreshes never touch it — it is excluded from the manifest); and `.trellis/trellis.md` carries
+`@expression.md`, so your expression stays always-loaded.
+
 ## What it bundles
 
 - **`skills/setup`** — `/trellis:setup`: install the overlay (done natively, no binary).

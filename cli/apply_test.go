@@ -125,6 +125,31 @@ func TestApplyM1WarnsBeforeOrphaningProfileContent(t *testing.T) {
 	}
 }
 
+// kodhama/trellis#119 (kodhama-0007 rule 4): the warning's move-it-here pointer names
+// `.trellis/expression.md` — the hand-owned home — not the instructions file. PR #114's
+// original "move it into your instructions file (e.g. CLAUDE.md)" guidance is
+// superseded; every home of that guidance must agree.
+func TestWarnPointsAtExpressionHome(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := applyM1(dir, planFor("b")); err != nil {
+		t.Fatal(err)
+	}
+	tdir := filepath.Join(dir, ".trellis")
+	profilePath := filepath.Join(tdir, "profile.md")
+	appended := readFile(t, profilePath) + "\nHand-authored expression content.\n"
+	if err := os.WriteFile(profilePath, []byte(appended), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	warning := warnOrphanedProfileContent(tdir)
+	if !strings.Contains(warning, ".trellis/expression.md") {
+		t.Errorf("warning must point at the hand-owned home .trellis/expression.md (kodhama-0007 rule 4, #119), got: %q", warning)
+	}
+	if strings.Contains(warning, "CLAUDE.md") {
+		t.Errorf("warning still carries the superseded instructions-file guidance (PR #114 → #119): %q", warning)
+	}
+}
+
 func TestApplyM1NoWarningOnPlainRerun(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := applyM1(dir, planFor("b")); err != nil {

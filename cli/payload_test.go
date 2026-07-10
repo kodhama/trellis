@@ -99,6 +99,33 @@ func TestPayloadVariantsAreTheRenderedPostures(t *testing.T) {
 	}
 }
 
+// TestPayloadHeaderCarriesExpressionImport: kodhama-0007 rule 4 via kodhama/trellis#119
+// — `.trellis/expression.md` is the project's always-on hand-owned declaration, so the
+// header the payload ships must import it alongside `@profile.md`, rules first, then
+// the project's expression (matching how projects actually used it: the first migrant's
+// expression sat below the rules). The inline blocks stay import-free — they exist
+// precisely for files without @import support.
+func TestPayloadHeaderCarriesExpressionImport(t *testing.T) {
+	files := payloadFiles()
+	for _, name := range []string{"trellis-a.md", "trellis-b.md"} {
+		content := files[name]
+		i := strings.Index(content, "@profile.md")
+		j := strings.Index(content, "@expression.md")
+		if i < 0 || j < 0 {
+			t.Errorf("%s must import both @profile.md and @expression.md (kodhama-0007 rule 4, #119): %q", name, content)
+			continue
+		}
+		if j < i {
+			t.Errorf("%s must import the rules (@profile.md) before the project's expression (@expression.md): %q", name, content)
+		}
+	}
+	for _, name := range []string{"block-inline-a.md", "block-inline-b.md"} {
+		if strings.Contains(files[name], "@expression.md") {
+			t.Errorf("%s is the no-@import variant and must not carry an import line", name)
+		}
+	}
+}
+
 // TestPayloadCarriesInvariantsTrigger: the kodhama-0007 rider — the always-on
 // templates' invariants pointer is a trigger ("read the entry before deviating"),
 // not a description.
