@@ -29,16 +29,24 @@ development. It fits whatever methodology your project already uses,
 teaches it to your coding agents, and enforces a small set of invariants —
 so a process glitch never has to happen twice.
 
-**Install block** (terminal pattern, two tabs — Claude Code / manual copy;
-the curl and Homebrew tabs retired with the end-user binary channel,
-`kodhama-0007` rule 5 / kodhama/trellis#120, and the family marketplace is
-the canonical front door per `kodhama-0002`):
+**Install block** (terminal pattern, three tabs — Claude Code / curl / manual copy;
+the Homebrew tab retired with the end-user binary channel, `kodhama-0007` rule 5 /
+kodhama/trellis#120, and the family marketplace is the canonical front door per
+`kodhama-0002`. The curl tab returned in kodhama/trellis#124 as a **plugin vendor
+script** — a different, much smaller artifact class than the retired binary
+installer: it makes exactly one decision, scope, and composes nothing else):
 
 - `cc` (Claude Code, default/active tab):
   ```
   > /plugin marketplace add kodhama/kodhama
   > /plugin install trellis@kodhama
   > /trellis:setup    # the plugin covers the overlay natively
+  ```
+- `curl` (same plugin, no marketplace — kodhama/trellis#124):
+  ```
+  $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
+  $ # vends .claude/skills/trellis (project scope, default) or ~/.claude/skills/trellis
+  $ # (--scope personal); then run /trellis:setup as above
   ```
 - `manual` (any other harness):
   ```

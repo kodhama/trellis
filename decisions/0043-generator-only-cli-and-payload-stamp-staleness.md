@@ -65,6 +65,21 @@ compare wins. This record resolves both, so neither lives only in a PR body.
    `kodhama/homebrew-tap` with a pointer to the plugin + manual paths (`decision-0041`
    superseded in part; `v0.2.29` binaries stay downloadable, frozen).
 
+   > **Note (2026-07-10, `kodhama/trellis#124`): a file also named `install.sh` returned at the
+   > repo root — a different, much smaller artifact class than the one removed above, not a
+   > reversal of this rule.** The retired script (this rule) was a release-era end-user *binary*
+   > installer, tied to the tap/release channel that also died with `kodhama-0007` rule 5. The
+   > #124 script downloads no binary and makes no product decision: it is a **plugin vendor
+   > script** — it fetches the whole `plugins/trellis/` tree, verifies it against a manifest baked
+   > into the script, and writes it to disk as a [skills-directory
+   > plugin](https://code.claude.com/docs/en/plugins-reference#skills-directory-plugins) (project
+   > or personal scope). Every decision the retired script used to make (posture, target file,
+   > block style) stays exclusively in `plugins/trellis/skills/setup/SKILL.md`, run unmodified once
+   > the plugin is on disk — the #124 script is one layer further out than that skill, vending the
+   > *plugin*, never the *overlay*. First attempted as `#128` (reimplemented the setup skill's
+   > decision logic a second time in shell — closed without merging, the exact drift class
+   > `kodhama-0007` exists to close); `#124`'s corrected version is the one that landed.
+
 ## Consequences
 
 - Forward annotations added in the same PR: `decision-0025`, `-0030`, `-0035` (pointer in #120's

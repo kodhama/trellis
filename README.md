@@ -30,6 +30,44 @@ Augment-never-clobber, idempotent, verified against a shipped checksum manifest.
 request it also runs the **M2 morph** — a model-driven rewrite of your own instructions, on a
 fresh git branch you review. The plugin lives in [`plugins/trellis`](plugins/trellis).
 
+**Same plugin, without the marketplace — the curl path
+([#124](https://github.com/kodhama/trellis/issues/124)).** `install.sh` vends the whole
+`plugins/trellis/` tree onto disk as a [skills-directory
+plugin](https://code.claude.com/docs/en/plugins-reference#skills-directory-plugins): any folder
+under a skills directory with its own `.claude-plugin/plugin.json` loads as `trellis@skills-dir` on
+Claude Code's next session, no marketplace and no install step. This script makes exactly **one**
+decision — where to put the plugin — and composes nothing else; every other decision (posture,
+which file to patch, and so on) is still made entirely by `/trellis:setup`, unmodified, once the
+plugin is on disk:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
+```
+
+Two scopes, `--scope project` (default, inside a git repo) or `--scope personal`:
+
+- **project** — `<repo-root>/.claude/skills/trellis/`, checked into git so it reaches every
+  collaborator on clone. Resolved via `git rev-parse --show-toplevel` from wherever you run it, not
+  `$PWD` — project-scope skills-directory plugins do **not** walk up to the repo root, so launch
+  Claude Code from that root (or run `/reload-plugins` after `cd`'ing there), and expect its
+  workspace **trust dialog** on first launch there (unavoidable — the content came from the repo,
+  not from you). The script never runs `git add`/`git commit`; it prints the command and leaves the
+  commit to you.
+- **personal** — `~/.claude/skills/trellis/`, available in every project on the machine, no trust
+  dialog, no repo required.
+
+Every fetched byte is verified against a manifest baked into the script *before* anything is
+written — a mismatch fails loudly and installs nothing. Inspect first, or pass flags, instead of
+piping straight to `sh`:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/kodhama/trellis/main/install.sh
+less install.sh && sh install.sh --scope personal
+```
+
+Then run `/trellis:setup` as above — that skill is the one real interactive writer either path
+leads to.
+
 **Any other harness — the manual copy path.** Every bundle file is pre-rendered plain text in
 [`plugins/trellis/reference/`](plugins/trellis/reference) (the payload, `kodhama-0007`: one
 render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) and copy:
@@ -117,6 +155,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043` (#120). |
 | [`plugins/trellis/`](plugins/trellis/) | The **Claude Code plugin** — `/trellis:setup`, `/trellis:remove`, the staleness hook, and the vendored payload (`reference/`). |
+| [`install.sh`](install.sh) | The **curl path** (`#124`) — vends the whole plugin bundle onto disk as a skills-directory plugin; makes exactly one decision (scope) and composes nothing else. |
 | [`specs/`](specs/) | The spine (`0001`), the profile / catalog schema (`0002`), the delivery machinery (`0003`). |
 | [`decisions/`](decisions/) | Append-only decision records. |
 | [`research/`](research/) | Framework gate-tests + the genetics / control-theory lenses behind the design. |

@@ -298,6 +298,7 @@
           <i class="dot"></i><i class="dot"></i><i class="dot"></i>
           <div class="tabs" role="tablist" aria-label="Install method">
             <button class="tab active" role="tab" aria-selected="true" data-tab="cc">Claude Code</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
             <button class="tab" role="tab" aria-selected="false" data-tab="manual">manual copy</button>
           </div>
           <button class="copy" id="copyBtn" aria-label="Copy commands">copy</button>
@@ -306,6 +307,10 @@
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin marketplace add kodhama/kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/trellis:setup<span class="cmt">    # the plugin covers the overlay natively</span></code></div>
+        </div>
+        <div class="panel" data-panel="curl">
+          <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
+          <div class="cmd"><code><span class="prompt">$ </span><span class="cmt"># vends .claude/skills/trellis (project scope, default) — then run /trellis:setup</span></code></div>
         </div>
         <div class="panel" data-panel="manual">
           <div class="cmd"><code><span class="prompt">$ </span>git clone --depth 1 https://github.com/kodhama/trellis</code></div>
