@@ -1,13 +1,14 @@
 package main
 
 // Tests for install.sh — the curl-path plugin vendor script (kodhama/trellis#124,
-// corrected design; see the script's own header for why it supersedes the closed
-// #128 attempt). Unlike #128's install.sh, this script makes exactly one decision
-// (scope) and composes nothing else — so these tests check vendoring mechanics
-// (fetch, verify, write, scope resolution), never the setup skill's decision logic
-// (that lives in plugins/trellis/skills/setup/SKILL.md and is out of scope here).
-// The harness shape (exec the script against throwaway dirs, TRELLIS_BUNDLE_SOURCE
-// pointed at the vendored bundle so tests run offline) is salvaged from #128's
+// corrected design per spec-0005-curl-install-mechanical-vendoring; see the script's
+// own header for why it supersedes the closed #128 attempt). Unlike #128's
+// install.sh, this script makes exactly one decision (scope) and composes nothing
+// else — so these tests check vendoring mechanics (fetch, verify, write, scope
+// resolution), never the setup skill's decision logic (that lives in
+// plugins/trellis/skills/setup/SKILL.md and is out of scope here). The harness shape
+// (exec the script against throwaway dirs, TRELLIS_BUNDLE_SOURCE pointed at the
+// vendored bundle so tests run offline) is salvaged from #128's
 // cli/install_script_test.go. Upstream anchors:
 //
 //   - kodhama/trellis#124 (corrected design): the script vendors the WHOLE
@@ -22,6 +23,16 @@ package main
 //     install.sh's baked-in copy differs in content OR file set, so the two move
 //     atomically on main (mirrors #128's TestInstallScriptPinIsCurrent, scoped to
 //     the whole bundle instead of just the M1 payload).
+//
+// POST-GATE REVISION (spec-0005, NEEDS-REVISION verdict addressed here): the
+// env var is $TRELLIS_SKILLS_SCOPE (was $TRELLIS_SCOPE); the ambiguous-scope,
+// no-tty, no-git-repo case is a fail-closed hard error, never a silent fallback to
+// personal scope (spec-0005 AC5 — TestVendorAmbiguousScopeNoTTYFailsClosed replaces
+// the old, wrongly-asserting TestVendorDefaultFallsBackToPersonalOutsideGitRepo);
+// AC9 (no git mutation, on every path — not just the happy one) and AC2 (zero
+// decision logic, proven by instructions-file-content invariance, not just static
+// grep) each get their own dedicated coverage below, and the AC10 project-fresh-
+// install row now asserts all five §4 guidance items, not just the first.
 //
 // Real /dev/tty prompting (rustup-style, reading from the terminal even though
 // stdin is consumed by the curl|sh pipe) is verified by hand with a real pty
@@ -259,7 +270,9 @@ func TestInstallScriptBundleManifestIsCurrent(t *testing.T) {
 // --- fresh installs --------------------------------------------------------------
 
 // TestVendorPersonalScopeFreshInstall (#124: personal scope needs no git repo and
-// writes to $HOME/.claude/skills/trellis).
+// writes to $HOME/.claude/skills/trellis). Extended per spec-0005's test-coverage
+// table (personal fresh-vendor row, AC1/AC4/AC10): stdout must carry the next-step
+// pointer to /trellis:setup and must NOT carry the project-only trust-dialog note.
 func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	cwd := t.TempDir() // deliberately NOT a git repo — personal scope must not care
 	home := t.TempDir()
@@ -272,10 +285,25 @@ func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	if !strings.Contains(res.stdout, "scope: personal") {
 		t.Errorf("stdout should say which scope was chosen; got:\n%s", res.stdout)
 	}
+	if !strings.Contains(res.stdout, "/trellis:setup") {
+		t.Errorf("stdout should carry the next-step pointer to /trellis:setup; got:\n%s", res.stdout)
+	}
+	if strings.Contains(res.stdout, "trust-dialog") || strings.Contains(res.stdout, "workspace-trust dialog") {
+		t.Errorf("personal scope must NOT print the project-only trust-dialog note; got:\n%s", res.stdout)
+	}
+	if strings.Contains(res.stdout, "git add .claude/skills/trellis") {
+		t.Errorf("personal scope must NOT print the project-only commit suggestion; got:\n%s", res.stdout)
+	}
 }
 
 // TestVendorProjectScopeFreshInstallFromRoot (#124: project scope resolves to
-// <repo-root>/.claude/skills/trellis when run from the root itself).
+// <repo-root>/.claude/skills/trellis when run from the root itself). Extended per
+// spec-0005's test-coverage table ("Project fresh vendor, run from repo root" row,
+// AC1/AC3/AC4/AC9/AC10): asserts all five of §4's post-write guidance items in
+// order (scope/path/stamp, the trust-dialog note, the no-walk-up caveat, the commit
+// suggestion, and the next-step pointer), and confirms the commit suggestion is only
+// ever printed — never executed — by checking the target repo's own git status
+// afterward.
 func TestVendorProjectScopeFreshInstallFromRoot(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)
@@ -285,6 +313,49 @@ func TestVendorProjectScopeFreshInstallFromRoot(t *testing.T) {
 		t.Fatalf("expected success, got exit %d\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
 	}
 	assertBundleVendored(t, filepath.Join(repo, ".claude", "skills", "trellis"))
+
+	target := filepath.Join(repo, ".claude", "skills", "trellis")
+	// item 1: scope, target path, bundle stamp.
+	if !strings.Contains(res.stdout, "scope: project") {
+		t.Errorf("item 1 (scope): stdout missing 'scope: project'; got:\n%s", res.stdout)
+	}
+	if !strings.Contains(res.stdout, target) {
+		t.Errorf("item 1 (path): stdout missing the resolved target path %s; got:\n%s", target, res.stdout)
+	}
+	if !strings.Contains(res.stdout, "payload@") {
+		t.Errorf("item 1 (stamp): stdout missing the bundle stamp; got:\n%s", res.stdout)
+	}
+	// item 2: the trust-dialog note (project scope only).
+	if !strings.Contains(res.stdout, "workspace-trust dialog") {
+		t.Errorf("item 2 (trust dialog): stdout missing the workspace-trust-dialog note; got:\n%s", res.stdout)
+	}
+	// item 3: the no-walk-up caveat.
+	if !strings.Contains(res.stdout, "do NOT walk up to the repo root") {
+		t.Errorf("item 3 (no-walk-up): stdout missing the no-walk-up caveat; got:\n%s", res.stdout)
+	}
+	// item 4: the commit suggestion is present in output...
+	if !strings.Contains(res.stdout, "add .claude/skills/trellis") || !strings.Contains(res.stdout, "commit -m") {
+		t.Errorf("item 4 (commit suggestion): stdout missing the suggested git add/commit line; got:\n%s", res.stdout)
+	}
+	// ...and confirm via git status that the script itself made no staged/committed
+	// change — the suggestion is printed, never executed.
+	cmd := exec.Command("git", "status", "--porcelain=v1")
+	cmd.Dir = repo
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git status: %v", err)
+	}
+	status := string(out)
+	if !strings.Contains(status, "?? .claude/") {
+		t.Errorf("item 4 (no mutation): expected the vendored files to show as untracked, got status:\n%s", status)
+	}
+	if strings.Contains(status, "A  ") {
+		t.Errorf("item 4 (no mutation): nothing should be staged — install.sh must never run git add; status:\n%s", status)
+	}
+	// item 5: the next-step pointer to /trellis:setup.
+	if !strings.Contains(res.stdout, "/trellis:setup") {
+		t.Errorf("item 5 (next step): stdout missing the /trellis:setup pointer; got:\n%s", res.stdout)
+	}
 }
 
 // TestVendorProjectScopeFromSubdirectoryResolvesToRoot (#124's central bug class:
@@ -316,21 +387,34 @@ func TestVendorProjectScopeFromSubdirectoryResolvesToRoot(t *testing.T) {
 	}
 }
 
-// TestVendorDefaultFallsBackToPersonalOutsideGitRepo (#124: "if not inside a git
-// repo, project scope isn't available — say so ... or default to personal with a
-// clear message" — this script's resolved choice: fall back, loudly, when scope was
-// not explicitly requested).
-func TestVendorDefaultFallsBackToPersonalOutsideGitRepo(t *testing.T) {
+// TestVendorAmbiguousScopeNoTTYFailsClosed (spec-0005 AC5 — replaces an earlier,
+// wrong reading of the original issue brief that asserted a silent fallback to
+// personal scope here; that was flagged as a real conformance failure in gate
+// review). Outside a git repo, with no --scope/$TRELLIS_SKILLS_SCOPE override and no
+// controlling tty, project scope has no target and there is no one to ask: the
+// script must exit non-zero immediately, name exactly what's missing, and write
+// nothing — never silently substitute the *other* scope than the one implied by the
+// (absent) request. This is the exact scenario spec-0005's test-coverage table row
+// "No controlling tty, scope ambiguous (no git repo, no flag/env)" requires (AC5).
+func TestVendorAmbiguousScopeNoTTYFailsClosed(t *testing.T) {
 	cwd := t.TempDir() // not a git repo
 	home := t.TempDir()
 
-	res := runVendor(t, cwd, home, vendoredBundleAbs(t)) // no --scope
-	if res.code != 0 {
-		t.Fatalf("expected success (fallback, not failure), got exit %d\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
+	res := runVendor(t, cwd, home, vendoredBundleAbs(t)) // no --scope, --non-interactive (no tty)
+	if res.code == 0 {
+		t.Fatalf("expected fail-closed (non-zero exit) when scope is ambiguous and no tty is available; got exit 0\nstdout: %s", res.stdout)
 	}
-	assertBundleVendored(t, filepath.Join(home, ".claude", "skills", "trellis"))
-	if !strings.Contains(res.stdout, "not inside a git repository") {
-		t.Errorf("the fallback must be stated loudly, not silent; stdout:\n%s", res.stdout)
+	if !strings.Contains(res.stderr, "git repository") {
+		t.Errorf("failure must name the missing git repository; stderr:\n%s", res.stderr)
+	}
+	if !strings.Contains(res.stderr, "controlling terminal") {
+		t.Errorf("failure must name the missing controlling terminal; stderr:\n%s", res.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude")); !os.IsNotExist(err) {
+		t.Errorf("nothing may be written on a fail-closed ambiguous scope, but %s/.claude exists (personal scope was silently substituted)", home)
+	}
+	if _, err := os.Stat(filepath.Join(cwd, ".claude")); !os.IsNotExist(err) {
+		t.Errorf("nothing may be written on a fail-closed ambiguous scope, but %s/.claude exists", cwd)
 	}
 }
 
@@ -354,7 +438,8 @@ func TestVendorExplicitProjectScopeOutsideRepoFailsLoudly(t *testing.T) {
 
 // --- scope selection: flag vs env, precedence, validation ------------------------
 
-// TestVendorScopeFromEnvVar ($TRELLIS_SCOPE is honored when no --scope flag is given).
+// TestVendorScopeFromEnvVar ($TRELLIS_SKILLS_SCOPE is honored when no --scope flag
+// is given — spec-0005 §2; renamed from $TRELLIS_SCOPE per gate review).
 func TestVendorScopeFromEnvVar(t *testing.T) {
 	cwd := t.TempDir()
 	home := t.TempDir()
@@ -364,7 +449,7 @@ func TestVendorScopeFromEnvVar(t *testing.T) {
 	cmd.Env = append(os.Environ(),
 		"TRELLIS_BUNDLE_SOURCE="+vendoredBundleAbs(t),
 		"HOME="+home,
-		"TRELLIS_SCOPE=personal",
+		"TRELLIS_SKILLS_SCOPE=personal",
 	)
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
@@ -372,8 +457,8 @@ func TestVendorScopeFromEnvVar(t *testing.T) {
 		t.Fatalf("expected success: %v (stderr: %s)", err, se.String())
 	}
 	assertBundleVendored(t, filepath.Join(home, ".claude", "skills", "trellis"))
-	if !strings.Contains(so.String(), "$TRELLIS_SCOPE") {
-		t.Errorf("stdout should attribute the scope to $TRELLIS_SCOPE; got:\n%s", so.String())
+	if !strings.Contains(so.String(), "$TRELLIS_SKILLS_SCOPE") {
+		t.Errorf("stdout should attribute the scope to $TRELLIS_SKILLS_SCOPE; got:\n%s", so.String())
 	}
 }
 
@@ -388,7 +473,7 @@ func TestVendorScopeFlagWinsOverEnv(t *testing.T) {
 	cmd.Dir = repo
 	cmd.Env = append(os.Environ(),
 		"TRELLIS_BUNDLE_SOURCE="+vendoredBundleAbs(t),
-		"TRELLIS_SCOPE=personal",
+		"TRELLIS_SKILLS_SCOPE=personal",
 	)
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
@@ -513,29 +598,252 @@ func TestVendorNonInteractiveFlagAppliesDefaultWithoutPrompting(t *testing.T) {
 	assertBundleVendored(t, filepath.Join(repo, ".claude", "skills", "trellis"))
 }
 
-// --- never a git mutation ----------------------------------------------------------
+// --- AC2: zero decision logic, proven by instructions-file-content invariance -----
+//
+// A prose grep for `trellis:begin`/`expression.md`/etc. only proves the script
+// doesn't *mention* those strings — it can't prove the script doesn't *branch* on
+// instructions-file presence or content. This test proves the stronger property
+// spec-0005's AC2 actually requires: two otherwise-identical repos that differ only
+// in which instructions file they carry (and whether `.trellis/` exists at all)
+// produce byte-identical vendoring output, and neither repo's own files are ever
+// read-and-rewritten (or read-and-left-alone-by-luck) by the script.
 
-// TestVendorNeverRunsGitAdd (#124 rule 4: the script prints a suggested next
-// command but never executes a git mutation itself — verified here by checking the
-// repo's git status stays clean, i.e. the vendored files remain untracked).
-func TestVendorNeverRunsGitAdd(t *testing.T) {
-	repo := t.TempDir()
-	initGitRepo(t, repo)
+// TestVendorZeroDecisionLogicAcrossInstructionFileVariants (spec-0005 AC2, test-
+// coverage table's two-fixture-repo row). Fixture A carries a CLAUDE.md with
+// trellis:begin/trellis:end managed-block markers plus a .trellis/expression.md
+// declaring a posture (exactly the shape /trellis:setup would have left behind).
+// Fixture B carries an AGENTS.md instead, and no .trellis/ at all. A script that
+// branched on either — under any name — would produce different stdout (beyond the
+// target path) or would touch one repo's own files; this asserts neither happens.
+func TestVendorZeroDecisionLogicAcrossInstructionFileVariants(t *testing.T) {
+	repoA := t.TempDir()
+	initGitRepo(t, repoA)
+	claudeMD := "# Project A\n\n<!-- trellis:begin (managed by trellis) -->\nSome existing overlay content that a decision-logic script might try to detect or patch.\n<!-- trellis:end -->\n"
+	writeFileT(t, filepath.Join(repoA, "CLAUDE.md"), claudeMD)
+	expressionMD := "---\nprofile: b\n---\n\nOur hand-authored expression — a decision-logic script might try to read this posture.\n"
+	writeFileT(t, filepath.Join(repoA, ".trellis", "expression.md"), expressionMD)
 
-	if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
-		t.Fatalf("run failed: %s", res.stderr)
+	repoB := t.TempDir()
+	initGitRepo(t, repoB)
+	agentsMD := "# Project B — no trellis markers, no .trellis/ at all\n"
+	writeFileT(t, filepath.Join(repoB, "AGENTS.md"), agentsMD)
+
+	resA := runVendor(t, repoA, "", vendoredBundleAbs(t), "--scope", "project")
+	if resA.code != 0 {
+		t.Fatalf("fixture A run failed (exit %d): %s", resA.code, resA.stderr)
 	}
-	cmd := exec.Command("git", "status", "--porcelain=v1")
-	cmd.Dir = repo
-	out, err := cmd.Output()
+	resB := runVendor(t, repoB, "", vendoredBundleAbs(t), "--scope", "project")
+	if resB.code != 0 {
+		t.Fatalf("fixture B run failed (exit %d): %s", resB.code, resB.stderr)
+	}
+
+	// stdout must be byte-identical once the one legitimate scope-resolution input
+	// (the absolute repo path) is normalized away — nothing else may differ.
+	normA := strings.ReplaceAll(strings.ReplaceAll(resA.stdout, repoA, "<REPO>"), filepath.Join(repoA, ".claude", "skills", "trellis"), "<REPO>/.claude/skills/trellis")
+	normB := strings.ReplaceAll(strings.ReplaceAll(resB.stdout, repoB, "<REPO>"), filepath.Join(repoB, ".claude", "skills", "trellis"), "<REPO>/.claude/skills/trellis")
+	if normA != normB {
+		t.Errorf("stdout differs between the two fixtures after normalizing the repo path — install.sh is branching on instructions-file presence/content:\nfixture A:\n%s\nfixture B:\n%s", normA, normB)
+	}
+
+	assertBundleVendored(t, filepath.Join(repoA, ".claude", "skills", "trellis"))
+	assertBundleVendored(t, filepath.Join(repoB, ".claude", "skills", "trellis"))
+
+	// Fixture A's own files: byte-identical before and after — not read-and-
+	// rewritten, not read-and-left-alone-by-luck.
+	if got := readFileT(t, filepath.Join(repoA, "CLAUDE.md")); got != claudeMD {
+		t.Errorf("CLAUDE.md was modified by install.sh — it must never read or write any instructions file:\nwant:\n%s\ngot:\n%s", claudeMD, got)
+	}
+	if got := readFileT(t, filepath.Join(repoA, ".trellis", "expression.md")); got != expressionMD {
+		t.Errorf(".trellis/expression.md was modified by install.sh — it must never touch .trellis/:\nwant:\n%s\ngot:\n%s", expressionMD, got)
+	}
+
+	// Fixture B: no .trellis/ was created, and AGENTS.md is untouched.
+	if _, err := os.Stat(filepath.Join(repoB, ".trellis")); !os.IsNotExist(err) {
+		t.Errorf("install.sh created .trellis/ in fixture B, which never had one — it must never touch .trellis/")
+	}
+	if got := readFileT(t, filepath.Join(repoB, "AGENTS.md")); got != agentsMD {
+		t.Errorf("AGENTS.md was modified by install.sh — it must never read or write any instructions file")
+	}
+}
+
+// --- AC9: no git mutation, ever — on every path, not just the happy one -----------
+
+// gitInvocationShim writes a fake `git` onto a fresh directory's PATH that logs
+// every invocation's argument line to logPath and then execs the real git (found
+// via the ambient PATH before the shim is prepended) — so the script under test
+// still gets correct git behavior, but every call it makes is recorded. Returns the
+// directory to prepend to PATH and the log file path.
+func gitInvocationShim(t *testing.T) (binDir, logPath string) {
+	t.Helper()
+	realGit, err := exec.LookPath("git")
 	if err != nil {
-		t.Fatalf("git status: %v", err)
+		t.Fatalf("git not found on PATH: %v", err)
 	}
-	status := string(out)
-	if !strings.Contains(status, "?? .claude/") {
-		t.Errorf("expected the vendored files to show as untracked (git never mutated), got status:\n%s", status)
+	binDir = t.TempDir()
+	logPath = filepath.Join(binDir, "git-invocations.log")
+	script := "#!/bin/sh\n" +
+		"printf '%s\\n' \"$*\" >> " + shQuote(logPath) + "\n" +
+		"exec " + shQuote(realGit) + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(binDir, "git"), []byte(script), 0o755); err != nil {
+		t.Fatalf("writing git shim: %v", err)
 	}
-	if strings.Contains(status, "A  ") {
-		t.Errorf("nothing should be staged — this script must never run git add; status:\n%s", status)
+	return binDir, logPath
+}
+
+// shQuote wraps s in single quotes for embedding in a generated POSIX sh script.
+func shQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// runVendorWithPATH is runVendor, plus an extra directory prepended to PATH (used
+// to put the git invocation shim ahead of the real git).
+func runVendorWithPATH(t *testing.T, dir, home, bundleSrc, extraPathDir string, args ...string) vendorResult {
+	t.Helper()
+	all := append([]string{installScriptPath(t), "--non-interactive"}, args...)
+	cmd := exec.Command("/bin/sh", all...)
+	cmd.Dir = dir
+	env := os.Environ()
+	env = append(env, "TRELLIS_BUNDLE_SOURCE="+bundleSrc)
+	if home != "" {
+		env = append(env, "HOME="+home)
 	}
+	if extraPathDir != "" {
+		env = append(env, "PATH="+extraPathDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	}
+	cmd.Env = env
+	var so, se bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &so, &se
+	err := cmd.Run()
+	code := 0
+	if err != nil {
+		ee, ok := err.(*exec.ExitError)
+		if !ok {
+			t.Fatalf("running install.sh: %v (stderr: %s)", err, se.String())
+		}
+		code = ee.ExitCode()
+	}
+	return vendorResult{stdout: so.String(), stderr: se.String(), code: code}
+}
+
+// assertOnlyRevParseShowToplevel reads the shim's invocation log (if any — an
+// absent log means git was never invoked at all, which trivially satisfies "only
+// rev-parse --show-toplevel calls") and fails if any logged invocation is anything
+// other than exactly `rev-parse --show-toplevel`.
+func assertOnlyRevParseShowToplevel(t *testing.T, logPath string) {
+	t.Helper()
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		t.Fatalf("reading git invocation log: %v", err)
+	}
+	trimmed := strings.TrimRight(string(data), "\n")
+	if trimmed == "" {
+		return
+	}
+	for _, line := range strings.Split(trimmed, "\n") {
+		if line != "rev-parse --show-toplevel" {
+			t.Errorf("unexpected git invocation logged: %q — only 'rev-parse --show-toplevel' is ever permitted (spec-0005 AC9)", line)
+		}
+	}
+}
+
+// TestVendorNeverInvokesGitBeyondRevParse (spec-0005 AC9, test-coverage table's
+// git-shim row): every scope/error path — personal, project-from-root, project-
+// from-subdirectory, the AC5 ambiguous-no-tty fail-closed path, a tampered-fetch
+// fail-closed path, an invalid --scope value, and a re-run — is run with the
+// logging git shim on PATH; the invocation log must contain only read-only
+// `rev-parse --show-toplevel` calls, on the success paths and the failure paths
+// alike. Supersedes TestVendorNeverRunsGitAdd (folded into
+// TestVendorProjectScopeFreshInstallFromRoot's item-4 assertion for the happy path;
+// this test is the comprehensive, cross-path replacement gate review required).
+func TestVendorNeverInvokesGitBeyondRevParse(t *testing.T) {
+	t.Run("personal_explicit_never_invokes_git_at_all", func(t *testing.T) {
+		cwd := t.TempDir() // not a repo — proves personal scope needs no git call
+		home := t.TempDir()
+		binDir, logPath := gitInvocationShim(t)
+		res := runVendorWithPATH(t, cwd, home, vendoredBundleAbs(t), binDir, "--scope", "personal")
+		if res.code != 0 {
+			t.Fatalf("expected success: %s", res.stderr)
+		}
+		assertOnlyRevParseShowToplevel(t, logPath)
+	})
+
+	t.Run("project_from_root", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		binDir, logPath := gitInvocationShim(t)
+		res := runVendorWithPATH(t, repo, "", vendoredBundleAbs(t), binDir, "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("expected success: %s", res.stderr)
+		}
+		assertOnlyRevParseShowToplevel(t, logPath)
+	})
+
+	t.Run("project_from_subdirectory", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		sub := filepath.Join(repo, "deep", "nested", "dir")
+		if err := os.MkdirAll(sub, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", sub, err)
+		}
+		binDir, logPath := gitInvocationShim(t)
+		res := runVendorWithPATH(t, sub, "", vendoredBundleAbs(t), binDir) // default resolution
+		if res.code != 0 {
+			t.Fatalf("expected success: %s", res.stderr)
+		}
+		assertOnlyRevParseShowToplevel(t, logPath)
+	})
+
+	t.Run("ambiguous_no_tty_fails_closed", func(t *testing.T) {
+		cwd := t.TempDir() // not a repo
+		home := t.TempDir()
+		binDir, logPath := gitInvocationShim(t)
+		res := runVendorWithPATH(t, cwd, home, vendoredBundleAbs(t), binDir) // no --scope
+		if res.code == 0 {
+			t.Fatalf("expected fail-closed exit; got 0")
+		}
+		assertOnlyRevParseShowToplevel(t, logPath)
+	})
+
+	t.Run("tampered_fetch_fails_closed", func(t *testing.T) {
+		tamperedSrc := t.TempDir()
+		if err := copyDirT(t, vendoredBundleAbs(t), tamperedSrc); err != nil {
+			t.Fatalf("copying bundle to tamper: %v", err)
+		}
+		victim := filepath.Join(tamperedSrc, "reference", "invariants.md")
+		writeFileT(t, victim, readFileT(t, victim)+"tampered\n")
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		binDir, logPath := gitInvocationShim(t)
+		res := runVendorWithPATH(t, repo, "", tamperedSrc, binDir, "--scope", "project")
+		if res.code == 0 {
+			t.Fatalf("expected failure on a tampered bundle")
+		}
+		assertOnlyRevParseShowToplevel(t, logPath)
+	})
+
+	t.Run("invalid_scope_value", func(t *testing.T) {
+		cwd := t.TempDir()
+		binDir, logPath := gitInvocationShim(t)
+		res := runVendorWithPATH(t, cwd, "", vendoredBundleAbs(t), binDir, "--scope", "nowhere")
+		if res.code == 0 {
+			t.Fatalf("expected failure on an invalid --scope value")
+		}
+		assertOnlyRevParseShowToplevel(t, logPath)
+	})
+
+	t.Run("re_run", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		binDir, logPath := gitInvocationShim(t)
+		if res := runVendorWithPATH(t, repo, "", vendoredBundleAbs(t), binDir, "--scope", "project"); res.code != 0 {
+			t.Fatalf("first run failed: %s", res.stderr)
+		}
+		if res := runVendorWithPATH(t, repo, "", vendoredBundleAbs(t), binDir, "--scope", "project"); res.code != 0 {
+			t.Fatalf("second run failed: %s", res.stderr)
+		}
+		assertOnlyRevParseShowToplevel(t, logPath)
+	})
 }
