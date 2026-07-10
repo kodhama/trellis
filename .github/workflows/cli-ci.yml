@@ -1,18 +1,20 @@
 name: cli-ci
 
-# Build + vet + test the Go setup CLI (decision-0023). This is the verification the
-# maintainer's environment relies on — the code is authored where `go` isn't installed,
-# so a green run here is what proves it builds and its tests pass.
+# Build + vet + test the Go payload generator (decision-0023; generator-only since
+# decision-0043 / #120). This is the verification the maintainer's environment relies
+# on — the code is authored where `go` isn't installed, so a green run here is what
+# proves it builds and its tests pass. These tests are also the payload guards:
+# regenerate-and-diff on the vendored payload, the repo's own overlay sync-guard,
+# the docs-consistency check, and the staleness-hook contract.
 
-# Paths include the doc surfaces (docs/, README, install.sh, plugins/) so the
-# docs-consistency test (decision-0025) runs when a doc claim changes, not only on
-# code changes.
+# Paths include the doc surfaces (docs/, README, plugins/) so the docs-consistency
+# test (decision-0025) runs when a doc claim changes, not only on code changes.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
 
 jobs:
   build-test:
@@ -25,7 +27,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-          cache: true  # golang.org/x/term landed (decision-0030)
+          cache: false  # dependency-free since #120 (x/term retired with the TUI)
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./...

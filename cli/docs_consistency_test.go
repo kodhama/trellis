@@ -8,9 +8,9 @@ import (
 
 // docSurfaces are the user-facing files whose claims must match the shipped product
 // (decision-0025). Paths are relative to this package dir (cli/).
+// install.sh retired with the end-user binary channel (#120, decision-0043).
 var docSurfaces = []string{
 	"../README.md",
-	"../install.sh",
 	"../docs/index.html",
 	"../docs/invariants.html",
 }
