@@ -68,3 +68,10 @@ verified against the Claude Code hooks documentation (checked 2026-07-06, re-ver
 
 — (none; refines `decision-0035`'s staleness surface with verified hook mechanics and closes
 its plugin-side gap)
+
+**Superseded in part by `decision-0043` (2026-07-10, #120, per the maintainer's stamp-scheme
+ruling in that issue's addendum 4):** rule 2's stamp format changes — `.trellis/version` is now a
+verbatim copy of the payload's `version` file (`payload@<content-hash>`), never `plugin@<sha>`,
+and the hook compares it file-to-file against the installed plugin's `reference/version`. Rule 1
+(any agent-facing staleness surface is a `SessionStart` hook emitting `additionalContext`) stands
+unchanged and continues to bind future update/supervisor slices.

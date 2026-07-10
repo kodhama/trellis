@@ -9,6 +9,13 @@ ratified: 2026-07-06
 
 # 0035 — Trellis self-applies through its own install boundary; overlay↔product drift is never silent
 
+> **Superseded in part by `decision-0043` (2026-07-10, #120; text below preserved as written).**
+> Rule 3's user-facing surface (`trellis status`, "update the tool, then re-run `trellis setup`")
+> retired with the binary channel; the surface is now the plugin's bundled SessionStart hook — a
+> file-to-file compare of `.trellis/version` against the installed plugin's payload stamp. The
+> floor itself ("drift is made visible, not silent") and the repo-facing CI sync-guard stand
+> unchanged; the install-boundary/self-application model below is untouched.
+
 ## Context
 
 Two things were blurred, and they are the same question from two sides — *is the overlay current with

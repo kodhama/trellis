@@ -10,6 +10,14 @@ rubric: spec-quality
 
 # Spec 0003 — The v0 delivery machinery: advisor mode as a Claude Code plugin
 
+> **Superseded in part (2026-07-10, kodhama-0007 rule 5 / decision-0043 / #120).** The end-user
+> binary this spec's CLI flow shipped (§2b `trellis setup`, harness detection, the interactive
+> onboarding) retired with the Homebrew/curl channel; the live install surfaces are the plugin
+> skill (`/trellis:setup`, a mechanical copier of the pre-rendered payload — `kodhama-0007`) and
+> the documented manual copy path, with the Go code surviving as the release-time payload
+> generator only. The spec below stands as the ratified record of the binary-era design; read the
+> current mechanics in `plugins/trellis/skills/setup/SKILL.md` and `cli/README.md`.
+
 > **The first real machinery.** Everything so far is intent + a checkable rule-set; this is the slice
 > that puts Trellis *into a host project*. `decision-0019` fixed **advisor mode via a host-invoked CLI**
 > as the v0 on-ramp; `decision-0012` fixed **v0 delivery = a self-hostable Claude-Code plugin**;

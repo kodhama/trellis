@@ -10,6 +10,12 @@ date: 2026-07-05
 
 # 0025 — Keep the landing/docs and the release in sync, automatically
 
+> **Superseded in part by `decision-0043` (2026-07-10, #120; text below preserved as written).**
+> Guard 2 (auto-release on merge) retired with the end-user binary channel — with no published
+> binaries there is no release to keep in sync; the shipped artifact is the vendored payload at
+> HEAD, guarded by regenerate-and-diff. Guard 1 (`docs_consistency_test.go` — no doc claim without
+> a shipped feature behind it) stands, unchanged.
+
 ## Context
 
 Friction, caught by the maintainer (a B6 self-improvement trigger): the landing page advertised

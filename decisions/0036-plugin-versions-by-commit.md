@@ -32,7 +32,9 @@ fast-moving project where plugin users should be on the current invariants, not 
   plugin version. If stable, pinnable plugin releases are wanted later, reintroduce a `version` + an
   auto-bump (with a loop guard).
 - The CLI path keeps its own drift surface — the `.trellis/version` stamp + `trellis status`
-  (`decision-0035`).
+  (`decision-0035`). *(Superseded in part by `decision-0043` (#120): `trellis status` retired with
+  the binary; `.trellis/version` now carries the payload's render stamp, compared file-to-file by
+  the plugin's SessionStart hook.)*
 
 ## Open questions
 

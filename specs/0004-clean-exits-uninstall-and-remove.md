@@ -10,6 +10,14 @@ rubric: spec-quality
 
 # Spec 0004 — Clean exits: uninstall (the CLI) and remove (from a project)
 
+> **Superseded in part (2026-07-10, kodhama-0007 rule 5 / decision-0043 / #120).** The binary
+> whose exits this spec specifies retired with the end-user channel: `trellis uninstall` and
+> `install.sh --uninstall` are gone with it (existing binaries are plain files — delete them), and
+> the CLI's `trellis remove` retired in favor of the plugin's `/trellis:remove` skill, which
+> carries the same clean-exit contract (delete `.trellis/`, strip the managed block, touch nothing
+> else, point a morph at its git rollback). The spec stands as the ratified record of that
+> contract; the skill is its live home.
+
 > **Every install has a reverse.** `install.sh` puts the binary down; `trellis setup` composes Trellis
 > onto a project. This spec adds the two symmetric exits — **uninstall** the binary and **remove**
 > Trellis from a project — and is honest about the one case (a morph) it cannot cleanly reverse.

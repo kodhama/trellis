@@ -9,6 +9,11 @@ ratified: 2026-07-05
 
 # 0030 — The interactive setup takes one dependency (golang.org/x/term), not a TUI framework
 
+> **Mooted by `decision-0043` (2026-07-10, #120; text below preserved as written).** The
+> interactive setup TUI retired with the end-user binary channel, and the `x/term` dependency was
+> removed with it — the generator-only CLI is dependency-free. The "smallest dependency that
+> does the job, or none" reasoning below still governs any future dependency question.
+
 ## Context
 
 The setup CLI is the product's front door (`spec-0003 §2b`) and it was bland — flat text, type-a-key

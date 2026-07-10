@@ -9,6 +9,13 @@ ratified: 2026-07-07
 
 # 0041 — the tap is the family's, not trellis's own; supersedes decision-0032's tap shape
 
+> **Superseded in part by `kodhama-0007` rule 5 / `decision-0043` (2026-07-10, #120; text below
+> preserved as written).** Trellis's brew channel retired: the `kodhama/homebrew-tap` formula is
+> deprecated (pinned at `v0.2.29`, pointing at the plugin + manual copy paths) and this repo's
+> release/tap-dispatch machinery is removed. The family-tap *shape* this decision established
+> stands for any future kodhama product that ships a real binary — only trellis's own formula and
+> its formula-sync mechanics are retired.
+
 ## Context
 
 `decision-0032` stood up `gundisalwa/homebrew-trellis` as trellis's own Homebrew tap — a
