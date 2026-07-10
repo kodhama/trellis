@@ -261,7 +261,7 @@ trap 'rm -rf "$stage"' EXIT
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 9953fcbc0a2a8de509c2bdc585b72a67e9cf1091d05e71ef09a5e6ab50c1c3aa  .claude-plugin/plugin.json
-f018adb1ddd5fc143a9bf4d43287cdc7634338c7c5c2d71a23e0c984bbf26342  README.md
+af2e25b1b6365da3d5a143a7bccbab7adf3dfd06fa0e5a2b735baf81229a45da  README.md
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
 8bdb6677c21c2f8112185512b18d1aa6226261abf9841a935d08899ac2d44650  hooks/staleness.sh
 a2cb269f77b9ecf23901333f986f437957f27f565931b382b22c4de59b7efd6b  reference/block-claude.md
