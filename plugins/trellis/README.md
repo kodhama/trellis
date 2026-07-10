@@ -6,8 +6,9 @@ channel retired per `kodhama-0007` rule 5).
 
 ## Install
 
-From the kodhama family marketplace (the in-repo marketplace `kodhama/trellis` → `trellis@trellis`
-still works as an alias):
+From the kodhama family marketplace — the single front door for the whole family
+(`kodhama-0002`; trellis's own in-repo marketplace is retired, `kodhama-0002` open question,
+resolved):
 
 ```
 /plugin marketplace add kodhama/kodhama
