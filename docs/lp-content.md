@@ -29,38 +29,28 @@ development. It fits whatever methodology your project already uses,
 teaches it to your coding agents, and enforces a small set of invariants —
 so a process glitch never has to happen twice.
 
-**Install block** (terminal pattern, three tabs — curl / Homebrew / Claude
-Code):
+**Install block** (terminal pattern, two tabs — Claude Code / manual copy;
+the curl and Homebrew tabs retired with the end-user binary channel,
+`kodhama-0007` rule 5 / kodhama/trellis#120, and the family marketplace is
+the canonical front door per `kodhama-0002`):
 
-- `curl` (default/active tab):
-  ```
-  $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
-  $ trellis setup    # then set it up in your project
-  ```
-- `brew`:
-  ```
-  $ brew install kodhama/tap/trellis
-  $ trellis setup    # then set it up in your project
-  ```
-  Per `decision-0041` (ratified 2026-07-07), the tap is the family's
-  (`kodhama/homebrew-tap`, installed as `kodhama/tap/trellis`), not a
-  per-product tap trellis owns itself — this superseded `decision-0032`'s
-  original `gundisalwa/homebrew-trellis` shape. (The heads-up previously
-  noted here — that `design-system`'s `patterns.md` still showed the
-  pre-decision-0041 command — was resolved in `design-system` `v0.2.0`,
-  commit `4f1e80f`; this page is stamped at that tag, so both sides now
-  agree.)
-- `cc` (Claude Code):
+- `cc` (Claude Code, default/active tab):
   ```
   > /plugin marketplace add kodhama/kodhama
   > /plugin install trellis@kodhama
   > /trellis:setup    # the plugin covers the overlay natively
   ```
+- `manual` (any other harness):
+  ```
+  $ git clone --depth 1 https://github.com/kodhama/trellis
+  $ cp trellis/plugins/trellis/reference/... your-project/.trellis/    # copy, paste, shasum -c — see the README
+  ```
 
-**Note under the terminal:** The installer just drops a single binary — it
-doesn't run anything on its own; you run `trellis setup`. Clean exits,
-always: `trellis status` checks an overlay is current, `trellis remove`
-clears it from a project, `trellis uninstall` removes the binary.
+**Note under the terminal:** No binary, no runtime — the bundle is
+pre-rendered plain files with a checksum manifest; the plugin (or you)
+just copies and verifies them. Clean exits, always: `/trellis:remove`
+clears it from a project, and a bundled session hook tells you when the
+overlay is behind the installed plugin.
 
 **CTAs:**
 - Primary → `invariants.html` — "Explore the invariants →"
@@ -114,19 +104,20 @@ row, a "with" row):
 **Eyebrow:** How it works
 **Heading:** One command. It reads your project, you choose the fit.
 **Lede:** Trellis rides your existing harness (Claude Code today). It
-detects, proposes, and — only with your go-ahead — composes itself onto
+asks, copies, and — only with your go-ahead — verifies itself onto
 your project. No runtime, no lock-in.
 
 Four-step flow (`01` – `04`):
 
-1. **01 · detect — Find the harness.** Rides the agent CLI your project
-   already uses.
-2. **02 · profile — Pick a posture.** Conductor, author-adapt, or seed —
-   how strict, and what's active.
+1. **01 · install — Add the plugin.** From the kodhama family
+   marketplace — or copy the pre-rendered bundle into any harness.
+2. **02 · profile — Pick a posture.** Conductor or author-adapt — how
+   strict, and what's active. A refresh reads it from your repo and
+   asks nothing.
 3. **03 · mode — Alongside or rewrite.** Overlay next to your rules, or
-   morph them in on a branch.
-4. **04 · apply — You approve.** Augment-never-clobber. Trellis proposes;
-   the merge is yours.
+   — on request — morph them in on a branch.
+4. **04 · verify — You approve.** Augment-never-clobber, checked against
+   a shipped checksum manifest. Trellis proposes; the merge is yours.
 
 **Repo footprint** (rendered as a small code block, not the terminal
 pattern — this is a file-tree illustration, not a shell session):
@@ -136,6 +127,7 @@ CLAUDE.md          # + a 3-line managed block: @.trellis/trellis.md
 .trellis/
   trellis.md       # the header your agents read
   profile.md       # posture + the active rules — always loaded
+  expression.md    # your project's own expression — hand-owned, never rewritten
   invariants.md    # the full why + examples — on demand
 ```
 

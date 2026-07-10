@@ -13,24 +13,8 @@ things non-negotiable — and surfaces every time something bends — without di
 
 ## Get started
 
-```sh
-brew install kodhama/tap/trellis                                                    # Homebrew
-# or, any Unix:  curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
-trellis setup
-```
-
-A single static binary — no package manager, no runtime. `trellis setup` rides your agent harness
-(Claude Code today), asks a few things — a **posture** (`conductor` / `author-adapt` / `seed`), an
-**install mode**, and, for a rewrite, a **model** — then, only with your go-ahead, composes Trellis
-onto your project:
-
-- **M1 · alongside** — a deterministic overlay: a one-line `@import` in your `CLAUDE.md` plus a
-  `.trellis/` bundle (your profile + the invariant reference). Augment-never-clobber, idempotent.
-- **M2 · morph** — a model-driven rewrite of your own instructions, on a fresh git branch to review.
-
-Nothing is written without `--apply` (or your `y` at the prompt). Built from [`cli/`](cli/) (Go).
-
-**Or install it as a Claude Code plugin** (no binary) — covers the M1 overlay natively:
+**Claude Code (the primary path)** — install the plugin from the kodhama family marketplace, then
+run the setup skill in any project:
 
 ```
 /plugin marketplace add kodhama/kodhama
@@ -38,8 +22,39 @@ Nothing is written without `--apply` (or your `y` at the prompt). Built from [`c
 /trellis:setup
 ```
 
-The CLI additionally offers the M2 morph and non-Claude harnesses; the plugin lives in
-[`plugins/trellis`](plugins/trellis).
+`/trellis:setup` asks one thing — a **posture** (`conductor` / `author-adapt`) — or reads it from
+`.trellis/expression.md` if the project already declares one, then composes Trellis onto your
+project as the **M1 "alongside" overlay**: a one-line `@import` in your `CLAUDE.md` plus a
+`.trellis/` bundle (your profile + the invariant reference + your hand-owned `expression.md`).
+Augment-never-clobber, idempotent, verified against a shipped checksum manifest. On explicit
+request it also runs the **M2 morph** — a model-driven rewrite of your own instructions, on a
+fresh git branch you review. The plugin lives in [`plugins/trellis`](plugins/trellis).
+
+**Any other harness — the manual copy path.** Every bundle file is pre-rendered plain text in
+[`plugins/trellis/reference/`](plugins/trellis/reference) (the payload, `kodhama-0007`: one
+render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) and copy:
+
+```sh
+git clone --depth 1 https://github.com/kodhama/trellis /tmp/trellis
+ref=/tmp/trellis/plugins/trellis/reference   # <p> below: a | b
+mkdir -p .trellis
+cp "$ref"/invariants.md    .trellis/invariants.md
+cp "$ref"/profile-<p>.md   .trellis/profile.md
+cp "$ref"/trellis-<p>.md   .trellis/trellis.md
+cp "$ref"/version          .trellis/version
+cp "$ref"/expression-<p>.md .trellis/expression.md   # first install only — hand-owned after that
+cat "$ref"/block-claude.md >> CLAUDE.md              # @import-capable files
+# no @import support (e.g. AGENTS.md)?  append block-inline-<p>.md instead
+sed -n -e 's|  invariants\.md$|  .trellis/invariants.md|p' \
+       -e 's|  profile-<p>\.md$|  .trellis/profile.md|p' \
+       -e 's|  trellis-<p>\.md$|  .trellis/trellis.md|p' \
+       -e 's|  version$|  .trellis/version|p' \
+       "$ref"/checksums | shasum -a 256 -c -           # verify: all four lines print OK
+```
+
+No binary, no runtime — the assets are plain files, and anything can verify them with `shasum -c`
+against the shipped manifest. (The Homebrew/curl binary channel retired in `kodhama-0007` rule 5;
+the Go code in [`cli/`](cli/) survives as the release-time payload generator only.)
 
 ## The model
 
@@ -65,8 +80,9 @@ the [project site](https://kodhama.github.io/trellis/invariants.html)). The thes
 ## Two ways to run it
 
 - **Advisor** *(open, no runtime — shipped)* — Trellis composes onto your project as instructions your
-  agents **consult**; nothing of Trellis runs at agent-time. This is what `trellis setup` installs
-  today (M1 overlay or M2 morph). Nothing to secure or remove at runtime.
+  agents **consult**; nothing of Trellis runs at agent-time. This is what `/trellis:setup` (or the
+  manual copy path) installs today: the M1 overlay, plus the M2 morph on request. Nothing to secure
+  or remove at runtime.
 - **Supervisor** *(installed, live — in progress)* — Trellis wired into your pipeline: gates fire on
   commit/PR events via hooks, it stays current through an update channel, and it comes off cleanly.
   The next delivery slice.
@@ -78,13 +94,18 @@ These are the two ends of the delivery relationship; the cross-lens vocabulary l
 
 Built in the open, dogfooded on itself from commit one. The honest state:
 
-- **Ratified** — the invariant set (`invariants-v1`), 24 decisions, 8 research notes.
-- **Shipped** — the **v0 setup CLI** (`trellis setup`, released `v0.1.0`): harness detection, the
-  onboarding flow, and both install modes (M1 deterministic overlay, M2 model-driven morph). It stands
-  on the *spine* + an **independent conformance check** (`spec-0001`, running on this repo), the
-  expression-profile + catalog **schema** (`spec-0002`), the machinery design (`spec-0003`), the
-  populated catalog and the first per-project **profile** (instance #1), and the cross-lens **lexicon**.
-- **In progress** — **supervisor mode** (installed live gates) and a Claude-marketplace install route.
+- **Ratified** — the invariant set (`invariants-v1`), 40+ decisions, 8+ research notes.
+- **Shipped** — the **Claude Code plugin** (marketplace install, `/trellis:setup` /
+  `/trellis:remove`, a bundled staleness hook) riding a **pre-rendered, checksum-manifested
+  payload** (`kodhama-0007`: render once at release, writers only copy and verify), plus the
+  documented **manual copy path** for any other harness. It stands on the *spine* + an
+  **independent conformance check** (`spec-0001`, running on this repo), the expression-profile +
+  catalog **schema** (`spec-0002`), the machinery design (`spec-0003`), the populated catalog and
+  the first per-project **profile** (instance #1), and the cross-lens **lexicon**. The v0 **setup
+  CLI** shipped first (`v0.1.0`–`v0.2.29`) and its end-user channel retired in favor of the above
+  (`kodhama-0007` rule 5, `decision-0043`); the Go code survives as the release-time payload
+  generator.
+- **In progress** — **supervisor mode** (installed live gates).
 - **The open risk** — the invariants are validated on essentially *one* project. **Instance #2** — a
   second, different project — is the next real test of whether they generalize.
 
@@ -94,9 +115,10 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 |---|---|
 | [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md) | The full thesis (start at §10 verdict, §11 start-here, §12 operating method). |
 | [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
-| [`cli/`](cli/) | The **setup CLI** (Go) — `trellis setup`: detect the harness, onboard, and apply (M1/M2). |
+| [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043` (#120). |
+| [`plugins/trellis/`](plugins/trellis/) | The **Claude Code plugin** — `/trellis:setup`, `/trellis:remove`, the staleness hook, and the vendored payload (`reference/`). |
 | [`specs/`](specs/) | The spine (`0001`), the profile / catalog schema (`0002`), the delivery machinery (`0003`). |
-| [`decisions/`](decisions/) | Append-only decision records (`0001–0024`). |
+| [`decisions/`](decisions/) | Append-only decision records. |
 | [`research/`](research/) | Framework gate-tests + the genetics / control-theory lenses behind the design. |
 | [`profiles/`](profiles/) | Per-instance expression profiles (`trellis-self` = instance #1). |
 | [`CLAUDE.md`](CLAUDE.md) | The methodology we use to build Trellis (Layer B / instance #1). |
@@ -104,12 +126,13 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 ## How we work
 
 **This repo has two jobs, kept separate by the install boundary (`decision-0035`):** it *produces*
-Trellis — the invariants, catalog, CLI, and plugin, in `core/` — **and it is itself a Trellis-governed
-project**, installing Trellis through the official path (`trellis setup`) to govern its own work. So the
-invariants land in `.trellis/` via the same overlay any user gets (not hand-copied), and `CLAUDE.md`
-holds only the project's own *method* (the how). That's self-application, not self-reference — a compiler
-built, then run on itself. A CI guard keeps the committed overlay identical to what the product produces,
-so it can't drift.
+Trellis — the invariants, catalog, payload generator, and plugin, in `core/` — **and it is itself a
+Trellis-governed project**, installing Trellis through the official path (the same mechanical copy of
+the pre-rendered payload any consumer gets) to govern its own work. So the invariants land in
+`.trellis/` via the same overlay any user gets (not hand-composed), and `CLAUDE.md` holds only the
+project's own *method* (the how). That's self-application, not self-reference — a compiler built, then
+run on itself. A CI guard keeps the committed overlay identical to what the product produces, so it
+can't drift.
 
 Every non-code artifact carries frontmatter and a lifecycle (`draft → ratified`); decisions are
 append-only; **intent is human-gated and execution is independently verified** (the builder never grades

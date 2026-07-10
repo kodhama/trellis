@@ -1,9 +1,13 @@
 # Trellis (Claude Code plugin)
 
 A governance layer for agentic software development — the native Claude Code way to install it, no
-binary required.
+binary required. This is the **primary install path** (`kodhama-0002`; the Homebrew/curl binary
+channel retired per `kodhama-0007` rule 5).
 
 ## Install
+
+From the kodhama family marketplace (the in-repo marketplace `kodhama/trellis` → `trellis@trellis`
+still works as an alias):
 
 ```
 /plugin marketplace add kodhama/kodhama
@@ -50,26 +54,32 @@ line; the skill's manifest check passes; `.trellis/expression.md` says exactly w
 
 ## What it bundles
 
-- **`skills/setup`** — `/trellis:setup`: install the overlay (done natively, no binary).
-- **`skills/remove`** — `/trellis:remove`: cleanly reverse it (delete `.trellis/`, strip the `CLAUDE.md`
-  block, touch nothing else).
+- **`skills/setup`** — `/trellis:setup`: install or refresh the overlay (done natively, no binary),
+  and — only on explicit request — the **M2 morph**: a model-driven rewrite of the project's own
+  instructions on a `trellis/morph` git branch, with a recorded rollback point, for the human to
+  review (`kodhama-0007` rule 5 moved M2 hosting here from the retired binary).
+- **`skills/remove`** — `/trellis:remove`: cleanly reverse the overlay (delete `.trellis/`, strip the
+  `CLAUDE.md` block, touch nothing else), and point a morphed project at its git rollback.
 - **`reference/`** — the pre-rendered payload (`kodhama-0007`): `invariants.md` (the full signature
   catalog: every invariant with its *why* and a with/without example), every posture variant of the
   overlay files, managed blocks, and `expression.md` seed skeletons, and the checksum manifest the
   setup skill verifies against.
-- **`hooks/`** — a `SessionStart` hook that stays quiet until the plugin updates past the overlay it
-  wrote (`decision-0039`), then nudges you once: *"the overlay may be stale — run `/trellis:setup`."*
-  Network-free (it compares the overlay's stamped `plugin@<sha>` to the installed plugin's HEAD), so it
-  can tell you the overlay is *behind the installed plugin*, not how far behind the marketplace.
+- **`hooks/`** — a `SessionStart` hook that stays quiet until the installed plugin's payload differs
+  from the overlay in your project (`decision-0039` rule 1, mechanics per `decision-0043`), then
+  nudges you once: *"the overlay may be stale — run `/trellis:setup`."* Binary-free and network-free:
+  it compares your project's `.trellis/version` stamp to the installed plugin's `reference/version` —
+  file to file — so it can tell you the overlay is *behind the installed plugin*, not how far behind
+  the marketplace.
 
 ## Removing it
 
 Run `/trellis:remove` — it deletes `.trellis/` and strips the managed `CLAUDE.md` block, leaving your
-own content intact. (The [Trellis CLI](https://github.com/kodhama/trellis)'s `trellis remove` does
-the same, and additionally handles the git rollback for an M2 morph.)
+own content intact; for an M2-morphed project it points you at the recorded git rollback
+(`trellis-pre-morph` / `.trellis/rollback`).
 
-## Plugin vs CLI
+## Plugin vs manual copy
 
-This plugin covers the **M1 overlay** natively inside Claude Code. The [CLI](https://github.com/kodhama/trellis)
-additionally offers **M2 (a model-driven morph on a git branch)** and works with harnesses beyond
-Claude Code. Same invariants, two delivery routes.
+This plugin covers Claude Code natively. Every other harness uses the **manual copy path** (repo
+README, Get started): the payload in [`reference/`](reference/) is plain files — copy them, paste
+the pre-rendered block, verify with `shasum -c`. Same artifact, two mechanical copiers
+(`kodhama-0007`).

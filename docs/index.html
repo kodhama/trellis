@@ -297,27 +297,22 @@
         <div class="tt">
           <i class="dot"></i><i class="dot"></i><i class="dot"></i>
           <div class="tabs" role="tablist" aria-label="Install method">
-            <button class="tab active" role="tab" aria-selected="true" data-tab="curl">curl</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="brew">Homebrew</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="cc">Claude Code</button>
+            <button class="tab active" role="tab" aria-selected="true" data-tab="cc">Claude Code</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="manual">manual copy</button>
           </div>
           <button class="copy" id="copyBtn" aria-label="Copy commands">copy</button>
         </div>
-        <div class="panel active" data-panel="curl">
-          <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
-          <div class="cmd"><code><span class="prompt">$ </span>trellis setup<span class="cmt">    # then set it up in your project</span></code></div>
-        </div>
-        <div class="panel" data-panel="brew">
-          <div class="cmd"><code><span class="prompt">$ </span>brew install kodhama/tap/trellis</code></div>
-          <div class="cmd"><code><span class="prompt">$ </span>trellis setup<span class="cmt">    # then set it up in your project</span></code></div>
-        </div>
-        <div class="panel" data-panel="cc">
+        <div class="panel active" data-panel="cc">
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin marketplace add kodhama/kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/trellis:setup<span class="cmt">    # the plugin covers the overlay natively</span></code></div>
         </div>
+        <div class="panel" data-panel="manual">
+          <div class="cmd"><code><span class="prompt">$ </span>git clone --depth 1 https://github.com/kodhama/trellis</code></div>
+          <div class="cmd"><code><span class="prompt">$ </span>cp trellis/plugins/trellis/reference/... .trellis/<span class="cmt">    # copy, paste, shasum -c — see the README</span></code></div>
+        </div>
       </div>
-      <p class="tnote">The installer just drops a single binary — it doesn't run anything on its own; you run <code>trellis setup</code>. Clean exits, always: <code>trellis status</code> checks an overlay is current, <code>trellis remove</code> clears it from a project, <code>trellis uninstall</code> removes the binary.</p>
+      <p class="tnote">No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest; the plugin (or you) just copies and verifies them. Clean exits, always: <code>/trellis:remove</code> clears it from a project, and a bundled session hook tells you when the overlay is behind the installed plugin.</p>
 
       <div class="cta">
         <a class="btn btn-primary" href="invariants.html">Explore the invariants →</a>
@@ -412,13 +407,13 @@
       <div class="sec-head">
         <p class="eyebrow">How it works</p>
         <h2>One command. It reads your project, you choose the fit.</h2>
-        <p>Trellis rides your existing harness (Claude Code today). It detects, proposes, and — only with your go-ahead — composes itself onto your project. No runtime, no lock-in.</p>
+        <p>Trellis rides your existing harness (Claude Code today). It asks, copies, and — only with your go-ahead — verifies itself onto your project. No runtime, no lock-in.</p>
       </div>
       <div class="flow">
-        <div class="step"><p class="k">01 · detect</p><h4>Find the harness</h4><p>Rides the agent CLI your project already uses.</p></div>
-        <div class="step"><p class="k">02 · profile</p><h4>Pick a posture</h4><p>Conductor, author-adapt, or seed — how strict, and what's active.</p></div>
-        <div class="step"><p class="k">03 · mode</p><h4>Alongside or rewrite</h4><p>Overlay next to your rules, or morph them in on a branch.</p></div>
-        <div class="step"><p class="k">04 · apply</p><h4>You approve</h4><p>Augment-never-clobber. Trellis proposes; the merge is yours.</p></div>
+        <div class="step"><p class="k">01 · install</p><h4>Add the plugin</h4><p>From the kodhama family marketplace — or copy the pre-rendered bundle into any harness.</p></div>
+        <div class="step"><p class="k">02 · profile</p><h4>Pick a posture</h4><p>Conductor or author-adapt — how strict, and what's active. A refresh reads it from your repo and asks nothing.</p></div>
+        <div class="step"><p class="k">03 · mode</p><h4>Alongside or rewrite</h4><p>Overlay next to your rules, or — on request — morph them in on a branch.</p></div>
+        <div class="step"><p class="k">04 · verify</p><h4>You approve</h4><p>Augment-never-clobber, checked against a shipped checksum manifest. Trellis proposes; the merge is yours.</p></div>
       </div>
 
       <div class="footprint">
@@ -427,6 +422,7 @@
 <span class="fp-c">.trellis/</span>
   <span class="fp-c">trellis.md</span>       <span class="fp-m"># the header your agents read</span>
   <span class="fp-c">profile.md</span>       <span class="fp-m"># posture + the active rules — always loaded</span>
+  <span class="fp-c">expression.md</span>    <span class="fp-m"># your project's own expression — hand-owned, never rewritten</span>
   <span class="fp-c">invariants.md</span>    <span class="fp-m"># the full why + examples — on demand</span></pre>
       </div>
     </div>
@@ -494,11 +490,10 @@
     });
 
     var commands = {
-      curl: "curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh\ntrellis setup",
-      brew: "brew install kodhama/tap/trellis\ntrellis setup",
-      cc: "/plugin marketplace add kodhama/kodhama\n/plugin install trellis@kodhama\n/trellis:setup"
+      cc: "/plugin marketplace add kodhama/kodhama\n/plugin install trellis@kodhama\n/trellis:setup",
+      manual: "git clone --depth 1 https://github.com/kodhama/trellis"
     };
-    var activeTab = "curl";
+    var activeTab = "cc";
     var tabs = document.querySelectorAll(".tab");
     var panels = document.querySelectorAll(".terminal .panel");
     tabs.forEach(function (t) {
