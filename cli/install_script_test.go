@@ -273,6 +273,15 @@ func TestInstallScriptBundleManifestIsCurrent(t *testing.T) {
 // writes to $HOME/.claude/skills/trellis). Extended per spec-0005's test-coverage
 // table (personal fresh-vendor row, AC1/AC4/AC10): stdout must carry the next-step
 // pointer to /trellis:setup and must NOT carry the project-only trust-dialog note.
+//
+// The trailing line-count check (kodhama/trellis#132) closes a real gap: AC10 requires
+// "exactly the five §4 items… and nothing more", but for personal scope only items 1 and
+// 5 apply (items 2-4 are project-scope only) — and the prior version of this test only
+// asserted the *absence* of the two project-only strings, which let an unenumerated
+// extra line ("Personal scope needs no trust dialog…") ship undetected, since any other
+// added line would still pass every Contains check above. Pinning the exact stdout line
+// count means any future addition — under any wording — fails loudly instead of drifting
+// silently.
 func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	cwd := t.TempDir() // deliberately NOT a git repo — personal scope must not care
 	home := t.TempDir()
@@ -293,6 +302,15 @@ func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	}
 	if strings.Contains(res.stdout, "git add .claude/skills/trellis") {
 		t.Errorf("personal scope must NOT print the project-only commit suggestion; got:\n%s", res.stdout)
+	}
+
+	lines := strings.Split(strings.TrimRight(res.stdout, "\n"), "\n")
+	const wantLines = 7 // item 1 (scope + vendored-to + files-written = 3 lines) + blank
+	// separator + item 5 (3-line next-step pointer) = 7; items 2-4 never fire for
+	// personal scope. See install.sh's post-write block (guarded by `[ "$scope" =
+	// "project" ]`) for the source of this count.
+	if len(lines) != wantLines {
+		t.Errorf("personal-scope stdout has %d lines, want exactly %d (spec-0005 AC10 — items 1 and 5 only, nothing more); got:\n%s", len(lines), wantLines, res.stdout)
 	}
 }
 
