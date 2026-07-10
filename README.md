@@ -54,7 +54,12 @@ Two scopes, `--scope project` (default, inside a git repo) or `--scope personal`
   not from you). The script never runs `git add`/`git commit`; it prints the command and leaves the
   commit to you.
 - **personal** — `~/.claude/skills/trellis/`, available in every project on the machine, no trust
-  dialog, no repo required.
+  dialog, no repo required — and never shells out to git at all when passed explicitly.
+
+Outside a git repo, with no `--scope`/`$TRELLIS_SKILLS_SCOPE` given, project scope has no target:
+the script prompts once if a terminal is available (offering personal scope, or the chance to
+abort), and otherwise **fails closed** — non-zero exit, nothing written, naming exactly what's
+missing — rather than silently picking a scope you didn't ask for.
 
 Every fetched byte is verified against a manifest baked into the script *before* anything is
 written — a mismatch fails loudly and installs nothing. Inspect first, or pass flags, instead of
