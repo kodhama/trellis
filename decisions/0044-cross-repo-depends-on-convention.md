@@ -1,7 +1,7 @@
 ---
 id: decision-0044
 type: decision
-status: gated
+status: approved  # ratified by PR #133 merge (2026-07-10)
 depends_on: [spec-0001, decision-0037, decision-0042, kodhama-0004-uniform-lifecycle]
 owner: agent
 date: 2026-07-10
