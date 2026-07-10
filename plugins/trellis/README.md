@@ -55,7 +55,8 @@ line; the skill's manifest check passes; `.trellis/expression.md` says exactly w
   block, touch nothing else).
 - **`reference/`** — the pre-rendered payload (`kodhama-0007`): `invariants.md` (the full signature
   catalog: every invariant with its *why* and a with/without example), every posture variant of the
-  overlay files and managed blocks, and the checksum manifest the setup skill verifies against.
+  overlay files, managed blocks, and `expression.md` seed skeletons, and the checksum manifest the
+  setup skill verifies against.
 - **`hooks/`** — a `SessionStart` hook that stays quiet until the plugin updates past the overlay it
   wrote (`decision-0039`), then nudges you once: *"the overlay may be stale — run `/trellis:setup`."*
   Network-free (it compares the overlay's stamped `plugin@<sha>` to the installed plugin's HEAD), so it

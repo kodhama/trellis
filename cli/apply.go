@@ -36,7 +36,8 @@ const (
 //	CLAUDE.md      -> @.trellis/trellis.md      (header, auto-loaded)
 //	.trellis/trellis.md -> @profile.md          (profile, auto-loaded)
 //	                    -> @expression.md       (the project's hand-owned expression, auto-loaded;
-//	                       kodhama-0007 rule 4 — seeded once by the copiers, never written here)
+//	                       kodhama-0007 rule 4 — seeded from the payload skeleton if absent,
+//	                       never overwritten)
 //	                    -> `.trellis/invariants.md` (backticked = read on demand)
 func applyM1(dir string, plan Plan) (string, error) {
 	tdir := filepath.Join(dir, ".trellis")
@@ -62,6 +63,21 @@ func applyM1(dir string, plan Plan) (string, error) {
 		if err := os.WriteFile(filepath.Join(tdir, name), []byte(content), 0o644); err != nil {
 			return "", fmt.Errorf("writing .trellis/%s: %w", name, err)
 		}
+	}
+
+	// Seed the hand-owned declaration file on first run only (kodhama-0007 rule 4 via
+	// #119): the header written above imports @expression.md, and this writer stays
+	// live until the CLI channel retires (#120), so it must seed like any other copier
+	// — a verbatim copy of the payload skeleton, never a rewrite of an existing one.
+	seeded := ""
+	expPath := filepath.Join(tdir, "expression.md")
+	if _, err := os.Stat(expPath); os.IsNotExist(err) {
+		if werr := os.WriteFile(expPath, []byte(renderExpressionSkeleton(plan)), 0o644); werr != nil {
+			return "", fmt.Errorf("seeding .trellis/expression.md: %w", werr)
+		}
+		seeded = "  seeded .trellis/expression.md (hand-owned — record the project's expression there)\n"
+	} else if err != nil {
+		return "", fmt.Errorf("checking .trellis/expression.md: %w", err)
 	}
 
 	target := plan.Target
@@ -91,6 +107,7 @@ func applyM1(dir string, plan Plan) (string, error) {
 
 	return warning + fmt.Sprintf("applied (M1 overlay):\n"+
 		"  wrote .trellis/{trellis,profile,invariants}.md\n"+
+		seeded+
 		"  updated %s (%s)\n", target.Name, attach), nil
 }
 
@@ -207,14 +224,32 @@ func renderClaudeBlock() string {
 // at the invariant reference. Ordering is rules first, then the expression
 // (kodhama-0007 rule 4 via #119 — always-loaded, matching how projects actually
 // used it: the hand-authored expression sat below the generated rules).
-// expression.md is hand-owned and is NOT written here: the copiers seed it once
-// (the setup skill's step 1); until a project seeds it, the import resolves to
-// nothing.
+// expression.md is hand-owned: every writer seeds it from the payload skeleton on
+// first run only (renderExpressionSkeleton) and never rewrites an existing one.
 func renderHeader(plan Plan) string {
 	return governanceHeader(plan) + "\n" +
 		"@profile.md\n" +
 		"@expression.md\n\n" +
 		"---\n" + invariantsTrigger + "\n"
+}
+
+// renderExpressionSkeleton is the seed content for `.trellis/expression.md`, the
+// bundle's one hand-owned file (kodhama-0007 rule 4 via #119). It is payload content
+// like everything else — rendered per posture with the machine-read frontmatter
+// pre-filled, so every writer (applyM1 here, the setup skill via the payload's
+// expression-<p>.md) copies it verbatim with nothing left to fill: one render, many
+// copiers, applied to the skeleton itself. Seeded when absent, never rewritten; the
+// installed file is excluded from install-time checksum verification because the
+// project owns it from the first edit on.
+func renderExpressionSkeleton(plan Plan) string {
+	return "---\nprofile: " + plan.Profile.Key + "\n---\n\n" +
+		"# Trellis expression\n\n" +
+		"<!-- This file is yours (hand-owned; kodhama-0007 rule 4). Setup seeded it\n" +
+		"once and will never rewrite it; it is excluded from install-time checksum\n" +
+		"verification. The `profile:` key above (a = conductor · b = author-adapt)\n" +
+		"is the only machine-read line — a refresh reads it and asks nothing. Record\n" +
+		"below how this project expresses the invariants: dials, mappings, gate\n" +
+		"tables. Agents and humans read the body; machinery never parses it. -->\n"
 }
 
 // renderProfile is the tunable readout: posture, active invariants, dials. The

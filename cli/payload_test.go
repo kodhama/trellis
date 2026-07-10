@@ -29,13 +29,17 @@ const vendoredPayloadDir = "../plugins/trellis/reference"
 
 // TestPayloadFileSet: the generator emits exactly the file set #117 enumerates —
 // the verbatim catalog, both posture variants of the profile / header / inline
-// block, the constant CLAUDE.md block, the version stamp, and the manifest.
+// block, the constant CLAUDE.md block, the version stamp, and the manifest —
+// plus, since #119's conformance follow-up, both posture variants of the
+// expression.md seed skeleton (kodhama-0007 rule 4).
 func TestPayloadFileSet(t *testing.T) {
 	want := []string{
 		"block-claude.md",
 		"block-inline-a.md",
 		"block-inline-b.md",
 		"checksums",
+		"expression-a.md",
+		"expression-b.md",
 		"invariants.md",
 		"profile-a.md",
 		"profile-b.md",
@@ -122,6 +126,32 @@ func TestPayloadHeaderCarriesExpressionImport(t *testing.T) {
 	for _, name := range []string{"block-inline-a.md", "block-inline-b.md"} {
 		if strings.Contains(files[name], "@expression.md") {
 			t.Errorf("%s is the no-@import variant and must not carry an import line", name)
+		}
+	}
+}
+
+// TestPayloadCarriesExpressionSkeletons: kodhama-0007 rule 4 via #119 (conformance-gate
+// follow-up) — the expression.md seed skeleton is payload content like everything else
+// ("one render, many copiers", applied to the skeleton itself): per-posture files with
+// the frontmatter pre-filled, so every writer copies verbatim with nothing left to fill
+// and the skeleton has no second home in writer prose.
+func TestPayloadCarriesExpressionSkeletons(t *testing.T) {
+	files := payloadFiles()
+	for _, p := range allProfiles {
+		name := "expression-" + p.Key + ".md"
+		content := files[name]
+		if !strings.HasPrefix(content, "---\nprofile: "+p.Key+"\n---\n") {
+			t.Errorf("%s must open with pre-filled machine-read frontmatter (profile: %s), got: %q", name, p.Key, content)
+		}
+		for _, want := range []string{"hand-owned", "kodhama-0007 rule 4"} {
+			if !strings.Contains(content, want) {
+				t.Errorf("%s missing %q — the skeleton must declare its ownership rule", name, want)
+			}
+		}
+		for _, stray := range []string{"<p>", "<project>"} {
+			if strings.Contains(content, stray) {
+				t.Errorf("%s carries an unfilled placeholder %q — skeletons are copied verbatim, never filled", name, stray)
+			}
 		}
 	}
 }

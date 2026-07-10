@@ -29,6 +29,7 @@ In `${CLAUDE_PLUGIN_ROOT}/reference/`, where `<p>` is the posture key (`a` or `b
 | `invariants.md` | `.trellis/invariants.md` | full catalog; posture-independent |
 | `profile-<p>.md` | `.trellis/profile.md` | the active-rules readout: each rule as a directive plus the ✗ failure it prevents, ending with the "(Generated from your profile …)" line — no posture/gatekeeper header. Auto-loaded, so it carries the rules themselves (`decision-0026`). Byte-identical across postures today |
 | `trellis-<p>.md` | `.trellis/trellis.md` | the header agents read; the strictness line is the only per-posture difference |
+| `expression-<p>.md` | `.trellis/expression.md` — **first run only** | the hand-owned declaration file's seed: frontmatter pre-filled (`profile: <p>`), body a commented stub. Copied only when the file is absent (step 1); a refresh never touches an existing one (`kodhama-0007` rule 4) |
 | `block-claude.md` | the managed block in `CLAUDE.md` | import style: one line + `@.trellis/trellis.md` |
 | `block-inline-<p>.md` | the managed block in a no-`@import` instructions file | inline style: the whole overlay, self-contained |
 | `version` | *(not installed)* | the payload's render stamp (`payload@…`); the project's `.trellis/version` is stamped at install time instead (step 4) |
@@ -58,23 +59,16 @@ are parked per `decision-0033` — do not offer them):
 - **B · author-adapt** — same rules, follow by default and adapt out loud (**default** if the user
   is unsure).
 
-Then seed `.trellis/expression.md` with exactly this skeleton, filling in only `<p>` (the answered
-key, `a` or `b`) and `<project>` (the project's name):
+Then seed it by copying the payload's pre-filled skeleton for the answered posture — a copy, not a
+composition (the skeleton is payload content like every other bundle file, so it has no second home
+in this skill's prose and nothing is left to fill in):
 
-```markdown
----
-profile: <p>
----
-
-# <project> — Trellis expression
-
-<!-- This file is yours (hand-owned; kodhama-0007 rule 4). Setup seeded it
-once and will never rewrite it; it is excluded from the checksum manifest.
-The `profile:` key above (a = conductor · b = author-adapt) is the only
-machine-read line — a refresh reads it and asks nothing. Record below how
-this project expresses the invariants: dials, mappings, gate tables.
-Agents and humans read the body; machinery never parses it. -->
+```sh
+cp "${CLAUDE_PLUGIN_ROOT}/reference/expression-<p>.md" .trellis/expression.md
 ```
+
+From that moment the file is the project's own: they may retitle it and write the body freely, and
+no later run of this skill touches it.
 
 ## 2. Guard hand-authored content before overwriting (the #112 backstop)
 
@@ -153,7 +147,9 @@ sed -n \
 ```
 
 All three lines must print `OK`. (`.trellis/version` and `.trellis/expression.md` are deliberately
-outside the manifest: the stamp is per-install, and `expression.md` is hand-owned.)
+outside install-time verification: the stamp is per-install, and `expression.md` is hand-owned from
+the moment it is seeded — the payload's `expression-<p>.md` skeletons are manifest-covered like any
+payload file, but the installed copy is the project's to change.)
 
 **(b) Exactly one begin and one end marker** in the target:
 

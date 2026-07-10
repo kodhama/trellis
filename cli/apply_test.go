@@ -125,6 +125,47 @@ func TestApplyM1WarnsBeforeOrphaningProfileContent(t *testing.T) {
 	}
 }
 
+// kodhama/trellis#119 conformance follow-up (kodhama-0007 rule 4: "a first run seeds it
+// pre-filled"): applyM1 is a live writer until #120 retires the CLI channel, and the
+// header it writes imports @expression.md — so it must seed the file when absent, as a
+// verbatim mechanical copy of the payload's per-posture skeleton (one render, many
+// copiers, applied to the skeleton itself).
+func TestApplyM1SeedsExpressionWhenAbsent(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := applyM1(dir, planFor("b")); err != nil {
+		t.Fatal(err)
+	}
+	got := readFile(t, filepath.Join(dir, ".trellis", "expression.md"))
+	if want := payloadFiles()["expression-b.md"]; got != want {
+		t.Errorf("seeded expression.md must be the payload's skeleton, verbatim\n got: %q\nwant: %q", got, want)
+	}
+	if !strings.Contains(got, "profile: b") {
+		t.Errorf("seeded skeleton must carry the pre-filled posture frontmatter, got: %q", got)
+	}
+}
+
+// kodhama-0007 rule 4 / AC3 via #119: seeded once, never rewritten — an existing
+// expression.md survives any number of re-applies byte-identical.
+func TestApplyM1NeverOverwritesExpression(t *testing.T) {
+	dir := t.TempDir()
+	tdir := filepath.Join(dir, ".trellis")
+	if err := os.MkdirAll(tdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	own := "---\nprofile: a\n---\n\n# My project — Trellis expression\n\nHand-written dials and gate tables.\n"
+	if err := os.WriteFile(filepath.Join(tdir, "expression.md"), []byte(own), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := applyM1(dir, planFor("a")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := readFile(t, filepath.Join(tdir, "expression.md")); got != own {
+		t.Errorf("applyM1 rewrote the hand-owned expression.md (kodhama-0007 rule 4)\n got: %q\nwant: %q", got, own)
+	}
+}
+
 // kodhama/trellis#119 (kodhama-0007 rule 4): the warning's move-it-here pointer names
 // `.trellis/expression.md` — the hand-owned home — not the instructions file. PR #114's
 // original "move it into your instructions file (e.g. CLAUDE.md)" guidance is

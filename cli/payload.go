@@ -22,11 +22,14 @@ import (
 )
 
 // payloadFiles renders the complete pre-rendered M1 payload: the verbatim catalog,
-// both posture variants of the header / profile / inline block, the constant
-// CLAUDE.md block, a content-derived version stamp, and the checksums manifest.
-// profile-a/profile-b are byte-identical today (renderProfile is posture-invariant,
-// #117's verified evidence) but are named per posture so the payload layout survives
-// a posture whose profile diverges.
+// both posture variants of the header / profile / inline block / expression seed
+// skeleton, the constant CLAUDE.md block, a content-derived version stamp, and the
+// checksums manifest. profile-a/profile-b are byte-identical today (renderProfile is
+// posture-invariant, #117's verified evidence) but are named per posture so the
+// payload layout survives a posture whose profile diverges. The expression skeletons
+// (#119, kodhama-0007 rule 4) are manifest-covered like any payload file; only the
+// *installed* .trellis/expression.md sits outside install-time verification, because
+// it is hand-owned from the moment it is seeded.
 func payloadFiles() map[string]string {
 	files := map[string]string{
 		"invariants.md":   invariantsRef, // the catalog, verbatim (decision-0028 single source)
@@ -37,6 +40,7 @@ func payloadFiles() map[string]string {
 		files["trellis-"+p.Key+".md"] = renderHeader(plan)
 		files["profile-"+p.Key+".md"] = renderProfile(plan)
 		files["block-inline-"+p.Key+".md"] = renderInlineBlock(plan)
+		files["expression-"+p.Key+".md"] = renderExpressionSkeleton(plan)
 	}
 
 	// The payload's version stamp is derived from its own content: a vendored file
