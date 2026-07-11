@@ -85,6 +85,23 @@ scope: trellis-product
     `intent_locus: true` (`inv-intent-locus`, `floor-intent-gate`). *FAIL → name the offending
     gene.*
 
+## Check — version cross-check (base contract, `spec-0001` §3 check 8, `decision-0045`)
+
+*Placed here, not renumbered into the base checks 1–7, to avoid shifting the `spec-0002` typed
+checks 8–11 above — it is a base-contract check (`spec-0001` §3), applied only when a
+significant-change `decision` carries a `changes:` field.*
+
+12. **Version cross-check (partial).** **Scope: behavioral / counter-versioned artifacts only**
+    (the ordered `vN` form — `decision-0045` item 6; a content-hash has no ordering and cross-repo
+    tags are the sync check's, both out of scope). Where a significant-change `decision` carries
+    `changes: [X@vN]`, reconcile against `X`'s counter **record**, **not** `declared == current`:
+    an append-only decision's `@vN` legitimately sits behind `X`'s current counter after a later
+    bump. *FAIL → a **declared change that never landed**: `X`'s current counter is behind `vN`.* A
+    bump in `X` with no accounting `changes:` decision is **not** a FAIL (`decision-0045`'s
+    open question — "must every significant change flow from a decision?" — is unsettled). Bounded
+    intra-repo frontmatter-vs-record audit; **distinct** from the pin-vs-current *sync* check
+    (check 4), which is grove#34 / `adr-0006`'s.
+
 ## Honesty clause (math-quest)
 
 **Accurately listing the violations *is* success.** A run that hides drift to report "pass"

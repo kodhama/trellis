@@ -46,8 +46,8 @@ Every non-code artifact opens with YAML frontmatter:
 | `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root |
 | `owner` | ✓ | the accountable human (the `inv-intent-locus` role). The *role* is contract; the *field* is mappable — a methodology whose `owner` means something else declares which field/mechanism carries the accountable human (`decision-0037`) |
 | `author` | — | optional: who wrote it (human or agent), distinct from accountability |
-| `version` | — | the **versioned (revise-in-place) artifact's own version marker**, at its own granularity — *not* a foreign decision-id (`decision-0045` item 3). **Required** on a versioned artifact that downstreams pin; **omitted** by append-only artifacts (decisions), which version *implicitly* via id + supersession (item 2). **Form fits the kind** (item 5 — a spectrum, not a two-way function): a **behavioral spec** → a plain monotonic counter (`v1`, `v2`, …), agent-generated, a review-bounded significance *ordering* (**not** semver; a testable-clause — scenario/invariant — change bumps it, a prose-only edit does not — item 6); a **vendored / byte-identical bundle** (trellis's `payload`) → a content-hash (`payload@<12-hex>`, `decision-0043` — unchanged); a **human-cut release** (design-system tokens) → a git tag (`vX.Y.Z` — unchanged). The behavioral counter is a **claim bounded by review, not a "can't-lie" derivation** (item 6). |
-| `changes` | — | on a **significant-change `decision`** only: the versioned artifact(s) it changes, each pinned to the version it set (`id@version` or `<repo>/<id>@version`). A **forward-pointer relation of the `superseded_by` / `superseded_in_part_by` class — never a `depends_on`-class edge** (`decision-0045` item 7); entries resolve like any `id`. Feeds the §3 partial version cross-check. |
+| `version` | — | the **versioned (revise-in-place) artifact's own version marker**, at its own granularity — *not* a foreign decision-id (`decision-0045` item 3). **Required** on a versioned artifact that downstreams pin; **omitted** by append-only artifacts (decisions), which version *implicitly* via id + supersession (item 2). **Form fits the kind** (item 5 — a spectrum, not a two-way function): a **behavioral spec** → a plain monotonic counter (`v1`, `v2`, …), agent-generated, a review-bounded significance *ordering* (**not** semver; a testable-clause — scenario/invariant — change bumps it, a prose-only edit does not — item 6); a **vendored / byte-identical bundle** (trellis's `payload`) → a content-hash (`payload@<12-hex>`, `decision-0043` — unchanged); a **human-cut release** (design-system tokens) → a git tag (`vX.Y.Z` — unchanged). The behavioral counter is a **claim bounded by review, not a "can't-lie" derivation** (item 6). *Version **presence** is not itself gate-enforced at v0* — a versioned artifact lacking a stamp is not FAILed (this keeps trellis's current unstamped specs, `spec-0001` included, from retroactively failing); presence matters once a `@version` pin needs it, and the pin-vs-current enforcement is grove#34 / `adr-0006`'s. |
+| `changes` | — | on a **significant-change `decision`** only: the versioned artifact(s) it changes, each pinned to the version it set (`id@version` or `<repo>/<id>@version`). A **forward-pointer relation of the `superseded_by` / `superseded_in_part_by` class — never a `depends_on`-class edge** (`decision-0045` item 7); entries resolve like any `id`. Feeds the §3 partial version cross-check (**behavioral / counter-versioned artifacts only** — `decision-0045` Consequences item 3). |
 | `date` / `ratified` / `supersedes` / `superseded_by` / `superseded_in_part_by` / `rubric` | — | optional |
 
 **External refs:** a `depends_on` entry that is not an artifact `id` must match a declared
@@ -69,7 +69,11 @@ was built against: **`id@version`** locally (e.g. `spec-mastery-engine@v3`), or
 `decision-0043`'s `payload@<12-hex>` content-hash stamp already uses it, so this amendment
 *generalizes* that existing delimiter to all versioned pins — it does not invent one. The
 `<version>` is whatever form fits the upstream's kind (a counter `vN`, a git tag `vX.Y.Z`, a hex
-hash — the §1 `version` row).
+hash — the §1 `version` row). A `@version` pin is meaningful **only on a versioned upstream**;
+an **append-only** artifact (a `decision`) carries no `version` marker (§2), so pinning one with
+`@version` is a category error. v0's no-fetch resolution strips `@version` and resolves the bare
+`id` regardless, so it does **not** actively reject such a pin — a possible grove#34 refinement,
+not a v0 gate.
 
 **`@` collision-safety (checked the way `decision-0044` checked `/` and `:`).**
 `<repo>/<id>@<version>` parses unambiguously: repo names (the registry — **kodhama, trellis,
@@ -183,19 +187,24 @@ checklist from this spec, not from the producer (B3). Its checks:
    **append-only** `decision` may keep a dependency on the
    upstream version current at its ratification — a historical fact, not current-truth
    consumption.* A successor referencing its own predecessor (for diffing) is also exempt.
-8. **Version cross-check (partial, `decision-0045` Consequences item 3).** Where a
-   significant-change `decision` carries `changes: [X@vN]`, reconcile it against `X`'s `version`
-   **record** — **not** a naive `declared == current` equality. A `decision` is append-only, so
-   its declared `@vN` is a *historical* fact that legitimately sits **behind** `X`'s current
-   `version` once `X` bumps again (a decision that set `X@v3` is not wrong because `X` later
-   reached `v4`). The **sound finding is a declared change that never landed** — `changes:
-   [X@vN]` where `X`'s current `version` is *behind* `vN` (`X` never reached the version the
-   decision claims to have set). The reverse direction — a bump in `X` with **no** accounting
-   `changes:` decision — is **softer, never a hard FAIL**: `decision-0045`'s own open question
-   leaves *"must every significant change flow from a decision?"* unsettled, so an unaccounted
-   bump is at most a prompt to look, not a violation. A **bounded, intra-repo
-   frontmatter-vs-record audit**, owned by the conformance check / `corpus-reviewer` — **distinct**
-   from the consumer-vs-upstream *sync* check (check 4), which is grove#34 / grove `adr-0006`'s.
+8. **Version cross-check (partial, `decision-0045` Consequences item 3).** **Scope: behavioral /
+   counter-versioned artifacts only** — the version form `decision-0045` item 6 defines as a
+   monotonic *ordering*, which is exactly what this check's comparison needs. A **content-hash**
+   (`decision-0043`'s `payload@<hex>`) has **no ordering** (it answers "did any byte change?",
+   item 5), and cross-repo **git-tag** forms are the operational sync check's territory — both are
+   **out of this check's scope**. Within scope: where a significant-change `decision` carries
+   `changes: [X@vN]`, reconcile it against `X`'s `version` **record** — **not** a naive
+   `declared == current` equality. A `decision` is append-only, so its declared `@vN` is a
+   *historical* fact that legitimately sits **behind** `X`'s current counter once `X` bumps again
+   (a decision that set `X@v3` is not wrong because `X` later reached `v4`). The **sound finding is
+   a declared change that never landed** — `changes: [X@vN]` where `X`'s current counter is *behind*
+   `vN` (`X` never reached the version the decision claims to have set). The reverse direction — a
+   bump in `X` with **no** accounting `changes:` decision — is **softer, never a hard FAIL**:
+   `decision-0045`'s own open question leaves *"must every significant change flow from a
+   decision?"* unsettled, so an unaccounted bump is at most a prompt to look, not a violation. A
+   **bounded, intra-repo frontmatter-vs-record audit**, owned by the conformance check /
+   `corpus-reviewer` — **distinct** from the consumer-vs-upstream *sync* check (check 4), which is
+   grove#34 / grove `adr-0006`'s.
 
 **Honesty clause (math-quest):** *accurately listing the violations is success.* A check that
 hides drift to report "pass" has failed this spec. The report is also the raw **friction
@@ -322,14 +331,23 @@ against `core/rubrics/artifact-contract.md`.
 | Honesty clause | Self-assessed honest | This entry checks only the amendment's own conformance; the rubric-sync gap (below) is stated openly, not passed over. |
 
 **Rubric sync (`core/rubrics/artifact-contract.md`).** The rubric **duplicates** §3's checklist
-(its checks 1–7 mirror §3 checks 1–7), so it needs matching edits. The **check 4** (`@version`
-no-fetch resolution) and **check 5** (`changes:` is forward-only, not a flow edge) additions are
-small, mechanical mirrors — **made in the same pass**. The **new §3 check 8 (partial version
-cross-check)** is *not* mirrored into the rubric here: it is `decision-0045` Consequences item 3
-(the `corpus-reviewer` *gains* it), a distinct named deliverable, and it collides with the
-rubric's existing numbering (checks 8–11 are already the `spec-0002` typed-artifact checks —
-inserting it would force a renumber touching `decision-0020`/`decision-0027` citations).
-**Flagged as a substantive follow-on**, not guessed here.
+(its checks 1–7 mirror §3 checks 1–7), so it needs matching edits — all **made in this pass**:
+- **check 4** (`@version` no-fetch resolution) and **check 5** (`changes:` is forward-only, not a
+  flow edge) — small mechanical mirrors.
+- **§3 check 8 (partial version cross-check)** — wired in as rubric **check 12** under its own
+  `## Check — version cross-check` heading, **not** renumbered into the base checks: the rubric's
+  slots 8–11 are already `spec-0002`'s typed checks (cited by `decision-0020`/`decision-0027`), so
+  appending under a labelled heading avoids a renumber while still delivering `decision-0045`
+  Consequences item 3 (the `corpus-reviewer` *gains* the check in the operative gate, not only in
+  spec prose). The rubric's numbering is already not 1:1 with §3 past check 7 (its 8–11 have no §3
+  counterpart), so the §3-check-8 ↔ rubric-check-12 mapping is consistent with that.
+
+An earlier draft of this amendment deferred the rubric wiring of check 8; an independent
+adversary pass (`spec-adversary`, 2026-07-11) noted that (a) the check dropped `decision-0045`'s
+explicit **behavioral-artifact** scoping — its "behind" test is undefined for the unordered
+content-hash form the same amendment admits — and (b) a check living only in spec prose, not the
+operative rubric, does not actually deliver Consequences item 3. Both are fixed above: check 8 is
+now **scoped to the behavioral / counter-versioned form** and **wired into the rubric**.
 
 **Status unchanged.** As with the `decision-0044` amendment, `status` stays `ratified`; no
 promotion statement follows — the `draft → gated → approved` mechanic governs *new* artifacts, not
