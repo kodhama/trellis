@@ -3,6 +3,7 @@ id: decision-0042
 type: decision
 status: approved  # ratified by PR #106 merge (2026-07-08) — first bump under the mechanic 0042 itself establishes
 depends_on: [decision-0022, decision-0037]
+superseded_in_part_by: [decision-0046]  # the post-merge-bump / no-in-diff-approved rule + ratify-guard; the merge-is-a-valid-ratification core stands
 owner: agent
 date: 2026-07-08
 ---
