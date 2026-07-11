@@ -1,7 +1,7 @@
 ---
 id: decision-0045
 type: decision
-status: gated  # self-checked 2026-07-11, shaping converged + adversary round — see Self-check
+status: approved  # ratified by PR #144 merge (2026-07-11); this commit is the post-merge bump
 depends_on: [decision-0037, decision-0044, decision-0014, spec-0001]
 owner: agent
 date: 2026-07-11
@@ -245,9 +245,13 @@ None executed by this decision — a follow-on `contract-author` pass amends
   decision hole), D (unreconstructable reasoning), E (`changes:` edge
   type), F (dual-consumed/unclassified) each corrected or named above.
   Verdict was "spine sound, rationales need to match sources" — done.
-- **Approval mechanic**: left `gated`, not flipped to `approved`; the
-  design is settled but ratification (the maintainer's act) is owed. PASS.
+- **Approval mechanic**: ratified by the maintainer's approval, recorded
+  the trellis-native way (`decision-0042`) — the **PR #144 merge is the
+  ratification act**; this post-merge commit records `approved`. No in-PR
+  self-approval (`ratify-guard`-compliant); no deviation from the written
+  mechanic. PASS.
 
-**Overall: internally sound, consumable, and `gated`** — self-checked,
-adversary-revised, awaiting the maintainer's approval, which closes
-kodhama/trellis#143 and authorizes the `spec-0001` amendment.
+**Overall: internally sound, consumable, and `approved`** — self-checked,
+survived two `spec-adversary` rounds, ratified by the maintainer
+(PR #144 merge, 2026-07-11). Closes kodhama/trellis#143 and authorizes
+the `spec-0001` amendment (Consequences).
