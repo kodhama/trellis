@@ -40,9 +40,16 @@ scope: trellis-product
    homebrew-tap, math-quest) (`spec-0001` §1, `decision-0044`; shape + registry-membership
    only — not verified against the referent's actual home corpus, same treatment as
    `brief-§…`) — **or** a **retired id** in the invariant-set's Identifiers registry (mapping to
-   a successor). *FAIL → name the dangling reference.*
+   a successor). A referent may carry a **`@version` pin** (`spec-0001` §1, `decision-0045`);
+   resolve it on **shape + the bare `id`/`<repo>/<id>`'s membership only** (v0, no-fetch) — the
+   pin-vs-upstream-current *sync* comparison is **not** this check's (it is grove#34 /
+   `adr-0006`'s). *FAIL → name the dangling reference.*
 5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** No `gated`/`approved` (or legacy
-   `ratified`) artifact `depends_on` a `draft` artifact. *FAIL → name the edge.*
+   `ratified`) artifact `depends_on` a `draft` artifact. A decision's **`changes:`** relation
+   (`spec-0001` §3, `decision-0045` item 7) is a **forward-pointer of the `superseded_by` class,
+   not a `depends_on`-class edge** — do **not** walk it as a flow edge; a spec both depending on
+   its authorizing decision and named in that decision's `changes:` is a benign pair, not a cycle.
+   *FAIL → name the edge.*
 6. **Required body sections per type** (`spec-0001` §4, `spec-0002` §4): `spec`/`invariant-set` →
    Acceptance criteria + Open questions; `decision` → Context/Decision/Consequences;
    `research-note` → Open questions (+ sources); `signature-catalog` → Entries + Acceptance

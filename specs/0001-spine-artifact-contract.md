@@ -2,7 +2,7 @@
 id: spec-0001
 type: spec
 status: ratified
-depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, decision-0044, research-0003]
+depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, decision-0044, decision-0045, research-0003]
 owner: gundi
 rubric: rubric-artifact-contract
 ratified: 2026-06-30
@@ -46,6 +46,8 @@ Every non-code artifact opens with YAML frontmatter:
 | `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root |
 | `owner` | ✓ | the accountable human (the `inv-intent-locus` role). The *role* is contract; the *field* is mappable — a methodology whose `owner` means something else declares which field/mechanism carries the accountable human (`decision-0037`) |
 | `author` | — | optional: who wrote it (human or agent), distinct from accountability |
+| `version` | — | the **versioned (revise-in-place) artifact's own version marker**, at its own granularity — *not* a foreign decision-id (`decision-0045` item 3). **Required** on a versioned artifact that downstreams pin; **omitted** by append-only artifacts (decisions), which version *implicitly* via id + supersession (item 2). **Form fits the kind** (item 5 — a spectrum, not a two-way function): a **behavioral spec** → a plain monotonic counter (`v1`, `v2`, …), agent-generated, a review-bounded significance *ordering* (**not** semver; a testable-clause — scenario/invariant — change bumps it, a prose-only edit does not — item 6); a **vendored / byte-identical bundle** (trellis's `payload`) → a content-hash (`payload@<12-hex>`, `decision-0043` — unchanged); a **human-cut release** (design-system tokens) → a git tag (`vX.Y.Z` — unchanged). The behavioral counter is a **claim bounded by review, not a "can't-lie" derivation** (item 6). |
+| `changes` | — | on a **significant-change `decision`** only: the versioned artifact(s) it changes, each pinned to the version it set (`id@version` or `<repo>/<id>@version`). A **forward-pointer relation of the `superseded_by` / `superseded_in_part_by` class — never a `depends_on`-class edge** (`decision-0045` item 7); entries resolve like any `id`. Feeds the §3 partial version cross-check. |
 | `date` / `ratified` / `supersedes` / `superseded_by` / `superseded_in_part_by` / `rubric` | — | optional |
 
 **External refs:** a `depends_on` entry that is not an artifact `id` must match a declared
@@ -58,6 +60,29 @@ exactly as declared in its home corpus (e.g. `math-quest/adr-0030-espalier`,
 registry-membership only, matching `brief-§…`'s own non-verified treatment — no
 fetch-and-confirm-the-referent-actually-exists mechanism. Anything else is a **dangling
 reference** → fail.
+
+**Version pins (`@version`, `decision-0045`).** A `depends_on` entry pinning a **versioned**
+upstream (one that carries a `version` marker, §1/§2) may qualify the referent with the version it
+was built against: **`id@version`** locally (e.g. `spec-mastery-engine@v3`), or
+**`<repo>/<id>@version`** cross-repo (e.g. `math-quest/spec-slice-01-first-loop@v3`) — extending
+`decision-0044`'s qualified `<repo>/<id>` form. **`@` is already the family's version delimiter:**
+`decision-0043`'s `payload@<12-hex>` content-hash stamp already uses it, so this amendment
+*generalizes* that existing delimiter to all versioned pins — it does not invent one. The
+`<version>` is whatever form fits the upstream's kind (a counter `vN`, a git tag `vX.Y.Z`, a hex
+hash — the §1 `version` row).
+
+**`@` collision-safety (checked the way `decision-0044` checked `/` and `:`).**
+`<repo>/<id>@<version>` parses unambiguously: repo names (the registry — **kodhama, trellis,
+grove, wisp, design-system, homebrew-tap, math-quest**) and artifact `id`s (kebab slugs) contain
+no `@`; version markers (`vN`, `vX.Y.Z`, a hex hash) contain no `/` or `@`. So **split on the
+first `/`, then split on `@`** recovers `<repo>`, `<id>`, and `<version>` with no ambiguity — the
+same *structural* (not heuristic) guarantee `decision-0044` established for the `/` delimiter.
+
+**Resolution depth (v0, no-fetch — `decision-0044`).** A `@version` pin is checked on **shape +
+the bare `id`/`<repo>/<id>`'s registry/corpus membership only**; v0 does **not** fetch the upstream
+to compare the pinned version against its current one. That **pin-vs-current *sync* comparison is
+the operational check owned by grove#34 / grove `adr-0006`**, not this spec's §3 conformance check
+— the same non-verified treatment `brief-§…` and a bare `<repo>/<id>` already get.
 
 **Types are open (`decision-0003`, `research-0003`).** Trellis does not impose a fixed type
 set — a methodology brings its own (`spec`/`requirements`/`PRD`/`changes` are one function
@@ -105,6 +130,13 @@ its remainder stays live. The successor states what it supersedes in part; the o
 class of permitted touch as the full-supersede status flip), so no reader lands on the
 outgrown half without a forward link. Each entry must resolve like any `depends_on` id.
 
+**Version stamping is a property of *kind*, not lifecycle state (`decision-0045`).** A
+**versioned / revise-in-place** artifact (a spec — grove `adr-0004`; a `decision-0014`
+invariant-set) carries an **explicit `version` stamp** (§1): its `id` alone does not identify
+*which* state a downstream built against, so the stamp is that pin currency. An **append-only**
+artifact (a `decision`) needs no stamp — it versions *implicitly*: the `id` already pins a unique
+immutable state and supersession is its history (`decision-0045` item 2).
+
 *(Worked instance of the open contract, `decision-0037`: math-quest's `draft → gated →
 approved` — `gated` is rubric-self-checked and agent-consumable under a recorded ratchet,
 `approved` is the human merge = ratified. Same shape, different names.)*
@@ -132,9 +164,17 @@ checklist from this spec, not from the producer (B3). Its checks:
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id`, a declared external ref, **or** a
    **retired id** in the invariant-set's Identifiers registry (mapping to its successor); no
-   dangling references.
+   dangling references. A referent may carry a **`@version` pin** (`decision-0045`, §1); resolve
+   it on **shape + the bare `id`/`<repo>/<id>`'s membership only** (v0, no-fetch) — the
+   pinned-version-vs-upstream's-current *sync* comparison is **not** this check's; it is grove#34 /
+   grove `adr-0006`'s operational check.
 5. **Directional flow (load-bearing, A1/B1):** no `ratified` artifact `depends_on` a
-   `draft` artifact.
+   `draft` artifact. A decision's **`changes:`** relation (`decision-0045` item 7) is a
+   **forward-pointer of the `superseded_by` class, not a `depends_on`-class dependency edge** — it
+   is **not walked** as a flow edge. A spec both `depends_on`-ing its authorizing decision *and*
+   named in that decision's `changes:` is a benign two-relation pair, **not a cycle** (the same way
+   an append-only `decision`'s back-reference to its ratification-current upstream is exempt,
+   check 7).
 6. Required body sections present per type (§4).
 7. **Supersede integrity:** a `superseded` artifact carries `superseded_by`; **revise-in-place**
    docs (specs, invariants, research, rubrics — B4 consolidated truth) re-point to the
@@ -143,6 +183,19 @@ checklist from this spec, not from the producer (B3). Its checks:
    **append-only** `decision` may keep a dependency on the
    upstream version current at its ratification — a historical fact, not current-truth
    consumption.* A successor referencing its own predecessor (for diffing) is also exempt.
+8. **Version cross-check (partial, `decision-0045` Consequences item 3).** Where a
+   significant-change `decision` carries `changes: [X@vN]`, reconcile it against `X`'s `version`
+   **record** — **not** a naive `declared == current` equality. A `decision` is append-only, so
+   its declared `@vN` is a *historical* fact that legitimately sits **behind** `X`'s current
+   `version` once `X` bumps again (a decision that set `X@v3` is not wrong because `X` later
+   reached `v4`). The **sound finding is a declared change that never landed** — `changes:
+   [X@vN]` where `X`'s current `version` is *behind* `vN` (`X` never reached the version the
+   decision claims to have set). The reverse direction — a bump in `X` with **no** accounting
+   `changes:` decision — is **softer, never a hard FAIL**: `decision-0045`'s own open question
+   leaves *"must every significant change flow from a decision?"* unsettled, so an unaccounted
+   bump is at most a prompt to look, not a violation. A **bounded, intra-repo
+   frontmatter-vs-record audit**, owned by the conformance check / `corpus-reviewer` — **distinct**
+   from the consumer-vs-upstream *sync* check (check 4), which is grove#34 / grove `adr-0006`'s.
 
 **Honesty clause (math-quest):** *accurately listing the violations is success.* A check that
 hides drift to report "pass" has failed this spec. The report is also the raw **friction
@@ -246,3 +299,38 @@ No promotion statement follows. The `draft → gated → approved` mechanic in t
 charter governs *new* artifacts moving through the lifecycle; this is an in-place amendment to
 an already-`approved`/`ratified` artifact, matching the `decision-0037`/`decision-0040`
 precedent — `status` is not touched here, per this task's explicit scope.
+
+### Rubric check — `decision-0045` versioning-grammar amendment (2026-07-11)
+
+A **second in-place amendment**, the same class as the `decision-0044` one above (`spec-0001` is
+revise-in-place current-truth, `decision-0014`/`decision-0037` pattern — not a supersession).
+**Scope of this check: this amendment only** — the new `version` and `changes` frontmatter rows
+(§1), the `@version` pin grammar + `@` collision-safety + no-fetch resolution note (§1), the §2
+version-stamping note, the §3 check 4/5 extensions + new check 8, and the frontmatter `depends_on`
+addition of `decision-0045`. **Not** a re-audit of the spec's pre-existing body. Self-checked
+against `core/rubrics/artifact-contract.md`.
+
+| Check | Result | Note |
+|---|---|---|
+| 1. Frontmatter present & required fields valid | PASS | Required shape unchanged; `depends_on` gained one well-typed entry, `decision-0045`. The added `version`/`changes` rows are **optional** (`Req: —`) fields, correctly typed. |
+| 2. `type`/`status` declared | PASS | `type: spec`; `status: ratified` left **untouched** — bumping/relabeling `status` is explicitly out of scope for this amendment (same posture as the `decision-0044` amendment above). |
+| 3. `id` unique | PASS | `spec-0001` — no change. |
+| 4. `depends_on` resolves | PASS | New entry `decision-0045` — read directly this run: `status: approved` (ratified via PR #144). |
+| 5. Directional flow (no `ratified`/`approved` depends on `draft`) | PASS | `decision-0045` is `approved`, not `draft` — no violation. |
+| 6. Required body sections per type (spec → Acceptance criteria + Open questions) | PASS | Both present; structure untouched by this amendment. |
+| 7. Supersede integrity | N/A | An in-place amendment, not a supersession — the established precedent for this spec. |
+| Honesty clause | Self-assessed honest | This entry checks only the amendment's own conformance; the rubric-sync gap (below) is stated openly, not passed over. |
+
+**Rubric sync (`core/rubrics/artifact-contract.md`).** The rubric **duplicates** §3's checklist
+(its checks 1–7 mirror §3 checks 1–7), so it needs matching edits. The **check 4** (`@version`
+no-fetch resolution) and **check 5** (`changes:` is forward-only, not a flow edge) additions are
+small, mechanical mirrors — **made in the same pass**. The **new §3 check 8 (partial version
+cross-check)** is *not* mirrored into the rubric here: it is `decision-0045` Consequences item 3
+(the `corpus-reviewer` *gains* it), a distinct named deliverable, and it collides with the
+rubric's existing numbering (checks 8–11 are already the `spec-0002` typed-artifact checks —
+inserting it would force a renumber touching `decision-0020`/`decision-0027` citations).
+**Flagged as a substantive follow-on**, not guessed here.
+
+**Status unchanged.** As with the `decision-0044` amendment, `status` stays `ratified`; no
+promotion statement follows — the `draft → gated → approved` mechanic governs *new* artifacts, not
+an in-place amendment to an already-ratified one.
