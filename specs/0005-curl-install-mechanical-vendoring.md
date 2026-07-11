@@ -288,6 +288,7 @@ gate, per that agent's own §Method item 4).
 | 6. Required body sections per type (spec → Acceptance criteria + Open questions) | PASS | Both present, non-empty. |
 | 7. Supersede integrity | N/A | This spec supersedes nothing; it is new. |
 | Checks 8–11 (typed-artifact checks) | N/A | Not a `signature-catalog` or `expression-profile`. |
+| Check 12 (version cross-check, `decision-0045`) | N/A | Not a `changes:`-bearing `decision`; added to the rubric 2026-07-11. |
 | Honesty clause | Self-assessed honest | The two flagged gaps above (check 3's corpus freshness, and the load-bearing Open Question on skills-directory plugin mechanics) are reported as gaps, not hidden to force a clean pass. |
 
 ### Re-check (post-adversarial-review revision, this run)
