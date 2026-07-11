@@ -48,29 +48,46 @@ date: 2026-07-11
   a revise-in-place artifact retains no deltas, so "its state as of
   decision X" is unreconstructable; only an explicit stamp (+ git)
   recovers a past state.
+- **The version *form follows the artifact kind*** (2026-07-11) — the
+  primitive is one (stamp + pin + pin-vs-current); the *form* is chosen
+  by what "conform" means for that kind:
+  - **Byte-identity kinds** (generated / vendored artifacts — trellis's
+    `payload`, design-system's tokens): a **content-hash** (trellis
+    already does exactly this, `payload@<12-hex>`). Byte-identity *is*
+    correctness there; the hash is derived, automatic, can't lie, and
+    bumps on any content change.
+  - **Behavioral kinds** (specs): a **significant-change version** —
+    bumps only when a *significant* (behavioral) change happens, which
+    per `adr-0004` already gets a decision; editorial edits don't bump.
+    So pin-vs-current tracks *behavioral* drift, not every byte, and the
+    decision explains each bump. This avoids the content-hash's
+    false-positive noise (flagging behavior-neutral edits) on the kind
+    where behavior is what matters.
+  - Rationale: a content-hash answers "did any byte change?"; for a
+    behavioral contract the real question is "did anything I depend on
+    change?" — and the family already draws that line (`adr-0004`
+    significant vs. editorial). Forcing one form on both kinds gets one
+    of them wrong.
 
 **Open** (live design questions — the substance still to shape):
-1. **What *form* is the version stamp?** (the most consequential — it
-   determines how you pin and how you compare). Candidates: a
-   content-hash (derived, auto, can't lie — trellis already does this for
-   its payload, `payload@<12-hex>`); a monotonic integer counter; semver /
-   a cut git tag (design-system's model); or bump-on-significant-change
-   tied to the decision a significant change already gets (adr-0004).
-2. **Where does the stamp live** — a `spec-0001` frontmatter field on the
-   versioned artifact, and how does it compose with `decision-0044`'s
-   qualified `repo/id` cross-repo form (does a pin become
-   `repo/id@version`)?
-3. **Pinning syntax** in `depends_on` — how a downstream entry carries the
-   pinned version.
-4. **When does the stamp bump** — every edit, or only *significant*
-   changes (the ones adr-0004 already says get a decision, vs. editorial
-   edits that don't)? This trades noise (hash-every-edit) against manual
-   bookkeeping (human-cut versions).
-5. **The check mechanism** — how the conformance check reads "current"
-   (the artifact's own stamp) vs. "pinned" (the downstream's `depends_on`)
-   given revise-in-place, and whether it lands as a corpus-reviewer check,
-   a conformance-reviewer check, or a new one (relates to trellis#25 /
-   grove#34).
+1. **Is the spec (behavioral) version *stamped* or *derived*?** A written
+   frontmatter field (`version: 3`), bumped by hand when the
+   significant-change decision is filed — can drift (decision filed,
+   bump forgotten); vs. *derived* from the decision record (e.g. a
+   function of the significant-change decisions affecting the artifact) —
+   can't drift, but needs decisions to declare what they change and isn't
+   a static value you read off the file. (The "can it lie?" question the
+   `ADR-0030` principle cares about.)
+2. **Stamp location + pin syntax** — proposed (to confirm): the stamp is a
+   `spec-0001` frontmatter field on the versioned artifact; a pin extends
+   `decision-0044`'s qualified form to `repo/id@version` (and `id@version`
+   local). Low-fork unless the derive-vs-stamp answer (1) reshapes it.
+
+**Parked** (moved out of this decision):
+- **The check mechanism** — how the conformance check reads current-stamp
+  vs. pinned and where it lands (corpus-reviewer / conformance-reviewer /
+  new) — is *operational*, so it belongs in **grove#34**, not this
+  principles decision. Recorded there.
 
 **Parked** (out of scope for this decision):
 - The *operational* application of these kinds — the decision→spec→tests→
