@@ -2,7 +2,7 @@
 
 Ready-to-drop-in Claude Code subagent definitions, one per cold-started
 agent role, vendored from [kodhama/grove](https://github.com/kodhama/grove)
-(`.claude/agents/`, `grove@6c8a8cc`) per grove's README §"Adopting grove
+(`.claude/agents/`, `grove@bf7c835`) per grove's README §"Adopting grove
 in your project". Each file's canonical charter — the source of truth,
 carrying the provenance note — lives in grove's own `charters/` at the
 URL cited inline in that file; these vendored copies carry the
@@ -28,6 +28,19 @@ as the reference *instance* of grove's `corpus-reviewer` role — renamed
 from its old `conformance-reviewer` name, minimally aligned (family
 lifecycle per `decision-0042`), with its checks 8–11 kept as this repo's
 repo-typed extras.
+
+**No `code-reviewer.md` here.** Grove's reference set carries a
+`code-reviewer` role trellis has not adopted — adding it is a new-role
+decision, not something a re-vendor makes on its own; this is a standing
+observation, not a gap this loader silently papers over.
+
+**The lifecycle and versioning companions are not agent roles and do
+not live here.** The artifact-lifecycle state enum and the
+conformance-detection (versioning) semantics — each stated once,
+sourced by every role and the `corpus-reviewer`'s checks — are installed
+by setup to **`.grove/lifecycle.md`** and **`.grove/versioning.md`**
+(grove's own namespace, not this loader directory; `adr-0008` /
+`adr-0010` as amended) and are present in this repo.
 
 **`dispatcher.md` is scoped, not a full peer of the rest.** ADR-0030
 charters head-gardener as "cold-started: the interactive session (v0)"
