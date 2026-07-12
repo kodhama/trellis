@@ -16,7 +16,10 @@ ratified: 2026-07-04
 > *Amended in place 2026-07-12 (kodhama-0008 Lane A, kodhama/kodhama#35): `floor-intent-gate`'s
 > honored `(product)` example de-merged — the propagated principle names no VCS mechanic; every
 > mechanic mapping is the operational layer's (grove). One example sentence; no slug, schema, or
-> dial change. `status` unchanged.*
+> dial change. `status` unchanged. Scope ruling (maintainer, 2026-07-12, trellis#149): the de-merge
+> targets mechanic **mappings** — statements defining the approval act as a VCS event. The
+> directive's "finalize, ship, or merge" verb list gates delivery acts and does not define the
+> approval act; it stands unchanged.*
 
 # Signature catalog — v1 (the genome annotation)
 
