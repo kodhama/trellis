@@ -12,6 +12,11 @@ ratified: 2026-07-04
 > PR is the ratification** (`floor-intent-gate`) — the `draft → ratified` flip rides the reviewed diff. Coverage is
 > independently checked (AC1); the `signature` / `why` / example / dial calls embody judgment the
 > maintainer accepts by merging.
+>
+> *Amended in place 2026-07-12 (kodhama-0008 Lane A, kodhama/kodhama#35): `floor-intent-gate`'s
+> honored `(product)` example de-merged — the propagated principle names no VCS mechanic; every
+> mechanic mapping is the operational layer's (grove). One example sentence; no slug, schema, or
+> dial change. `status` unchanged.*
 
 # Signature catalog — v1 (the genome annotation)
 
@@ -328,7 +333,7 @@ ratified: 2026-07-04
   - signature: a mandatory human approval at the intent/ratification point; no fully-automated intent
     approval; ratification recorded as a human act.
   - honored:
-    - *(product)* a human ratifies at the intent gate (here: the maintainer's merge).
+    - *(product)* a human ratifies at the intent gate — the approval recorded as a human intent act, whatever mechanism performs it.
     - *(release)* no deploy ships a feature no human approved, however green the pipeline.
   - violated:
     - *(product)* a fully-automated pipeline ships something *technically* correct that no human
