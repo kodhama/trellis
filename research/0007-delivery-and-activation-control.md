@@ -3,7 +3,8 @@ id: research-0007
 type: research-note
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, decision-0002, decision-0008, decision-0010, decision-0012, research-0005, research-0006]
+depends_on: [invariants-v1, decision-0002, decision-0008, decision-0010, decision-0012]
+informed_by: [research-0005, research-0006]
 owner: gundi
 ---
 
@@ -15,6 +16,13 @@ owner: gundi
 > proposal, *not* a decision; when the fork is called it becomes a decision extending `decision-0012`.
 > Tags: `verified` = grounded in a cited artifact/source; `inferred` = my/our design reasoning.
 > Answers 2.4 ("possible delivery mechanism + how to control the activation dials").
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0005` and `research-0006` moved out of frontmatter
+> `depends_on` into a new `informed_by` list — they informed this note's delivery/activation
+> synthesis without this note's own conclusions being contingent on them; provenance, not
+> coupling. No `version` counter on this artifact to bump. POINTER: `decision-0047`
+> Consequence 4, `grove/adr-0011`.*
 
 ## What 2.4 has to answer
 

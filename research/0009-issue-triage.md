@@ -3,7 +3,8 @@ id: research-0009
 type: research-note
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, research-0005, research-0006, research-0007, spec-0001, decision-0009]
+depends_on: [invariants-v1, spec-0001, decision-0009]
+informed_by: [research-0005, research-0006, research-0007]
 owner: gundi
 ---
 
@@ -15,6 +16,13 @@ owner: gundi
 > (expression profile, signature catalog, supervisor/advisor, the two delivery axes). Ratified 2026-07-03 — accepting the *triage*, not a commitment to each proposed build. The
 > solution directions are `inferred` design proposals, not decisions. Briefs are deliberately light —
 > the point is to enable iteration, not to pre-decide builds.
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0005`, `research-0006`, `research-0007` moved out of
+> frontmatter `depends_on` into a new `informed_by` list — they supplied the vocabulary this
+> triage uses without this note's own cluster-briefs being contingent on them; provenance,
+> not coupling. No `version` counter on this artifact to bump. POINTER: `decision-0047`
+> Consequence 4, `grove/adr-0011`.*
 
 ## The load-bearing observation (why the order below matters)
 

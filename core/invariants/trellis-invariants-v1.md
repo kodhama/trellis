@@ -2,7 +2,8 @@
 id: invariants-v1
 type: invariant-set
 status: ratified
-depends_on: [research-0002, decision-0008]
+depends_on: [decision-0008]
+informed_by: [research-0002]
 owner: gundi
 supersedes: invariants-v0
 ratified: 2026-06-29
@@ -17,6 +18,15 @@ ratified: 2026-06-29
 > maintainer** — this is now the current-truth invariant set; the spine and all machinery
 > consume *this*. It is the **compiled current-truth spec** (revise-in-place); its change
 > history and rationale live in ADRs (`decision-0014`), not inline. `invariants-v0` is superseded.
+
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0002` moved out of frontmatter `depends_on` into a new
+> `informed_by` list — the Step 1 gate-test evidence informed v1's revision without v1's own
+> correctness being contingent on `research-0002` remaining unchanged; provenance, not
+> coupling. `decision-0008` (the enforcement reframe) stays in `depends_on` — v1's structure
+> is genuinely contingent on that reframe. No `version` counter on this artifact (it versions
+> by id + supersession, `invariants-v0` → `invariants-v1`) to bump. POINTER: `decision-0047`
+> Consequence 4, `grove/adr-0011`.*
 
 > **What v1 changes, in one breath:** v0 was a flat list of 9. v1 splits it into a small
 > **structural gate** (what a methodology must *have the shape for*), a **configurable

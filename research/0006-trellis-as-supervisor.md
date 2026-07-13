@@ -3,7 +3,8 @@ id: research-0006
 type: research-note
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, decision-0002, decision-0008, decision-0009, decision-0012, research-0005]
+depends_on: [invariants-v1, decision-0002, decision-0008, decision-0009, decision-0012]
+informed_by: [research-0005]
 owner: gundi
 ---
 
@@ -20,6 +21,13 @@ owner: gundi
 > now been read**, and §6 folds in its actual stance; it bears on Trellis more than the "fun
 > reference" it was offered as (see §6). This lens is
 > stronger than the genetics one on the load-bearing floors (esp. D2); it is the primary frame.
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0005` moved out of frontmatter `depends_on` into a new
+> `informed_by` list — the genetics-lens note informed this note's framing without this
+> note's DES/supervisory-control analysis being contingent on it; provenance, not coupling.
+> No `version` counter on this artifact to bump. POINTER: `decision-0047` Consequence 4,
+> `grove/adr-0011`.*
 
 ## Why this lens
 

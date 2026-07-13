@@ -3,7 +3,8 @@ id: spec-0002
 type: spec
 status: ratified
 ratified: 2026-07-03
-depends_on: [decision-0016, invariants-v1, spec-0001, decision-0008, decision-0009, research-0005, research-0007, research-0009]
+depends_on: [decision-0016, invariants-v1, spec-0001, decision-0008, decision-0009]
+informed_by: [research-0005, research-0007, research-0009]
 owner: gundi
 rubric: rubric-artifact-contract
 ---
@@ -15,6 +16,16 @@ rubric: rubric-artifact-contract
 > met: they ratified in the same pass. The schema below is now current-truth; the first artifacts
 > built against it are `signature-catalog-v1` and `profile-trellis-self` (both `draft`, pending
 > their own D2 ratification — the builder does not self-ratify its output).
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0005`, `research-0007`, `research-0009` moved out of
+> frontmatter `depends_on` into a new `informed_by` list — they informed this spec's
+> construction (the genetics-lens, delivery-axes, and issue-triage research it was ratified
+> alongside) without this spec's correctness being contingent on them; that is provenance, not
+> coupling. WHY: `decision-0047` narrows `depends_on` to coupling-only; `grove/adr-0011`
+> supplies the `informed_by` grammar. SCOPE: frontmatter only. This spec carries no `version`
+> counter, so there is nothing to bump; marking-class regardless. POINTER: `decision-0047`
+> Consequence 4, `grove/adr-0011`. CONFIDENCE: verified.*
 
 ## Purpose
 

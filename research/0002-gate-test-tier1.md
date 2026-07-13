@@ -3,7 +3,8 @@ id: research-0002
 type: research-note
 status: ratified
 ratified: 2026-06-30
-depends_on: [research-0001, invariants-v1, decision-0006]
+depends_on: [invariants-v1, decision-0006]
+informed_by: [research-0001]
 owner: gundi
 date: 2026-06-29
 ---
@@ -17,6 +18,12 @@ date: 2026-06-29
 > docs; `medium` for BMAD — its user-guide returned 404, pieced from deepwiki + Step 0).
 > Transcript: workflow `wf_3b7e60be-0ce`. *Operational caveats:* several Kiro agents stalled
 > and retried; three "hard-enforcement" claims about Spec Kit were **refuted** (see below).
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0001` moved out of frontmatter `depends_on` into a new
+> `informed_by` list — it informed this note's landscape framing without this note's own
+> gate-test findings being contingent on it; provenance, not coupling. No `version` counter
+> on this artifact to bump. POINTER: `decision-0047` Consequence 4, `grove/adr-0011`.*
 
 ## The question
 

@@ -3,7 +3,8 @@ id: research-0008
 type: research-note
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, research-0005, research-0006, research-0007, decision-0012, brief-§4]
+depends_on: [invariants-v1, decision-0012]
+informed_by: [research-0005, research-0006, research-0007, brief-§4]
 owner: gundi
 ---
 
@@ -17,6 +18,13 @@ owner: gundi
 > Load-bearing convention: in **Part 2**, **"Bonsai"** denotes the **old** product name and
 > **"Trellis"** the **new** one — they are deliberately kept distinct here (this note is *about* the
 > choice between them, so it is the one place the global rename does not flatten them).
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0005`, `research-0006`, `research-0007`, and `brief-§4`
+> moved out of frontmatter `depends_on` into a new `informed_by` list — they informed this
+> note's design-implication and naming analysis without this note's own conclusions being
+> contingent on them; provenance, not coupling. No `version` counter on this artifact to
+> bump. POINTER: `decision-0047` Consequence 4, `grove/adr-0011`.*
 
 ## Part 1 — Design changes the research implies (proposal)
 

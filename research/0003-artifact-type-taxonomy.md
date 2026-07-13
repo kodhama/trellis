@@ -3,7 +3,8 @@ id: research-0003
 type: research-note
 status: ratified
 ratified: 2026-06-30
-depends_on: [research-0001, research-0002, invariants-v1]
+depends_on: [invariants-v1]
+informed_by: [research-0001, research-0002]
 owner: gundi
 ---
 
@@ -14,6 +15,13 @@ owner: gundi
 > the *gate invariants*, not artifact types, so every row below is `confidence: inferred`
 > (from each framework's primary docs as cited in `0001`/`0002`), not independently verified
 > for completeness. The gap is logged in Open questions.
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0001` and `research-0002` moved out of frontmatter
+> `depends_on` into a new `informed_by` list — this note re-reads their already-captured type
+> data (see its own Sources section) without this note's own type-taxonomy conclusions being
+> contingent on either surviving unchanged; provenance, not coupling. No `version` counter on
+> this artifact to bump. POINTER: `decision-0047` Consequence 4, `grove/adr-0011`.*
 
 ## The question
 

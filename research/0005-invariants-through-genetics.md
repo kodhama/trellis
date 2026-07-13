@@ -3,7 +3,8 @@ id: research-0005
 type: research-note
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, decision-0002, decision-0008, decision-0012, research-0003]
+depends_on: [invariants-v1, decision-0002, decision-0008, decision-0012]
+informed_by: [research-0003]
 owner: gundi
 ---
 
@@ -18,6 +19,13 @@ owner: gundi
 > §Limits). An analogy that is oversold becomes the vaporware the iron rule (brief §7) warns
 > against — so this note carries its own "where it breaks" section as a first-class part.
 > Seeded by issue #22 (Trellis-lite). Companion: [[research-0006]] (the supervisor / DES lens).
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0003` moved out of frontmatter `depends_on` into a new
+> `informed_by` list — the artifact-type-taxonomy note informed this note's framing without
+> this note's genetics analogy being contingent on it; provenance, not coupling. No `version`
+> counter on this artifact to bump. POINTER: `decision-0047` Consequence 4,
+> `grove/adr-0011`.*
 
 ## Why this lens at all
 

@@ -2,7 +2,8 @@
 id: spec-0001
 type: spec
 status: ratified
-depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, decision-0044, decision-0045, decision-0047, grove/adr-0010-versioning-is-operational, research-0003]
+depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, decision-0044, decision-0045, decision-0047, grove/adr-0010-versioning-is-operational]
+informed_by: [research-0003]
 owner: gundi
 version: 1  # counter initialized 2026-07-12 with the adr-0010 de-reflection amendment — forward-only from materialization; prior states uncounted (.grove/versioning.md initialization rule)
 rubric: rubric-artifact-contract
@@ -42,6 +43,17 @@ ratified: 2026-06-30
 > Check 7 needs no edit — under the coupling definition its frozen version-pin is a *frozen
 > coupling* (a genuine dependency), coherent as written. POINTER: `decision-0047`, trellis#148/#154.
 > CONFIDENCE: verified (decision approved + merged).*
+>
+> *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
+> marking-class). WHAT: `research-0003` moved out of frontmatter `depends_on` into a new
+> `informed_by` list — it informed this contract's construction (the artifact-type-taxonomy
+> consolidation) without this spec's correctness being contingent on it; that is provenance,
+> not coupling. WHY: `decision-0047` narrows `depends_on` to coupling-only; `grove/adr-0011`
+> supplies the `informed_by` grammar this consumer audit applies. SCOPE: frontmatter only —
+> the §1 schema (the `depends_on` row's text) is unchanged; `informed_by` is
+> methodology-defined (`.grove/relations.md`), not a new schema row. No testable clause of
+> this contract's own behavior changed, so this is **marking-class: no `version` bump**.
+> POINTER: `decision-0047` Consequence 4, `grove/adr-0011`. CONFIDENCE: verified.*
 
 ## Purpose
 
