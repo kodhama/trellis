@@ -1,7 +1,7 @@
 ---
 id: decision-0047
 type: decision
-status: draft
+status: approved  # maintainer's intent act 2026-07-13 ("Approve in PR trellis#154") — in-PR flip recording the act (decision-0046); self-checked + two independent adversary rounds preceded the gate; approval carries the recommended marking-class handling (Consequence 1 / Open-Q 1)
 depends_on: [invariants-v1, signature-catalog-v1, spec-0001, decision-0037]
 owner: agent
 date: 2026-07-13
