@@ -2,7 +2,7 @@
 id: spec-0001
 type: spec
 status: ratified
-depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, decision-0044, decision-0045, grove/adr-0010-versioning-is-operational, research-0003]
+depends_on: [invariants-v1, decision-0005, decision-0010, decision-0011, decision-0012, decision-0037, decision-0044, decision-0045, decision-0047, grove/adr-0010-versioning-is-operational, research-0003]
 owner: gundi
 version: 1  # counter initialized 2026-07-12 with the adr-0010 de-reflection amendment — forward-only from materialization; prior states uncounted (.grove/versioning.md initialization rule)
 rubric: rubric-artifact-contract
@@ -29,6 +29,19 @@ ratified: 2026-06-30
 > `status` unchanged; a significant change (testable checks retired), so the behavioral
 > **`version` counter is initialized at `v1`** in this same edit, per the methodology's
 > initialization rule.*
+>
+> *Amended in place 2026-07-13 (`decision-0047`; marking-class). WHAT: the §1 `depends_on` row
+> gains a scope citation — the dependency edge denotes **genuine coupling** (a source the
+> artifact's correctness is or was contingent on); **provenance** (informed construction without
+> coupling) is a categorically distinct relationship, not a dependency, whose grammar is the
+> methodology's (grove). Frontmatter `depends_on` gains `decision-0047`. WHY: keep the narrowing
+> visible at its point of use, per this contract's per-term citation convention (`status`→`0037`,
+> `version`→`adr-0010`). SCOPE: §1 `depends_on` row + frontmatter only. No §3 check changed —
+> enforcement of the coupling narrowing is the grove operating model's (a future `corpus-reviewer`
+> duty, grove#57), so this is **marking-class, not a testable-clause change: no `version` bump**.
+> Check 7 needs no edit — under the coupling definition its frozen version-pin is a *frozen
+> coupling* (a genuine dependency), coherent as written. POINTER: `decision-0047`, trellis#148/#154.
+> CONFIDENCE: verified (decision approved + merged).*
 
 ## Purpose
 
@@ -59,7 +72,7 @@ Every non-code artifact opens with YAML frontmatter:
 | `id` | ✓ | unique across the corpus; typed slug (`decision-0007`, `invariants-v1`, `spec-0001`) |
 | `type` | ✓ | **open field — methodology-defined**, not a closed enum (`research-0003`); each type carries a `scope` (below) + a rubric |
 | `status` | ✓ | **open field — methodology-defined**, like `type` (`decision-0037`); must belong to the methodology's declared lifecycle, which must have the §2 shape. Trellis default: `draft` → `ratified` (+ `superseded`) |
-| `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root |
+| `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root. An edge denotes **genuine coupling** — a source the artifact's correctness is or was contingent on (`decision-0047`); **provenance** (a source that only *informed* construction, without coupling) is a categorically distinct relationship, not a dependency — its grammar is the methodology's (grove), not restated here |
 | `owner` | ✓ | the accountable human (the `inv-intent-locus` role). The *role* is contract; the *field* is mappable — a methodology whose `owner` means something else declares which field/mechanism carries the accountable human (`decision-0037`) |
 | `author` | — | optional: who wrote it (human or agent), distinct from accountability |
 | `version` | — | **open field — methodology-defined**, like `type` and `status` (`grove/adr-0010`; origin record `decision-0045`): a **versioned (revise-in-place)** artifact's own version marker — present when downstreams pin it, **omitted** by append-only artifacts (which version *implicitly* via id + supersession). This contract states **shape only**; the forms, bump semantics, presence enforcement, and initialization rule live in the installed methodology companion (in a grove-managed install, `.grove/versioning.md`) — their single home, deliberately not restated here. |
