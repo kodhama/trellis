@@ -201,6 +201,36 @@ and seeded**; exactly what was written (`.trellis/{invariants,profile,trellis}.m
 file was patched and in which style; and the result of each verification check. They can remove it
 all any time with `/trellis:remove`, or by deleting `.trellis/` and the managed block.
 
+## 8. Ask how to land it — never land it yourself (`decision-0048`)
+
+The overlay is now in the **working tree**, uncommitted. Getting it into version control is a
+**human act at a reviewable seam** (`inv-handover-points`, `floor-intent-gate`), so **this skill
+never commits to the default branch, never pushes, and never opens a PR itself** — exactly like the
+curl `install.sh`, which *"prints the command and leaves the commit to you"* (`spec-0005`). **No
+remote mutation ever happens inside this skill.**
+
+- **Nothing to land** — an idempotent refresh whose `git diff` is empty, or a project that is not a
+  git repo: say so and stop. Never make an empty commit.
+- **No human to answer** (an autonomous run): do **not** touch git. Leave the change in the working
+  tree, report exactly what is unstaged, and stop.
+
+Otherwise ask the user how to land it — **open a PR is the recommendation**, and act only on their
+explicit choice:
+
+1. **Open a PR (recommended).** Do the **local** half only: branch off the current ref
+   (`git checkout -b add-trellis`) and commit **only the files this skill wrote** — `.trellis/` and
+   the patched instructions file (**never `git add -A`**; never sweep in the user's unrelated
+   changes). Then **print, but do not run**, the remote half for them:
+   `git push -u origin add-trellis && gh pr create` (or their host's equivalent). The push and the
+   PR are theirs.
+2. **Commit to a new branch.** The same local, scoped commit — then stop. No push.
+3. **Leave it in the working tree.** Do nothing further; the files stay exactly as written, for
+   them to handle.
+
+**Never commit onto the default branch, and never act without an explicit choice** — this step
+exists precisely so the surprise "commit to `main` + push" cannot happen. If the current branch
+*is* `main`/`master`, options 1 and 2 both start by branching off it; never commit onto it directly.
+
 ## M2 — morph (model-driven, only on explicit request)
 
 Everything above is the default, **M1** flow. **M2** rewrites the project's *own* instruction
