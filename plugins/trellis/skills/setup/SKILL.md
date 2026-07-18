@@ -193,15 +193,42 @@ that failed and what differed, leave the working tree as evidence, and stop. Nev
 on a failed or skipped check, and never hand-adjust file content to make a checksum pass — a loud
 failure beats a plausible-looking install.
 
-## 7. Confirm
+## 7. Offer to hide `.trellis/` from the consumer's own tooling (`decision-0049`)
+
+`.trellis/` is **vendored trellis territory, not consumer source** — but the consumer's linters and
+formatters don't know that. A Prettier or markdownlint pass that reformats the generated overlay
+files (`invariants.md`, `profile.md`, `trellis.md`) would change their bytes and **break the
+step-6 checksum verify on the next refresh** — the consumer's tidy-up silently corrupting the
+install. So, **offer** (never impose) to keep `.trellis/` out of their tooling:
+
+- **Detect**, best-effort, by config presence — ESLint (`.eslintrc*` / `eslint.config.*` /
+  `eslintConfig` in `package.json`), Prettier (`.prettierrc*` / `.prettierignore`), Biome
+  (`biome.json`), markdownlint (`.markdownlint*` / `.markdownlintignore`). If none is found, say so
+  plainly and skip — never invent a tool that isn't there.
+- **Offer, don't impose.** For each tool found, ask whether to add `.trellis/` to its ignore.
+  **Write nothing without a yes** (`floor-intent-gate`); if declined, note it and move on.
+- **Augment-never-clobber.** Add `.trellis/` to that tool's own ignore mechanism (`.prettierignore`,
+  `.eslintignore` or `ignorePatterns`, `.markdownlintignore`, …) — skip if it is already there,
+  touch no other line, and create an ignore file only if the tool needs one and none exists. This is
+  the **one** place setup may touch a consumer file **outside `.trellis/` and the managed block**,
+  and only with consent.
+- **Report exactly what you touched** — each ignore file and the line added — in step 8.
+
+(Target the whole `.trellis/` directory, matching the namespace boundary. `expression.md` is the
+consumer's own hand-owned file and needs no protection — a formatter over it is harmless — but
+ignoring the whole directory is simpler and costs nothing.)
+
+## 8. Confirm
 
 Tell the user: which posture was used and whether it was **read** from `expression.md` or **asked
 and seeded**; exactly what was written (`.trellis/{invariants,profile,trellis}.md`, the
 `.trellis/version` payload stamp, `expression.md` seeded or left untouched); which instructions
-file was patched and in which style; and the result of each verification check. They can remove it
-all any time with `/trellis:remove`, or by deleting `.trellis/` and the managed block.
+file was patched and in which style; **any lint/format ignore entry added (which file, which line),
+or that the offer was declined or no tooling was found**; and the result of each verification check.
+They can remove it all any time with `/trellis:remove`, or by deleting `.trellis/` and the managed
+block.
 
-## 8. Hand back — setup performs no git, and imposes no landing workflow (`decision-0048`)
+## 9. Hand back — setup performs no git, and imposes no landing workflow (`decision-0048`)
 
 The overlay is now written and **uncommitted**. How it gets committed or landed is **this
 project's decision, made by this project's own conventions** — not setup's. So this skill
