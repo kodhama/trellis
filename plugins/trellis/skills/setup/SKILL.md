@@ -274,12 +274,22 @@ payload via steps 3–6 above — a morph never writes, rewords, or "adapts" bun
    (`git checkout -b trellis/morph`), write the pre-morph SHA as the single line of
    `.trellis/rollback`, and set a tag that survives a reset:
    `git tag -f trellis-pre-morph <sha>`. Never morph the working branch in place.
-4. **Perform the rewrite yourself** (you are the model the binary used to shell out to). Rewrite
-   the project's instruction files to bake in the active invariants, **in the project's own voice
-   and structure**. Preserve the project's existing behaviors unless they directly conflict. The
-   single most important behavior to encode: **surface any human-gated handover performed without
-   its human approval**; agent-gated handovers proceed silently. Respect whatever gatekeeping the
-   project already declares — detect it, do not impose it. Keep the edits direct and reviewable.
+4. **Dispatch a cold sub-agent to perform the rewrite — never do it in this warm session
+   (`decision-0050`).** The rewrite is the one *generative* step, and a generative step carries
+   whatever context the running session holds; performing it here would let this session's ambient
+   context bleed into the consumer's own files. So **dispatch a sub-agent** (the Task/Agent tool)
+   whose prompt carries **only its declared inputs** — the posture (step 2), the specific instruction
+   files to rewrite, and the invariants to bake in (`.trellis/invariants.md`). That sub-agent:
+   - **reads only those inputs, never this conversation** — the isolation (`inv-bounded-context`) is
+     the whole point, and it is what M1's opinion-removal could not achieve for a *generative* step;
+   - rewrites the project's instruction files **in the project's own voice and structure**, preserving
+     existing behaviors unless they directly conflict. The single most important behavior to encode:
+     **surface any human-gated handover performed without its human approval**; agent-gated handovers
+     proceed silently. Respect whatever gatekeeping the project already declares — detect it, do not
+     impose it; keep the edits direct and reviewable;
+   - writes the rewritten files **on the `trellis/morph` branch** (step 3), makes **no** git decision,
+     and asks the human **nothing** — it returns a summary of what it changed.
+   You (the warm session) do not rewrite anything in-context; you dispatch, then go to step 5.
 5. **Stop and hand the diff to the human.** Summarize what changed, point at the branch, and let
    *them* review the diff and open/merge a PR — the merge is theirs, never yours. Reversal is
    git's: `git reset --hard trellis-pre-morph` (or the SHA in `.trellis/rollback`), or simply

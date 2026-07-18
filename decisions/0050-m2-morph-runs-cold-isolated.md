@@ -1,7 +1,7 @@
 ---
 id: decision-0050
 type: decision
-status: draft
+status: approved  # maintainer's intent act 2026-07-18 ("ratify, but include the build in the same PR") — in-PR flip recording the act (decision-0046); independent conformance check (corpus-reviewer) passed before the gate
 depends_on: [invariants-v1, signature-catalog-v1]
 informed_by: [decision-0048, decision-0043]
 owner: agent
@@ -69,8 +69,10 @@ later promotion to a first-class agent stays available if M2 grows its own test 
   invariants; the warm session never does the rewrite in-context." §§1–3 and §5 stay warm. **This
   edit advances `install.sh`'s bundle manifest** (`SKILL.md` is manifest-covered — `decision-0028`).
 - Closes `decision-0048`'s parked M2 open question.
-- **Not implemented in this decision** — the `SKILL.md` change is downstream of ratification (build
-  only on settled ground); this decision is the settled ground it will build on.
+- **Implemented in this same PR, after the ratification flip** (the maintainer chose to bundle
+  decision + build, 2026-07-18): the `draft → approved` flip settles the ground, and the `SKILL.md`
+  M2 §4 change + the `install.sh` manifest advance follow it in the same change — the pattern
+  `decision-0048` / #159 used.
 
 ## Open questions
 
