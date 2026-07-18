@@ -76,14 +76,17 @@ rewrite, not deletable prose — see below.)
 
 - `plugins/trellis/skills/setup/SKILL.md` step 8 becomes a neutral hand-back: setup performs no git,
   recommends no workflow, surfaces the uncommitted state, and defers landing to the consumer. It
-  replaces the earlier "ask how to land, PR recommended" step. **No payload/checksum change** —
-  `SKILL.md` is skill logic, not manifest-covered bundle content.
+  replaces the earlier "ask how to land, PR recommended" step. The `reference/checksums` **overlay**
+  manifest is unchanged (`SKILL.md` is not one of its payload files), but the edit **advances
+  `install.sh`'s bundle-wide manifest** (`TRELLIS_BUNDLE_MANIFEST` covers the whole `plugins/trellis/`
+  tree, `SKILL.md` included) — regenerated in the same change (`decision-0028`), as
+  `TestInstallScriptBundleManifestIsCurrent` guards.
 - Setup gains **no** git capability (an earlier draft would have had it perform a local
   branch+commit; that is dropped). Its outward line matches the curl `install.sh` (no git mutation;
   landing is the human's) but for a sharper reason: not just "the human owns the merge," but "setup
   owns no git workflow at all."
-- Nothing downstream described the M1 landing step, so there is no derived surface to re-sync
-  (`decision-0028`) beyond the skill itself.
+- No *prose* downstream described the M1 landing step, so no doc needs re-syncing (`decision-0028`).
+  The one derived surface the skill edit does touch is `install.sh`'s bundle manifest (above).
 
 ## Open questions
 
