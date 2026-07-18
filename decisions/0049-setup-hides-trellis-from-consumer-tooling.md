@@ -72,7 +72,10 @@ simple; the load-bearing target is the generated files.
   scope-creep.
 - The confirm step reports any ignore file touched (or that the offer was declined / no tooling
   found).
-- **No payload/checksum change** — this is skill logic, not manifest-covered bundle content.
+- The `reference/checksums` overlay manifest is unchanged, but the new step edits `SKILL.md`, which
+  **advances `install.sh`'s bundle-wide manifest** (`TRELLIS_BUNDLE_MANIFEST` covers the whole
+  `plugins/trellis/` tree, `SKILL.md` included) — regenerated in the same change (`decision-0028`),
+  as `TestInstallScriptBundleManifestIsCurrent` guards.
 - The consumer's lint-ignore is a **separate concern** from trellis's own verify: ignoring
   `.trellis/` in Prettier does not affect setup's step-6 checksum check (which reads the files
   directly). It only stops the consumer's tooling from *mutating* them.
