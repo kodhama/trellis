@@ -1,7 +1,7 @@
 ---
 id: decision-0049
 type: decision
-status: draft
+status: approved  # maintainer's intent act 2026-07-18 ("/remote-control: approved 161") — in-PR flip recording the act (decision-0046); independent conformance check (corpus-reviewer) passed before the gate
 depends_on: [invariants-v1, signature-catalog-v1]
 informed_by: [spec-0005, decision-0043]
 owner: agent
