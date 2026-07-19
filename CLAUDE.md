@@ -44,9 +44,7 @@ rule you can't exemplify is probably vaporware.*
   (`decision-0042`, `spec-0005`), the field carries **authorship**, not the accountable human —
   that role stays the maintainer (gundi), held via the merge gate (`decision-0022`). Declared
   here because `decision-0037` permits the mapping only when a methodology declares it for
-  itself; this mirrors math-quest's own declared mapping (its `.trellis/expression.md` §Field
-  mapping — `owner: agent` means *author*, accountable human is its maintainer), the only other
-  instance to use this pattern.
+  itself.
 - **Decisions.** Significant choices get an **append-only** record in `decisions/`. You
   *supersede* (with a forward pointer), never edit, a ratified decision. The four strategic
   forks (brief §9) are records `0001–0004`.
