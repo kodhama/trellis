@@ -6,7 +6,7 @@
 #   absence    — rule row active=false, rule assembled OUT of the readout (shipped mechanism)
 #   annotation — rule row active=false, full readout + authority header   (the measurement)
 #
-# Deliberately separate from the harness's run.sh: that runner's two arms
+# Deliberately separate from the does-trellis-help suite's run.sh: that runner's two arms
 # (baseline|trellis) and its aggregate are hardwired for the framework A/B
 # (research-0011); this experiment varies the OVERLAY, not the framework, and adds no
 # scaffold (a framework would only add noise to a single-moment task). The worker

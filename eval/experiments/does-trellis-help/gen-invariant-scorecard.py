@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate eval/scorecards/invariants.md from the signature catalog (decision-0028:
+"""Regenerate eval/experiments/does-trellis-help/scorecards/invariants.md from the signature catalog (decision-0028:
 the scorecard is a derived resource of the catalog, not a hand-maintained copy).
 
 Run from the repo root:  python3 eval/gen-invariant-scorecard.py
@@ -8,7 +8,7 @@ import re
 import sys
 import pathlib
 
-root = pathlib.Path(__file__).resolve().parent.parent
+root = pathlib.Path(__file__).resolve().parents[3]
 cat = (root / "core/catalog/signature-catalog-v1.md").read_text()
 
 # Entry headings are slug-only — the display codes are retired (decision-0038).
@@ -50,5 +50,5 @@ if n == 0:
     sys.exit("FATAL: parsed 0 invariants from the catalog — did its heading format change? "
              "Never write an empty scorecard silently (floor-transparency).")
 
-(root / "eval/scorecards/invariants.md").write_text("\n".join(out))
-print(f"regenerated eval/scorecards/invariants.md for {n} invariants", file=sys.stderr)
+(root / "eval/experiments/does-trellis-help/scorecards/invariants.md").write_text("\n".join(out))
+print(f"regenerated eval/experiments/does-trellis-help/scorecards/invariants.md for {n} invariants", file=sys.stderr)

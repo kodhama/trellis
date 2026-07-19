@@ -106,7 +106,7 @@ interval, not on failing to detect (a mere "n.s." at n=20 amends on a true 25-po
 - `decision-0051` (+ its 2026-07-19 amendment) — the shipped mechanism. **High** (in-repo).
 - `research-0011` — harness design, blind-reviewer idiom, the effect-size lesson
   ("effect size ∝ task subtlety × baseline weakness", origin
-  `eval/runs/spec-kit-lite/03-finalize-and-ship/NOTES.md`). **High** (in-repo).
+  `eval/experiments/does-trellis-help/runs/spec-kit-lite/03-finalize-and-ship/NOTES.md`). **High** (in-repo).
 - Salience-leak prior — instructions present in context exert pull even when disclaimed
   (the "ignore the above" weakness class). **Medium**: practitioner consensus and our own
   overlay-design experience; not independently sourced. This experiment exists to replace
@@ -114,10 +114,10 @@ interval, not on failing to detect (a mere "n.s." at n=20 amends on a true 25-po
 
 ## Open questions
 
-- **Worker-prompt leak in the main harness** (found designing this): `eval/run.sh`
+- **Worker-prompt leak in the framework suite** (found designing this): its `run.sh` (now `eval/experiments/does-trellis-help/run.sh`)
   interpolates the *entire task file* — including "**The subtle trap**" — into
   `prompts/worker.md`, so workers read the trap description. This runner avoids it
-  (worker gets only the fixture's `brief.md`); the main harness should probably do the
+  (worker gets only the fixture's `brief.md`); the suite should probably do the
   same before the full run. Not fixed here — separate concern, named loudly.
 - **The tool-call variant**: here the rows ride *in context* (inlined). The weaker
   variant — rows on disk only, header says "go read `.trellis/rules.toml`" — is a
