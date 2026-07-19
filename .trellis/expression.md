@@ -19,7 +19,7 @@ decision-0005). It is deliberately not duplicated here — one home per kind
 of information. This file carries no machine-read lines (posture and rows
 live in `.trellis/rules.toml`); it carries this pointer.
 
-**All invariants stay active here** — the family stance (maintainer,
-2026-07-19): kodhama-family projects activate the full set; the
-row-deactivation lever in `rules.toml` exists for consumers, not for
-family repos dialing themselves down.
+**All invariants stay active here** — every row in `rules.toml` is
+`active = true`. (The row-deactivation lever exists for consumers; the
+family-wide stance on it is stewards-level material, not this repo's to
+declare.)
