@@ -20,9 +20,10 @@
 # continues numbering after the highest existing index in $OUTDIR — results accumulate,
 # nothing is overwritten, and provenance appends one line per invocation.
 #
-# On the HEADER ARMS (control, annotation) the readout preamble/footer and the toml's
-# refresh-semantics comments are rewritten eval-locally: the shipped payload text says
-# "assembled from the active rows" / "no effect until refresh", which is absence-era
+# On the HEADER ARMS (control, annotation) the readout preamble/footer, the toml's
+# refresh-semantics comments, AND the block tail's closing refresh sentence are rewritten
+# eval-locally: the shipped payload text says "assembled from the active rows" / "no
+# effect until refresh" / "refresh the overlay — re-assemble it", which is absence-era
 # truth and would contradict the live-rows authority header inside the same context
 # (adversary finding 3; code-review finding 5). The absence arm ships verbatim — it IS
 # the shipped mechanism. All such rewrites are EVAL-LOCAL hypothetical product content;
@@ -63,6 +64,16 @@ header_arm_readout() {
       print "Each rule below ends with its row'\''s slug. Whether a rule applies is governed by its row in `.trellis/rules.toml` (see the authority note above; the rows are inlined below the rules). Each is a rule to follow, then the ✗ failure it prevents:"; next }
     /^\(Generated from your `rules\.toml`/ { next }
     { print }' "$REF/rules.md"
+}
+
+# Header-arm tail: the shipped block tail's closing sentence says row edits need a
+# refresh/re-assembly — the same absence-era truth, and it is the LAST thing the model
+# reads. Replace that sentence with live-rows wording; keep the invariants pointer.
+header_arm_tail() {
+  awk '
+    /^If a rule seems ambiguous/ {
+      print "If a rule seems ambiguous, or in tension with this project'\''s own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating. Rule activation follows the rows in `.trellis/rules.toml` directly (see the authority note above)."; next }
+    { print }' "$REF/block-inline-tail.md"
 }
 
 # Header-arm toml: the shipped seed's top comment says edits have no effect until a
@@ -111,7 +122,8 @@ overlay() {
       cat "$dir/.trellis/rules.toml"
       printf '```\n'
     fi
-    cat "$REF/block-inline-tail.md"; printf '\n'
+    if [ "$arm" != "absence" ]; then header_arm_tail; else cat "$REF/block-inline-tail.md"; fi
+    printf '\n'
   } >> "$dir/AGENTS.md"
 }
 

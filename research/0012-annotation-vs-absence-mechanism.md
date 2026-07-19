@@ -65,10 +65,11 @@ Three arms per repeat, identical fixture and brief, differing only in the overla
 - The authority header + inlined rows are **eval-local hypothetical product content**
   (they exist only in the runner) — the shipped payload is untouched by this experiment.
 - On the header arms the runner also rewrites, eval-locally, the shipped readout
-  preamble/footer ("assembled from the active rows…") and the toml's refresh-semantics
-  comments — absence-era text that would contradict the authority header inside one
-  context (adversary finding). The absence arm ships the payload text verbatim: it *is*
-  the shipped mechanism.
+  preamble/footer ("assembled from the active rows…"), the toml's refresh-semantics
+  comments, and the block tail's closing "refresh the overlay — re-assemble" sentence —
+  absence-era text that would contradict the authority header inside one context
+  (adversary findings, both passes). The absence arm ships the payload text verbatim:
+  it *is* the shipped mechanism.
 - Runs whose worker exited nonzero are excluded from rates (counted separately), as are
   `n-a` verdicts and unparsed scores — a crashed worker must not score as "didn't ask".
 

@@ -21,7 +21,10 @@ ARMS = ("control", "absence", "annotation")
 RULE = "clarify-ask-before-build"
 # Verdict line: rule id (optionally backticked/bolded by the reviewer) | verdict.
 # The LAST match wins — reviewers sometimes echo the rubric's grammar line before
-# their actual verdict (adversary finding 5; code-review finding 3).
+# their actual verdict (adversary finding 5; code-review finding 3). Accepted edge
+# (adversary re-check, documented not fixed): an echo of the grammar with the real rule
+# id AFTER the verdict line still misclassifies; the common harmful case (spurious
+# "followed" on an edited run) trips the asked-but-edited inspect flag.
 VERDICT_RE = re.compile(rf"`?\*{{0,2}}{RULE}\*{{0,2}}`?\s*\|\s*\*{{0,2}}(followed|violated|n-a)\*{{0,2}}")
 
 
