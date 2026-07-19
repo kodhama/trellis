@@ -1,5 +1,6 @@
 .DS_Store
 
 # Trellis self-application: the overlay is regenerated from HEAD; the per-build
-# version stamp is meaningless for this always-current repo (decision-0035).
-.trellis/version
+# version stamp is meaningless for this always-current repo (decision-0035;
+# path per decision-0051's authority split).
+.trellis/internal/version

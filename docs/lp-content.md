@@ -119,9 +119,9 @@ Four-step flow (`01` – `04`):
 
 1. **01 · install — Add the plugin.** From the kodhama family
    marketplace — or copy the pre-rendered bundle into any harness.
-2. **02 · profile — Pick a posture.** Conductor or author-adapt — how
-   strict, and what's active. A refresh reads it from your repo and
-   asks nothing.
+2. **02 · posture — Pick a posture.** Conductor or author-adapt — seeded
+   as explicit rows in your `rules.toml`: how strict, and what's active.
+   A refresh reads the rows and asks nothing.
 3. **03 · mode — Alongside or rewrite.** Overlay next to your rules, or
    — on request — morph them in on a branch.
 4. **04 · verify — You approve.** Augment-never-clobber, checked against
@@ -131,12 +131,14 @@ Four-step flow (`01` – `04`):
 pattern — this is a file-tree illustration, not a shell session):
 
 ```
-CLAUDE.md          # + a 3-line managed block: @.trellis/trellis.md
+CLAUDE.md          # + a managed block importing the header + your expression
 .trellis/
-  trellis.md       # the header your agents read
-  profile.md       # posture + the active rules — always loaded
+  rules.toml       # which rules are active, how strictly — yours to edit
   expression.md    # your project's own expression — hand-owned, never rewritten
-  invariants.md    # the full why + examples — on demand
+  internal/        # generated, refreshed verbatim:
+    trellis.md     #   the header your agents read
+    rules.md       #   the active rules, assembled from your rules.toml — always loaded
+    invariants.md  #   the full why + examples — on demand
 ```
 
 Label above it: "What it leaves in your repo — small, single-source, and

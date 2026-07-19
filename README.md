@@ -22,13 +22,16 @@ run the setup skill in any project:
 /trellis:setup
 ```
 
-`/trellis:setup` asks one thing — a **posture** (`conductor` / `author-adapt`) — or reads it from
-`.trellis/expression.md` if the project already declares one, then composes Trellis onto your
-project as the **M1 "alongside" overlay**: a one-line `@import` in your `CLAUDE.md` plus a
-`.trellis/` bundle (your profile + the invariant reference + your hand-owned `expression.md`).
-Augment-never-clobber, idempotent, verified against a shipped checksum manifest. On explicit
-request it also runs the **M2 morph** — a model-driven rewrite of your own instructions, on a
-fresh git branch you review. The plugin lives in [`plugins/trellis`](plugins/trellis).
+`/trellis:setup` asks one thing — a **posture** (`conductor` / `author-adapt`) — or reads the
+config from `.trellis/rules.toml` if the project already carries one, then copies Trellis onto
+your project as the **M1 "alongside" overlay**: a managed block of `@import`s in your `CLAUDE.md`
+plus a `.trellis/` bundle split by authority (`decision-0051`) — your `rules.toml` (which rules
+are active — edit a row, refresh, done) and hand-owned `expression.md` at the root, the generated
+files (the header, the assembled rules readout, the invariant reference) under
+`.trellis/internal/`. Augment-never-clobber, idempotent, verified against a shipped checksum
+manifest. On explicit request it also runs the **M2 morph** — a model-driven rewrite of your own
+instructions, on a fresh git branch you review. The plugin lives in
+[`plugins/trellis`](plugins/trellis).
 
 **Same plugin, without the marketplace — the curl path
 ([#124](https://github.com/kodhama/trellis/issues/124)).** `install.sh` vends the whole
@@ -79,21 +82,32 @@ render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) 
 
 ```sh
 git clone --depth 1 https://github.com/kodhama/trellis /tmp/trellis
-ref=/tmp/trellis/plugins/trellis/reference   # <p> below: a | b
-mkdir -p .trellis
-cp "$ref"/invariants.md    .trellis/invariants.md
-cp "$ref"/profile-<p>.md   .trellis/profile.md
-cp "$ref"/trellis-<p>.md   .trellis/trellis.md
-cp "$ref"/version          .trellis/version
-cp "$ref"/expression-<p>.md .trellis/expression.md   # first install only — hand-owned after that
-cat "$ref"/block-claude.md >> CLAUDE.md              # @import-capable files
+ref=/tmp/trellis/plugins/trellis/reference   # <p> below: a (conductor) | b (author-adapt)
+mkdir -p .trellis/internal
+cp "$ref"/invariants.md  .trellis/internal/invariants.md
+cp "$ref"/rules.md       .trellis/internal/rules.md   # the all-rules readout, pre-assembled
+cp "$ref"/trellis-<p>.md .trellis/internal/trellis.md
+cp "$ref"/version        .trellis/internal/version
+cp "$ref"/rules-<p>.toml .trellis/rules.toml          # first install only — yours after that
+cp "$ref"/expression.md  .trellis/expression.md       # first install only — hand-owned after that
+cat "$ref"/block-claude.md >> CLAUDE.md               # @import-capable files
 # no @import support (e.g. AGENTS.md)?  append block-inline-<p>.md instead
-sed -n -e 's|  invariants\.md$|  .trellis/invariants.md|p' \
-       -e 's|  profile-<p>\.md$|  .trellis/profile.md|p' \
-       -e 's|  trellis-<p>\.md$|  .trellis/trellis.md|p' \
-       -e 's|  version$|  .trellis/version|p' \
+sed -n -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
+       -e 's|  rules\.md$|  .trellis/internal/rules.md|p' \
+       -e 's|  trellis-<p>\.md$|  .trellis/internal/trellis.md|p' \
+       -e 's|  version$|  .trellis/internal/version|p' \
        "$ref"/checksums | shasum -a 256 -c -           # verify: all four lines print OK
 ```
+
+To deactivate a rule later, set its row in `.trellis/rules.toml` to `active = false` and rebuild
+the readout the way `/trellis:setup` does — concatenate `"$ref"/rules/_header.md`, each active
+row's `"$ref"/rules/<slug>.md` in catalog order (the order the entries appear in `invariants.md`),
+and `"$ref"/rules/_footer.md` into `.trellis/internal/rules.md`. The two `floor-*` rows are
+floor-held: they are always included, whatever their rows say. On an **inline** install the block
+carries the readout itself, so rebuild it too: replace everything between the `trellis:begin`/
+`trellis:end` markers with `cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md
+"$ref"/block-inline-tail.md` (the shipped `block-inline-<p>.md` is that sandwich with every rule
+active).
 
 No binary, no runtime — the assets are plain files, and anything can verify them with `shasum -c`
 against the shipped manifest. (The Homebrew/curl binary channel retired in `kodhama-0007` rule 5;

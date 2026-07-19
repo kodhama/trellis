@@ -21,25 +21,33 @@ import (
 	"strings"
 )
 
-// payloadFiles renders the complete pre-rendered M1 payload: the verbatim catalog,
-// both posture variants of the header / profile / inline block / expression seed
-// skeleton, the constant CLAUDE.md block, a content-derived version stamp, and the
-// checksums manifest. profile-a/profile-b are byte-identical today (renderProfile is
-// posture-invariant, #117's verified evidence) but are named per posture so the
-// payload layout survives a posture whose profile diverges. The expression skeletons
-// (#119, kodhama-0007 rule 4) are manifest-covered like any payload file; only the
-// *installed* .trellis/expression.md sits outside install-time verification, because
-// it is hand-owned from the moment it is seeded.
+// payloadFiles renders the complete pre-rendered M1 payload (decision-0051 shape):
+// the verbatim catalog, the per-rule fragments plus their header/footer
+// (rules/<slug>.md — the assembly source setup concatenates in catalog order), the
+// assembled all-active readout (rules.md — the common case's copy source and the
+// concatenation oracle), both posture variants of the header / inline block /
+// rules.toml seed, the single hand-owned expression seed, the constant CLAUDE.md
+// block, a content-derived version stamp, and the checksums manifest. The rules.toml
+// seeds and the expression seed are manifest-covered like any payload file; only the
+// *installed* consumer-root copies (.trellis/rules.toml, .trellis/expression.md)
+// sit outside verification, because the consumer owns them from the moment they are
+// seeded (decision-0051 rule 1).
 func payloadFiles() map[string]string {
 	files := map[string]string{
-		"invariants.md":   invariantsRef, // the catalog, verbatim (decision-0028 single source)
-		"block-claude.md": renderClaudeBlock(),
+		"invariants.md":        invariantsRef, // the catalog, verbatim (decision-0028 single source)
+		"block-claude.md":      renderClaudeBlock(),
+		"expression.md":        renderExpressionSeed(),
+		"rules.md":             renderRulesReadout(),
+		"block-inline-tail.md": renderInlineBlockTail(), // posture-independent — one tail, not two
+	}
+	for name, content := range ruleFragments() {
+		files[name] = content
 	}
 	for _, p := range allProfiles {
 		files["trellis-"+p.Key+".md"] = renderHeader(p)
-		files["profile-"+p.Key+".md"] = renderProfile(p)
 		files["block-inline-"+p.Key+".md"] = renderInlineBlock(p)
-		files["expression-"+p.Key+".md"] = renderExpressionSkeleton(p)
+		files["block-inline-"+p.Key+"-head.md"] = renderInlineBlockHead(p)
+		files["rules-"+p.Key+".toml"] = renderRulesToml(p)
 	}
 
 	// The payload's version stamp is derived from its own content: a vendored file
@@ -101,7 +109,11 @@ func payload(in io.Reader, w io.Writer, args []string) error {
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		if err := os.WriteFile(filepath.Join(*out, name), []byte(files[name]), 0o644); err != nil {
+		target := filepath.Join(*out, name)
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return fmt.Errorf("creating dir for %s: %w", name, err)
+		}
+		if err := os.WriteFile(target, []byte(files[name]), 0o644); err != nil {
 			return fmt.Errorf("writing %s: %w", name, err)
 		}
 	}

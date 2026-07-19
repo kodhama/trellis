@@ -4,8 +4,7 @@ You are working in a project that follows **Trellis** — a small, load-bearing 
 
 **How strictly to follow them:** **Firmly** — treat these as hard requirements. Follow them as written; don't skip or soften one without the human's explicit say-so.
 
-@profile.md
-@expression.md
+@rules.md
 
 ---
-If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/invariants.md` — the description and with/without examples — before deviating.
+If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating.

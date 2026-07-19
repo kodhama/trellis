@@ -33,6 +33,29 @@ func TestInvariantPrimaryFailureCoverCatalog(t *testing.T) {
 	}
 }
 
+// TestCatalogSlugOrder guards decision-0051 rule 4: the assembled readout
+// concatenates fragments "in catalog order" — the order the entries appear in the
+// bundled catalog document (structural → operating → floors), which the parser must
+// preserve. The set must be exactly the assessable slugs the other parsers cover.
+func TestCatalogSlugOrder(t *testing.T) {
+	order := catalogSlugOrder()
+	if len(order) != 14 {
+		t.Fatalf("expected 14 slugs in catalog order, got %d: %v", len(order), order)
+	}
+	if order[0] != "inv-directional-flow" {
+		t.Errorf("catalog order must open with the structural set (inv-directional-flow), got %s", order[0])
+	}
+	if order[12] != "floor-transparency" || order[13] != "floor-intent-gate" {
+		t.Errorf("catalog order must close with the floors (floor-transparency, floor-intent-gate), got %v", order[12:])
+	}
+	dirs := invariantDirectives()
+	for _, slug := range order {
+		if dirs[slug] == "" {
+			t.Errorf("catalog-order slug %s has no directive — order and directive parsers disagree", slug)
+		}
+	}
+}
+
 // TestInvariantDirectivesCoverCatalog guards decision-0034: every invariant carries an
 // imperative, host-agent-facing directive for the block — and it must not leak the
 // Trellis-internal codes a host agent can't resolve.

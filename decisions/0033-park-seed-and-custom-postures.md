@@ -2,10 +2,18 @@
 id: decision-0033
 type: decision
 status: ratified
+superseded_in_part_by: [decision-0051]
 depends_on: [spec-0003, invariants-v1]
 owner: gundi
 ratified: 2026-07-05
 ---
+
+> **Superseded in part (2026-07-19, append-only pointer).** `decision-0051` returns the
+> **active-subset lever** as consumer-editable rows in `.trellis/rules.toml` (posture-as-seed,
+> rows-as-truth) — point 2's "returns when the active-subset lever earns its keep" condition was
+> met by a direct maintainer ask. **The rest of this record stands**: `seed` and `custom` remain
+> parked as presets (point 2), the two-posture offer (point 1) is unchanged, and point 3's inert
+> in-code mechanism is superseded by payload-fragment assembly (`decision-0051` rule 4).
 
 # 0033 — Offer two postures (conductor / author-adapt); park seed and custom
 

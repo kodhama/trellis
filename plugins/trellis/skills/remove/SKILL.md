@@ -11,7 +11,10 @@ Trellis added, and preserve everything else byte-for-byte.
 
 ## 1. Delete the bundle
 
-Delete the entire `.trellis/` directory, if it exists.
+Delete the entire `.trellis/` directory, if it exists — the generated `internal/` half and the
+consumer-owned root (`rules.toml`, `expression.md`) alike, and any legacy flat-layout files from an
+overlay installed before `decision-0051`. If `expression.md` carries a hand-written body the user
+may want to keep, say so before deleting — it is theirs, and this is the one step that destroys it.
 
 ## 2. Strip the import from `CLAUDE.md`
 
@@ -19,7 +22,7 @@ In the project's `CLAUDE.md`, remove the managed block **between and including**
 
 ```
 <!-- trellis:begin … -->
-   … (the @import line) …
+   … (the @import lines) …
 <!-- trellis:end -->
 ```
 
@@ -31,7 +34,7 @@ it; otherwise leave it in place.
 ## 3. Strip any `.trellis/` ignore entry setup added (`decision-0049`)
 
 `/trellis:setup` may have offered to add `.trellis/` to the project's linters/formatters (setup's
-step 7). Reverse that too — augment-never-clobber, the same as the `CLAUDE.md` block above:
+step 9). Reverse that too — augment-never-clobber, the same as the `CLAUDE.md` block above:
 
 - **Detect the same tools setup did** — ESLint (`.eslintrc*` / `eslint.config.*` / `eslintConfig` in
   `package.json`), Prettier (`.prettierrc*` / `.prettierignore`), Biome (`biome.json`), markdownlint

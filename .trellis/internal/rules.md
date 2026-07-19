@@ -1,10 +1,3 @@
-<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->
-# How to work in this project
-
-You are working in a project that follows **Trellis** — a small, load-bearing set of working rules on top of the project's own process. **Follow the rules below as you work here.** They add guardrails; they don't replace this project's own instructions.
-
-**How strictly to follow them:** **Firmly** — treat these as hard requirements. Follow them as written; don't skip or soften one without the human's explicit say-so.
-
 ## The rules — do these
 
 Each is a rule to follow, then the ✗ failure it prevents:
@@ -39,6 +32,3 @@ Each is a rule to follow, then the ✗ failure it prevents:
     ✗ a fully-automated pipeline ships something *technically* correct that no human confirmed was the *right* thing.
 
 (Generated from your `rules.toml` — edit its rows (and your prose in `expression.md`), then refresh the overlay (`/trellis:setup`, or the manual copy path) to re-assemble these.)
-
-If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating. After editing `.trellis/rules.toml`, refresh the overlay — re-assemble it from the Trellis payload (repo README, Install).
-<!-- trellis:end -->

@@ -67,12 +67,13 @@ run_arm() {  # $1 arm (baseline|trellis)  $2 idx
   # rule 2; the CLI's setup command retired in #120), posture a.
   if [ "$arm" = "trellis" ]; then
     local ref="$ROOT/plugins/trellis/reference"
-    mkdir -p "$dir/.trellis"
-    cp "$ref/invariants.md"   "$dir/.trellis/invariants.md"
-    cp "$ref/profile-a.md"    "$dir/.trellis/profile.md"
-    cp "$ref/trellis-a.md"    "$dir/.trellis/trellis.md"
-    cp "$ref/expression-a.md" "$dir/.trellis/expression.md"
-    cp "$ref/version"         "$dir/.trellis/version"
+    mkdir -p "$dir/.trellis/internal"
+    cp "$ref/invariants.md" "$dir/.trellis/internal/invariants.md"
+    cp "$ref/rules.md"      "$dir/.trellis/internal/rules.md"
+    cp "$ref/trellis-a.md"  "$dir/.trellis/internal/trellis.md"
+    cp "$ref/version"       "$dir/.trellis/internal/version"
+    cp "$ref/rules-a.toml"  "$dir/.trellis/rules.toml"
+    cp "$ref/expression.md" "$dir/.trellis/expression.md"
     { [ -s "$dir/AGENTS.md" ] && printf '\n'; cat "$ref/block-inline-a.md"; printf '\n'; } >> "$dir/AGENTS.md"
   fi
   local base="$OUTDIR/$FRAMEWORK/$(basename "$TASK" .md)/$arm-$i"
