@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Roll per-run reviewer scores into the baseline-vs-+Trellis Δ (research-0011).
 
-  python3 eval/aggregate.py runs/
+  python3 eval/experiments/does-trellis-help/aggregate.py runs/
 
 Reads runs/<framework>/<task>/<arm>-<idx>.<rubric>.score.md — the reviewer's output, whose
 last line is `SUMMARY | followed=<n> violated=<n> n-a=<n>` (falls back to counting verdict
@@ -12,7 +12,7 @@ import sys
 import pathlib
 from collections import defaultdict
 
-root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "runs")
+root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else str(pathlib.Path(__file__).parent / "runs"))
 # tallies[rubric][arm] = [followed_list, violated_list]
 tallies = defaultdict(lambda: defaultdict(lambda: ([], [])))
 

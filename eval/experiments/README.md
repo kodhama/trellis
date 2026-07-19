@@ -1,10 +1,10 @@
 # eval/experiments/ — self-contained behavioral experiments
 
-The framework A/B harness (`eval/run.sh` + `eval/aggregate.py`, `research-0011`) answers
-one fixed question — *does the Trellis overlay help, per framework?* — and its two arms
-(`baseline`/`trellis`) are hardwired to it. Everything else lives here: **one directory
-per experiment, self-contained**, so an experiment is findable on `main`, re-runnable
-later, and liftable as a reference by other repos — no commit-history digging.
+**One directory per experiment, self-contained** — runner, analysis, tasks, fixtures,
+scoring, committed results — so an experiment is findable on `main`, re-runnable later,
+and liftable as a reference by other repos, with no commit-history digging. The `eval/`
+root keeps only the shared substrate (`fill.py`, `prompts/reviewer.md`) and this
+directory.
 
 This is a **convention, not a framework** (`inv-minimal-first`): there is no shared
 experiment runner, and none should be added until at least two experiments genuinely
@@ -28,21 +28,23 @@ eval/experiments/<name>/
                    and the provenance line is what keeps its numbers interpretable.
 ```
 
-Each experiment pairs with a `research-` note in `research/` carrying the design,
-statistics, and decision rule — the directory is the machinery, the note is the contract.
+The single-task shape above is the default; a **suite-shaped** experiment carries pools
+instead (`tasks/`, `fixtures/`, `scorecards/`, its own `prompts/`) and says so in its
+card — `does-trellis-help` is the instance. Each experiment pairs with a `research-` note
+in `research/` carrying the design, statistics, and decision rule — the directory is the
+machinery, the note is the contract.
 
 ## The shared substrate (use it, don't fork it)
 
 Experiments may call `eval/fill.py` and `eval/prompts/reviewer.md` (the blind-reviewer
 idiom: no access to worker instructions, evidence-quoted verdicts, the
-`<rule-id> | followed | violated | n-a | "quote"` grammar). They must **not** depend on
-`eval/run.sh`, `eval/aggregate.py`, or the `eval/tasks/` + `eval/fixtures/` pools — those
-belong to the framework A/B suite, and its documented loop (`for t in eval/tasks/*.md`)
-must never pick up an experiment's task by accident (keeping experiment tasks out of
-`eval/tasks/` is what guarantees that structurally).
+`<rule-id> | followed | violated | n-a | "quote"` grammar). They must **not** reach into
+another experiment's directory — each suite's task/fixture pools and runner belong to it
+alone, so one experiment's loop can never schedule another's task by construction.
 
 ## Experiments
 
 | directory | question | research note | status |
 |---|---|---|---|
-| `annotation-vs-absence/` | can a `rules.toml` row deactivate a rule the model has *read*, or is assembling it out the only reliable off? | `research-0012` | designed; awaiting the human-launched run |
+| `does-trellis-help/` | does installing the Trellis overlay measurably improve invariant-following, per framework? | `research-0011` | task suite ready; full run pending (fix the worker-prompt leak first — see its card) |
+| `annotation-vs-absence/` | can a `rules.toml` row deactivate a rule the model has *read*, or is assembling it out the only reliable off? | `research-0012` | designed + adversary-approved; awaiting the human-launched run |

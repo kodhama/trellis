@@ -1,9 +1,9 @@
 # 12 — Tag filtering, under-specified (mechanism task: annotation vs absence)
 
-> **Mechanism task — runs under `eval/experiments/annotation-vs-absence/run.sh`, not the harness `eval/run.sh`** (three
+> **Mechanism task — runs under `eval/experiments/annotation-vs-absence/run.sh`, not the does-trellis-help suite's runner** (three
 > overlay arms, `research-0012`), and its worker brief lives in the fixture
 > (`eval/experiments/annotation-vs-absence/fixture/brief.md`) so the worker never reads this file.
-> The framework A/B harness should not schedule it.
+> The framework A/B suite cannot schedule it (separate directories).
 
 **Brief given to the agent:** (from the fixture's `brief.md`) "Users want to filter
 search results by one or more tags. Add tag filtering to `search` in `app.py` — items
