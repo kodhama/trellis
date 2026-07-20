@@ -1,7 +1,7 @@
 ---
 id: decision-0053
 type: decision
-status: draft
+status: approved  # maintainer's intent act 2026-07-20, in-conversation ("flip and fold executor run in the same PR") — this flip records it (decision-0046); pre-gate: corpus-reviewer no-violation (stats recomputed from raw runs), its open check closed by git diff, precision+scope notes applied
 depends_on: [decision-0051, research-0012]
 owner: agent
 date: 2026-07-20
