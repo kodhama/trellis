@@ -29,9 +29,12 @@ python3 eval/experiments/does-trellis-help/aggregate.py eval/experiments/does-tr
 ```
 
 **Status: task suite ready (11 tasks, fixtures verified); first spec-kit-lite slices in
-`runs/`; the full run is pending.** ⚠️ **Known defect, fix before launching**: `run.sh`
-interpolates the ENTIRE task file — including "The subtle trap" — into the worker prompt
-(`research-0012` open questions, found during the annotation-vs-absence design; that
-experiment isolates the worker to a fixture-local brief instead). Migrated here from the
-`eval/` root (was the original harness) for one-convention consistency; behavior
-unchanged by the move.
+`runs/`; the full run is pending.** The worker-prompt leak is **fixed** (2026-07-20):
+`run.sh` now extracts just each task's "Brief given to the agent" paragraph for the
+worker — the trap description and "what a strong run does" reach only the reviewer,
+mirroring the `annotation-vs-absence` fixture-brief pattern (verified end-to-end with a
+stub agent: worker transcript carries zero trap/expectation text, reviewer prompt
+carries both). A latent `EXP`-before-assignment bug in the same file (the default
+`OUTDIR` referenced `$EXP` one line before it was set — every documented invocation
+would have hit "unbound variable" under `set -u`) was fixed in the same change. Migrated
+here from the `eval/` root (was the original harness) for one-convention consistency.

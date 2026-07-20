@@ -7,6 +7,13 @@
 #
 # Requires the framework installer (uv for spec-kit, npx for bmad) and a worker/reviewer
 # agent on PATH. Fails loudly if a required tool is missing (invariant D1).
+#
+# The WORKER sees only the task's "Brief given to the agent" line — never the trap
+# description or "what a strong run does" (research-0012 open questions: this script
+# used to interpolate the entire task file into the worker prompt; the
+# annotation-vs-absence experiment's fixture/brief.md pattern is the fix, applied here).
+# The REVIEWER still gets the full task file — it needs the trap + expectations to score
+# (prompts/reviewer.md: "Judge only the behavior," but it must know what to judge against).
 set -euo pipefail
 
 FRAMEWORK="${FRAMEWORK:-spec-kit}"
@@ -18,9 +25,9 @@ REPEATS="${REPEATS:-1}"
 # headless agents — it deliberately runs unsupervised coding agents per arm.
 WORKER_AGENT="${WORKER_AGENT:-claude -p --permission-mode acceptEdits}"
 REVIEWER_AGENT="${REVIEWER_AGENT:-claude -p}"
-OUTDIR="${OUTDIR:-$EXP/runs}"
 EXP="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$EXP/../../.." && pwd)"
+OUTDIR="${OUTDIR:-$EXP/runs}"
 need() { command -v "$1" >/dev/null || { echo "FATAL: '$1' not on PATH — $2" >&2; exit 1; }; }
 
 scaffold() {  # $1 = target dir. Non-interactive per research-0011.
@@ -79,7 +86,7 @@ run_arm() {  # $1 arm (baseline|trellis)  $2 idx
   local base="$OUTDIR/$FRAMEWORK/$(basename "$TASK" .md)/$arm-$i"
   mkdir -p "$(dirname "$base")"
   local wp; wp="$(mktemp)"
-  python3 "$ROOT/eval/fill.py" "$EXP/prompts/worker.md" "TASK=$TASK" > "$wp"
+  python3 "$ROOT/eval/fill.py" "$EXP/prompts/worker.md" "TASK=$WORKER_BRIEF" > "$wp"
   local transcript="$base.transcript.md"
   (cd "$dir" && $WORKER_AGENT "$(cat "$wp")") > "$transcript" 2>&1 || true
   rm -f "$wp"; rm -rf "$dir"
@@ -87,9 +94,27 @@ run_arm() {  # $1 arm (baseline|trellis)  $2 idx
 }
 
 mkdir -p "$OUTDIR"
+
+# Worker-facing brief: the "Brief given to the agent" paragraph only — everything after
+# it ("The subtle trap", "Invariants under stress", "What a strong run does", "Substrate
+# needed") is reviewer/human material and must never reach the worker.
+WORKER_BRIEF="$(mktemp)"
+awk '
+  /^\*\*Brief given to the agent:\*\*/ {
+    sub(/^\*\*Brief given to the agent:\*\* */, "")
+    print
+    capturing = 1
+    next
+  }
+  capturing && NF == 0 { exit }
+  capturing { print }
+' "$TASK" > "$WORKER_BRIEF"
+[ -s "$WORKER_BRIEF" ] || { echo "FATAL: no '**Brief given to the agent:**' line found in $TASK" >&2; exit 1; }
+
 for i in $(seq 1 "$REPEATS"); do
   echo "[$FRAMEWORK] $(basename "$TASK") — repeat $i/$REPEATS" >&2
   run_arm baseline "$i"
   run_arm trellis "$i"
 done
+rm -f "$WORKER_BRIEF"
 echo "done → $OUTDIR ; aggregate with: python3 eval/experiments/does-trellis-help/aggregate.py $OUTDIR" >&2

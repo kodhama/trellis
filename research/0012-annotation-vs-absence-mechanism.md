@@ -173,3 +173,17 @@ Follow-on: the `decision-0051` amendment (readout ships complete; rows govern li
 assembly retires) — tracked as trellis#170; drafted as `decision-0053`. The one-rule/
 one-task generalization limit stands (Open questions); trellis#166 is the replication
 vehicle.
+
+---
+
+## Open-questions update (2026-07-20, append-only)
+
+The "Worker-prompt leak in the framework suite" open question above is **fixed**: the
+`does-trellis-help` suite's `run.sh` now extracts each task's "Brief given to the agent"
+paragraph for the worker (the fixture-brief pattern this experiment established), while
+the reviewer still receives the full task file (it needs the trap + expectations to
+score). Verified end-to-end with a stub agent: the worker transcript carries zero
+trap/expectation text; the reviewer prompt carries both. Fixed alongside a latent
+`EXP`-before-assignment bug in the same script (every documented invocation was hitting
+"unbound variable" under `set -u`) — that bug was independent of this note's subject but
+blocked the same suite, so it rode the same change.
