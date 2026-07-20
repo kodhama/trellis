@@ -136,3 +136,40 @@ interval, not on failing to detect (a mere "n.s." at n=20 amends on a true 25-po
   (e.g. `~/.claude/CLAUDE.md`) — constant across arms (contrast survives) but it shifts
   the absolute rates the validity gates test. Run from a clean environment if a gate
   result looks implausible.
+
+---
+
+## Results — batch 1 (2026-07-19; appended per this note's decision rule, append-only)
+
+Run: `REPEATS=20`, provenance `commit=2ec7da8… payload=payload@582e6abc64fb start_index=1`
+(clean tree); data recorded on PR #169 (`eval/experiments/annotation-vs-absence/runs/`).
+Zero worker failures, zero `n-a`, zero unparsed — no exclusions.
+
+| arm | n | asked | rate | 95% CI (Wilson) |
+|---|---|---|---|---|
+| control | 20 | 19 | **95%** | [76%, 99%] |
+| absence | 20 | 0 | **0%** | [0%, 16%] |
+| annotation | 20 | 0 | **0%** | [0%, 16%] |
+
+Validity gates: elicitation 95% (≥ 70%) OK · absence floor 0% (≤ 30%) OK.
+**Leak (annotation − absence): +0%, 95% CI [−16%, +16%], Fisher p = 1.000.**
+Row effect (control − annotation, the clean row-only pair): **+95 pts, p = 3×10⁻¹⁰** (exact; the script prints 0.000).
+
+**Verdict per the pre-registered decision rule: AMEND** — point estimate ≤ +10 and the CI
+upper bound (+16) < +25; the equivalence criterion met at n = 20 because both deactivated
+arms sat at the exact floor. The salience-leak prior (Sources & confidence, "Medium") is
+**refuted in this setting**: twenty workers read the deactivated rule in full; none applied
+it. The headline exceeds the design: a one-token row flip (`true`→`false`) in otherwise
+byte-identical context swung behavior 95 points — the rows are not merely tolerated but
+near-binding in both directions.
+
+**Prerequisite check (2026-07-20): `@import` of a `.toml` file loads into context** —
+verified empirically (import cell recites the file's content with tools forbidden;
+no-import negative control returns NOT-FOUND). The product wiring for live rows is viable
+on the import channel; the inline channel inlines the rows (the shape this experiment
+tested directly).
+
+Follow-on: the `decision-0051` amendment (readout ships complete; rows govern live;
+assembly retires) — tracked as trellis#170; drafted as `decision-0053`. The one-rule/
+one-task generalization limit stands (Open questions); trellis#166 is the replication
+vehicle.
