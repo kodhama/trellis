@@ -1,7 +1,8 @@
 ---
 id: decision-0051
 type: decision
-status: approved  # maintainer's intent act 2026-07-19, in-conversation ("Approved. Continue to implementation") — this flip records it (decision-0046); corpus-reviewer conformance pass (all checks PASS) ran before the gate; grove adr-0018/0020 approved statuses confirmed against grove origin/main frontmatter before the gate
+status: approved
+superseded_in_part_by: [decision-0053]  # maintainer's intent act 2026-07-19, in-conversation ("Approved. Continue to implementation") — this flip records it (decision-0046); corpus-reviewer conformance pass (all checks PASS) ran before the gate; grove adr-0018/0020 approved statuses confirmed against grove origin/main frontmatter before the gate
 depends_on: [invariants-v1, signature-catalog-v1, decision-0033]
 informed_by: [grove/adr-0018-gate-profile-and-trigger-split, grove/adr-0020-dispatcher-honors-gate-profile, decision-0016, decision-0043, decision-0049]
 owner: agent
@@ -220,3 +221,15 @@ an independent pass (`inv-independent-judgment`).
 > is the per-axis config files — folded into the parked stewards amendment. The
 > family-wide all-invariants stance is likewise stewards material, not per-repo
 > expression content (same correction, earlier in the review).
+
+---
+
+> **Superseded in part (2026-07-20, append-only pointer, landed with `decision-0053`'s
+> `approved` flip).** On `research-0012`'s batch-1 evidence (zero salience leak;
+> +95-point row effect), `decision-0053` retires rule 4 (fragment assembly at refresh;
+> the "no per-session reader" stance), the refresh-time-effect semantics in rules 2–3,
+> and rule 5's absence-era closing-line specification: the readout now ships complete
+> and `rules.toml` rows govern at read time. **The rest stands** — the authority split
+> (rule 1), the naming de-collision (the rest of rule 5), the named kodhama-0007
+> divergence (rule 6), the non-revival (rule 7), and the expression.md-retirement
+> amendment above.
