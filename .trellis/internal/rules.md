@@ -1,6 +1,8 @@
+**Rule activation is governed by `.trellis/rules.toml` (its rows are loaded below the rules):** apply each rule below ONLY if its row says `active = true`. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rows apply regardless of their row value.
+
 ## The rules — do these
 
-This list is assembled from the active rows of `.trellis/rules.toml` — each rule ends with its row's slug; edit the rows, then refresh the overlay, to change the set. Each is a rule to follow, then the ✗ failure it prevents:
+Each rule below ends with its row's slug. Whether a rule applies is governed by its row in `.trellis/rules.toml` (see the authority note above; the rows are loaded below the rules). Each is a rule to follow, then the ✗ failure it prevents:
 
 - Build only on settled ground — an approved spec or a made decision, never a draft that's still changing under you. If your input isn't settled, or you can't tell whether it is, ask before you build on it. `inv-directional-flow`
     ✗ an agent builds against a spec still being edited; it shifts, and the work is built on a version that no longer exists.
@@ -30,5 +32,3 @@ This list is assembled from the active rows of `.trellis/rules.toml` — each ru
     ✗ the team quietly drifts from the methodology it *claims* to follow.
 - Never finalize, ship, or merge something a human is meant to approve without that approval. When you reach such a point, stop and get sign-off. Unsure whether a human must approve? Assume yes. `floor-intent-gate`
     ✗ a fully-automated pipeline ships something *technically* correct that no human confirmed was the *right* thing.
-
-(Generated from your `rules.toml` — edit its rows, then refresh the overlay (`/trellis:setup`, or the manual copy path) to re-assemble these.)

@@ -26,9 +26,9 @@ run the setup skill in any project:
 config from `.trellis/rules.toml` if the project already carries one, then copies Trellis onto
 your project as the **M1 "alongside" overlay**: a managed block in your `CLAUDE.md` plus a
 `.trellis/` bundle split by authority (`decision-0051`, as amended) — your `rules.toml` at the
-root (which rules are active — edit a row, refresh, done; the one consumer-owned file), the
-generated files (the header, the assembled rules readout, the invariant reference) under
-`.trellis/internal/`. Augment-never-clobber, idempotent, verified against a shipped checksum
+root (which rules apply — edit a row, done: rows govern at read time, `decision-0053`; the one
+consumer-owned file), the generated files (the header, the complete rules readout, the invariant
+reference) under `.trellis/internal/`. Augment-never-clobber, idempotent, verified against a shipped checksum
 manifest. On explicit request it also runs the **M2 morph** — a model-driven rewrite of your own
 instructions, on a fresh git branch you review. The plugin lives in
 [`plugins/trellis`](plugins/trellis).
@@ -85,7 +85,7 @@ git clone --depth 1 https://github.com/kodhama/trellis /tmp/trellis
 ref=/tmp/trellis/plugins/trellis/reference   # <p> below: a (conductor) | b (author-adapt)
 mkdir -p .trellis/internal
 cp "$ref"/invariants.md  .trellis/internal/invariants.md
-cp "$ref"/rules.md       .trellis/internal/rules.md   # the all-rules readout, pre-assembled
+cp "$ref"/rules.md       .trellis/internal/rules.md   # the complete rules readout
 cp "$ref"/trellis-<p>.md .trellis/internal/trellis.md
 cp "$ref"/version        .trellis/internal/version
 cp "$ref"/rules-<p>.toml .trellis/rules.toml          # first install only — yours after that
@@ -98,15 +98,17 @@ sed -n -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
        "$ref"/checksums | shasum -a 256 -c -           # verify: all four lines print OK
 ```
 
-To deactivate a rule later, set its row in `.trellis/rules.toml` to `active = false` and rebuild
-the readout the way `/trellis:setup` does — concatenate `"$ref"/rules/_header.md`, each active
-row's `"$ref"/rules/<slug>.md` in catalog order (the order the entries appear in `invariants.md`),
-and `"$ref"/rules/_footer.md` into `.trellis/internal/rules.md`. The two `floor-*` rows are
-floor-held: they are always included, whatever their rows say. On an **inline** install the block
-carries the readout itself, so rebuild it too: replace everything between the `trellis:begin`/
-`trellis:end` markers with `cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md
-"$ref"/block-inline-tail.md` (the shipped `block-inline-<p>.md` is that sandwich with every rule
-active).
+To deactivate a rule later, set its row in `.trellis/rules.toml` to `active = false` — that's
+it (`decision-0053`): the readout ships complete and opens with an authority header, so agents
+apply a rule only where its row says `active = true`, and a row edit takes effect immediately.
+The two `floor-*` rows apply regardless of their value. On an **import** install the block loads
+your current `rules.toml` every session. On an **inline** install the block carries a copy of
+the rows inlined below the rules, so re-paste that copy after editing: replace everything
+between the `trellis:begin`/`trellis:end` markers with the sandwich `cat
+"$ref"/block-inline-<p>-head.md "$ref"/rules.md`, then an `## Active rows (`.trellis/rules.toml`)`
+heading followed by your `rules.toml` inside a ```toml fence, then `cat
+"$ref"/block-inline-tail.md` (the shipped `block-inline-<p>.md` is that sandwich with the seed
+rows).
 
 No binary, no runtime — the assets are plain files, and anything can verify them with `shasum -c`
 against the shipped manifest. (The Homebrew/curl binary channel retired in `kodhama-0007` rule 5;

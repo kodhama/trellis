@@ -1,2 +1,0 @@
-- Don't rule your own work correct — tell the human an independent review is needed and let someone (or something) other than the author check it. Don't just agree to please the human; say what you actually think, problems included. And before calling a thing right *or* wrong — especially when your verdict matches what the human just suggested — verify it against the source: quote it, run the obvious counter-checks, and separate what it says from what you infer. `inv-independent-judgment`
-    ✗ the agent that wrote the code reviews its own code and decides it's good.

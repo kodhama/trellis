@@ -3,29 +3,34 @@ package main
 // Tests for the release-render pipeline — kodhama/trellis#117 (kodhama-0007 slice 1,
 // "one render, many copiers"), reshaped by decision-0051 (the overlay splits by
 // authority: consumer-owned rules.toml at .trellis/, generated files under
-// .trellis/internal/, the always-loaded readout assembled from per-rule fragments).
-// Upstream anchors:
+// .trellis/internal/) and again by decision-0053 (live rows: the readout ships
+// complete with an authority header; rules.toml rows govern at read time; fragment
+// assembly retires, and the fragments leave the shipped payload — no consumer
+// remains). Upstream anchors:
 //   - kodhama-0007 rule 1 (render once, at release: the full enumerable variant space
 //     is pre-rendered into the vendored payload) → TestPayloadFileSet,
 //     TestVendoredPayloadIsCurrent.
 //   - kodhama-0007 rule 3 (verification is data: a checksum manifest anything can
 //     check with standard tools) → TestPayloadManifestVerifies,
 //     TestVendoredPayloadManifestVerifies.
-//   - decision-0051 rule 1 (authority split: the managed block imports
-//     .trellis/internal/trellis.md and .trellis/expression.md; internal/trellis.md
-//     imports only its sibling rules.md — @import paths resolve relative to the
-//     importing file, so no ../ traversal) → TestPayloadBlockCarriesAuthoritySplitImports,
-//     TestPayloadHeaderImportsSiblingRules.
-//   - decision-0051 rules 2+3 (rules.toml is posture-as-seed, rows-as-truth; floors
-//     are floor-held rows) → TestPayloadRulesTomlSeeds.
-//   - decision-0051 rule 4 (the readout is assembled from manifest-covered fragments
-//     in catalog order) → TestPayloadRuleFragmentsCoverCatalog,
-//     TestPayloadRulesReadoutIsOrderedConcatenation,
-//     TestSetupSkillAssemblyOrderMatchesCatalog.
-//   - decision-0051 rule 5 (the name "profile" de-collided: the expression.md seed is
-//     pure hand-owned prose with no profile: key; the readout closes on "Generated
-//     from your rules.toml") → TestPayloadCarriesExpressionSeed,
+//   - decision-0051 rule 1 (authority split; internal/trellis.md imports only its
+//     sibling rules.md — @import paths resolve relative to the importing file, so no
+//     ../ traversal) → TestPayloadHeaderImportsSiblingRules.
+//   - decision-0053 point 2 (import channel: the managed block imports both
+//     .trellis/internal/trellis.md and .trellis/rules.toml; inline channel: the block
+//     is the rows-inlined sandwich) → TestPayloadBlockCarriesBothImports,
+//     TestPayloadInlineBlockIsRowsInlinedSandwich.
+//   - decision-0053 point 2 (the readout ships complete and carries the eval-tested
+//     authority header, research-0012) → TestPayloadReadoutIsCompleteWithAuthorityHeader,
 //     TestPayloadRulesReadoutIsOrderedConcatenation.
+//   - decision-0053 point 4 (no shipped text claims refresh-time semantics for rows;
+//     the absence-era preamble/footer/tail/toml comments retired) →
+//     TestPayloadShipsNoRefreshTimeRowClaims, TestPayloadRulesTomlSeeds.
+//   - decision-0053 Consequences (SKILL.md step 4's selection cat → a plain copy of
+//     rules.md) → TestSetupSkillCopiesCompleteReadout.
+//   - decision-0051 rules 2+3 (rules.toml is posture-as-seed, rows-as-truth; floors
+//     are not rows a consumer can turn off — held by the authority header's floor
+//     sentence since decision-0053) → TestPayloadRulesTomlSeeds.
 //   - kodhama-0007 rider (the invariants pointer stays a trigger in the always-on
 //     templates) → TestPayloadCarriesInvariantsTrigger.
 //   - #117 scope (the generator is the existing Go render code, runnable in CI) →
@@ -46,8 +51,8 @@ import (
 const vendoredPayloadDir = "../plugins/trellis/reference"
 
 // assessableSlugs is the pinned catalog slug set (signature-catalog-v1: the 14
-// assessable invariants), alphabetical — the payload must carry one rule fragment
-// per slug (decision-0051 rule 4).
+// assessable invariants), alphabetical — the complete readout must carry one
+// slug-tagged rule per slug (decision-0053 point 1).
 var assessableSlugs = []string{
 	"floor-intent-gate",
 	"floor-transparency",
@@ -65,12 +70,14 @@ var assessableSlugs = []string{
 	"inv-self-improvement",
 }
 
-// TestPayloadFileSet: the generator emits exactly the decision-0051 file set — the
-// verbatim catalog, the per-rule fragments plus their header/footer, the assembled
-// all-active readout, both posture variants of the header / inline block / rules.toml
-// seed, the constant CLAUDE.md block, the version stamp, and the manifest — and no
-// expression seed (retired from the bundle, decision-0051 amendment: the exact-match
-// list is the guard that it stays gone).
+// TestPayloadFileSet: the generator emits exactly the decision-0053 file set — the
+// verbatim catalog, the complete readout, both posture variants of the header /
+// inline block / rules.toml seed, the constant CLAUDE.md block, the version stamp,
+// and the manifest. No expression seed (retired, decision-0051 amendment) and no
+// rules/ fragment files (they left the shipped payload with decision-0053 point 1:
+// assembly retired and no consumer remains — the setup skill copies rules.md whole,
+// the manual copy path needs no rebuild, and both eval runners read only the files
+// listed here; the exact-match list is the guard that both stay gone).
 func TestPayloadFileSet(t *testing.T) {
 	want := []string{
 		"block-claude.md",
@@ -84,17 +91,10 @@ func TestPayloadFileSet(t *testing.T) {
 		"rules-a.toml",
 		"rules-b.toml",
 		"rules.md",
-	}
-	for _, slug := range assessableSlugs {
-		want = append(want, "rules/"+slug+".md")
-	}
-	want = append(want,
-		"rules/_footer.md",
-		"rules/_header.md",
 		"trellis-a.md",
 		"trellis-b.md",
 		"version",
-	)
+	}
 	sort.Strings(want)
 
 	files := payloadFiles()
@@ -147,18 +147,27 @@ func TestPayloadVariantsAreTheRenderedPostures(t *testing.T) {
 	}
 }
 
-// TestPayloadBlockCarriesSingleInternalImport: decision-0051 rule 1 as amended
-// (2026-07-19, append-only foot of the record) — expression.md is retired from the
-// bundle, so the managed CLAUDE.md block imports exactly one thing: the
-// trellis-authoritative header at .trellis/internal/trellis.md. A project's
-// governance prose belongs in its own instructions file; trellis reserves no home
-// for it, and the block imports none. The inline blocks stay import-free — they
-// exist precisely for files without @import support.
-func TestPayloadBlockCarriesSingleInternalImport(t *testing.T) {
+// TestPayloadBlockCarriesBothImports: decision-0053 point 2 (import channel) — the
+// managed CLAUDE.md block imports both @.trellis/internal/trellis.md and
+// @.trellis/rules.toml, as block-level imports (the empirically tested shape,
+// research-0012's prerequisite check: a .toml @import loads into context; no
+// nested-import dependency). The rules import comes after the header import so the
+// rows land below the rules, matching the authority header's claim. expression.md
+// stays retired (decision-0051 amendment). The inline blocks stay import-free —
+// they exist precisely for files without @import support.
+func TestPayloadBlockCarriesBothImports(t *testing.T) {
 	files := payloadFiles()
 	block := files["block-claude.md"]
-	if !strings.Contains(block, "@.trellis/internal/trellis.md") {
+	i := strings.Index(block, "@.trellis/internal/trellis.md")
+	j := strings.Index(block, "@.trellis/rules.toml")
+	if i < 0 {
 		t.Fatalf("block-claude.md must import @.trellis/internal/trellis.md (decision-0051 rule 1): %q", block)
+	}
+	if j < 0 {
+		t.Fatalf("block-claude.md must import @.trellis/rules.toml — the live-rows delivery (decision-0053 point 2): %q", block)
+	}
+	if j < i {
+		t.Errorf("block-claude.md must import the rows after the header, so they land below the rules: %q", block)
 	}
 	if strings.Contains(block, "expression") {
 		t.Errorf("block-claude.md must not reference expression.md — retired from the bundle (decision-0051 amendment): %q", block)
@@ -173,17 +182,16 @@ func TestPayloadBlockCarriesSingleInternalImport(t *testing.T) {
 	}
 }
 
-// TestPayloadInlineBlockIsHeadReadoutTail: conformance-review remediation of
-// decision-0051 rule 4's letter — "the managed block's @import (or the inline
-// block) carries the assembled readout … so an edited row takes effect at the next
-// refresh." The inline channel honors rows the same mechanical way the import
-// channel does: on refresh the block is rebuilt as the manifest-covered head part +
-// the assembled .trellis/internal/rules.md + the manifest-covered tail part,
-// concatenated with no authored bytes (the same mechanical class as the rules.md
-// assembly). The shipped block-inline-<p>.md is exactly the all-active instance of
-// that sandwich; the tail is posture-independent (only the head's strictness line
-// differs), so one tail file ships, not two.
-func TestPayloadInlineBlockIsHeadReadoutTail(t *testing.T) {
+// TestPayloadInlineBlockIsRowsInlinedSandwich: decision-0053 point 2 (inline
+// channel) — the block inlines the rows below the rules, exactly the experiment's
+// annotation/control-arm sandwich (research-0012 run.sh's overlay build), now the
+// shipped shape: head + the complete readout + an "## Active rows" section carrying
+// the rules.toml in a toml fence + the live-rows tail. The shipped
+// block-inline-<p>.md is the seed-state instance (the seed toml's rows); on refresh
+// an inline install rebuilds the rows section from the consumer's actual
+// rules.toml (decision-0053 point 3). The tail is posture-independent and carries
+// the live-rows closing sentence, not the retired re-assembly one (point 4).
+func TestPayloadInlineBlockIsRowsInlinedSandwich(t *testing.T) {
 	files := payloadFiles()
 	tail := files["block-inline-tail.md"]
 	if !strings.HasSuffix(tail, trellisEnd) {
@@ -192,16 +200,20 @@ func TestPayloadInlineBlockIsHeadReadoutTail(t *testing.T) {
 	if !strings.Contains(tail, "before deviating") {
 		t.Errorf("block-inline-tail.md must carry the invariants trigger: %q", tail)
 	}
+	if !strings.Contains(tail, "Rule activation follows the rows in `.trellis/rules.toml` directly") {
+		t.Errorf("block-inline-tail.md must close on the live-rows sentence (research-0012's header_arm_tail wording, decision-0053 point 4): %q", tail)
+	}
 	for _, p := range []string{"a", "b"} {
 		head := files["block-inline-"+p+"-head.md"]
 		if !strings.HasPrefix(head, trellisBegin) {
 			t.Errorf("block-inline-%s-head.md must open the managed block (begin marker): %q", p, head)
 		}
 		if strings.Contains(head, "✗") || strings.Contains(tail, "✗") {
-			t.Error("head/tail parts must carry no rule lines — the rules ride the assembled readout between them")
+			t.Error("head/tail parts must carry no rule lines — the rules ride the readout between them")
 		}
-		if want := head + files["rules.md"] + tail; files["block-inline-"+p+".md"] != want {
-			t.Errorf("block-inline-%s.md must be exactly head + all-active readout + tail\n got:\n%s\n want:\n%s", p, files["block-inline-"+p+".md"], want)
+		rows := "\n## Active rows (`.trellis/rules.toml`)\n\n```toml\n" + files["rules-"+p+".toml"] + "```\n"
+		if want := head + files["rules.md"] + rows + tail; files["block-inline-"+p+".md"] != want {
+			t.Errorf("block-inline-%s.md must be exactly head + complete readout + rows section + tail (the tested sandwich)\n got:\n%s\n want:\n%s", p, files["block-inline-"+p+".md"], want)
 		}
 	}
 }
@@ -238,89 +250,102 @@ func TestPayloadHeaderImportsSiblingRules(t *testing.T) {
 	}
 }
 
-// TestPayloadRuleFragmentsCoverCatalog: decision-0051 rule 4 — one pre-rendered
-// fragment per assessable catalog slug, each the rule's imperative directive plus
-// the ✗ failure it prevents, and the two non-rule fragments (_header/_footer) that
-// make the assembled readout pure concatenation with no byte authored at install
-// time. Rows-as-truth legibility (rule 2's intent, maintainer addendum): each rule's
-// first line ends with its catalog slug in backticks, so a reader can match a
-// rules.md bullet ↔ its rules.toml row ↔ its invariants.md entry — the slug
-// otherwise exists only in the payload filename, which an installed overlay never
-// shows. The _header states the rules.toml dependency at the top end; the _footer's
-// "(Generated from your `rules.toml`" sentinel states it at the bottom (its stable
-// prefix is what the #112 overwrite guard keys on), and points at no retired
-// expression.md home.
-func TestPayloadRuleFragmentsCoverCatalog(t *testing.T) {
+// TestPayloadReadoutIsCompleteWithAuthorityHeader: decision-0053 point 2 — the
+// readout ships complete (all 14 rules, every install) and opens with the authority
+// header: research-0012's eval-tested AUTHORITY_HEADER wording, adapted in exactly
+// one word ("inlined" → "loaded") so one shared readout is true on both channels
+// (the inline block inlines the rows below the rules; the import block loads them
+// below the rules via @.trellis/rules.toml). Rows-as-truth legibility survives
+// assembly's retirement: each rule's first line still ends with its catalog slug in
+// backticks (row ↔ rule ↔ entry matchability), which is also what research-0012's
+// runner keys its subset transform on.
+func TestPayloadReadoutIsCompleteWithAuthorityHeader(t *testing.T) {
 	files := payloadFiles()
+	r := files["rules.md"]
+	if !strings.HasPrefix(r, "**Rule activation is governed by `.trellis/rules.toml`") {
+		t.Fatalf("rules.md must open with the authority header (decision-0053 point 2): %q", r)
+	}
+	for _, want := range []string{
+		"apply each rule below ONLY if its row says `active = true`",
+		"A rule whose row is `active = false` does not apply in this project — do not follow it",
+		"The two `floor-` rows apply regardless of their row value",
+		"## The rules — do these",
+		"Each rule below ends with its row's slug",
+		"see the authority note above",
+	} {
+		if !strings.Contains(r, want) {
+			t.Errorf("rules.md missing the tested live-rows wording %q (research-0012 / decision-0053)", want)
+		}
+	}
+	if got := strings.Count(r, "\n    ✗ "); got != len(assessableSlugs) {
+		t.Errorf("the readout ships complete — expected %d indented ✗ failure lines, got %d", len(assessableSlugs), got)
+	}
 	for _, slug := range assessableSlugs {
-		name := "rules/" + slug + ".md"
-		content := files[name]
-		if content == "" {
-			t.Errorf("payload missing fragment %s", name)
-			continue
+		if !strings.Contains(r, " `"+slug+"`\n") {
+			t.Errorf("rules.md missing a rule line ending with its slug tag `%s`", slug)
 		}
-		if !strings.HasPrefix(content, "- ") {
-			t.Errorf("%s must open with its imperative directive as a list item: %q", name, content)
-		}
-		firstLine := strings.SplitN(content, "\n", 2)[0]
-		if !strings.HasSuffix(firstLine, " `"+slug+"`") {
-			t.Errorf("%s: the rule's first line must end with its catalog slug in backticks (row ↔ rule ↔ entry matchability): %q", name, firstLine)
-		}
-		if !strings.Contains(content, "✗") {
-			t.Errorf("%s must carry the ✗ failure line under its rule: %q", name, content)
-		}
-		if !strings.HasSuffix(content, "\n") {
-			t.Errorf("%s must end with a newline so concatenation is seamless: %q", name, content)
-		}
-	}
-	header := files["rules/_header.md"]
-	if !strings.Contains(header, "## The rules — do these") {
-		t.Errorf("rules/_header.md must carry the readout heading: %q", header)
-	}
-	if !strings.Contains(header, "`.trellis/rules.toml`") {
-		t.Errorf("rules/_header.md must state the list is assembled from the active rows of .trellis/rules.toml (dependency stated at both ends): %q", header)
-	}
-	if !strings.Contains(files["rules/_footer.md"], "(Generated from your `rules.toml`") {
-		t.Errorf("rules/_footer.md must carry the closing \"Generated from your rules.toml\" line (decision-0051 rule 5): %q", files["rules/_footer.md"])
-	}
-	if strings.Contains(files["rules/_footer.md"], "expression.md") {
-		t.Errorf("rules/_footer.md must not point prose at expression.md — retired from the bundle (decision-0051 amendment): %q", files["rules/_footer.md"])
 	}
 }
 
-// TestPayloadRulesReadoutIsOrderedConcatenation: decision-0051 rule 4's verify
-// contract — the assembled all-active readout the payload ships (rules.md, the
-// common case's copy source) is byte-for-byte the ordered concatenation of
-// _header + every rule fragment in catalog order + _footer, and the inline blocks
-// carry the same all-active body.
+// TestPayloadRulesReadoutIsOrderedConcatenation: the render contract after
+// decision-0053 — rules.md is the readout header (authority note + heading +
+// live-rows preamble) followed by every rule's fragment render in catalog order,
+// with no assembly footer below the last rule (the "(Generated from your
+// `rules.toml` …)" closing line retired with decision-0053 points 4+5). The inline
+// blocks carry the identical complete readout.
 func TestPayloadRulesReadoutIsOrderedConcatenation(t *testing.T) {
 	files := payloadFiles()
 	order := catalogSlugOrder()
-	var b strings.Builder
-	b.WriteString(files["rules/_header.md"])
+	last := -1
 	for _, slug := range order {
-		b.WriteString(files["rules/"+slug+".md"])
+		i := strings.Index(files["rules.md"], " `"+slug+"`\n")
+		if i < 0 {
+			t.Errorf("rules.md missing the rule tagged `%s`", slug)
+			continue
+		}
+		if i < last {
+			t.Errorf("rules.md lists `%s` out of catalog order (decision-0051 rule 4's ordering survives in the render)", slug)
+		}
+		last = i
 	}
-	b.WriteString(files["rules/_footer.md"])
-	if files["rules.md"] != b.String() {
-		t.Errorf("rules.md is not the ordered concatenation of its fragments\n got:\n%s\n want:\n%s", files["rules.md"], b.String())
+	if !strings.HasSuffix(files["rules.md"], ruleFragment(order[len(order)-1])) {
+		t.Errorf("rules.md must end on the last rule's fragment with nothing below it — the assembly footer retired (decision-0053 point 4): %q", files["rules.md"])
 	}
-	body := strings.TrimSuffix(strings.TrimPrefix(files["rules.md"], files["rules/_header.md"]), files["rules/_footer.md"])
 	for _, name := range []string{"block-inline-a.md", "block-inline-b.md"} {
-		if !strings.Contains(files[name], body) {
-			t.Errorf("%s must inline the same all-active rules body the fragments assemble to", name)
+		if !strings.Contains(files[name], files["rules.md"]) {
+			t.Errorf("%s must inline the complete readout verbatim", name)
 		}
 	}
 }
 
-// TestPayloadRulesTomlSeeds: decision-0051 rules 2+3 — the posture seeds are
-// explicit rows, one per assessable catalog slug, all active (posture-as-seed,
-// rows-as-truth: seeded_from is provenance only, strictness the one instance-level
-// key), and the floor rows are marked floor-held (a consumer cannot turn them off;
-// assembly includes them regardless). Rows-as-truth legibility (maintainer
-// addendum): the seed opens with a comment stating what the rows control — which
-// rules are assembled into .trellis/internal/rules.md — and that an edit has no
-// effect until a refresh re-assembles.
+// TestPayloadShipsNoRefreshTimeRowClaims: decision-0053 point 4 — no shipped text
+// may claim refresh-time semantics for rows. The absence-era phrases (the assembly
+// preamble, the "no effect until refresh" toml comment, the "re-assemble" tail
+// sentence, and the "(Generated from your …)" footer/sentinel) must appear in no
+// payload file.
+func TestPayloadShipsNoRefreshTimeRowClaims(t *testing.T) {
+	for name, content := range payloadFiles() {
+		for _, banned := range []string{
+			"assembled from the active rows",
+			"no effect until",
+			"re-assemble",
+			"(Generated from your",
+		} {
+			if strings.Contains(content, banned) {
+				t.Errorf("%s carries the absence-era claim %q — retired by decision-0053 point 4", name, banned)
+			}
+		}
+	}
+}
+
+// TestPayloadRulesTomlSeeds: decision-0051 rules 2+3, live-rows comments per
+// decision-0053 point 4 — the posture seeds are explicit rows, one per assessable
+// catalog slug, all active (posture-as-seed, rows-as-truth: seeded_from is
+// provenance only, strictness the one instance-level key). The top comment is the
+// tested header_arm_toml wording ("Rows govern rule activation live …"), never the
+// retired "no effect until refresh" claim, and the floor rows carry the tested
+// live-rows floor comment ("floor — applies regardless of this row"), not the
+// retired assembly-speak one.
 func TestPayloadRulesTomlSeeds(t *testing.T) {
 	files := payloadFiles()
 	for _, tc := range []struct {
@@ -333,14 +358,8 @@ func TestPayloadRulesTomlSeeds(t *testing.T) {
 		if content == "" {
 			t.Fatalf("payload missing %s", tc.name)
 		}
-		if !strings.HasPrefix(content, "#") {
-			t.Errorf("%s must open with the what-rows-control comment: %q", tc.name, content)
-		}
-		if !strings.Contains(content, ".trellis/internal/rules.md") {
-			t.Errorf("%s's top comment must name what the rows are assembled into (.trellis/internal/rules.md): %q", tc.name, content)
-		}
-		if !strings.Contains(content, "no effect until") {
-			t.Errorf("%s's top comment must state an edit has no effect until refresh: %q", tc.name, content)
+		if !strings.HasPrefix(content, "# Rows govern rule activation live (see the authority note in the project instructions).\n") {
+			t.Errorf("%s must open with the tested live-rows comment (research-0012's header_arm_toml, decision-0053 point 4): %q", tc.name, content)
 		}
 		if !strings.Contains(content, tc.seededFrom) {
 			t.Errorf("%s missing %q (provenance-only seed key, decision-0051 rule 2): %q", tc.name, tc.seededFrom, content)
@@ -358,37 +377,56 @@ func TestPayloadRulesTomlSeeds(t *testing.T) {
 			}
 		}
 		for _, floor := range []string{"floor-transparency", "floor-intent-gate"} {
-			lineRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(floor) + `.*floor-held`)
+			lineRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(floor) + `.*# floor — applies regardless of this row`)
 			if !lineRe.MatchString(content) {
-				t.Errorf("%s: the %s row must be marked floor-held (decision-0051 rule 3): %q", tc.name, floor, content)
+				t.Errorf("%s: the %s row must carry the live-rows floor comment (decision-0053 point 4): %q", tc.name, floor, content)
 			}
+		}
+		if strings.Contains(content, "floor-held") || strings.Contains(content, "assembly") {
+			t.Errorf("%s still carries assembly-era floor wording — retired with decision-0053: %q", tc.name, content)
 		}
 	}
 }
 
-// TestSetupSkillAssemblyOrderMatchesCatalog: decision-0028's sync-guard for the one
-// place catalog order has a second home — the setup skill's step-4 assembly command
-// lists the fragment files in the order setup concatenates them, and that sequence
-// must be exactly _header, then the catalog's document order, then _footer
-// (decision-0051 rule 4: "in catalog order"; the closing "(Generated from your
-// rules.toml …)" line rides _footer — decision-0051 rule 5's required closing line,
-// which the conformance review caught the command dropping). The `"$ref"/rules/…`
-// form is unique to that command, so its occurrences in reading order pin the
-// command block completely: presence of both non-rule fragments included, not just
-// the slug order.
-func TestSetupSkillAssemblyOrderMatchesCatalog(t *testing.T) {
+// TestSetupSkillCopiesCompleteReadout: decision-0053 Consequences — SKILL.md step
+// 4's per-row selection cat became a plain copy of the shipped complete readout; no
+// fragment-selection command remains anywhere in the skill; the skill states the
+// live row semantics (edits take effect immediately) and names a floor row set
+// false as overridden-by-floor, never silently honored. (Replaces
+// TestSetupSkillAssemblyOrderMatchesCatalog — the catalog-order second home retired
+// with the assembly command it pinned.)
+func TestSetupSkillCopiesCompleteReadout(t *testing.T) {
 	b, err := os.ReadFile("../plugins/trellis/skills/setup/SKILL.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	fragRe := regexp.MustCompile(`"\$ref"/rules/([A-Za-z_-]+)\.md`)
-	var got []string
-	for _, m := range fragRe.FindAllStringSubmatch(string(b), -1) {
-		got = append(got, m[1])
+	s := string(b)
+	if !strings.Contains(s, `cp "${CLAUDE_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md`) {
+		t.Error("SKILL.md must install the readout as a plain copy of the shipped rules.md (decision-0053: assembly retires)")
 	}
-	want := append(append([]string{"_header"}, catalogSlugOrder()...), "_footer")
-	if strings.Join(got, " ") != strings.Join(want, " ") {
-		t.Errorf("SKILL.md's step-4 assembly command must be exactly _header + catalog order + _footer\n got:  %v\n want: %v", got, want)
+	if strings.Contains(s, `"$ref"/rules/`) {
+		t.Error("SKILL.md still carries fragment-assembly commands — retired with decision-0053")
+	}
+	if !strings.Contains(s, "take effect immediately") {
+		t.Error("SKILL.md must state the live row semantics: row edits take effect immediately (decision-0053 point 3)")
+	}
+	if !strings.Contains(s, "overridden-by-floor") {
+		t.Error("SKILL.md must name a floor row set false as overridden-by-floor, loudly (decision-0053 point 3)")
+	}
+	// The SKILL's rows-section printf lines are the one non-payload byte source in the
+	// inline rebuild; pin them to the generator's renderRowsSection so the two cannot
+	// drift apart (decision-0028 sync-guard per source→derivative pair; conformance
+	// finding on the decision-0053 build). Expected in step 7 (paste) and step 8(d)
+	// (verify oracle) — exactly twice.
+	openRaw := strings.TrimSuffix(renderRowsSection(""), "```\n")
+	needle := "printf '" + strings.ReplaceAll(openRaw, "\n", `\n`) + "'"
+	if n := strings.Count(s, needle); n != 2 {
+		t.Errorf("SKILL.md rows-section printf must byte-match renderRowsSection in step 7 and step 8(d): want 2 occurrences of %q, found %d", needle, n)
+	}
+	for _, banned := range []string{"no effect until", "re-assemble", "next refresh — there is no per-session reader"} {
+		if strings.Contains(s, banned) {
+			t.Errorf("SKILL.md still carries the absence-era claim %q (decision-0053 point 4)", banned)
+		}
 	}
 }
 

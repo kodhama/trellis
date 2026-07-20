@@ -5,9 +5,11 @@ You are working in a project that follows **Trellis** — a small, load-bearing 
 
 **How strictly to follow them:** **By default** — follow them unless you have a clear, specific reason not to, and when you deviate say so out loud rather than doing it silently.
 
+**Rule activation is governed by `.trellis/rules.toml` (its rows are loaded below the rules):** apply each rule below ONLY if its row says `active = true`. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rows apply regardless of their row value.
+
 ## The rules — do these
 
-This list is assembled from the active rows of `.trellis/rules.toml` — each rule ends with its row's slug; edit the rows, then refresh the overlay, to change the set. Each is a rule to follow, then the ✗ failure it prevents:
+Each rule below ends with its row's slug. Whether a rule applies is governed by its row in `.trellis/rules.toml` (see the authority note above; the rows are loaded below the rules). Each is a rule to follow, then the ✗ failure it prevents:
 
 - Build only on settled ground — an approved spec or a made decision, never a draft that's still changing under you. If your input isn't settled, or you can't tell whether it is, ask before you build on it. `inv-directional-flow`
     ✗ an agent builds against a spec still being edited; it shifts, and the work is built on a version that no longer exists.
@@ -38,7 +40,30 @@ This list is assembled from the active rows of `.trellis/rules.toml` — each ru
 - Never finalize, ship, or merge something a human is meant to approve without that approval. When you reach such a point, stop and get sign-off. Unsure whether a human must approve? Assume yes. `floor-intent-gate`
     ✗ a fully-automated pipeline ships something *technically* correct that no human confirmed was the *right* thing.
 
-(Generated from your `rules.toml` — edit its rows, then refresh the overlay (`/trellis:setup`, or the manual copy path) to re-assemble these.)
+## Active rows (`.trellis/rules.toml`)
 
-If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating. After editing `.trellis/rules.toml`, refresh the overlay — re-assemble it from the Trellis payload (repo README, Install).
+```toml
+# Rows govern rule activation live (see the authority note in the project instructions).
+
+seeded_from = "author-adapt"  # provenance only — the rows below win if they diverge
+strictness  = "adaptive"  # firm (a·conductor) | adaptive (b·author-adapt)
+
+[rules]  # one row per assessable catalog slug (signature-catalog-v1)
+inv-directional-flow      = { active = true }
+inv-handover-points       = { active = true }
+inv-intent-locus          = { active = true }
+inv-ratifiable-artifacts  = { active = true }
+inv-graph-maintenance     = { active = true }
+inv-self-improvement      = { active = true }
+inv-gate-at-handover      = { active = true }
+inv-independent-judgment  = { active = true }
+inv-auditable-archive     = { active = true }
+inv-bounded-context       = { active = true }
+inv-minimal-first         = { active = true }
+inv-clarify-before-commit = { active = true }
+floor-transparency        = { active = true }  # floor — applies regardless of this row
+floor-intent-gate         = { active = true }  # floor — applies regardless of this row
+```
+
+If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating. Rule activation follows the rows in `.trellis/rules.toml` directly (see the authority note above).
 <!-- trellis:end -->

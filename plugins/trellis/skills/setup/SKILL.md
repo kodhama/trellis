@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Install or refresh Trellis governance on this project — read the config from .trellis/rules.toml (seeding it from a posture question, or migrating a legacy profile-key overlay, when absent), copy the pre-rendered payload from the plugin into .trellis/internal/, assemble the active-rules readout from manifest-covered fragments, patch the managed block in the instructions file, and verify against the shipped checksum manifest. Also hosts the optional M2 morph (a model-driven rewrite of the project's own instructions, on a git branch) when the user explicitly asks for it. Use when the user asks to set up, add, install, refresh, apply, or morph Trellis in their repo.
+description: Install or refresh Trellis governance on this project — read and validate the config in .trellis/rules.toml (seeding it from a posture question, or migrating a legacy profile-key overlay, when absent), copy the pre-rendered payload from the plugin into .trellis/internal/ (including the complete rules readout — rows govern rule activation at read time), patch the managed block in the instructions file, and verify against the shipped checksum manifest. Also hosts the optional M2 morph (a model-driven rewrite of the project's own instructions, on a git branch) when the user explicitly asks for it. Use when the user asks to set up, add, install, refresh, apply, or morph Trellis in their repo.
 ---
 
 # Set up Trellis in this project
@@ -11,15 +11,14 @@ touch anything outside the bundle or the markers** (augment, never clobber).
 
 You are a **mechanical copier** (`kodhama-0007`, "one render, many copiers"). Every byte of bundle
 content was rendered at release time into `${CLAUDE_PLUGIN_ROOT}/reference/` — the payload. Your job
-is exactly four verbs: **copy** payload files into `.trellis/`, **assemble** the active-rules
-readout by concatenating shipped fragments (`cat` of manifest-covered files in a fixed order — a
-deterministic mechanical assembly, not composition: no byte is authored at install time,
-`decision-0051` rule 4), **paste** one payload block between the `trellis:begin`/`trellis:end`
-markers, and **verify** against the shipped checksum manifest. You never compose, re-derive,
-paraphrase, or "fix up" bundle content — a prose re-derivation is a second writer, and second
-writers drift (that is the incident class behind kodhama/trellis#112). There is also **no binary to
-delegate to**: the deterministic thing is the **artifact** (the payload + its manifest), not a
-privileged writer (`kodhama-0007` rule 6), so this skill copies directly.
+is exactly three verbs: **copy** payload files into `.trellis/` (the readout ships complete —
+per-row assembly retired with `decision-0053`; the `rules.toml` rows govern which rules apply at
+read time), **paste** one payload block between the `trellis:begin`/`trellis:end` markers, and
+**verify** against the shipped checksum manifest. You never compose, re-derive, paraphrase, or
+"fix up" bundle content — a prose re-derivation is a second writer, and second writers drift (that
+is the incident class behind kodhama/trellis#112). There is also **no binary to delegate to**: the
+deterministic thing is the **artifact** (the payload + its manifest), not a privileged writer
+(`kodhama-0007` rule 6), so this skill copies directly.
 
 (The one exception to "no model-driven work" is the **M2 morph** at the end of this file — and its
 scope is the project's *own* files, never bundle content.)
@@ -27,14 +26,15 @@ scope is the project's *own* files, never bundle content.)
 ## The overlay's two halves — placement by authority (`decision-0051` rule 1, as amended)
 
 - **`.trellis/` root — consumer-authoritative.** **`rules.toml` alone** (the machine-read config:
-  which rules are active, how strictly). Seeded **once**; a refresh never clobbers it; excluded
-  from manifest verification — the consumer owns it. There is **no** `expression.md`: it is
-  retired from the bundle (`decision-0051` amendment) — a project's governance prose belongs in
-  its **own instructions file**, which every harness already loads; trellis reserves no home for
-  it.
-- **`.trellis/internal/` — trellis-authoritative.** `trellis.md`, `rules.md` (the assembled
-  readout), `invariants.md`, `version`. Copied/assembled verbatim on **every** refresh; hand-edits
-  are overwritten; manifest-verified byte-for-byte.
+  which rules apply, how strictly — its rows govern rule activation **at read time**,
+  `decision-0053`: a row edit takes effect immediately, no refresh needed). Seeded **once**; a
+  refresh never clobbers it; excluded from manifest verification — the consumer owns it. There is
+  **no** `expression.md`: it is retired from the bundle (`decision-0051` amendment) — a project's
+  governance prose belongs in its **own instructions file**, which every harness already loads;
+  trellis reserves no home for it.
+- **`.trellis/internal/` — trellis-authoritative.** `trellis.md`, `rules.md` (the complete
+  readout), `invariants.md`, `version`. Copied verbatim on **every** refresh; hand-edits are
+  overwritten; manifest-verified byte-for-byte.
 
 ## The payload
 
@@ -44,12 +44,11 @@ In `${CLAUDE_PLUGIN_ROOT}/reference/`, where `<p>` is the posture key (`a` or `b
 |---|---|---|
 | `invariants.md` | `.trellis/internal/invariants.md` | full catalog; posture-independent |
 | `trellis-<p>.md` | `.trellis/internal/trellis.md` | the header agents read; the strictness line is the only per-posture difference. It imports its sibling `rules.md` (imports resolve relative to the importing file) |
-| `rules/_header.md` · `rules/<slug>.md` (one per rule) · `rules/_footer.md` | assembled → `.trellis/internal/rules.md` | the fragments: each rule as a directive plus the ✗ failure it prevents. Concatenated in catalog order (step 4) |
-| `rules.md` | `.trellis/internal/rules.md` when **every** row is active | the pre-concatenated all-active assembly — byte-identical to the step-4 concatenation in the default case; also the verify oracle |
-| `rules-<p>.toml` | `.trellis/rules.toml` — **first run only** | the posture seed: explicit rows, all active, `seeded_from` + `strictness` pre-filled. Consumer-owned from the moment it is seeded — editing rows *is* the configuration act; a refresh reads rows and asks nothing |
-| `block-claude.md` | the managed block in `CLAUDE.md` | import style: one import, `@.trellis/internal/trellis.md` |
-| `block-inline-<p>-head.md` · `block-inline-tail.md` | the managed block in a no-`@import` instructions file, sandwiching the assembled readout | inline style: the block is head + `.trellis/internal/rules.md` + tail (step 7), so it honors the rows like the import style does. The tail is posture-independent |
-| `block-inline-<p>.md` | the same block when **every** row is active | the pre-built all-active sandwich — byte-identical to head + `rules.md` + tail |
+| `rules.md` | `.trellis/internal/rules.md` — **every** install | the complete readout: all 14 rules, each ending with its row's slug, opened by the authority header — rules apply only where the `rules.toml` row is `active = true`; the two `floor-` rows apply regardless (`decision-0053`) |
+| `rules-<p>.toml` | `.trellis/rules.toml` — **first run only** | the posture seed: explicit rows, all active, `seeded_from` + `strictness` pre-filled. Consumer-owned from the moment it is seeded — editing rows *is* the configuration act, and row edits take effect immediately; a refresh reads rows, validates them, and asks nothing |
+| `block-claude.md` | the managed block in `CLAUDE.md` | import style: two block-level imports — `@.trellis/internal/trellis.md` and `@.trellis/rules.toml` (the rows load below the rules) |
+| `block-inline-<p>-head.md` · `block-inline-tail.md` | the managed block in a no-`@import` instructions file, sandwiching the readout and the rows | inline style: the block is head + `.trellis/internal/rules.md` + an `## Active rows` section carrying the project's `rules.toml` + tail (step 7) — the rows ride inlined below the rules |
+| `block-inline-<p>.md` | the same block while `rules.toml` still equals the seed | the pre-built seed-state sandwich — byte-identical to the step-7 rebuild in that case |
 | `version` | `.trellis/internal/version` | the payload's render stamp (`payload@…`) — the staleness hook compares the two files (`decision-0043`, path per `decision-0051`) |
 | `checksums` | *(not installed)* | `shasum -a 256` manifest over the other files — the verify oracle (step 8) |
 
@@ -57,17 +56,31 @@ In `${CLAUDE_PLUGIN_ROOT}/reference/`, where `<p>` is the posture key (`a` or `b
 
 `.trellis/rules.toml` is the project's machine-read configuration (`decision-0051` rule 2:
 posture-as-seed, rows-as-truth). Its `strictness` key selects the posture variant of the header;
-its `[rules]` rows select which fragments the readout carries. `seeded_from` is provenance only —
-**the rows win if they diverge**.
+its `[rules]` rows govern which rules apply **at read time** (`decision-0053` — the readout ships
+complete; its authority header defers to these rows). `seeded_from` is provenance only — **the
+rows win if they diverge**. Every refresh **validates** the rows (`decision-0053` point 3 —
+validation survives assembly's retirement):
 
 - **It exists and parses** (`strictness` is `"firm"` or `"adaptive"`, and `[rules]` rows are
   present): use it and ask nothing — this is the refresh / declarative-install path. `strictness
   = "firm"` → `<p>` = `a`; `"adaptive"` → `<p>` = `b`.
-- **It exists but `strictness` is missing/unparseable, a row names a slug the payload has no
-  fragment for, or a fragment's slug has no row**: **ask the user** — the seed writes every row,
-  so any of these means a hand-edit went wrong; offer to fix the file. If no human is available
-  (an autonomous run), **stop and fail loudly**, naming the file and what is wrong. Never assume
-  a default, and never silently drop or invent a row.
+- **It exists but `strictness` is missing/unparseable, a row names a slug the readout has no
+  rule for (unknown slug), or a readout rule's slug has no row (missing row)**: **ask the user**
+  — the seed writes every row, so any of these means a hand-edit went wrong; offer to fix the
+  file. If no human is available (an autonomous run), **stop and fail loudly**, naming the file
+  and what is wrong. Never assume a default, and never silently drop or invent a row.
+- **A floor row (`floor-transparency`, `floor-intent-gate`) is set `active = false`**: the row is
+  **never silently honored** — the floors are not rows a consumer can turn off; the readout's
+  authority header holds them (`decision-0051` rule 3, held per `decision-0053`). Continue the
+  install, but **surface it loudly in step 10**, naming the row as **overridden-by-floor**: the
+  floor rule applies regardless of the row's value.
+- **The file's *comments* carry retired pre-`decision-0053` wording** (a top comment
+  claiming rows apply only after a refresh, or floor rows annotated with the old
+  assembly note): **offer** — never impose (`decision-0049` consent pattern, per the
+  `decision-0053` amendment) — to update the comments to the current seed's live-rows
+  wording, **touching comments only, never a row**. If declined, note it and move on;
+  if no human is available, leave the file untouched and **report the stale comments
+  loudly** — they contradict the authority header this context now carries.
 - **It does not exist, but a legacy `.trellis/expression.md` has a `profile:` frontmatter key**
   (`a` or `b` — an overlay from before `decision-0051`): **migrate.** Seed the config from that
   posture — `cp "${CLAUDE_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml`. The
@@ -102,12 +115,14 @@ protect additions. People have hand-appended content to the generated readout an
 — twice for real (kodhama/trellis#106 → #111; #112 downstream). So, **on a refresh, before
 overwriting**:
 
-- If an existing `.trellis/internal/rules.md` — or a legacy flat `.trellis/profile.md` — has
-  anything after its closing "(Generated from your …" line, or any generated file differs from
-  every payload variant in a way that looks hand-authored rather than merely stale, **stop and
-  show the user the content**. Offer to move it into the project's **own instructions file**,
-  outside the managed block (the amendment's home for a project's governance prose — trellis
-  reserves none), before continuing.
+- If any generated file differs from every payload variant in a way that looks hand-authored
+  rather than merely stale, **stop and show the user the content**. For **legacy** files the old
+  closing-line sentinel still works: a flat `.trellis/profile.md`, or a pre-`decision-0053`
+  `rules.md`, closes with a "(Generated from your …" line — anything after it is hand-authored.
+  (The current readout has no closing sentinel — that footer retired with `decision-0053`; the
+  detector for current-era files is the whole-file comparison against the payload.) Offer to
+  move the content into the project's **own instructions file**, outside the managed block (the
+  amendment's home for a project's governance prose — trellis reserves none), before continuing.
 - Never silently overwrite it. The ownership rule holds at directory granularity now
   (`decision-0051` rule 6): everything under `internal/` is 100% generated; `rules.toml` is 100%
   consumer-owned.
@@ -126,54 +141,23 @@ Copy with `cp`, not by retyping content. Do not reword, reformat, trim, or annot
 files — step 8 checks them byte-for-byte against the manifest, and any "improvement" is a
 verification failure you will have to undo.
 
-## 4. Assemble the readout from the shipped fragments (`decision-0051` rule 4)
+## 4. Copy the complete readout (`decision-0053` — assembly retired)
 
-Read the `[rules]` rows of `.trellis/rules.toml`:
+Every install carries the complete readout, whatever the rows say — a plain copy, the same as
+every other generated file:
 
-- **Floors are floor-held** (`decision-0051` rule 3): `floor-transparency` and `floor-intent-gate`
-  are assembled **regardless of their rows**. If either is set `active = false`, include it
-  anyway and **say so loudly in step 10** — fail-open on the floors, never silent.
-- **Every row active** (the seeded default): the shipped pre-concatenation is byte-identical to
-  the assembly — copy it:
+```sh
+cp "${CLAUDE_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md
+```
 
-  ```sh
-  cp "${CLAUDE_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md
-  ```
-
-- **Any non-floor row inactive**: concatenate — `_header.md`, then the fragment of each **active**
-  row (floors always) in exactly this catalog order, then `_footer.md`. `cat` only; no byte is
-  authored here:
-
-  ```sh
-  ref="${CLAUDE_PLUGIN_ROOT}/reference" && cat \
-    "$ref"/rules/_header.md \
-    "$ref"/rules/inv-directional-flow.md \
-    "$ref"/rules/inv-handover-points.md \
-    "$ref"/rules/inv-intent-locus.md \
-    "$ref"/rules/inv-ratifiable-artifacts.md \
-    "$ref"/rules/inv-graph-maintenance.md \
-    "$ref"/rules/inv-self-improvement.md \
-    "$ref"/rules/inv-gate-at-handover.md \
-    "$ref"/rules/inv-independent-judgment.md \
-    "$ref"/rules/inv-auditable-archive.md \
-    "$ref"/rules/inv-bounded-context.md \
-    "$ref"/rules/inv-minimal-first.md \
-    "$ref"/rules/inv-clarify-before-commit.md \
-    "$ref"/rules/floor-transparency.md \
-    "$ref"/rules/floor-intent-gate.md \
-    "$ref"/rules/_footer.md \
-    > .trellis/internal/rules.md
-  ```
-
-  (Drop the line of each inactive non-floor rule; keep `_header.md` first, `_footer.md` last, and
-  the order of the rest exactly as listed — it is the catalog's document order, and the verify in
-  step 8 re-checks the concatenation. `_footer.md` carries the readout's required closing
-  "(Generated from your `rules.toml` …)" line — the #112 sentinel; a readout without it is a
-  defective assembly.)
-
-An edited row takes effect at the **next refresh** — there is no per-session reader or runtime
-machinery; the managed block's `@import` (or the inline block) carries the assembled readout into
-every session (`decision-0051` rule 4).
+Which rules **apply** is not decided here: the readout opens with an **authority header**
+instructing agents to apply each rule only where its `rules.toml` row is `active = true`; the two
+`floor-` rows apply regardless of their row value. So **row edits take effect immediately** — the
+import channel reads the current `rules.toml` each session, and an inline block re-pastes its
+rows section on refresh (step 7). A refresh updates the payload copies and **validates** the rows
+(step 1); it is not what activates them. (Per-row subset assembly, and the floor-held assembly
+override, retired with `decision-0053` — the floors are now held by the header's floor sentence
+plus the step-1 validation.)
 
 ## 5. Stamp `.trellis/internal/version` — a copy, like everything else
 
@@ -232,20 +216,30 @@ Report the disposition — moved, left in place, or deleted — in step 10.
 
 **Build the block content** for the style you detected:
 
-- **Import style**: the payload's `block-claude.md`, verbatim (it also migrates a legacy block's
-  import paths).
-- **Inline style**: the inline block carries the assembled readout itself, so it honors the
-  `rules.toml` rows the same way the import style does (`decision-0051` rule 4) — rebuild it by
-  concatenating the manifest-covered head part, the readout you assembled in step 4, and the
-  manifest-covered tail part (no byte authored here, same as the step-4 assembly):
+- **Import style**: the payload's `block-claude.md`, verbatim — its two imports carry the header
+  (→ the readout) and the project's `rules.toml` into every session, so row edits govern live
+  with nothing to rebuild (it also migrates a legacy block's import paths and adds the rows
+  import a pre-`decision-0053` block lacks).
+- **Inline style**: the block inlines the rows below the rules (`decision-0053` point 2 — the
+  rows-inlined sandwich): the manifest-covered head part, the readout copied in step 4, an
+  `## Active rows` section carrying **the project's actual `.trellis/rules.toml`**, and the
+  manifest-covered tail part. Re-pasting this on refresh is how an inline install picks up row
+  edits (`decision-0053` point 3 — its general update cadence; the rows themselves govern at
+  read time):
 
-  ```sh
+  ````sh
   ref="${CLAUDE_PLUGIN_ROOT}/reference"
-  cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md "$ref"/block-inline-tail.md
-  ```
+  { cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md
+    printf '\n## Active rows (`.trellis/rules.toml`)\n\n```toml\n'
+    cat .trellis/rules.toml
+    printf '```\n'
+    cat "$ref"/block-inline-tail.md; }
+  ````
 
-  When every row is active this output is byte-identical to the shipped `block-inline-<p>.md`
-  (the pre-built all-active sandwich), so copying that file is equivalent in the default case.
+  (The three `printf` lines are the rows section's fixed wrapper — the exact bytes the shipped
+  seed-state sandwich uses; everything else is a `cat` of payload or consumer files.) While
+  `rules.toml` still equals its seed, this output is byte-identical to the shipped
+  `block-inline-<p>.md`, so copying that file is equivalent in the default case.
 
 **Before editing, save a pre-edit copy** of the target file (to your temp directory — you will need
 it for verification), then paste:
@@ -276,21 +270,14 @@ verification: it is consumer-owned from the moment it is seeded — the payload'
 seeds are manifest-covered like any payload file, but the installed copy is the project's to
 change, `decision-0051` rule 1.)
 
-**(b) Every shipped fragment matches the manifest, and the assembled readout is exactly their
-ordered concatenation** (`decision-0051` rule 4):
-
-```sh
-(cd "${CLAUDE_PLUGIN_ROOT}/reference" && grep '  rules/' checksums | shasum -a 256 -c -)
-```
-
-Every fragment line must print `OK`. Then, if every row was active (step 4's copy path):
+**(b) The installed readout is byte-identical to the shipped complete readout** (`decision-0053`
+— the readout is a static payload file on every install, so the oracle is a plain byte-compare):
 
 ```sh
 diff .trellis/internal/rules.md "${CLAUDE_PLUGIN_ROOT}/reference/rules.md"
 ```
 
-Otherwise re-run step 4's `cat` with the *same* included fragments, piped into
-`diff - .trellis/internal/rules.md` instead of the redirect. Empty output = pass.
+Empty output = pass.
 
 **(c) Exactly one begin and one end marker** in the target:
 
@@ -300,10 +287,10 @@ grep -c 'trellis:end' <target>     # must print 1
 ```
 
 **(d) The block is byte-identical to its oracle** — the payload file (import style), or the
-head + assembled-readout + tail concatenation (inline style, the step-7 build re-derived so the
-paste is checked against the row-honoring assembly, not a fixed all-active file):
+step-7 sandwich re-derived (inline style, so the paste is checked against the rows actually in
+`.trellis/rules.toml`, not a fixed seed-state file):
 
-```sh
+````sh
 # import style:
 sed -n '/<!-- trellis:begin/,/<!-- trellis:end -->/p' <target> \
   | diff - <(cat "${CLAUDE_PLUGIN_ROOT}/reference/block-claude.md"; echo)
@@ -311,11 +298,15 @@ sed -n '/<!-- trellis:begin/,/<!-- trellis:end -->/p' <target> \
 # inline style:
 ref="${CLAUDE_PLUGIN_ROOT}/reference"
 sed -n '/<!-- trellis:begin/,/<!-- trellis:end -->/p' <target> \
-  | diff - <(cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md "$ref"/block-inline-tail.md; echo)
-```
+  | diff - <({ cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md
+               printf '\n## Active rows (`.trellis/rules.toml`)\n\n```toml\n'
+               cat .trellis/rules.toml
+               printf '```\n'
+               cat "$ref"/block-inline-tail.md; }; echo)
+````
 
 Empty output = pass. (The `echo` supplies the trailing newline the block's last line gains inside
-the target file; the payload block parts end without one. The inline oracle's middle piece,
+the target file; the payload block parts end without one. The inline oracle's readout piece,
 `.trellis/internal/rules.md`, was itself verified in check (b).)
 
 **(e) Nothing outside the markers changed:**
@@ -329,8 +320,8 @@ On a refresh this must be empty; on a fresh append the only difference is the on
 blank line (and if you created the file, the pre-edit copy is empty and the post-edit remainder is
 empty too).
 
-**On any failure:** fix it mechanically — redo the copy (step 3), the assembly (step 4), or the
-paste (step 7) for the failing file — and re-run the checks. If it still fails, **report loudly**:
+**On any failure:** fix it mechanically — redo the copy (steps 3–4) or the paste (step 7) for
+the failing file — and re-run the checks. If it still fails, **report loudly**:
 name the exact check that failed and what differed, leave the working tree as evidence, and stop.
 Never report success on a failed or skipped check, and never hand-adjust file content to make a
 checksum pass — a loud failure beats a plausible-looking install.
@@ -367,10 +358,18 @@ Tell the user:
 
 - **Where the config came from**: read from `.trellis/rules.toml`'s rows, migrated from a legacy
   `profile:` frontmatter key, or asked and seeded.
-- **Floor-held overrides, loudly** (`decision-0051` rule 3): if `floor-transparency` or
-  `floor-intent-gate` was set `active = false`, state plainly that it was **included anyway** —
-  the floors are not rows a consumer can turn off; the row was ignored, not honored.
-- **Which rules the readout carries**, naming any excluded by inactive rows.
+- **Row semantics — live** (`decision-0053`): row edits take effect **immediately** — the import
+  channel reads the current `rules.toml` each session, and an inline block picks edits up when
+  its rows section is re-pasted on refresh; this refresh **validated** the rows and updated the
+  payload copies.
+- **Floor overrides, loudly** (`decision-0051` rule 3, held per `decision-0053`): if
+  `floor-transparency` or `floor-intent-gate` was set `active = false`, name the row as
+  **overridden-by-floor** — the floors are not rows a consumer can turn off; the floor rule
+  applies regardless (the readout's authority header says so), and the row was **never silently
+  honored**.
+- **Which rows are inactive**: the readout carries all 14 rules on every install; name each row
+  set `active = false` — those rules do not apply at read time (and for a floor row, that it is
+  overridden as above).
 - **Exactly what was written**: `.trellis/internal/{invariants,trellis,rules}.md`, the
   `.trellis/internal/version` stamp, `rules.toml` seeded or left untouched.
 - **Any flat-layout files deleted** by the step-6 migration, and **the disposition of a leftover

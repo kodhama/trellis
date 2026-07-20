@@ -60,26 +60,32 @@ func governanceHeader(p Profile) string {
 // lives under .trellis/internal/ since decision-0051 (the authority split).
 const invariantsTrigger = "If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating."
 
-// The two non-rule fragments of the assembled readout (decision-0051 rule 4): the
-// heading above the rules and the closing provenance line below them. They ship as
-// payload files (rules/_header.md, rules/_footer.md) so the installed readout is a
-// pure concatenation of manifest-covered fragments — no byte is authored at install
-// time. The footer's "(Generated from your …" prefix is the generated-content
-// sentinel the setup skill's overwrite guard keys on (SKILL.md, the #112 backstop)
-// — keep the prefix stable.
+// The readout's top matter (decision-0053 point 2): the authority header — the
+// eval-tested AUTHORITY_HEADER of research-0012, verbatim except one word adapted
+// for the channel split ("inlined" → "loaded": the inline block inlines the rows
+// below the rules; the import block loads them below the rules via the managed
+// block's @.trellis/rules.toml import) — then the heading, then the live-rows
+// preamble (research-0012's header_arm_readout transform, same one-word
+// adaptation). The tested wording is the shipped wording (decision-0053 context;
+// trellis#170 watch-out). The absence-era assembly preamble and the "(Generated
+// from your `rules.toml` …)" footer retired with decision-0053 points 4+5 — no
+// shipped text claims refresh-time semantics for rows, and nothing closes the
+// readout below its last rule.
 const (
-	rulesHeaderFragment = "## The rules — do these\n\nThis list is assembled from the active rows of `.trellis/rules.toml` — each rule ends with its row's slug; edit the rows, then refresh the overlay, to change the set. Each is a rule to follow, then the ✗ failure it prevents:\n\n"
-	rulesFooterFragment = "\n(Generated from your `rules.toml` — edit its rows, then refresh the overlay (`/trellis:setup`, or the manual copy path) to re-assemble these.)\n"
+	rulesAuthorityHeader = "**Rule activation is governed by `.trellis/rules.toml` (its rows are loaded below the rules):** apply each rule below ONLY if its row says `active = true`. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rows apply regardless of their row value.\n"
+	rulesReadoutHeader   = rulesAuthorityHeader +
+		"\n## The rules — do these\n\n" +
+		"Each rule below ends with its row's slug. Whether a rule applies is governed by its row in `.trellis/rules.toml` (see the authority note above; the rows are loaded below the rules). Each is a rule to follow, then the ✗ failure it prevents:\n\n"
 )
 
-// The inline managed block, split so the inline channel honors rules.toml rows the
-// same mechanical way the import channel does (decision-0051 rule 4's letter: "the
-// managed block's @import (or the inline block) carries the assembled readout … so
-// an edited row takes effect at the next refresh"). On refresh, setup rebuilds the
-// block as head + the assembled .trellis/internal/rules.md + tail — pure
-// concatenation of manifest-covered parts, no authored bytes. The head carries the
-// posture's strictness line; the tail is posture-independent, so one tail file
-// ships.
+// The inline managed block: the rows-inlined sandwich (decision-0053 point 2,
+// inline channel) — head + the complete readout + the rows section + tail, exactly
+// the experiment's annotation/control-arm shape (research-0012 run.sh's overlay
+// build), now the shipped shape. The shipped block-inline-<p>.md is the seed-state
+// instance; on refresh an inline install rebuilds the rows section from the
+// consumer's actual rules.toml (its general update cadence — row edits themselves
+// take effect at read time). The head carries the posture's strictness line; the
+// tail is posture-independent, so one tail file ships.
 
 // renderInlineBlockHead is everything above the readout: the begin marker and the
 // governance header (the one per-posture part).
@@ -87,30 +93,43 @@ func renderInlineBlockHead(p Profile) string {
 	return trellisBegin + "\n" + governanceHeader(p) + "\n"
 }
 
-// renderInlineBlockTail is everything below the readout: the invariants trigger,
-// the row-edit refresh note, and the end marker.
+// renderInlineBlockTail is everything below the rows section: the invariants
+// trigger with the live-rows closing sentence (research-0012's header_arm_tail
+// wording — the last thing the model reads must not claim refresh-time row
+// semantics, decision-0053 point 4), and the end marker.
 func renderInlineBlockTail() string {
-	return "\n" + invariantsTrigger + " After editing `.trellis/rules.toml`, refresh the overlay — re-assemble it from the Trellis payload (repo README, Install).\n" +
+	return "\n" + invariantsTrigger + " Rule activation follows the rows in `.trellis/rules.toml` directly (see the authority note above).\n" +
 		trellisEnd
 }
 
+// renderRowsSection wraps a rules.toml's content as the inline block's rows section
+// — byte-for-byte the wrapper the experiment tested (research-0012 run.sh's
+// sandwich printf). The argument is whichever rules.toml governs the install: the
+// posture seed at render time, the consumer's actual file on a refresh re-paste.
+func renderRowsSection(toml string) string {
+	return "\n## Active rows (`.trellis/rules.toml`)\n\n```toml\n" + toml + "```\n"
+}
+
 // renderInlineBlock is the M1 footprint for instruction files WITHOUT @import support
-// (e.g. AGENTS.md): the whole thing is inlined and self-contained — the all-active
-// instance of the head + readout + tail sandwich. The reasoning + examples still
-// live in .trellis/internal/invariants.md, but the block stands on its own.
+// (e.g. AGENTS.md): the whole thing is inlined and self-contained — the seed-state
+// instance of the head + readout + rows + tail sandwich (decision-0053 point 2).
+// The reasoning + examples still live in .trellis/internal/invariants.md, but the
+// block stands on its own.
 func renderInlineBlock(p Profile) string {
-	return renderInlineBlockHead(p) + renderRulesReadout() + renderInlineBlockTail()
+	return renderInlineBlockHead(p) + renderRulesReadout() + renderRowsSection(renderRulesToml(p)) + renderInlineBlockTail()
 }
 
 // renderClaudeBlock is the minimal CLAUDE.md footprint: a human-readable line plus
-// one native @import of the generated header. expression.md is retired from the
-// bundle (decision-0051 amendment, 2026-07-19): a project's governance prose
-// belongs in its own instructions file — which every harness already loads — so
-// trellis reserves no home for it and the block imports nothing but the header.
+// two native block-level @imports — the generated header and the consumer's
+// rules.toml (decision-0053 point 2: the empirically tested shape; the rows load
+// below the rules, so row edits govern each session at read time with no
+// nested-import dependency). expression.md stays retired (decision-0051 amendment):
+// a project's governance prose belongs in its own instructions file.
 func renderClaudeBlock() string {
 	return trellisBegin + "\n" +
 		"This project follows **Trellis** — working rules you are expected to follow while you work here. They are imported below:\n" +
 		"@.trellis/internal/trellis.md\n" +
+		"@.trellis/rules.toml\n" +
 		trellisEnd
 }
 
@@ -139,16 +158,18 @@ func catalogSlugOrder() []string {
 	return order
 }
 
-// ruleFragment renders one rule's payload fragment (decision-0051 rule 4): the
-// imperative directive plus its primary ✗ failure for grounding (decision-0031) —
-// exactly the bytes the assembled readout carries for that rule,
-// newline-terminated so concatenation is seamless. The directive line ends with
-// the rule's catalog slug in backticks (rows-as-truth legibility, maintainer
-// addendum to decision-0051): the slug is what lets a reader match a rules.md
-// bullet ↔ its rules.toml row ↔ its invariants.md entry — otherwise it exists only
-// in the payload filename, which an installed overlay never shows. This narrows
-// decision-0034's no-internal-codes rule deliberately: a slug that resolves in two
-// consumer-visible files is a cross-reference, not an unresolvable internal code.
+// ruleFragment renders one rule's readout entry: the imperative directive plus its
+// primary ✗ failure for grounding (decision-0031) — exactly the bytes the complete
+// readout carries for that rule, newline-terminated so concatenation is seamless.
+// (The per-rule fragment FILES left the shipped payload with decision-0053 — no
+// consumer remained once assembly retired — but this render source survives: the
+// readout is still built rule by rule from the catalog.) The directive line ends
+// with the rule's catalog slug in backticks (rows-as-truth legibility, maintainer
+// addendum to decision-0051, load-bearing under live rows: the slug is how a reader
+// matches a rules.md bullet ↔ its rules.toml row ↔ its invariants.md entry). This
+// narrows decision-0034's no-internal-codes rule deliberately: a slug that resolves
+// in two consumer-visible files is a cross-reference, not an unresolvable internal
+// code.
 func ruleFragment(slug string) string {
 	d := invariantDirectives()[slug]
 	if d == "" {
@@ -161,40 +182,29 @@ func ruleFragment(slug string) string {
 	return s
 }
 
-// ruleFragments renders the full fragment set for the payload's rules/ directory:
-// one file per assessable catalog slug, plus the non-rule header/footer fragments.
-func ruleFragments() map[string]string {
-	files := map[string]string{
-		"rules/_header.md": rulesHeaderFragment,
-		"rules/_footer.md": rulesFooterFragment,
-	}
-	for _, slug := range catalogSlugOrder() {
-		files["rules/"+slug+".md"] = ruleFragment(slug)
-	}
-	return files
-}
-
-// renderRulesReadout is the assembled all-active readout (installed at
-// .trellis/internal/rules.md when every row in rules.toml is active — the seeded
-// default): byte-for-byte the ordered concatenation of _header + every rule
-// fragment in catalog order + _footer, which is also the shape setup's own
-// assembly must reproduce (decision-0051 rule 4's verify contract).
+// renderRulesReadout is the complete readout (installed at
+// .trellis/internal/rules.md on every install — decision-0053 point 1: the one
+// readout every install carries; per-row subset assembly retired): the authority
+// header + heading + live-rows preamble, then every rule in catalog order, nothing
+// below the last rule. Which rules APPLY is decided at read time by the
+// rules.toml rows the authority header points at.
 func renderRulesReadout() string {
 	var b strings.Builder
-	b.WriteString(rulesHeaderFragment)
+	b.WriteString(rulesReadoutHeader)
 	for _, slug := range catalogSlugOrder() {
 		b.WriteString(ruleFragment(slug))
 	}
-	b.WriteString(rulesFooterFragment)
 	return b.String()
 }
 
 // renderRulesToml renders a posture's rules.toml seed (decision-0051 rule 2:
 // posture-as-seed, rows-as-truth): explicit rows, one per assessable catalog slug,
 // all active; seeded_from is provenance only; strictness is the one instance-level
-// key (rule 7 — no per-row dials until something enforces them). The floor rows are
-// marked floor-held (rule 3): a consumer cannot turn them off — assembly includes
-// them regardless and says so loudly.
+// key (rule 7 — no per-row dials until something enforces them). The comments are
+// the live-rows wording research-0012's header_arm_toml tested (decision-0053
+// point 4): rows govern at read time, and the floor rows apply regardless of their
+// value (decision-0051 rule 3, now held by the readout's authority header plus
+// setup's loud validation rather than by assembly).
 func renderRulesToml(p Profile) string {
 	strictness := "adaptive"
 	if p.C1Lean == "enforced" {
@@ -208,17 +218,14 @@ func renderRulesToml(p Profile) string {
 		}
 	}
 	var b strings.Builder
-	b.WriteString("# The rows below select which rules are assembled into .trellis/internal/rules.md\n")
-	b.WriteString("# (each rule there ends with its row's slug). Edit, then run /trellis:setup (or\n")
-	b.WriteString("# the manual re-assembly path in the repo README) to apply — an edit here has\n")
-	b.WriteString("# no effect until that refresh re-assembles the readout.\n\n")
+	b.WriteString("# Rows govern rule activation live (see the authority note in the project instructions).\n\n")
 	fmt.Fprintf(&b, "seeded_from = %q  # provenance only — the rows below win if they diverge\n", p.Short)
 	fmt.Fprintf(&b, "strictness  = %q  # firm (a·conductor) | adaptive (b·author-adapt)\n", strictness)
 	b.WriteString("\n[rules]  # one row per assessable catalog slug (signature-catalog-v1)\n")
 	for _, slug := range slugs {
 		fmt.Fprintf(&b, "%-*s = { active = true }", width, slug)
 		if strings.HasPrefix(slug, "floor-") {
-			b.WriteString("  # floor-held — assembly includes it even if set false, and says so loudly")
+			b.WriteString("  # floor — applies regardless of this row")
 		}
 		b.WriteString("\n")
 	}

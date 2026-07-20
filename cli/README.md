@@ -2,10 +2,10 @@
 
 The `trellis` command is **release tooling, not an end-user installer**: `trellis payload`
 renders the complete pre-built M1 bundle — every posture variant of the header and managed
-blocks, the per-rule fragments and their assembled readout, the `rules.toml` posture seeds
-(`decision-0051`, as amended), a content-derived version stamp, and a `shasum`-compatible
-checksum manifest — into the vendored payload home, `plugins/trellis/reference/` (`kodhama-0007`
-rule 1: render once, at release; `#117`).
+blocks, the complete rules readout (rows govern at read time, `decision-0053`), the `rules.toml`
+posture seeds (`decision-0051`, as amended), a content-derived version stamp, and a
+`shasum`-compatible checksum manifest — into the vendored payload home,
+`plugins/trellis/reference/` (`kodhama-0007` rule 1: render once, at release; `#117`).
 
 **Generator-only, by decision.** `kodhama-0007` rule 5 retired the end-user binary channel
 (Homebrew/curl) and left the Go code's fate open; `decision-0043` (#120) resolved it: the code

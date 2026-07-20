@@ -21,26 +21,25 @@ import (
 	"strings"
 )
 
-// payloadFiles renders the complete pre-rendered M1 payload (decision-0051 shape,
-// as amended 2026-07-19: no expression seed — the consumer root is rules.toml
-// alone): the verbatim catalog, the per-rule fragments plus their header/footer
-// (rules/<slug>.md — the assembly source setup concatenates in catalog order), the
-// assembled all-active readout (rules.md — the common case's copy source and the
-// concatenation oracle), both posture variants of the header / inline block /
-// rules.toml seed, the constant CLAUDE.md block, a content-derived version stamp,
-// and the checksums manifest. The rules.toml seeds are manifest-covered like any
-// payload file; only the *installed* consumer-root copy (.trellis/rules.toml) sits
-// outside verification, because the consumer owns it from the moment it is seeded
-// (decision-0051 rule 1).
+// payloadFiles renders the complete pre-rendered M1 payload (decision-0051 shape
+// as amended — no expression seed; the consumer root is rules.toml alone — reshaped
+// by decision-0053: live rows): the verbatim catalog, the complete readout
+// (rules.md — every install's copy source; its authority header defers rule
+// activation to the rules.toml rows at read time), both posture variants of the
+// header / inline rows-sandwich block / rules.toml seed, the constant CLAUDE.md
+// block (two imports: the header and the rows), a content-derived version stamp,
+// and the checksums manifest. The per-rule fragment files retired with assembly
+// (decision-0053 point 1 — no consumer remained; the executor's consumer sweep is
+// recorded on the decision's build). The rules.toml seeds are manifest-covered like
+// any payload file; only the *installed* consumer-root copy (.trellis/rules.toml)
+// sits outside verification, because the consumer owns it from the moment it is
+// seeded (decision-0051 rule 1).
 func payloadFiles() map[string]string {
 	files := map[string]string{
 		"invariants.md":        invariantsRef, // the catalog, verbatim (decision-0028 single source)
 		"block-claude.md":      renderClaudeBlock(),
 		"rules.md":             renderRulesReadout(),
 		"block-inline-tail.md": renderInlineBlockTail(), // posture-independent — one tail, not two
-	}
-	for name, content := range ruleFragments() {
-		files[name] = content
 	}
 	for _, p := range allProfiles {
 		files["trellis-"+p.Key+".md"] = renderHeader(p)

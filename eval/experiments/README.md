@@ -47,4 +47,4 @@ alone, so one experiment's loop can never schedule another's task by constructio
 | directory | question | research note | status |
 |---|---|---|---|
 | `does-trellis-help/` | does installing the Trellis overlay measurably improve invariant-following, per framework? | `research-0011` | task suite ready; full run pending (fix the worker-prompt leak first — see its card) |
-| `annotation-vs-absence/` | can a `rules.toml` row deactivate a rule the model has *read*, or is assembling it out the only reliable off? | `research-0012` | designed + adversary-approved; awaiting the human-launched run |
+| `annotation-vs-absence/` | can a `rules.toml` row deactivate a rule the model has *read*, or is assembling it out the only reliable off? | `research-0012` | **ran 2026-07-19 (batch 1, REPEATS=20): verdict AMEND** — zero leak, +95pt row effect; results in research-0012's appendix + `runs/`; implemented by decision-0053 (live rows) |

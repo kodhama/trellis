@@ -136,3 +136,20 @@ Supersede-in-part via a new record with a forward pointer, never an edit to the 
 `inv-directional-flow`). Left at `draft`: the author does not grade its own decision —
 the gate and the `approved` flip are the maintainer's intent act (`decision-0046`),
 ideally after an independent pass.
+
+---
+
+> **Amendment (2026-07-20, append-only — added in the introducing PR pre-merge, the
+> same instrument as `decision-0051`'s expression amendment; ratified in-conversation,
+> the maintainer's merge seals it).** The conformance gate on this decision's build
+> surfaced a propagation this record missed: a pre-0053 install's `rules.toml` carries
+> seed *comments* claiming refresh-time row semantics, and under point 2's import
+> channel those comments now ride into the very context that carries the authority
+> header — the exact contradiction point 4 retires from shipped text, made permanent
+> because the file is consumer-owned and never refreshed. **Setup's refresh therefore
+> offers — never imposes (`decision-0049` consent pattern) — to update a legacy
+> `rules.toml`'s retired refresh-semantics comments to the current seed wording,
+> touching comments only, never a row.** Declined → noted and moved on; autonomous →
+> file left untouched, the stale comments reported loudly. The seed-once/never-clobber
+> ownership rule is unchanged: this is a consented comment repair, the same class as
+> `decision-0049`'s ignore-file offer.

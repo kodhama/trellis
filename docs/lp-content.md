@@ -131,12 +131,12 @@ Four-step flow (`01` – `04`):
 pattern — this is a file-tree illustration, not a shell session):
 
 ```
-CLAUDE.md          # + a small managed block importing the header
+CLAUDE.md          # + a small managed block importing the header + your rules.toml
 .trellis/
   rules.toml       # which rules are active, how strictly — yours to edit
   internal/        # generated, refreshed verbatim:
     trellis.md     #   the header your agents read
-    rules.md       #   the active rules, assembled from your rules.toml — always loaded
+    rules.md       #   the rules readout — always loaded; your rules.toml rows say which apply
     invariants.md  #   the full why + examples — on demand
 ```
 

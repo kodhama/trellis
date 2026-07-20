@@ -1,7 +1,4 @@
-# The rows below select which rules are assembled into .trellis/internal/rules.md
-# (each rule there ends with its row's slug). Edit, then run /trellis:setup (or
-# the manual re-assembly path in the repo README) to apply — an edit here has
-# no effect until that refresh re-assembles the readout.
+# Rows govern rule activation live (see the authority note in the project instructions).
 
 seeded_from = "author-adapt"  # provenance only — the rows below win if they diverge
 strictness  = "adaptive"  # firm (a·conductor) | adaptive (b·author-adapt)
@@ -19,5 +16,5 @@ inv-auditable-archive     = { active = true }
 inv-bounded-context       = { active = true }
 inv-minimal-first         = { active = true }
 inv-clarify-before-commit = { active = true }
-floor-transparency        = { active = true }  # floor-held — assembly includes it even if set false, and says so loudly
-floor-intent-gate         = { active = true }  # floor-held — assembly includes it even if set false, and says so loudly
+floor-transparency        = { active = true }  # floor — applies regardless of this row
+floor-intent-gate         = { active = true }  # floor — applies regardless of this row
