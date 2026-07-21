@@ -23,19 +23,83 @@ import (
 //go:embed assets/invariants.md
 var invariantsRef string
 
-// frontmatterRe matches a leading YAML frontmatter block (---\n...\n---\n) plus
-// one immediately-following blank line, if present.
-var frontmatterRe = regexp.MustCompile(`(?s)\A---\n.*?\n---\n\n?`)
+// entriesHeadingRe and acceptanceHeadingRe match the catalog's own two boundary
+// headings, at the start of a line.
+var (
+	entriesHeadingRe    = regexp.MustCompile(`(?m)^## Entries\n`)
+	acceptanceHeadingRe = regexp.MustCompile(`(?m)^## Acceptance criteria\n`)
+)
 
-// stripFrontmatter removes a leading YAML frontmatter block — and the single
-// blank line immediately after it, if any — from s. A string with no leading
-// frontmatter passes through unchanged (decision-0054 point 1): the payload's
-// invariants.md entry writes invariantsRef through this at the write site
-// only; invariantsRef itself, and every other reader of it (catalogSlugOrder,
-// invariantDirectives, invariantPrimaryFailure, invariantRules — all parsing
-// catalog-entry fields, not frontmatter), stays untouched.
-func stripFrontmatter(s string) string {
-	return frontmatterRe.ReplaceAllString(s, "")
+// extractEntriesSection returns the text strictly between the "## Entries"
+// heading (inclusive) and the "## Acceptance criteria" heading (exclusive) —
+// decision-0055 point 1. The payload's invariants.md entry writes invariantsRef
+// through this at the write site only; invariantsRef itself, and every other
+// reader of it (catalogSlugOrder, invariantDirectives, invariantPrimaryFailure,
+// invariantRules — all parsing catalog-entry fields, not the surrounding
+// governance prose), stays untouched.
+//
+// This REPLACES decision-0054's narrower stripFrontmatter at the payload-write
+// site rather than composing with it: starting the slice at "## Entries" itself
+// already excludes everything before it — frontmatter *and* the catalog's own
+// preamble (the ratification blockquote, "What this is," "Coverage," "On
+// mechanizable," "Derived resources") — in one cut. stripFrontmatter had no
+// remaining call site once this write site was repointed (its only production
+// use, and no dedicated unit test existed for it in isolation — verified before
+// removal), so it and its frontmatterRe regex are retired in this same change,
+// not left as dead code (decision-0055's Context names the transform as
+// "subsuming the narrower frontmatter-only cut rather than stacking a second
+// regex on top of it"; `inv-minimal-first`).
+//
+// Either boundary going missing — the catalog's own shape changed underneath
+// this function ("## Entries" not found at all, or found but "## Acceptance
+// criteria" not matched exactly after it: renamed, re-cased, reformatted) —
+// panics rather than returning a best-effort partial or full string. A silent
+// fallback on the second boundary would leak the catalog's own tail (Open
+// questions etc.) straight into the payload, undetected, the first time the
+// payload is regenerated after such a drift (a prior version of this function
+// did exactly that — caught by code-reviewer via a synthetic probe, never by
+// TestBundledCatalogInSync, whose "want" is derived from a second call to this
+// same function and so degrades identically alongside it).
+//
+// Panicking here is a checked trade-off, not a default, and the trade-off is
+// narrower than it may look: payload() (payload.go) DOES return error, reaching
+// main()'s established `fmt.Fprintln(os.Stderr, "trellis: "+err.Error());
+// os.Exit(1)` idiom — an error-return path already exists one frame up, and
+// reusing it (threading (string, error) through extractEntriesSection and
+// payloadFiles()) was the first option considered here, not panic. It wasn't
+// taken because extractEntriesSection and payloadFiles() are called directly
+// from ~18 other sites across payload_test.go, sync_test.go,
+// plugin_hook_test.go, and selfapply_test.go — effectively this package's whole
+// render-pipeline test surface — every one of which assumes today's plain
+// (string) / (map[string]string) return; widening the signature would force
+// every one of those call sites to add error handling for a condition that is,
+// in this codebase, a catalog-authoring-time invariant (the embedded
+// core/catalog/signature-catalog-v1.md's own shape drifting from what this
+// parser assumes), not genuine end-user runtime input with no error path
+// available — the same class regexp.MustCompile above exists to guard, even
+// though the parallel is not exact: MustCompile fires at package-init time,
+// before any error path could exist, where this fires per render call, with
+// payload()'s error path already reachable one frame up (a real difference, not
+// hand-waved away). What the two share is the failure class, not the timing:
+// both signal "this codebase's own inputs are broken," never "a user gave bad
+// input," so a loud crash beats a plausible-but-wrong result either way — and in
+// practice `go test` already makes that crash loud (an unrecovered panic aborts
+// the run with the panicking test and message printed) well before this would
+// ever reach the payload() command path for real. If payloadFiles() is ever
+// restructured to return error more broadly, extractEntriesSection should
+// thread through it then, not be carved out alone at the cost of an 18-site,
+// four-file ripple outside this fix's scope.
+func extractEntriesSection(s string) string {
+	loc := entriesHeadingRe.FindStringIndex(s)
+	if loc == nil {
+		panic(`extractEntriesSection: "## Entries" heading not found — the catalog's shape changed underneath the extraction boundary (decision-0055 point 1)`)
+	}
+	rest := s[loc[0]:]
+	end := acceptanceHeadingRe.FindStringIndex(rest)
+	if end == nil {
+		panic(`extractEntriesSection: "## Acceptance criteria" heading not found after "## Entries" — the catalog's shape changed underneath the extraction boundary (decision-0055 point 1)`)
+	}
+	return rest[:end[0]]
 }
 
 // The M1 overlay writes into CLAUDE.md between these markers only. Everything
