@@ -1,7 +1,7 @@
 ---
 id: decision-0055
 type: decision
-status: draft
+status: approved  # maintainer's intent act 2026-07-21, in-conversation ("approved. implement it in the same PR.") — this flip records it (decision-0046); pre-gate: corpus-reviewer FAIL->fix->PASS (dangling depends_on resolved by merging decision-0054's build, #173; a quote precision fix)
 depends_on: [decision-0054, decision-0028]
 informed_by: [decision-0043]
 owner: agent
