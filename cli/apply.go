@@ -23,6 +23,21 @@ import (
 //go:embed assets/invariants.md
 var invariantsRef string
 
+// frontmatterRe matches a leading YAML frontmatter block (---\n...\n---\n) plus
+// one immediately-following blank line, if present.
+var frontmatterRe = regexp.MustCompile(`(?s)\A---\n.*?\n---\n\n?`)
+
+// stripFrontmatter removes a leading YAML frontmatter block — and the single
+// blank line immediately after it, if any — from s. A string with no leading
+// frontmatter passes through unchanged (decision-0054 point 1): the payload's
+// invariants.md entry writes invariantsRef through this at the write site
+// only; invariantsRef itself, and every other reader of it (catalogSlugOrder,
+// invariantDirectives, invariantPrimaryFailure, invariantRules — all parsing
+// catalog-entry fields, not frontmatter), stays untouched.
+func stripFrontmatter(s string) string {
+	return frontmatterRe.ReplaceAllString(s, "")
+}
+
 // The M1 overlay writes into CLAUDE.md between these markers only. Everything
 // outside them is the host's and is never touched (augment-never-clobber); a
 // re-run replaces what is between them (idempotent). The markers are rendered

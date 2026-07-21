@@ -23,7 +23,10 @@ import (
 
 // payloadFiles renders the complete pre-rendered M1 payload (decision-0051 shape
 // as amended — no expression seed; the consumer root is rules.toml alone — reshaped
-// by decision-0053: live rows): the verbatim catalog, the complete readout
+// by decision-0053: live rows): the catalog with its leading frontmatter block
+// stripped (decision-0054 — the payload has no consumer-facing use for trellis's
+// own artifact-contract metadata; the source at core/catalog/ keeps it,
+// unconditionally), the complete readout
 // (rules.md — every install's copy source; its authority header defers rule
 // activation to the rules.toml rows at read time), both posture variants of the
 // header / inline rows-sandwich block / rules.toml seed, the constant CLAUDE.md
@@ -36,7 +39,7 @@ import (
 // seeded (decision-0051 rule 1).
 func payloadFiles() map[string]string {
 	files := map[string]string{
-		"invariants.md":        invariantsRef, // the catalog, verbatim (decision-0028 single source)
+		"invariants.md":        stripFrontmatter(invariantsRef), // the catalog, frontmatter stripped at the write site only (decision-0054); invariantsRef itself stays untouched for every other reader below
 		"block-claude.md":      renderClaudeBlock(),
 		"rules.md":             renderRulesReadout(),
 		"block-inline-tail.md": renderInlineBlockTail(), // posture-independent — one tail, not two

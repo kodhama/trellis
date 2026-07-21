@@ -1,13 +1,3 @@
----
-id: signature-catalog-v1
-type: signature-catalog
-status: ratified
-depends_on: [invariants-v1, spec-0002]
-owner: gundi
-scope: trellis-product
-ratified: 2026-07-04
----
-
 > **Ratified via merge (`decision-0022`).** The agent authored this; the maintainer's **merge of this
 > PR is the ratification** (`floor-intent-gate`) — the `draft → ratified` flip rides the reviewed diff. Coverage is
 > independently checked (AC1); the `signature` / `why` / example / dial calls embody judgment the

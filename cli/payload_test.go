@@ -114,15 +114,20 @@ func TestPayloadFileSet(t *testing.T) {
 }
 
 // TestPayloadVariantsAreTheRenderedPostures: each payload file is the single render
-// path's output for its posture — the catalog verbatim, the posture-a/b strictness
-// split in the always-on templates, the constant CLAUDE.md block (#117's verified
+// path's output for its posture — the catalog with its leading frontmatter block
+// stripped (decision-0054 point 1: invariantsRef itself is untouched; only the
+// payload-write site strips it), the posture-a/b strictness split in the
+// always-on templates, the constant CLAUDE.md block (#117's verified
 // variant-space evidence; the readout itself is posture-independent, decision-0051
 // open question "fragment granularity vs. posture").
 func TestPayloadVariantsAreTheRenderedPostures(t *testing.T) {
 	files := payloadFiles()
 
-	if files["invariants.md"] != invariantsRef {
-		t.Error("payload invariants.md must be the bundled catalog, verbatim")
+	if files["invariants.md"] != stripFrontmatter(invariantsRef) {
+		t.Error("payload invariants.md must be the bundled catalog with its leading frontmatter stripped (decision-0054)")
+	}
+	if files["invariants.md"] == invariantsRef {
+		t.Error("payload invariants.md must not be the bundled catalog verbatim — frontmatter should be stripped (decision-0054)")
 	}
 	if files["block-claude.md"] != renderClaudeBlock() {
 		t.Error("payload block-claude.md must be the constant CLAUDE.md block")

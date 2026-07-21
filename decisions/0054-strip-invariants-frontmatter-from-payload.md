@@ -113,7 +113,8 @@ that consumer's own config to set — not built or asserted here.
 ## Consequences
 
 - **Derived chain regenerates in the same change** (`decision-0028`):
-  `cli/payload.go`'s new strip function; `plugins/trellis/reference/invariants.md`
+  the new strip function (`cli/apply.go`, called from `cli/payload.go`'s
+  write site); `plugins/trellis/reference/invariants.md`
   (frontmatter gone); `checksums`; `version` stamp; `install.sh` manifest;
   this repo's own `.trellis/internal/invariants.md` (self-application,
   `decision-0035`). `docs/invariants.html` and the eval scorecard are
