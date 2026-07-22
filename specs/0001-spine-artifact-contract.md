@@ -87,7 +87,7 @@ Every non-code artifact opens with YAML frontmatter:
 | `depends_on` | ✓ | list of `id`s and/or declared external refs; `[]` for a root. An edge denotes **genuine coupling** — a source the artifact's correctness is or was contingent on (`decision-0047`); **provenance** (a source that only *informed* construction, without coupling) is a categorically distinct relationship, not a dependency — its grammar is the methodology's (grove), not restated here |
 | `owner` | ✓ | the accountable human (the `inv-intent-locus` role). The *role* is contract; the *field* is mappable — a methodology whose `owner` means something else declares which field/mechanism carries the accountable human (`decision-0037`) |
 | `author` | — | optional: who wrote it (human or agent), distinct from accountability |
-| `version` | — | **open field — methodology-defined**, like `type` and `status` (`grove/adr-0010`; origin record `decision-0045`): a **versioned (revise-in-place)** artifact's own version marker — present when downstreams pin it, **omitted** by append-only artifacts (which version *implicitly* via id + supersession). This contract states **shape only**; the forms, bump semantics, presence enforcement, and initialization rule live in the installed methodology companion (in a grove-managed install, `.grove/internal/versioning.md`) — their single home, deliberately not restated here. |
+| `version` | — | **open field — methodology-defined**, like `type` and `status` (`grove/adr-0010`; origin record `decision-0045`): a **versioned (revise-in-place)** artifact's own version marker — present when downstreams pin it, **omitted** by append-only artifacts (which version *implicitly* via id + supersession). This contract states **shape only**; the forms, bump semantics, presence enforcement, and initialization rule live in the installed methodology companion — the grove versioning companion, now plugin-carried (`grove plugin@0.1.0`; `grove/adr-0026` D7), formerly vendored at `.grove/internal/versioning.md` — their single home, deliberately not restated here. |
 | `changes` | — | on a **significant-change `decision`** only: the versioned artifact(s) it changes, each pinned (`id@version` or `<repo>/<id>@version`). **Shape at this layer:** a **forward-pointer relation of the `superseded_by` / `superseded_in_part_by` class — never a `depends_on`-class edge** (walked accordingly, §3 check 5); entries resolve like any `id`. Its reconciliation semantics are **methodology-defined** (`grove/adr-0010` — the operating model's `corpus-reviewer` owns the cross-check). |
 | `date` / `ratified` / `supersedes` / `superseded_by` / `superseded_in_part_by` / `rubric` | — | optional |
 
@@ -211,7 +211,7 @@ checklist from this spec, not from the producer (B3). Its checks:
    upstream version current at its ratification — a historical fact, not current-truth
    consumption.* A successor referencing its own predecessor (for diffing) is also exempt.
 8. *(Retired 2026-07-12, `grove/adr-0010` — the version cross-check is methodology semantics,
-   re-homed to the operating model: `.grove/internal/versioning.md` §"The `changes:` relation and its
+   re-homed to the operating model: the grove versioning companion (plugin-carried, `grove plugin@0.1.0`; `grove/adr-0026` D7) §"The `changes:` relation and its
    cross-check" defines it; the operating model's `corpus-reviewer` owns it. Number retained so
    external references to "§3 check 8" resolve to this pointer rather than shifting.)*
 
