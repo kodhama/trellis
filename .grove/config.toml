@@ -1,0 +1,40 @@
+# .grove/config.toml — trellis's shared role config (grove adr-0026 D3).
+#
+# One file, shared across roles: the config-shaped tokens the grove charters
+# declare, key = the token name. Consumer-authoritative — trellis owns these;
+# grove never clobbers them. Every value is a VERIFIED PRIOR, not ground truth:
+# a grove:<role> agent verifies it on use (does the command still run, the path
+# still resolve?), discloses a mismatch loudly and routes the fix back to this
+# file, and never silently substitutes or works around a stale value. An
+# explicit "none — …" is an honest value, not a gap; repo evolution never
+# requires re-running setup. This file is AGENT-READ config (judgment on read);
+# it is never a deterministic machinery read (adr-0026 D3 boundary).
+#
+# Seeded by the grove#116 thin-vendor migration, harvested from the values that
+# were resolved inline in trellis's previously-vendored charters (grove@4449db2).
+
+TEST_CMD = "cd cli && go test ./..."
+TYPECHECK_CMD = "cd cli && go build ./... && go vet ./...  (build + vet are Go's typecheck; the cli-ci workflow runs the same)"
+LINT_CMD = "none dedicated — no golangci-lint and no CI gofmt gate as of this writing; the closest declared check is `cd cli && go vet ./...` (run by the cli-ci workflow); `gofmt -l cli/` is Go's standard formatter check, available locally though not CI-enforced"
+TEST_DEPS_LEDGER = "none dedicated — trellis keeps no per-package test-deps.md; the de facto convention is an inline `// guards decision-000N` / `// spec-x ACn` comment above each test function in cli/*_test.go (see rules_test.go, docs_consistency_test.go)"
+PR_CONTRACT_SECTIONS = "none required as prose — trellis's PR contract is CI, not a PR-body template: the cli-ci and ratify-guard checks must pass; no required PR-body sections (ratify-guard, per decision-0042/0046: a ready PR must not touch a still-draft decision/spec — gated is the mergeable state)"
+PARKED_ITEM_STORE = "none dedicated — no TODO/ROADMAP file; parked items ride each artifact's own `## Open questions` section (decisions/*.md, specs/*.md, research/*.md, and CLAUDE.md's own)"
+CONVENTIONS_PATH = "CLAUDE.md (root operating method — the iron rule, §Operating method, §Self-improvement, the naming guardrail) plus .trellis/ (the working rules in force); no separate code-style guide as of this writing"
+QUALITY_RUBRIC_PATH = "none exists yet for code — core/rubrics/artifact-contract.md is the artifact contract, not a code-quality rubric"
+SPEC_RUBRIC_PATH = "none dedicated — core/rubrics/artifact-contract.md is the closest real thing (the artifact contract); self-check a spec against it and append a `## Rubric check` section with the honest result"
+RESEARCH_RUBRIC_PATH = "none dedicated — core/rubrics/artifact-contract.md is the closest real thing (for a research-note: frontmatter present, `## Open questions` present, sources + confidence tags carried)"
+
+# Corpus tokens — NOTE: trellis keeps its OWN corpus-reviewer
+# (.claude/agents/corpus-reviewer.md), a repo-owned role that genuinely
+# diverges from the generic grove role (its checks 1-7 carry inline trellis
+# rule content; checks 8-11 are trellis-only typed-artifact checks). That own
+# role is authoritative for corpus-linting here and has these values baked in.
+# These keys are seeded as verified priors for the plugin's generic
+# grove:corpus-reviewer, pending the maintainer's own-vs-plugin decision
+# (adr-0026 D5 — flagged in the migration PR). core/fixtures/ is deliberately
+# excluded from ARTIFACT_DIRS (broken-on-purpose test data).
+ARTIFACT_DIRS = ["decisions/", "specs/", "research/", "core/invariants/", "core/rubrics/", "core/catalog/", "core/lexicon.md", "profiles/"]
+ARTIFACT_CONTRACT_PATHS = ["specs/0001-spine-artifact-contract.md", "core/rubrics/artifact-contract.md"]
+REPO_TYPED_CHECKS = "trellis's own corpus-reviewer (.claude/agents/corpus-reviewer.md, kept per adr-0026 D5) carries repo-typed checks 8-11: signature-catalog coverage over invariants-v1 slugs, profile->catalog resolution, evidence floor, and the intent-gate floor (spec-0002 §4)"
+
+SEVERITY_TAXONOMY = "none declared"
