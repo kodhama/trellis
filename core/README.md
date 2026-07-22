@@ -10,6 +10,7 @@ Contents grow with the spine (`spec-0001`):
 - `rubrics/` — checkable quality gates (e.g. the artifact contract).
 - `fixtures/` — known-bad inputs that the checks must reject (positive controls).
 
-The conformance **sub-agent** that applies these currently lives at
-`.claude/agents/conformance-reviewer.md` so it runs in *this* repo (dogfood); its product
+The conformance **sub-agent** that applies these currently runs as the
+plugin-carried `grove:conformance-reviewer` in *this* repo (dogfood; the vendored
+`.claude/agents/` copy retired — `grove/adr-0026` D1); its product
 home is `core/agents/`, which the delivery slice (`0012`) will package and install.
