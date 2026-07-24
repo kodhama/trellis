@@ -1,7 +1,8 @@
 ---
 id: decision-0059
 type: decision
-status: approved  # maintainer intent act: approved the family-wide rollout and authorized merge when independently sound; SOUND at c41b2ba preceded this recording
+status: superseded  # decision-0060 records the maintainer's 2026-07-24 scope reset; historical approval remains documented below
+superseded_by: [decision-0060]
 depends_on: [decision-0036, decision-0043, decision-0058, kodhama/kodhama-0015-family-plugin-release-and-surface-contract, kodhama/kodhama-0016-distribution-availability-and-effective-support]
 owner: agent
 date: 2026-07-24
@@ -220,3 +221,11 @@ generic provisioning ownership stay in Stewards. No unsupported surface is
 promoted. The independent decision-adversary returned SOUND at `c41b2ba`;
 the `approved` frontmatter records the maintainer's already stated rollout
 intent after that condition was satisfied.
+
+## Supersession record
+
+`decision-0060` supersedes this adoption in full. Trellis keeps the independent
+local live-rule delivery defined by `decision-0058`/`spec-0007@v1`, but does
+not implement this record's family release certification, shared SemVer/tag,
+release metadata/inventory/surface, history/approval/workflow, or validator-
+runtime machinery. The original approval record above remains historical.
