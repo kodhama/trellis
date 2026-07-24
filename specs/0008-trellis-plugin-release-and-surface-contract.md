@@ -1,9 +1,9 @@
 ---
 id: spec-0008
 type: spec
-status: approved  # maintainer authorized the family rollout and merge after independent review; spec-adversary APPROVE-READY and conformance PASS preceded this recording
-version: 1
-depends_on: [decision-0059, decision-0058, spec-0007@v1, kodhama/kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v1]
+status: gated  # v2 author self-check passed; independent review and a human approval act remain required
+version: 2
+depends_on: [decision-0059, decision-0058, spec-0007@v1, kodhama/kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v2]
 implements: decision-0059
 owner: agent
 rubric: rubric-artifact-contract
@@ -12,21 +12,44 @@ date: 2026-07-24
 
 # Spec 0008 — Trellis plugin release and surface contract
 
+> **Amended 2026-07-24 — family v2 validator-runtime protocol.**
+> **WHAT:** Bound the Trellis extension validator to the family v2 request/result
+> protocol and immutable runtime digest, and made an explicit POSIX
+> `--runtime-store` argument mandatory for both product-validation phases.
+> **WHY:** The approved family v2 contract replaced v1's underdetermined
+> extension-validator launch boundary with an executable, fail-closed
+> runtime-store and subprocess contract.
+> **SCOPE:** Release metadata, product extension validation, pre-tag/release
+> invocations, S10–S11, and R28–R32; the six decision-0058 support rows,
+> package/payload identities, and product/distribution ownership remain
+> unchanged.
+> **POINTER:** Stewards merge
+> `fe95bb93e59e4e24faaabe5ddfe1a6c8e8b9215c`, approved
+> `kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v2`.
+> **VALUE:** Trellis maintainers can validate the product extension through one
+> deterministic family interface without transferring Trellis behavior
+> ownership to Stewards.
+> **CONFIDENCE:** verified.
+
 ## Purpose
 
 Define the smallest product-owned release contract that lets Trellis publish
 one dual-host SemVer package, retain its distinct payload stamp, preserve the
-support boundary in `decision-0058`, and supply the exact inputs Stewards needs
-to retire Trellis's legacy Claude catalog exception.
+support boundary in `decision-0058`, conform to the family v2 validator-runtime
+protocol, and supply the exact inputs Stewards needs to retire Trellis's legacy
+Claude catalog exception.
 
 ## Scope
 
 This spec covers Trellis package metadata, product validation, support
-derivatives, release tagging/history, and the Stewards adoption handoff.
+derivatives, release tagging/history, the product side of the family extension-
+validator protocol, and the Stewards adoption handoff.
 
 It does not:
 
 - implement or specify the Stewards provisioner;
+- provision, discover, or choose the caller/Stewards-owned immutable runtime
+  store consumed by family validation;
 - change Trellis setup, refresh, remove, hook, fallback, or live-row behavior
   defined by `spec-0007@v1`;
 - make catalog publication or clean installation a product-support claim;
@@ -127,11 +150,20 @@ contains these product-fixed values:
 | `release_history` | `release/trellis/history.json` |
 | `inventory_provider` | `plugins/trellis/bin/release-contract.mjs` |
 | `extensions.trellis.validator` | `plugins/trellis/bin/release-contract.mjs` |
+| `extensions.trellis.validator_runtime_sha256` | Lowercase 64-hex digest of the selected canonical `extension-validator-runtime.v1` manifest |
 | `extensions.trellis.family_validator` | Family `repo-path` stable reference to `kodhama/kodhama:distribution/manage` |
 
 The metadata also carries the authority, carriers, payload identity, and the
 current immutable `release_approval` reference in release phase. No copied
-Stewards schema becomes a Trellis authority.
+Stewards schema becomes a Trellis authority. The two reserved validator fields
+are present together. The runtime digest is product-selected release input; it
+identifies the immutable runtime object but does not make its store or
+provisioning a Trellis-owned product surface.
+
+The `schema_version` and `family_contract_version` values remain `1` because
+Stewards v2 completes the version-1 family schemas and interfaces rather than
+renaming them. The `@v2` dependency pin identifies the approved behavioral
+state that governs those version-1 documents.
 
 The executable inventory-provider interface is exactly:
 
@@ -193,6 +225,79 @@ workflow, tests, and fixtures are outside the distributed package/public
 contract and are bound by their family-specific release roles. Any other
 tracked path fails inventory generation until this spec's current-truth map is
 revised; no implementation-only allowlist exists.
+
+### Family v2 runtime-store and extension-validator interface
+
+The family engine, not the Trellis entrypoint, owns platform detection,
+runtime-store resolution and verification, the immutable runtime projection,
+the process-tree filesystem/network sandbox, repeated execution, and common
+request/result validation. It shall apply the exact canonical JSON, POSIX
+platform vocabulary, content-addressed store layout, execution order, process
+contract, limits, audit flags, and diagnostics in the approved family spec
+`@v2`.
+
+Every `validate-product` invocation shall receive one explicit
+`--runtime-store <absolute-posix-path>` argument. The value shall be a
+`/`-rooted normalized POSIX path whose existing components are non-symlink
+directories. Neither the Trellis workflow nor the product validator shall
+substitute an environment variable, default directory, package-relative path,
+upward search, fetched object, or alternate runtime when the argument or its
+digest object is absent or invalid. Runtime-store provisioning and selection
+remain caller/Stewards infrastructure; Trellis consumes only the explicit path
+and the product-selected digest bound in `release.json`.
+
+On a family-v2 supported POSIX launcher, the family engine shall detect only
+the four Linux/macOS `x86_64`/`aarch64` tuples through its direct `uname`
+mapping, then resolve only:
+
+```text
+<runtime-store>/sha256/<first-2-digest-hex>/<remaining-62-digest-hex>/manifest.json
+<runtime-store>/sha256/<first-2-digest-hex>/<remaining-62-digest-hex>/image/
+```
+
+Windows, failed/unknown `uname` results, or another platform shall fail with
+`error: extension-runtime-platform-unsupported\n` before store lookup.
+Unavailable, malformed, platform-mismatched, drifted, or unenforceable
+runtimes shall fail before validator spawn with the exact distinct family-v2
+diagnostic carrying the declared digest. Trellis defines no fallback from
+those failures.
+
+For the single `extensions.trellis` declaration, the common engine invokes the
+resolved non-symlink executable exactly twice per phase as:
+
+```text
+<resolved-absolute-release-contract.mjs> --stewards-extension-validator-v1
+```
+
+It uses the resolved repository root supplied as `--package-root` as the
+working directory, passes no other argument, writes one canonical
+`extension-validator-request.v1` object plus one LF to stdin, and requires one
+canonical `extension-validator-result.v1` object plus one LF on stdout. The
+family-v2 environment, file-descriptor, timeout, size, immutable
+runtime/package visibility, private `/tmp`, `/dev/null`, no-network, audit, and
+no-persistent-mutation rules apply without a Trellis exception.
+
+The Trellis entrypoint accepts only a schema-version `1`
+`product-extension` request whose `namespace` and `plugin_id` are both
+`trellis`, whose paths name the release metadata, surface contract, inventory,
+and history already validated by the family engine, and whose
+`validator_runtime_sha256` equals the declaration. It validates the complete
+request `extension` value and the product surface extension against the exact
+Trellis contract in this spec, including every decision-0058 support state,
+transport, boundary, exclusion, fallback, live-row, duplicate-context,
+setup/refresh/remove, and payload-diagnostic value.
+
+With no Trellis finding, the entrypoint emits
+`{schema_version: 1, request_sha256: <sha256-of-exact-stdin-with-LF>, outcome:
+"pass", findings: []}` and exits `0`. With one or more product findings, it
+emits `outcome: "fail"` with sorted, duplicate-free family-v2 finding objects
+at the applicable request instance pointers and exits `1`. It writes no
+stderr for either protocol exit. Malformed request/result bytes, another
+identity or phase binding, a request-hash mismatch, differing repeated
+results, another exit, stderr, timeout, audit flag, or persistent mutation
+fails common validation. Product finding codes and messages remain
+Trellis-owned diagnostics; Stewards shall neither reinterpret them as family
+support facts nor treat a passing process envelope as product evidence.
 
 ## Product surface contract
 
@@ -303,18 +408,12 @@ For those same rows, `live_row_reload`,
 fixture, catalog record, provisioner result, local-host evidence, or
 package-version change may change one of these states to `supported`.
 
-The product extension validator is invoked by the product release check after
-family schema validation as:
-
-```text
-plugins/trellis/bin/release-contract.mjs \
-  --package-root <repository-root> \
-  --validate-surface-extension plugins/trellis/surfaces.json
-```
-
-It exits nonzero on any boundary mismatch, unknown extension field, unsupported
-promotion, cross-surface evidence reuse, or divergence from the exact
-decision-0058 exclusions above.
+The family engine invokes the product extension validator only through the
+family-v2 process protocol above. It returns a product finding for any boundary
+mismatch, unknown extension field, unsupported promotion, cross-surface
+evidence reuse, or divergence from the exact decision-0058 exclusions above.
+No standalone `--validate-surface-extension` subprocess is part of the public
+release contract.
 
 ## Generated support and bundle derivatives
 
@@ -408,7 +507,8 @@ check is exactly:
 "$RUNNER_TEMP/kodhama/distribution/manage" validate-product \
   --phase pre-tag \
   --package-root "$GITHUB_WORKSPACE" \
-  --release-metadata "$GITHUB_WORKSPACE/plugins/trellis/release.json"
+  --release-metadata "$GITHUB_WORKSPACE/plugins/trellis/release.json" \
+  --runtime-store "<caller-supplied-absolute-posix-path>"
 "$GITHUB_WORKSPACE/plugins/trellis/bin/release-contract.mjs" \
   --package-root "$GITHUB_WORKSPACE" --check
 (cd "$GITHUB_WORKSPACE/cli" && go test ./...)
@@ -416,15 +516,20 @@ git -C "$GITHUB_WORKSPACE" diff --exit-code -- .
 test -z "$(git -C "$GITHUB_WORKSPACE" status --porcelain=v1)"
 ```
 
-`--check` includes the exact surface-extension invocation above, two inventory
-emissions, support-corpus validation, bundle-manifest validation, and all
-product derivatives. The check emits the package version, expected tag,
-payload identity, surface/inventory digests, and no caller-authored release
-identity.
+The angle-bracket runtime-store token denotes a required invocation input, not
+a literal path or a default. The release caller supplies it explicitly; the
+workflow does not provision, search for, or substitute the store.
 
-The family validator owns common schema, history, compatibility, and tag
-semantics. The Trellis validator owns only the product extension, complete
-Trellis inventory, product derivatives, and existing Trellis guards.
+`--check` includes the same Trellis surface-extension rules without launching
+a second family protocol, two inventory emissions, support-corpus validation,
+bundle-manifest validation, and all product derivatives. The check emits the
+package version, expected tag, payload identity, surface/inventory digests,
+and no caller-authored release identity.
+
+The family validator owns common schema, history, compatibility, tag,
+canonical request/result, runtime-store, and sandbox semantics. The Trellis
+validator owns only the product extension, complete Trellis inventory, product
+derivatives, existing Trellis guards, and product finding vocabulary.
 
 ### Human approval
 
@@ -450,7 +555,8 @@ chooses or edits a version. After the tag push, the same workflow's
 "$RUNNER_TEMP/kodhama/distribution/manage" validate-product \
   --phase release \
   --package-root "$GITHUB_WORKSPACE" \
-  --release-metadata "$GITHUB_WORKSPACE/plugins/trellis/release.json"
+  --release-metadata "$GITHUB_WORKSPACE/plugins/trellis/release.json" \
+  --runtime-store "<caller-supplied-absolute-posix-path>"
 "$GITHUB_WORKSPACE/plugins/trellis/bin/release-contract.mjs" \
   --package-root "$GITHUB_WORKSPACE" --check
 git -C "$GITHUB_WORKSPACE" fetch origin main
@@ -687,6 +793,26 @@ and clean-install evidence are not members of that corpus.
   closed canonical adoption object with verified stable references without
   making an availability or support claim.
 
+**S10 — explicit POSIX runtime and product protocol**
+
+- **Given** a supported POSIX launcher, release metadata bound to a matching
+  immutable runtime digest, and an explicit valid runtime-store root,
+- **When** either family product-validation phase runs,
+- **Then** the engine resolves only that digest object, invokes the Trellis
+  product-extension identity twice through the exact v2 request/result
+  protocol, and accepts it only when both executions return the same canonical
+  passing result without an audit or side-effect failure.
+
+**S11 — runtime boundary fails closed**
+
+- **Given** a missing runtime-store argument, an absent or invalid digest
+  object, a platform mismatch or drift, unavailable enforcement, Windows, or
+  another unsupported launcher result,
+- **When** family product validation starts,
+- **Then** it rejects the missing argument through the command parser or emits
+  the exact applicable family-v2 runtime diagnostic before validator spawn,
+  and does not search, fetch, default, substitute, or continue.
+
 ### EARS requirements
 
 - **R1:** Trellis shall use `plugins/trellis/VERSION` as its sole package
@@ -749,6 +875,27 @@ and clean-install evidence are not members of that corpus.
   behavior and shall make no Stewards-owned availability claim.
 - **R27:** The implementation shall not add, specify, or absorb Stewards
   provisioner behavior.
+- **R28:** `release.json` shall declare
+  `extensions.trellis.validator` and its lowercase 64-hex
+  `validator_runtime_sha256` together and shall bind that digest into the
+  versioned public release contract.
+- **R29:** Every family `validate-product` invocation shall supply exactly one
+  explicit normalized absolute POSIX `--runtime-store` path and shall not use
+  environment, default, package-relative, upward-search, fetch, or fallback
+  discovery.
+- **R30:** Before validator spawn, the family engine shall apply its exact v2
+  POSIX platform mapping, content-addressed runtime-object verification, and
+  distinct unsupported/unavailable/malformed/platform-mismatch/drift/
+  enforcement-unavailable diagnostics.
+- **R31:** The common engine shall invoke the Trellis product-extension
+  identity twice through the exact family-v2 argv, working-directory,
+  canonical request/result, environment, sandbox, audit, limit, exit, and
+  no-side-effect contract.
+- **R32:** The Trellis validator shall accept only its exact
+  `product-extension` request, shall preserve every decision-0058 support row
+  and exclusion, and shall emit only a deterministic family-v2 pass or
+  product-owned fail result without making or absorbing a distribution-
+  availability claim.
 
 ## Open questions
 
@@ -762,25 +909,24 @@ closest rubric; Trellis has no dedicated spec-quality rubric.
 | Check | Result | Evidence |
 |---|---|---|
 | 1. Required frontmatter | PASS | `id`, `type`, `status`, `version`, `depends_on`, `implements`, `owner`, and `rubric` are present and typed. |
-| 2. Type and lifecycle | PASS | `type: spec`; `status: approved` records the maintainer's prior family-rollout authorization after independent review. |
+| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` records the v2 author self-check without reusing v1's approval for changed behavior. |
 | 3. Unique id | PASS | Repository scan finds no other `spec-0008`. |
-| 4. Dependencies resolve | PASS | Append-only decisions are unpinned; local `spec-0007@v1` and approved external family spec `@v1` use the version-pin grammar and resolve. |
+| 4. Dependencies resolve | PASS | Append-only decisions are unpinned; local `spec-0007@v1` and approved external family spec `@v2` use the version-pin grammar and resolve. |
 | 5. Directional flow | PASS | Direct upstreams are approved or gated, never draft. |
-| 6. Required sections and grammars | PASS | `## Acceptance criteria` and `## Open questions` exist; S1–S9 are GWT and R1–R27 are EARS `shall` statements. |
+| 6. Required sections and grammars | PASS | `## Acceptance criteria` and `## Open questions` exist; S1–S11 are GWT and R1–R32 are EARS `shall` statements. |
 | 7. Supersede integrity | N/A | This new spec supersedes no artifact. |
 | 8–11. Typed catalog/profile checks | N/A | This artifact is neither a signature catalog nor an expression profile. |
-| 12. Version semantics | PASS | New behavioral spec initializes `version: 1`; no append-only artifact is version-pinned. |
-| Decision boundary | PASS | Requirements derive from decision 0059, decision 0058/spec 0007 current behavior, and family spec v1; provisioner behavior and unsupported promotions remain excluded. |
-| Adversary exactness | PASS | Literal surface/fallback values, exhaustive public-contract map, exact phase invocations/owner, authoritative-main append state machine with enforced single writer, closed adoption object, and bounded support corpus now have executable pass/fail boundaries. |
+| 12. Version semantics | PASS | Testable runtime and validator clauses changed, so the behavioral counter advances from v1 to v2 and the whole-spec delta note identifies scope and provenance. |
+| Decision boundary | PASS | Requirements derive from decision 0059, decision 0058/spec 0007 current behavior, and approved family spec v2; runtime provisioning, provisioner behavior, and unsupported promotions remain excluded. |
+| Adversary exactness | PASS | Literal support/fallback values, exhaustive public-contract map, explicit runtime-store and validator protocol, exact phase invocations/owner, authoritative-main append state machine with enforced single writer, closed adoption object, and bounded support corpus have executable pass/fail boundaries. |
 
 **Result: PASS.**
 
-## Approval record
+## Gate record
 
-On 2026-07-24 the maintainer authorized the family-wide rollout, including
-Trellis's product-specific implementation, and authorized merge after
-independent review. The spec-adversary returned `APPROVE-READY` after the
-surface, release/history, adoption, and concurrency findings were resolved;
-the conformance reviewer returned `PASS` against decisions 0058/0059,
-spec-0007 v1, and the approved family spec. This `approved` status records
-that prior human intent act.
+On 2026-07-24 the maintainer approved v1 after the spec-adversary returned
+`APPROVE-READY` and the conformance reviewer returned `PASS`. This v2
+amendment consumes the subsequently approved family validator-runtime
+protocol and is `gated` after its author self-check. Independent
+spec-adversary and conformance review, followed by a recorded human approval
+act, remain required before v2 becomes `approved`.
