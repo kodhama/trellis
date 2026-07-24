@@ -1,7 +1,7 @@
 ---
 id: decision-0043
 type: decision
-status: gated
+status: approved  # ratified by the maintainer's merge of PR #126 on 2026-07-10; approval recorded late under decisions 0022/0042
 depends_on: [decision-0010, decision-0025, decision-0035, decision-0036, decision-0039, decision-0041]
 owner: gundi
 date: 2026-07-10
@@ -109,3 +109,12 @@ Supersedes in part: `decision-0025` (guard 2), `decision-0035` (rule-3 status su
 `decision-0041` (trellis's own formula + formula-sync mechanics). Moots `decision-0030` (the
 TUI's dependency). Implements `kodhama-0007` rule 5 and its rule 3 as ruled in #120 addendum 4.
 Consistent with `decision-0010` (the CLI was always optional support, never a runtime).
+
+## Approval record
+
+The maintainer merged PR #126 on 2026-07-10 after that PR stated that its
+merge would ratify this gated decision. That merge was the human intent act
+defined by `decision-0022` and `decision-0042`, and remains valid under the
+channel-neutral clarification in `decision-0046`. This late status update
+records the existing ratification; it is not a new approval or a substantive
+edit to the decision.
