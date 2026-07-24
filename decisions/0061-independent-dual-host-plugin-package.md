@@ -2,7 +2,7 @@
 id: decision-0061
 type: decision
 status: gated
-depends_on: [decision-0043, decision-0058, decision-0060]
+depends_on: [decision-0043, decision-0058, decision-0060, kodhama/kodhama-spec-0003-marketplace-test-observation@v1]
 owner: agent
 date: 2026-07-24
 ---
@@ -123,9 +123,13 @@ The top-level object and every row are closed. `version` equals `VERSION`;
 nonblank.
 
 `marketplace_test_observations` contains normalized repository-relative JSON
-paths with no `..` segment. A referenced record must structurally satisfy
-Stewards marketplace-observation schema version 1 and match the row's host
-and surface identifier.
+paths with no `..` segment. A referenced record must structurally satisfy the
+approved
+`kodhama/kodhama-spec-0003-marketplace-test-observation@v1` contract and match
+the row's host and surface identifier. That upstream is retained in
+`kodhama/stewards` at merge `edeaaf52d69165de7d0aa7c13e8dcee4c9ebe29a`;
+the `kodhama/…` artifact qualifier preserves this corpus's registered
+cross-repository namespace.
 
 The initial file contains exactly the two already supported Phase-1
 boundaries:
