@@ -2,6 +2,7 @@
 id: spec-0006
 type: spec
 status: gated
+superseded_in_part_by: [decision-0058]
 depends_on: [decision-0057]
 implements: decision-0057
 owner: agent
@@ -151,3 +152,11 @@ and sections are present; the one approved fidelity upstream is declared;
 scope and exclusions are explicit; every acceptance criterion is observable;
 and the implementation/test surfaces are named without prescribing unrelated
 consumer behavior. Independent spec-adversary review remains required.
+
+---
+
+> **Current-truth pointer (2026-07-24).** `decision-0058` supersedes AC5/AC9's
+> zero-Trellis-block assertion only enough to permit a separately marked,
+> generated Codex receipt/fallback in `AGENTS.md`. The full rule payload and
+> Claude import block remain prohibited there; all other acceptance results
+> and the shared-entrypoint implementation stand.

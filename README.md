@@ -76,6 +76,28 @@ less install.sh && sh install.sh --scope personal
 Then run `/trellis:setup` as above — that skill is the one real interactive writer either path
 leads to.
 
+### Local Codex support — Phase 1
+
+The same plugin also supports setup/refresh, **product-wide** remove, and a **fresh startup** in a
+**trusted local Codex** repository. The Codex host branch preserves `CLAUDE.md`, installs a small
+receipt and **best-effort** installed-file fallback in `AGENTS.md`, and registers only
+`SessionStart(startup)`. Its native hook reads the installed `.trellis/internal/` payload and
+current `.trellis/rules.toml`; those project files remain authoritative, while plugin files are
+only setup sources. A valid row edit is seen at the next supported startup without refresh and
+does not change a context already in flight.
+
+Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
+bootstrap-only degradation; Trellis adds no project runtime, daemon, or network service. Native
+hook success is stronger than the fallback: fallback execution remains model-directed rather
+than deterministic.
+
+Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desktop, IDE,
+headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
+host blocks and the shared overlay. Ordinary refresh preserves the consumer's rows, strictness,
+and `seeded_from`; it is not the separately deferred, confirmed preset reset. Also excluded are a
+Claude-hook replacement, any other host-native transport, and revival of the parked `seed` or
+`custom` presets.
+
 **Any other harness — the manual copy path.** Every bundle file is pre-rendered plain text in
 [`plugins/trellis/reference/`](plugins/trellis/reference) (the payload, `kodhama-0007`: one
 render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) and copy:
@@ -100,7 +122,8 @@ sed -n -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
 
 To deactivate a rule later, set its row in `.trellis/rules.toml` to `active = false` — that's
 it (`decision-0053`): the readout ships complete and opens with an authority header, so agents
-apply a rule only where its row says `active = true`, and a row edit takes effect immediately.
+apply a rule only where its row says `active = true`, and a row edit takes effect at the next
+host context-loading boundary.
 The two `floor-*` rows apply regardless of their value. On an **import** install the block loads
 your current `rules.toml` every session. On an **inline** install the block carries a copy of
 the rows inlined below the rules, so re-paste that copy after editing: replace everything
@@ -110,8 +133,10 @@ heading followed by your `rules.toml` inside a ```toml fence, then `cat
 "$ref"/block-inline-tail.md` (the shipped `block-inline-<p>.md` is that sandwich with the seed
 rows).
 
-No binary, no runtime — the assets are plain files, and anything can verify them with `shasum -c`
-against the shipped manifest. (The Homebrew/curl binary channel retired in `kodhama-0007` rule 5;
+No binary or project runtime — the assets are plain files, and anything can verify them with
+`shasum -c` against the shipped manifest. The optional local Codex native transport uses the
+host's Node.js runtime as documented above. (The Homebrew/curl binary channel retired in
+`kodhama-0007` rule 5;
 the Go code in [`cli/`](cli/) survives as the release-time payload generator only.)
 
 ## The model
@@ -174,7 +199,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md) | The full thesis (start at §10 verdict, §11 start-here, §12 operating method). |
 | [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043` (#120). |
-| [`plugins/trellis/`](plugins/trellis/) | The **Claude Code plugin** — `/trellis:setup`, `/trellis:remove`, the staleness hook, and the vendored payload (`reference/`). |
+| [`plugins/trellis/`](plugins/trellis/) | The **Claude Code and local Codex plugin** — `/trellis:setup`, `/trellis:remove`, host-isolated hooks, and the vendored payload (`reference/`). |
 | [`install.sh`](install.sh) | The **curl path** (`#124`) — vends the whole plugin bundle onto disk as a skills-directory plugin; makes exactly one decision (scope) and composes nothing else. |
 | [`specs/`](specs/) | The spine (`0001`), the profile / catalog schema (`0002`), the delivery machinery (`0003`). |
 | [`decisions/`](decisions/) | Append-only decision records. |

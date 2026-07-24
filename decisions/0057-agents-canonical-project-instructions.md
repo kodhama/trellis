@@ -2,6 +2,7 @@
 id: decision-0057
 type: decision
 status: approved  # maintainer intent act 2026-07-23: AGENTS is canonical shared prose; CLAUDE retains @AGENTS.md plus the Trellis import block; independent SOUND pass preceded this record
+superseded_in_part_by: [decision-0058]
 depends_on: [decision-0005, decision-0028, decision-0035, decision-0053]
 informed_by: [research-0010]
 owner: agent
@@ -120,3 +121,12 @@ pretend that an `AGENTS.md` split delivers its nested imports to Codex. The
 scope line keeps a repo-local fix from silently changing every consumer's
 install contract. The three older decisions are narrowed only at the shared
 Layer-B physical-entrypoint claim; their architecture stands.
+
+---
+
+> **Superseded in part (2026-07-24, append-only pointer).**
+> `decision-0058` adds one distinct, small Trellis-managed Codex
+> receipt/fallback block to `AGENTS.md`; the prohibition on putting the full
+> Trellis rules or Claude import block there stands. `AGENTS.md` remains the
+> shared-prose authority, and Claude's existing import block remains in
+> `CLAUDE.md`.

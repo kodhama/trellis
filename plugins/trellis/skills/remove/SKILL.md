@@ -5,55 +5,68 @@ description: Remove Trellis from this project — delete the .trellis/ overlay, 
 
 # Remove Trellis from this project
 
-Cleanly reverse the **M1 overlay** that `/trellis:setup` (or the manual copy path, or the retired
-CLI's `setup --mode m1`) installed. This is augment-never-clobber **in reverse**: remove *only* what
-Trellis added, and preserve everything else byte-for-byte.
+Cleanly reverse the shared **M1 overlay** from either host. This is a **product-wide** remove, not a
+per-host disable: it handles both the Claude block in `CLAUDE.md` and the Codex receipt/fallback in
+`AGENTS.md`, then removes `.trellis/`. Preserve every surrounding user byte.
 
-## 1. Delete the bundle
+## 1. Preflight every target before any edit
 
-Delete the entire `.trellis/` directory, if it exists — the generated `internal/` half and the
-consumer-owned `rules.toml` alike, plus any legacy files from an overlay installed before
-`decision-0051` or its amendment (the flat-layout generated files, and a leftover
-`expression.md`). If a legacy `expression.md` carries a hand-written body the user may want to
-keep, say so before deleting — it is theirs, and this is the one step that destroys it.
+Snapshot the complete project paths this operation may touch. Inspect **every documented instruction file**
+— `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, and
+`.clinerules` — for **all recognized managed blocks**:
 
-## 2. Strip the import from `CLAUDE.md`
+- `<!-- trellis:begin … -->` through `<!-- trellis:end -->`, including import and
+  legacy/manual inline/full-rule forms; and
+- `<!-- trellis:codex-bootstrap:begin … -->` through
+  `<!-- trellis:codex-bootstrap:end -->`.
 
-In the project's `CLAUDE.md`, remove the managed block **between and including** these markers:
+Also inspect, without writing:
 
-```
-<!-- trellis:begin … -->
-   … (the @import lines) …
-<!-- trellis:end -->
-```
+- `.trellis/`, including consumer-owned `rules.toml` and any legacy `expression.md`;
+- every recognized lint/format ignore target that may contain a setup-added `.trellis/` line.
 
-Remove **only** that block (and the single blank line that preceded it). **Touch nothing else** —
-every other line of the user's `CLAUDE.md` must stay exactly as it was. If, after removal, `CLAUDE.md`
-contains only whitespace (it held nothing but the Trellis block, i.e. Trellis created the file), delete
-it; otherwise leave it in place.
+For each marker family, require either no marker or exactly one nonnested paired region. Duplicate,
+unpaired, nested, overlapping, or otherwise ambiguous markers stop the entire operation **before**
+any block or overlay change. Resolve every required consent before writing: in particular, surface
+hand-written `expression.md` content and any ignore entry whose ownership is ambiguous. If consent
+is unavailable, stop with the whole-project snapshot unchanged.
 
-## 3. Strip any `.trellis/` ignore entry setup added (`decision-0049`)
+## 2. Stage byte-safe instruction-file removals
 
-`/trellis:setup` may have offered to add `.trellis/` to the project's linters/formatters (setup's
-step 9). Reverse that too — augment-never-clobber, the same as the `CLAUDE.md` block above:
+Prepare the resulting bytes for all five documented instruction files before changing any one:
 
-- **Detect the same tools setup did** — ESLint (`.eslintrc*` / `eslint.config.*` / `eslintConfig` in
-  `package.json`), Prettier (`.prettierrc*` / `.prettierignore`), Biome (`biome.json`), markdownlint
-  (`.markdownlint*` / `.markdownlintignore`) — and look for a `.trellis/` entry in each one's ignore.
-- **Remove only the `.trellis/` entry, and only that line** — touch no other ignore pattern. If an
-  ignore file that setup *created* now holds nothing but that entry (it exists only because of
-  Trellis), delete the file; otherwise leave it, minus the one line — the same rule as the `CLAUDE.md`
-  block.
-- **Only what Trellis added.** You cannot always be certain the user did not add `.trellis/`
-  themselves. If it is ambiguous — the entry sits among the user's own patterns, or the file is
-  clearly theirs — **surface it and ask** before removing; never strip a line you are not sure
-  Trellis put there.
-- If no `.trellis/` ignore entry is found, do nothing here and say so — **do not invent changes**.
+- Remove only each recognized managed region, including the one separator newline setup added.
+- Preserve all bytes before and after the region exactly.
+- Delete an instruction file only when it becomes empty because Trellis created it; otherwise keep
+  it, even when the remainder is whitespace.
 
-## 4. Confirm
+Do not treat an absent block as an error. A recognized, valid block is removed wherever setup or a
+documented manual path placed it; ambiguous placement or markers were already a preflight failure.
 
-Tell the user exactly what you removed (`.trellis/`, the `CLAUDE.md` block, and any `.trellis/`
-lint-ignore entry). If none was present, say so plainly — **do not invent changes**.
+## 3. Stage consented ignore cleanup
+
+For ESLint, Prettier, Biome, and markdownlint targets detected by setup, remove only a `.trellis/`
+entry known to have been added by Trellis. If an ignore file created by setup then becomes empty,
+it may be removed. Preserve all other patterns byte-for-byte. An ambiguous entry requires consent
+in step 1; never guess.
+
+## 4. Apply the complete product-wide transaction
+
+Only after every preflight and consent succeeds:
+
+1. write or delete every staged documented instruction-file result;
+2. apply the staged, consented ignore cleanup; and
+3. delete the shared `.trellis/` overlay last.
+
+Verify surrounding instruction-file and ignore-file bytes against the snapshots. If a preflight
+failed, verify that every block and the overlay remain unchanged.
+
+## 5. Confirm
+
+Report every recognized item as removed, retained, ambiguous, or absent: the Claude block, Codex
+bootstrap, shared overlay, legacy consumer content, and ignore entries. If no managed block or
+overlay was present, make no change and say Trellis is **already absent**. A second remove is this
+same reported no-op.
 
 ## Reversing an M2 morph
 

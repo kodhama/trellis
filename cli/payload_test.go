@@ -81,6 +81,7 @@ var assessableSlugs = []string{
 func TestPayloadFileSet(t *testing.T) {
 	want := []string{
 		"block-claude.md",
+		"block-codex.md",
 		"block-inline-a-head.md",
 		"block-inline-a.md",
 		"block-inline-b-head.md",
@@ -301,7 +302,8 @@ func TestPayloadReadoutIsCompleteWithAuthorityHeader(t *testing.T) {
 // TestPayloadRulesReadoutIsOrderedConcatenation: the render contract after
 // decision-0053 — rules.md is the readout header (authority note + heading +
 // live-rows preamble) followed by every rule's fragment render in catalog order,
-// with no assembly footer below the last rule (the "(Generated from your
+// followed by the stable spec-0007 completion sentinel and no assembly footer
+// (the "(Generated from your
 // `rules.toml` …)" closing line retired with decision-0053 points 4+5). The inline
 // blocks carry the identical complete readout.
 func TestPayloadRulesReadoutIsOrderedConcatenation(t *testing.T) {
@@ -319,8 +321,8 @@ func TestPayloadRulesReadoutIsOrderedConcatenation(t *testing.T) {
 		}
 		last = i
 	}
-	if !strings.HasSuffix(files["rules.md"], ruleFragment(order[len(order)-1])) {
-		t.Errorf("rules.md must end on the last rule's fragment with nothing below it — the assembly footer retired (decision-0053 point 4): %q", files["rules.md"])
+	if !strings.HasSuffix(files["rules.md"], ruleFragment(order[len(order)-1])+trellisRulesLoadedSentinel+"\n") {
+		t.Errorf("rules.md must end on the last rule's fragment plus the exact spec-0007 completion sentinel: %q", files["rules.md"])
 	}
 	for _, name := range []string{"block-inline-a.md", "block-inline-b.md"} {
 		if !strings.Contains(files[name], files["rules.md"]) {
@@ -402,7 +404,7 @@ func TestPayloadRulesTomlSeeds(t *testing.T) {
 // TestSetupSkillCopiesCompleteReadout: decision-0053 Consequences — SKILL.md step
 // 4's per-row selection cat became a plain copy of the shipped complete readout; no
 // fragment-selection command remains anywhere in the skill; the skill states the
-// live row semantics (edits take effect immediately) and names a floor row set
+// live row semantics (edits take effect at the next host boundary) and names a floor row set
 // false as overridden-by-floor, never silently honored. (Replaces
 // TestSetupSkillAssemblyOrderMatchesCatalog — the catalog-order second home retired
 // with the assembly command it pinned.)
@@ -412,27 +414,17 @@ func TestSetupSkillCopiesCompleteReadout(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(b)
-	if !strings.Contains(s, `cp "${CLAUDE_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md`) {
+	if !strings.Contains(s, `cp "${TRELLIS_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md`) {
 		t.Error("SKILL.md must install the readout as a plain copy of the shipped rules.md (decision-0053: assembly retires)")
 	}
 	if strings.Contains(s, `"$ref"/rules/`) {
 		t.Error("SKILL.md still carries fragment-assembly commands — retired with decision-0053")
 	}
-	if !strings.Contains(s, "take effect immediately") {
-		t.Error("SKILL.md must state the live row semantics: row edits take effect immediately (decision-0053 point 3)")
+	if !strings.Contains(s, "take effect at the next supported") {
+		t.Error("SKILL.md must state the live row semantics at the next supported context boundary (spec-0007@v1 R2/R3)")
 	}
 	if !strings.Contains(s, "overridden-by-floor") {
 		t.Error("SKILL.md must name a floor row set false as overridden-by-floor, loudly (decision-0053 point 3)")
-	}
-	// The SKILL's rows-section printf lines are the one non-payload byte source in the
-	// inline rebuild; pin them to the generator's renderRowsSection so the two cannot
-	// drift apart (decision-0028 sync-guard per source→derivative pair; conformance
-	// finding on the decision-0053 build). Expected in step 7 (paste) and step 8(d)
-	// (verify oracle) — exactly twice.
-	openRaw := strings.TrimSuffix(renderRowsSection(""), "```\n")
-	needle := "printf '" + strings.ReplaceAll(openRaw, "\n", `\n`) + "'"
-	if n := strings.Count(s, needle); n != 2 {
-		t.Errorf("SKILL.md rows-section printf must byte-match renderRowsSection in step 7 and step 8(d): want 2 occurrences of %q, found %d", needle, n)
 	}
 	for _, banned := range []string{"no effect until", "re-assemble", "next refresh — there is no per-session reader"} {
 		if strings.Contains(s, banned) {

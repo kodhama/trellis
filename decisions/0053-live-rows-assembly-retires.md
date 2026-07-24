@@ -2,6 +2,7 @@
 id: decision-0053
 type: decision
 status: approved  # maintainer's intent act 2026-07-20, in-conversation ("flip and fold executor run in the same PR") — this flip records it (decision-0046); pre-gate: corpus-reviewer no-violation (stats recomputed from raw runs), its open check closed by git diff, precision+scope notes applied
+superseded_in_part_by: [decision-0058]
 depends_on: [decision-0051, research-0012]
 owner: agent
 date: 2026-07-20
@@ -153,3 +154,11 @@ ideally after an independent pass.
 > file left untouched, the stale comments reported loudly. The seed-once/never-clobber
 > ownership rule is unchanged: this is a consented comment repair, the same class as
 > `decision-0049`'s ignore-file offer.
+
+---
+
+> **Superseded in part (2026-07-24, append-only pointer).**
+> `decision-0058` clarifies “immediately” as the next host context-loading
+> boundary, without a Trellis refresh. It adds Codex hook plus installed-file
+> bootstrap delivery alongside the Claude import and legacy inline channels.
+> The complete readout, rows-at-read-time authority, and floor semantics stand.

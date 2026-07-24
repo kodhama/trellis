@@ -42,6 +42,7 @@ func payloadFiles() map[string]string {
 	files := map[string]string{
 		"invariants.md":        extractEntriesSection(invariantsRef), // the catalog's entries section only — preamble+tail excluded at the write site (decision-0055, widening decision-0054); invariantsRef itself stays untouched for every other reader below
 		"block-claude.md":      renderClaudeBlock(),
+		"block-codex.md":       renderCodexBootstrap(),
 		"rules.md":             renderRulesReadout(),
 		"block-inline-tail.md": renderInlineBlockTail(), // posture-independent — one tail, not two
 	}

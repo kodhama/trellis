@@ -2,7 +2,7 @@
 id: decision-0051
 type: decision
 status: approved
-superseded_in_part_by: [decision-0053]  # maintainer's intent act 2026-07-19, in-conversation ("Approved. Continue to implementation") — this flip records it (decision-0046); corpus-reviewer conformance pass (all checks PASS) ran before the gate; grove adr-0018/0020 approved statuses confirmed against grove origin/main frontmatter before the gate
+superseded_in_part_by: [decision-0053, decision-0058]  # maintainer's intent act 2026-07-19, in-conversation ("Approved. Continue to implementation") — this flip records it (decision-0046); corpus-reviewer conformance pass (all checks PASS) ran before the gate; grove adr-0018/0020 approved statuses confirmed against grove origin/main frontmatter before the gate
 depends_on: [invariants-v1, signature-catalog-v1, decision-0033]
 informed_by: [grove/adr-0018-gate-profile-and-trigger-split, grove/adr-0020-dispatcher-honors-gate-profile, decision-0016, decision-0043, decision-0049]
 owner: agent
@@ -233,3 +233,12 @@ an independent pass (`inv-independent-judgment`).
 > (rule 1), the naming de-collision (the rest of rule 5), the named kodhama-0007
 > divergence (rule 6), the non-revival (rule 7), and the expression.md-retirement
 > amendment above.
+
+---
+
+> **Superseded in part (2026-07-24, append-only pointer, landed with
+> `decision-0058`'s `approved` flip).** The seed-once and consumer-authority
+> rules still govern setup and ordinary refresh. The deferred wholesale-switch
+> operation is now admitted only as an explicit, confirmed preset reset that
+> replaces `rules.toml`; refresh itself still never clobbers the file. The
+> parked `seed` and `custom` presets remain parked.
