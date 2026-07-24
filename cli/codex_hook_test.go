@@ -643,10 +643,10 @@ func TestPhaseOneSkillsAndDocsDeclareHostBoundaries(t *testing.T) {
 // guards spec-0007@v1 R26, R30, R40, S17, S21
 func TestCliCIProvidesNode20BeforeGoTests(t *testing.T) {
 	workflow := readFileT(t, "../.github/workflows/cli-ci.yml")
-	setupNode := strings.Index(workflow, "uses: actions/setup-node@v4")
+	setupNode := strings.Index(workflow, "uses: actions/setup-node@v5")
 	node20 := strings.Index(workflow, `node-version: "20"`)
 	goTests := strings.Index(workflow, "run: go test ./...")
 	if setupNode < 0 || node20 < setupNode || goTests < node20 {
-		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node@v4 before Go tests execute the Codex hook")
+		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node@v5 before Go tests execute the Codex hook")
 	}
 }

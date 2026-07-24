@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 10 # fail fast if a run wedges (infra hang) instead of spinning ~1h
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0 # full history so the review can diff against the base branch
 
