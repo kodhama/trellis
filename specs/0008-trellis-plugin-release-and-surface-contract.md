@@ -1,7 +1,8 @@
 ---
 id: spec-0008
 type: spec
-status: approved  # Maintainer-authorized merge records v2 approval after independent gates passed
+status: superseded  # decision-0060 retires the family release-certification implementation contract
+superseded_by: [decision-0060]
 version: 2
 depends_on: [decision-0059, decision-0058, spec-0007@v1, kodhama/kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v2]
 implements: decision-0059
@@ -11,6 +12,13 @@ date: 2026-07-24
 ---
 
 # Spec 0008 — Trellis plugin release and surface contract
+
+> **Current-truth pointer (2026-07-24).** `decision-0060` retires this
+> implementation contract in full, with no successor spec. The historical v1
+> and v2 contract below remains auditable but authorizes no current Trellis
+> release-certification, SemVer/tag, history/approval, support-surface, or
+> validator-runtime machinery. `decision-0058`/`spec-0007@v1` remain the
+> independent local live-rule contract.
 
 > **Amended 2026-07-24 — family v2 validator-runtime protocol.**
 > **WHAT:** Bound the Trellis extension validator to the family v2 request/result
