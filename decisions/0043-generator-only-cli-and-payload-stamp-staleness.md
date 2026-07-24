@@ -2,6 +2,7 @@
 id: decision-0043
 type: decision
 status: approved  # ratified by the maintainer's merge of PR #126 on 2026-07-10; approval recorded late under decisions 0022/0042
+superseded_in_part_by: [decision-0059]
 depends_on: [decision-0010, decision-0025, decision-0035, decision-0036, decision-0039, decision-0041]
 owner: gundi
 date: 2026-07-10
@@ -118,3 +119,8 @@ defined by `decision-0022` and `decision-0042`, and remains valid under the
 channel-neutral clarification in `decision-0046`. This late status update
 records the existing ratification; it is not a new approval or a substantive
 edit to the decision.
+
+`decision-0059` supersedes point 4 only where it identifies the shipped plugin
+artifact as HEAD because plugin versions are commits. The generator-only CLI,
+content-derived `payload@…` stamp, file-to-file staleness comparison,
+plugin-vendor `install.sh`, and retired binary-release channel stand.
