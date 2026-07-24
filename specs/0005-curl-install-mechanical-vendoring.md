@@ -79,11 +79,13 @@ not just the M1 overlay payload:
 
 | Path | Why it must come along |
 |---|---|
-| `.claude-plugin/plugin.json` | Identifies the vendored directory as the `trellis` plugin to Claude Code. |
+| `VERSION` | The Trellis plugin package's canonical SemVer (`decision-0061`); both host manifests and `surfaces.json` must match it. |
+| `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` | Identify the vendored directory as the `trellis` plugin to Claude Code and Codex respectively. The Codex declaration does not expand this Claude-oriented installer into a Codex installer. |
+| `surfaces.json` | Product-owned metadata for the exact host boundaries Trellis has established; marketplace observations remain distinct from behavior support. |
 | `skills/setup/SKILL.md`, `skills/remove/SKILL.md` | The actual skills — `install.sh` gets you *to* these, it does not replace them. Both, not just `setup`: a vendored install with no `/trellis:remove` is a governance tool with no clean exit, which spec-0004 already treats as a trust defect. |
-| `hooks/hooks.json`, `hooks/staleness.sh` | Required for the `decision-0043` staleness surface (`SessionStart` compares `.trellis/version` to `${CLAUDE_PLUGIN_ROOT}/reference/version`) to fire at all under a vendored install. Not named in the issue's "plugin.json + skill + reference/" shorthand — included here explicitly because SKILL.md's and `hooks.json`'s own `${CLAUDE_PLUGIN_ROOT}`-relative paths only resolve if the tree they're vendored into is the *complete* plugin root, not a hand-picked subset. |
-| `reference/*` (all 12 files, including `checksums`) | The pre-rendered payload `/trellis:setup` copies from — unchanged, verbatim. |
-| `README.md` (plugin's own) | Documentation only; not manifest-verified, not load-bearing to any skill's function. Optional — include it for parity with a marketplace install, but its presence/absence does not gate AC1. |
+| `hooks/hooks.json`, `hooks/staleness.sh`, `hooks/codex-hooks.json`, `hooks/codex-context.mjs` | The complete host-isolated hook set. Claude's files provide the `decision-0043` staleness surface; Codex's files provide the trusted-local fresh-start context boundary from `decision-0058` and `spec-0007@v1`. They remain bundle bytes even though this installer exposes only the Claude host. |
+| `reference/*` (all 15 files, including `checksums`) | The pre-rendered payload `/trellis:setup` copies from — unchanged, verbatim. |
+| `README.md` (plugin's own) | Documentation only and not load-bearing to any skill's function, but included and manifest-verified for byte parity with a marketplace install. |
 
 **AC1 depends on this table's left column being exhaustive for the actual `plugins/trellis/` tree
 at build time** — if the tree grows a new top-level file class between this spec and

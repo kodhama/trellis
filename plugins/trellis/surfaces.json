@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "version": "0.2.0",
+  "rows": [
+    {
+      "surface_id": "claude-interactive",
+      "host": "claude",
+      "behavior_state": "supported",
+      "behavior_contracts": [
+        "decision-0058",
+        "spec-0007@v1"
+      ],
+      "marketplace_test_observations": [],
+      "disclosure": "Supported through Trellis's existing Claude import and setup contract; marketplace registration for 0.2.0 is not yet evidenced."
+    },
+    {
+      "surface_id": "codex-cli-local-startup",
+      "host": "codex",
+      "behavior_state": "supported",
+      "behavior_contracts": [
+        "decision-0058",
+        "spec-0007@v1"
+      ],
+      "marketplace_test_observations": [],
+      "disclosure": "Supported only for the trusted local fresh-start boundary; marketplace registration for 0.2.0 is not yet evidenced."
+    }
+  ]
+}

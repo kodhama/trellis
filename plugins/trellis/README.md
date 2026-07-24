@@ -1,8 +1,16 @@
-# Trellis (Claude Code and local Codex plugin)
+# Trellis plugin for Claude Code and local Codex
 
-A governance layer for agentic software development — the native Claude Code way to install it, no
-binary required. This is the **primary install path** (`kodhama-0002`; the Homebrew/curl binary
-channel retired per `kodhama-0007` rule 5).
+A governance layer for agentic software development, delivered as one dual-host plugin package
+with no binary required. This is the **primary install path** (`kodhama-0002`; the Homebrew/curl
+binary channel retired per `kodhama-0007` rule 5).
+
+## Package identity
+
+[`VERSION`](VERSION) is the sole plugin-package SemVer authority. Both host manifests and
+[`surfaces.json`](surfaces.json) carry that same value, guarded by
+the repository's `TestPluginPackageParity` Go test. The generated overlay keeps its separate content identity in
+[`reference/version`](reference/version): package SemVer identifies the plugin package, while the
+`payload@…` stamp identifies the exact generated rule bytes.
 
 ## Phase 1 host support
 
@@ -112,7 +120,7 @@ Run `/trellis:remove` — it strips the managed blocks in `CLAUDE.md` and `AGENT
 
 ## Plugin vs manual copy
 
-This plugin covers Claude Code natively. Every other harness uses the **manual copy path** (repo
-README, Get started): the payload in [`reference/`](reference/) is plain files — copy them, paste
-the pre-rendered block, verify with `shasum -c`. Same artifact, two mechanical copiers
-(`kodhama-0007`).
+This plugin covers Claude Code and the Phase 1 trusted-local Codex startup boundary described
+above. Other surfaces use the **manual copy path** (repo README, Get started): the payload in
+[`reference/`](reference/) is plain files — copy them, paste the pre-rendered block, verify with
+`shasum -c`. Same artifact, multiple mechanical carriers (`kodhama-0007`).
