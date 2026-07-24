@@ -1,8 +1,9 @@
 ---
 id: decision-0036
 type: decision
-status: ratified
+status: superseded
 superseded_in_part_by: [decision-0043]
+superseded_by: [decision-0059]
 depends_on: [decision-0035]
 owner: gundi
 ratified: 2026-07-06
@@ -42,3 +43,11 @@ fast-moving project where plugin users should be on the current invariants, not 
 - Auto-update stays **off by default** for third-party marketplaces (Claude Code default) — users still
   run `/plugin marketplace update` (or opt into auto-update). Nothing we control from our side; worth a
   line in the install docs.
+
+## Supersession record
+
+`decision-0059` supersedes this decision's remaining package-identity and
+update-detection contract with one product-owned SemVer release, matching
+host manifests, and immutable `trellis-v<version>` tags. The host-controlled
+auto-update observation above remains historical context, not a package
+versioning mechanism.
