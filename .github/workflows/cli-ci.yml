@@ -24,10 +24,10 @@ jobs:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # cli/codex_hook_test.go executes the production Codex hook; Phase 1's
       # explicit local hook prerequisite is Node.js >=20 (spec-0007@v1 R40).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
       - uses: actions/setup-go@v5
