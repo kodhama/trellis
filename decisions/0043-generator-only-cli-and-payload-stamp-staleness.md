@@ -2,7 +2,7 @@
 id: decision-0043
 type: decision
 status: approved  # ratified by the maintainer's merge of PR #126 on 2026-07-10; approval recorded late under decisions 0022/0042
-superseded_in_part_by: [decision-0059]
+superseded_in_part_by: [decision-0059, decision-0061]
 depends_on: [decision-0010, decision-0025, decision-0035, decision-0036, decision-0039, decision-0041]
 owner: gundi
 date: 2026-07-10
@@ -124,3 +124,9 @@ edit to the decision.
 artifact as HEAD because plugin versions are commits. The generator-only CLI,
 content-derived `payload@…` stamp, file-to-file staleness comparison,
 plugin-vendor `install.sh`, and retired binary-release channel stand.
+
+After `decision-0060` retired that family contract, `decision-0061` supersedes
+the same narrow sentence with a Trellis-local SemVer package authority. It
+does not change this decision's generator-only CLI, content-derived payload
+stamp, staleness comparison, vendor-script distinction, or retired binary
+release channel.
