@@ -1,7 +1,7 @@
 ---
 id: decision-0061
 type: decision
-status: draft
+status: gated
 depends_on: [decision-0043, decision-0058, decision-0060]
 owner: agent
 date: 2026-07-24
