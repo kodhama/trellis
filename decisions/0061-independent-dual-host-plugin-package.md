@@ -1,7 +1,7 @@
 ---
 id: decision-0061
 type: decision
-status: gated
+status: approved  # maintainer intent: "Approve whatever needs approval, merge and continue"; independent decision-adversary SOUND after one revision
 depends_on: [decision-0043, decision-0058, decision-0060, kodhama/kodhama-spec-0003-marketplace-test-observation@v1]
 owner: agent
 date: 2026-07-24
@@ -214,3 +214,13 @@ another. The initial version avoids a verified stale-cache value. The
 implementation surface is bounded to four carriers, one existing-language
 test, and existing checksum/document propagation; none of the retired family
 release machinery returns.
+
+## Lifecycle record
+
+The maintainer had already selected the independent package approach and on
+2026-07-24 explicitly directed: “Approve whatever needs approval, merge and
+continue.” The decision-adversary first returned `NEEDS-REVISION` because the
+marketplace-observation schema was normatively unnamed. After the decision
+pinned the exact approved upstream artifact and merge, the fresh adversarial
+pass returned `SOUND`. This `approved` status records the maintainer's human
+intent act; the adversary informed it and did not substitute for it.
