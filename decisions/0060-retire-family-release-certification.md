@@ -1,7 +1,7 @@
 ---
 id: decision-0060
 type: decision
-status: gated  # maintainer's explicit reset intent on 2026-07-24; records intent for independent review, not agent self-approval
+status: approved  # maintainer's explicit reset intent; decision-adversary SOUND and conformance PASS
 depends_on: [decision-0043, decision-0058, decision-0059, spec-0007@v1, spec-0008@v2]
 owner: agent
 date: 2026-07-24
@@ -13,8 +13,8 @@ date: 2026-07-24
 > preserve the independently decided and implemented local hook/live-rule
 > work, retire the family release-certification contract and all machinery it
 > would require, and make any future headless test depend only on a narrow
-> Stewards CI marketplace-provisioning skill. This gated record captures that
-> intent for independent review; it does not record agent approval.
+> Stewards CI marketplace-provisioning skill. This approved record captures
+> that human intent after independent soundness and conformance gates passed.
 
 ## Context
 
@@ -137,5 +137,6 @@ their creation is retired before implementation.
 This record consumes only settled upstreams, identifies the exact contract it
 retires, and leaves the independent local delivery artifacts unchanged. It
 does not infer headless support from marketplace acquisition. Its
-`status: gated` records the maintainer's reset intent while leaving approval
-to the configured independent/human gate.
+`status: approved` records the maintainer's explicit reset intent after the
+decision-adversary returned `SOUND`, the conformance reviewer returned
+`PASS`, and the change-scoped corpus review returned `PASS`.
