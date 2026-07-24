@@ -639,7 +639,11 @@ history-only follow-up. It first fetches `origin/main`, resolves
 dedicated history staging worktree at that exact commit. The tag's peeled
 release commit shall be an ancestor of the base, and every release-controlled
 path other than `release/trellis/history.json` shall be byte-identical to its
-tagged retained bytes. In that worktree the exact order is:
+tagged retained bytes. A normal invocation uses that fresh worktree. Only
+recovery after an interrupted invocation may reuse its existing worktree, and
+only when `HEAD` still equals `HISTORY_BASE_COMMIT`, every non-history tracked
+path still equals `HEAD`, and the history destination passes the exact
+post-rename recovery classification below. In either mode the exact order is:
 
 ```sh
 "$HISTORY_WORKTREE/plugins/trellis/bin/release-contract.mjs" \
@@ -706,10 +710,23 @@ the working copy of `release/trellis/history.json`.
 
 The command verifies that the authoritative commit exists, still equals the
 captured `origin/main`, descends from the tag's peeled release commit, and
-contains a family-valid ledger. The staging destination must initially be
-byte-identical to that authoritative ledger. When the current row is absent,
-the tagged checkout's ledger must also be byte-identical to that authoritative
-ledger before append. The tagged checkout is never used to decide whether an
+contains a family-valid ledger. The staging worktree's `HEAD` must equal that
+commit and every tracked path other than `release/trellis/history.json` must
+equal `HEAD`.
+
+While holding the exclusive lock, the command classifies the destination from
+bytes rather than a caller assertion:
+
+- **fresh staging:** the destination is byte-identical to the authoritative
+  ledger;
+- **post-rename recovery:** authoritative main has no current or later row,
+  and the destination is byte-identical to the independently derived complete
+  canonical-next ledger; or
+- **conflict:** every other destination state.
+
+When authoritative main has no current row, the tagged checkout's ledger must
+also be byte-identical to the authoritative ledger before either fresh append
+or recovery succeeds. The tagged checkout is never used to decide whether an
 already-merged row exists.
 
 The append operation has exactly these outcomes:
@@ -717,8 +734,9 @@ The append operation has exactly these outcomes:
 | Starting state | Result |
 |---|---|
 | Authoritative main ledger has no current-version row or later-version row; the clean staging destination and tagged pre-row ledger equal its bytes; prior ledger/tag/reference checks pass | Materialize one complete appended row atomically in the staging worktree; stdout one canonical JSON line with `outcome: appended`; exit `0` |
+| Authoritative main ledger has no current-version row or later-version row; the staging destination already equals the independently derived canonical-next bytes after a post-rename interruption; tagged prior and all bindings remain valid | Validate the existing complete destination, perform no destination rewrite, remove only safe stale temporary files as defined below, stdout the same canonical `outcome: appended` line; exit `0` |
 | Authoritative main ledger and clean staging destination contain one byte-identical current-version row, all following rows remain family-valid, and the tag still peels to its recorded commit | No write; stdout one canonical JSON line with `outcome: already-recorded`; exit `0`, even though the immutable tagged checkout still has the pre-row ledger |
-| Current-version row differs, duplicates exist, a later row exists without the current row, authoritative/tagged prior bytes differ before append, the main ref moved during preparation, or tag identity differs | No write; nonzero exit with `conflict`; never repair or replace |
+| Current-version row differs, duplicates exist, a later row exists without the current row, authoritative/tagged prior bytes differ before append, the main ref moved during preparation, tag identity differs, cleanup ownership differs, or a required platform primitive is unavailable | No destination write; only safe stale temps removed before a later conflict may remain removed; nonzero exit with `conflict`; never repair or replace |
 
 Success stdout is exactly one LF-terminated line:
 `{"outcome":"<appended|already-recorded>","package_version":"<version>","release_tag":"<tag>","source_commit":"<40-hex>"}`.
@@ -735,27 +753,63 @@ lock is released by the OS when the process exits. Together with the workflow
 concurrency group, this is the required single-writer precondition: no
 conforming writer can change the destination between comparison and rename.
 
-While holding the lock, the command builds and validates the complete next
-ledger in a unique sibling path
-`release/trellis/.history.json.trellis-append.<32-lowercase-hex>.tmp`, created
-as a new regular file with exclusive-create/no-follow semantics. It never uses
-a shared temporary path. It re-reads and re-hashes the working destination
-immediately before one atomic same-filesystem rename and renames only when the
-destination still equals either the tagged starting bytes or the already
-materialized canonical next ledger. Any other digest is `conflict`. A
-pre-rename interruption leaves the destination byte-identical; a post-rename
-interruption leaves the complete row.
+Before cleanup or destination write, the platform must provide the numeric
+effective UID, directory-relative no-follow list/stat/unlink operations,
+stable device/inode identity, exclusive-create/no-follow, the nonblocking
+exclusive lock, and same-filesystem atomic rename semantics required below. An
+unsupported or unenforceable primitive is `conflict`; the command removes no
+temporary file, does not change the destination, and emits no success object.
 
-After acquiring the exclusive lock, a rerun may remove stale matching unique
-temporary files only after rejecting symlinks/non-regular files and confirming
-they share the expected parent and owner; temporary bytes are never treated as
-authority. Cleanup failure is `conflict`. It then derives state again from the
-authoritative main ledger. If main contains the exact row, it returns
-`already-recorded`; if main is still pre-row and the working destination is
-starting or canonical-next bytes, it returns/materializes `appended` so the
-same candidate can be release-validated before the history PR is opened or
-updated. Thus neither a crash nor the immutable tag's pre-row ledger can
-recreate a merged history PR.
+After acquiring the lock and passing that platform check, the command may
+remove stale matching unique temporary files only through one already-open
+no-follow directory descriptor for the exact `release/trellis` parent. The
+descriptor's numeric owner UID must equal the running process's numeric
+effective UID before cleanup or append continues. A cleanup candidate's
+basename must match exactly
+`^\.history\.json\.trellis-append\.[0-9a-f]{32}\.tmp$`.
+Directory-relative no-follow metadata immediately before unlink must prove
+that the candidate:
+
+- is a regular file, not a symbolic link;
+- has numeric owner UID equal to both the running process's numeric effective
+  UID and the parent directory's numeric owner UID; and
+- has the same device, inode, type, and owner UID as its first no-follow
+  observation under the lock.
+
+Comparison is by numeric UID only; username, group, mode-derived writability,
+and temporary-file contents never establish ownership or authority. Cleanup
+first enumerates basenames in bytewise ascending order and validates the
+complete candidate set without unlinking. Any list or first-pass predicate
+failure is `conflict` and removes no candidate. It then revalidates each
+candidate's device, inode, type, and UID against its first observation and
+uses directory-relative unlink against that same open parent descriptor. A
+second-pass mismatch, disappearance, replacement, or unlink error is
+`conflict`; a previously unlinked safe candidate remains removed, the failing
+candidate is never treated as authority, and the destination ledger remains
+unchanged.
+
+After safe cleanup, the command re-reads authoritative main and independently
+derives and validates the complete canonical-next ledger bytes. If main
+contains the exact row, it returns `already-recorded`. If main is still
+pre-row:
+
+- from fresh staging, it writes canonical-next to a unique sibling path
+  `release/trellis/.history.json.trellis-append.<32-lowercase-hex>.tmp` created
+  as a new regular file with exclusive-create/no-follow semantics, re-reads and
+  re-hashes the destination, and performs one atomic same-filesystem rename
+  only while the destination still equals the authoritative/tagged starting
+  bytes; or
+- from post-rename recovery, it verifies the existing destination equals the
+  independently derived canonical-next bytes, creates no new temporary file,
+  performs no destination rename or rewrite, and returns `appended`.
+
+It never uses a shared temporary path. Any other digest is `conflict`. A
+pre-rename interruption leaves the destination byte-identical to authoritative
+main and may leave only a safely cleanable unique temporary file; a
+post-rename interruption leaves the complete candidate and is the sole
+recovery prestate. The same candidate is release-validated before the history
+PR is opened or updated. Thus neither a crash nor the immutable tag's pre-row
+ledger can recreate a merged history PR.
 
 The append commit may follow the tagged release commit, changes no plugin byte,
 and must exist at a stable reference before Stewards publication.
@@ -894,9 +948,11 @@ and clean-install evidence are not members of that corpus.
   repeated after PR merge,
 - **Then** it yields exactly one complete family-valid row or the exact
   release-validated `already-recorded` no-op from authoritative main,
-  preserves prior bytes/tag bindings under the exclusive single-writer
-  protocol, never publishes an unvalidated history branch, never recreates a
-  merged history PR, and never mutates the plugin package.
+  treats a canonical-next recovery destination as an `appended` no-rewrite,
+  preserves prior bytes/tag bindings under the exclusive single-writer and
+  numeric-ownership cleanup protocol, fails closed when those primitives are
+  unavailable, never publishes an unvalidated history branch, never recreates
+  a merged history PR, and never mutates the plugin package.
 
 **S9 — bump, approval, and adoption**
 
@@ -946,8 +1002,10 @@ and clean-install evidence are not members of that corpus.
   the history PR merges,
 - **Then** family release validation always sees the exact appended row, only a
   validated `appended` result may update the history branch, an exact merged row
-  validates and returns `already-recorded` without a PR, and any main, tag,
-  candidate, or branch divergence returns `conflict`.
+  validates and returns `already-recorded` without a PR, an exact post-rename
+  recovery candidate returns `appended` without a second rename, and any main,
+  tag, candidate, ownership, platform, or branch divergence returns
+  `conflict`.
 
 ### EARS requirements
 
@@ -1007,7 +1065,10 @@ and clean-install evidence are not members of that corpus.
   derive repeat state from the captured authoritative main ledger and shall
   use the clean-staging/exclusive-single-writer/unique-temp/atomic-rename
   protocol to return exactly `appended`, `already-recorded`, or `conflict`
-  without mutating the tagged plugin tree or publishing an unvalidated row.
+  without mutating the tagged plugin tree or publishing an unvalidated row;
+  cleanup shall require numeric effective-UID/parent/candidate equality plus
+  stable no-follow device/inode identity and shall fail closed when any
+  required platform primitive is unavailable.
 - **R25:** The adoption emitter shall emit the closed canonical object and
   shall fail until every required stable reference and legacy element resolves.
 - **R26:** The adoption emitter shall preserve Trellis ownership of product
@@ -1050,8 +1111,11 @@ and clean-install evidence are not members of that corpus.
   creating, updating, or reusing a history branch or PR.
 - **R36:** Before-merge retries shall reproduce and revalidate the same
   candidate; after-merge retries shall validate authoritative main's exact row
-  and return `already-recorded`; any changed main, tag, candidate, branch tip,
-  or non-history tree path shall fail with `conflict`.
+  and return `already-recorded`; when main remains pre-row, a fresh destination
+  shall be atomically renamed once and an exact canonical-next recovery
+  destination shall return `appended` without rewrite; any changed main, tag,
+  candidate, owner identity, branch tip, or non-history tree path shall fail
+  with `conflict`.
 
 ## Open questions
 
@@ -1074,7 +1138,7 @@ closest rubric; Trellis has no dedicated spec-quality rubric.
 | 8–11. Typed catalog/profile checks | N/A | This artifact is neither a signature catalog nor an expression profile. |
 | 12. Version semantics | PASS | Testable bundle and release/history clauses changed, so the behavioral counter advances from v2 to v3 and the new whole-spec delta note identifies scope and provenance while retaining v2's note. |
 | Decision boundary | PASS | Requirements derive from decision 0059, decision 0058/spec 0007 current behavior, and approved family spec v2; the acyclic digest is a product-local way to satisfy both whole-plugin obligations, the staged row satisfies the family release prerequisite, and runtime provisioning, provisioner behavior, and unsupported promotions remain excluded. |
-| Adversary exactness | PASS | Literal support/fallback values, exhaustive public-contract map, exact two-field normalization plus raw recomputation, explicit runtime-store and validator protocol, row-before-release ordering, authoritative-main retry state machine with enforced single writer, closed adoption object, and bounded support corpus have executable pass/fail boundaries. |
+| Adversary exactness | PASS | Literal support/fallback values, exhaustive public-contract map, exact two-field normalization plus raw recomputation, explicit runtime-store and validator protocol, row-before-release ordering, byte-derived fresh/recovery states, numeric effective-UID/parent/inode cleanup with unsupported-platform failure, enforced single writer, closed adoption object, and bounded support corpus have executable pass/fail boundaries. |
 
 **Result: PASS.**
 
@@ -1088,4 +1152,8 @@ change-scoped corpus `PASS`; recording `approved` here records that maintainer
 act for the family validator-runtime amendment rather than reusing v1's
 approval. V3 returns the artifact to `gated`: its author self-check passes, but
 the acyclic bundle binding and row-before-release workflow have no recorded
-independent review or human approval act yet.
+human approval act yet. Its first spec-adversary pass returned
+`NEEDS-REVISION` on `afbf022` because fresh staging contradicted post-rename
+recovery and stale-temp ownership/platform behavior was undefined; this
+revision makes those states and predicates explicit and awaits a new
+independent verdict.
