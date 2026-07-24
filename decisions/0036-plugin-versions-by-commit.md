@@ -3,7 +3,7 @@ id: decision-0036
 type: decision
 status: superseded
 superseded_in_part_by: [decision-0043]
-superseded_by: [decision-0059]
+superseded_by: [decision-0059, decision-0061]
 depends_on: [decision-0035]
 owner: gundi
 ratified: 2026-07-06
@@ -51,3 +51,8 @@ update-detection contract with one product-owned SemVer release, matching
 host manifests, and immutable `trellis-v<version>` tags. The host-controlled
 auto-update observation above remains historical context, not a package
 versioning mechanism.
+
+`decision-0061` is the current successor after `decision-0060` retired
+`decision-0059`: it replaces commit-SHA package identity with a deliberately
+smaller Trellis-local SemVer `VERSION` plus matching host manifests, without
+reviving tags, releases, or family certification.
