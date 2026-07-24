@@ -1,7 +1,7 @@
 ---
 id: spec-0008
 type: spec
-status: gated  # v2 author self-check passed; independent review and a human approval act remain required
+status: approved  # Maintainer-authorized merge records v2 approval after independent gates passed
 version: 2
 depends_on: [decision-0059, decision-0058, spec-0007@v1, kodhama/kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v2]
 implements: decision-0059
@@ -925,8 +925,9 @@ closest rubric; Trellis has no dedicated spec-quality rubric.
 ## Gate record
 
 On 2026-07-24 the maintainer approved v1 after the spec-adversary returned
-`APPROVE-READY` and the conformance reviewer returned `PASS`. This v2
-amendment consumes the subsequently approved family validator-runtime
-protocol and is `gated` after its author self-check. Independent
-spec-adversary and conformance review, followed by a recorded human approval
-act, remain required before v2 becomes `approved`.
+`APPROVE-READY` and the conformance reviewer returned `PASS`. The maintainer
+then authorized this family wave to merge when its independent gates passed.
+V2 received spec-adversary `APPROVE-READY`, conformance `PASS`, and a
+change-scoped corpus `PASS`; recording `approved` here records that maintainer
+act for the family validator-runtime amendment rather than reusing v1's
+approval.
