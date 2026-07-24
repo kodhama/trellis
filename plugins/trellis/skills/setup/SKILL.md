@@ -10,7 +10,7 @@ overlay**: a small `.trellis/` bundle plus one managed block in the instructions
 touch anything outside the bundle or the markers** (augment, never clobber).
 
 You are a **mechanical copier** (`kodhama-0007`, "one render, many copiers"). Every byte of bundle
-content was rendered at release time into `${CLAUDE_PLUGIN_ROOT}/reference/` — the payload. Your job
+content was rendered at release time into `${TRELLIS_PLUGIN_ROOT}/reference/` — the payload. Your job
 is exactly three verbs: **copy** payload files into `.trellis/` (the readout ships complete —
 per-row assembly retired with `decision-0053`; the `rules.toml` rows govern which rules apply at
 read time), **paste** one payload block between the `trellis:begin`/`trellis:end` markers, and
@@ -23,11 +23,76 @@ deterministic thing is the **artifact** (the payload + its manifest), not a priv
 (The one exception to "no model-driven work" is the **M2 morph** at the end of this file — and its
 scope is the project's *own* files, never bundle content.)
 
+## 0. Detect the host and preflight the whole transaction
+
+This preflight is mandatory and finishes **before the first project write**. Staging in a temporary
+directory is allowed; `.trellis/`, `AGENTS.md`, and `CLAUDE.md` must remain byte-for-byte unchanged
+until every check below passes.
+
+Apply this exact host precedence:
+
+1. If `PLUGIN_ROOT` is set, it must name an absolute existing directory whose
+   `.codex-plugin/plugin.json` parses as JSON and has `name` exactly `"trellis"`. A valid root
+   selects **Codex**, even when `CLAUDE_PLUGIN_ROOT` is also set. An invalid Codex root stops; it
+   never falls through to Claude.
+2. Only when `PLUGIN_ROOT` is absent may an absolute existing `CLAUDE_PLUGIN_ROOT` select
+   **Claude**, and only when `.claude-plugin/plugin.json` parses with `name` exactly `"trellis"`.
+3. A missing, relative, nonexistent, malformed, or wrong-plugin root stops visibly.
+
+Set `TRELLIS_PLUGIN_ROOT` to the validated selected root for every command below. For Codex,
+preflight `node`: major version **Node.js 20** or newer enables the native hook. If it is unavailable
+or older, continue with a visible **bootstrap-only** degradation: install the overlay and fallback,
+but do not claim native delivery. Node is a local plugin-hook prerequisite, never a project runtime
+or daemon.
+
+Then preflight, without writing. The documented instruction-file inventory is exactly
+`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, and `.clinerules`;
+scan **all five**, not only the selected target, for every legacy/manual
+`trellis:begin`/`trellis:end` block (including an inline/full-rule block) and every
+`trellis:codex-bootstrap:begin`/`trellis:codex-bootstrap:end` block.
+
+Classify one **canonical opposite-host block** as an explicit exemption:
+
+- **When Codex is selected**, exactly one valid Claude import block in `CLAUDE.md`, byte-identical
+  to `block-claude.md`, is allowed and byte-preserved.
+- **When Claude is selected**, exactly one valid Codex bootstrap in `AGENTS.md`, byte-identical to
+  `block-codex.md`, is allowed and byte-preserved.
+
+This exemption applies only at those canonical paths with exact payload bytes. It is not a
+migration input and requires no removal consent. A mismatched, misplaced, duplicate, nested, or
+otherwise ambiguous opposite-host block is not exempt.
+
+Every other existing block is a migration input, never permission to add a second transport:
+
+- In the selected target, show the byte-exact proposed replacement and obtain explicit consent to
+  migrate the old block to the host-native block in the same transaction.
+- A non-exempt recognized block outside the selected target must make setup stop, unless the user gives
+  explicit consent to remove that exact block in the same transaction.
+- Never add a Codex bootstrap while any inline/full-rule block remains in any documented
+  instruction file. Never leave both a migrated block and its replacement.
+
+Continue the preflight:
+
+- the complete payload checksum manifest and every source file used below, including
+  `block-claude.md` and `block-codex.md`;
+- the existing `.trellis/rules.toml`, or the user's resolved posture choice when a seed is needed;
+- every generated-file clobber guard and legacy migration/consent decision;
+- the selected target: `CLAUDE.md` for Claude, `AGENTS.md` for Codex, plus every consented
+  cross-file removal above;
+- exactly zero or one nonnested, paired recognized marker set per file; duplicate, unpaired,
+  nested, overlapping, or ambiguous markers anywhere stop;
+- a byte snapshot of both instruction files and every project path this transaction may touch.
+
+Do not start steps 2–7 until all choices and checks above resolve. This scan and consent gate
+finishes before the first project write. On any preflight failure, report it and verify the
+whole-project snapshot is unchanged. The skill directs these checks; it does not claim that
+best-effort model execution turns them into a transactional filesystem primitive.
+
 ## The overlay's two halves — placement by authority (`decision-0051` rule 1, as amended)
 
 - **`.trellis/` root — consumer-authoritative.** **`rules.toml` alone** (the machine-read config:
   which rules apply, how strictly — its rows govern rule activation **at read time**,
-  `decision-0053`: a row edit takes effect immediately, no refresh needed). Seeded **once**; a
+  `decision-0053`: a row edit takes effect at the next host context-loading boundary, no refresh needed). Seeded **once**; a
   refresh never clobbers it; excluded from manifest verification — the consumer owns it. There is
   **no** `expression.md`: it is retired from the bundle (`decision-0051` amendment) — a project's
   governance prose belongs in its **own instructions file**, which every harness already loads;
@@ -38,17 +103,18 @@ scope is the project's *own* files, never bundle content.)
 
 ## The payload
 
-In `${CLAUDE_PLUGIN_ROOT}/reference/`, where `<p>` is the posture key (`a` or `b`, step 1):
+In `${TRELLIS_PLUGIN_ROOT}/reference/`, where `<p>` is the posture key (`a` or `b`, step 1):
 
 | payload file | goes to | notes |
 |---|---|---|
 | `invariants.md` | `.trellis/internal/invariants.md` | full catalog; posture-independent |
 | `trellis-<p>.md` | `.trellis/internal/trellis.md` | the header agents read; the strictness line is the only per-posture difference. It imports its sibling `rules.md` (imports resolve relative to the importing file) |
 | `rules.md` | `.trellis/internal/rules.md` — **every** install | the complete readout: all 14 rules, each ending with its row's slug, opened by the authority header — rules apply only where the `rules.toml` row is `active = true`; the two `floor-` rows apply regardless (`decision-0053`) |
-| `rules-<p>.toml` | `.trellis/rules.toml` — **first run only** | the posture seed: explicit rows, all active, `seeded_from` + `strictness` pre-filled. Consumer-owned from the moment it is seeded — editing rows *is* the configuration act, and row edits take effect immediately; a refresh reads rows, validates them, and asks nothing |
+| `rules-<p>.toml` | `.trellis/rules.toml` — **first run only** | the posture seed: explicit rows, all active, `seeded_from` + `strictness` pre-filled. Consumer-owned from the moment it is seeded — editing rows *is* the configuration act, and row edits take effect at the next supported boundary; a refresh reads rows, validates them, and asks nothing |
 | `block-claude.md` | the managed block in `CLAUDE.md` | import style: two block-level imports — `@.trellis/internal/trellis.md` and `@.trellis/rules.toml` (the rows load below the rules) |
-| `block-inline-<p>-head.md` · `block-inline-tail.md` | the managed block in a no-`@import` instructions file, sandwiching the readout and the rows | inline style: the block is head + `.trellis/internal/rules.md` + an `## Active rows` section carrying the project's `rules.toml` + tail (step 7) — the rows ride inlined below the rules |
-| `block-inline-<p>.md` | the same block while `rules.toml` still equals the seed | the pre-built seed-state sandwich — byte-identical to the step-7 rebuild in that case |
+| `block-codex.md` | the managed receipt/fallback in `AGENTS.md` | Codex only: best-effort installed-file bootstrap, never rule prose or row values |
+| `block-inline-<p>-head.md` · `block-inline-tail.md` | dormant shared payload for the documented manual no-import path | not registered or installed by either Phase 1 host branch |
+| `block-inline-<p>.md` | the manual no-import seed-state sandwich | not a claimed native Phase 1 transport |
 | `version` | `.trellis/internal/version` | the payload's render stamp (`payload@…`) — the staleness hook compares the two files (`decision-0043`, path per `decision-0051`) |
 | `checksums` | *(not installed)* | `shasum -a 256` manifest over the other files — the verify oracle (step 8) |
 
@@ -83,7 +149,9 @@ validation survives assembly's retirement):
   loudly** — they contradict the authority header this context now carries.
 - **It does not exist, but a legacy `.trellis/expression.md` has a `profile:` frontmatter key**
   (`a` or `b` — an overlay from before `decision-0051`): **migrate.** Seed the config from that
-  posture — `cp "${CLAUDE_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml`. The
+  posture in the transaction staging area. Do not copy it into the project until the complete
+  preflight passes. The eventual write is
+  `cp "${TRELLIS_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml`. The
   legacy file itself is handled in step 6 (preserved, never silently deleted).
 - **Neither exists** (first run): ask the user to pick a posture, then seed.
 
@@ -95,13 +163,13 @@ stay parked per `decision-0033`/`decision-0051` rule 7 — do not offer them):
 - **B · author-adapt** — same rules, follow by default and adapt out loud (**default** if the user
   is unsure).
 
-Then seed the one consumer-owned file by copying — a copy, not a composition (the seed is payload
+After the complete step-0 preflight succeeds, seed the one consumer-owned file by copying — a copy, not a composition (the seed is payload
 content like every other bundle file, so it has no second home in this skill's prose and nothing
 is left to fill in):
 
 ```sh
 mkdir -p .trellis
-cp "${CLAUDE_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml
+cp "${TRELLIS_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml
 ```
 
 From that moment the file is the project's own: they may edit rows freely, and no later run of
@@ -133,8 +201,8 @@ overwriting**:
 
 ```sh
 mkdir -p .trellis/internal
-cp "${CLAUDE_PLUGIN_ROOT}/reference/invariants.md"  .trellis/internal/invariants.md
-cp "${CLAUDE_PLUGIN_ROOT}/reference/trellis-<p>.md" .trellis/internal/trellis.md
+cp "${TRELLIS_PLUGIN_ROOT}/reference/invariants.md"  .trellis/internal/invariants.md
+cp "${TRELLIS_PLUGIN_ROOT}/reference/trellis-<p>.md" .trellis/internal/trellis.md
 ```
 
 Copy with `cp`, not by retyping content. Do not reword, reformat, trim, or annotate any of these
@@ -147,14 +215,14 @@ Every install carries the complete readout, whatever the rows say — a plain co
 every other generated file:
 
 ```sh
-cp "${CLAUDE_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md
+cp "${TRELLIS_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md
 ```
 
 Which rules **apply** is not decided here: the readout opens with an **authority header**
 instructing agents to apply each rule only where its `rules.toml` row is `active = true`; the two
-`floor-` rows apply regardless of their row value. So **row edits take effect immediately** — the
-import channel reads the current `rules.toml` each session, and an inline block re-pastes its
-rows section on refresh (step 7). A refresh updates the payload copies and **validates** the rows
+`floor-` rows apply regardless of their row value. So **row edits take effect at the next supported
+host context-loading boundary** — Claude imports current rows each session and the Codex startup
+hook reads them directly. A refresh updates the payload copies and **validates** the rows
 (step 1); it is not what activates them. (Per-row subset assembly, and the floor-held assembly
 override, retired with `decision-0053` — the floors are now held by the header's floor sentence
 plus the step-1 validation.)
@@ -162,7 +230,7 @@ plus the step-1 validation.)
 ## 5. Stamp `.trellis/internal/version` — a copy, like everything else
 
 ```sh
-cp "${CLAUDE_PLUGIN_ROOT}/reference/version" .trellis/internal/version
+cp "${TRELLIS_PLUGIN_ROOT}/reference/version" .trellis/internal/version
 ```
 
 The payload's content-derived render stamp (`payload@…`) **is** the install stamp
@@ -199,61 +267,39 @@ Report the disposition — moved, left in place, or deleted — in step 10.
 
 ## 7. Patch the instructions file (augment, never clobber)
 
-**Re-detect the target and style first.** Search the known instruction files — `CLAUDE.md`,
-`AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.clinerules` — for an existing
-`<!-- trellis:begin` marker:
+Patch exactly the selected host's target from step 0:
 
-- **Exactly one file carries the block** → refresh it in place, keeping its style: a block
-  containing an `@import` of the trellis header — `@.trellis/internal/trellis.md`, or the legacy
-  `@.trellis/trellis.md` — is **import** style; a block carrying the rules directly is **inline**
-  style.
-- **No file carries the block** → fresh install: target `CLAUDE.md` with **import** style —
-  this skill runs inside Claude Code, where `@import` works. Create `CLAUDE.md` if it does not
-  exist. (Non-Claude harnesses install the inline block via the manual copy path documented in
-  the repo README — not this skill's decision to make.)
-- **More than one file carries the block, or you cannot classify an existing block's style** →
-  ambiguous: **ask the user**; never guess.
+| selected host | target | payload block | default other-host result |
+|---|---|---|---|
+| Claude | `CLAUDE.md` | `block-claude.md` between `trellis:begin` / `trellis:end` | `AGENTS.md` remains byte-for-byte identical |
+| Codex | `AGENTS.md` | `block-codex.md` between `trellis:codex-bootstrap:begin` / `trellis:codex-bootstrap:end` | `CLAUDE.md` remains byte-for-byte identical |
 
-**Build the block content** for the style you detected:
+The Codex bootstrap is a receipt and best-effort fallback for a **fresh trusted local Codex
+startup**. It contains no rule prose, generated readout, row values, or posture content. The native
+hook reads current rows at startup. Phase 1 supports a fresh trusted local Codex startup. An
+ordinary refresh is not a preset reset and must never overwrite an existing valid `rules.toml`.
 
-- **Import style**: the payload's `block-claude.md`, verbatim — its two imports carry the header
-  (→ the readout) and the project's `rules.toml` into every session, so row edits govern live
-  with nothing to rebuild (it also migrates a legacy block's import paths and adds the rows
-  import a pre-`decision-0053` block lacks).
-- **Inline style**: the block inlines the rows below the rules (`decision-0053` point 2 — the
-  rows-inlined sandwich): the manifest-covered head part, the readout copied in step 4, an
-  `## Active rows` section carrying **the project's actual `.trellis/rules.toml`**, and the
-  manifest-covered tail part. Re-pasting this on refresh is how an inline install picks up row
-  edits (`decision-0053` point 3 — its general update cadence; the rows themselves govern at
-  read time):
+Use the all-instruction-file marker analysis and migration consents completed in step 0:
 
-  ````sh
-  ref="${CLAUDE_PLUGIN_ROOT}/reference"
-  { cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md
-    printf '\n## Active rows (`.trellis/rules.toml`)\n\n```toml\n'
-    cat .trellis/rules.toml
-    printf '```\n'
-    cat "$ref"/block-inline-tail.md; }
-  ````
+- With no pair, append one separator newline, the selected payload block verbatim, and one final
+  newline. Create only the selected target if it was absent.
+- With one valid selected-target pair, replace from its begin marker through paired end marker
+  inclusive with the selected payload block after the explicit migration consent. Preserve every
+  byte outside it.
+- Remove each specifically consented legacy/manual or outside-selected-target block as part of this
+  same transaction, preserving every surrounding byte.
+- Any duplicate, unpaired, nested, overlapping, unconsented cross-file, or otherwise ambiguous
+  marker stops before any overlay or instruction-file write.
 
-  (The three `printf` lines are the rows section's fixed wrapper — the exact bytes the shipped
-  seed-state sandwich uses; everything else is a `cat` of payload or consumer files.) While
-  `rules.toml` still equals its seed, this output is byte-identical to the shipped
-  `block-inline-<p>.md`, so copying that file is equivalent in the default case.
-
-**Before editing, save a pre-edit copy** of the target file (to your temp directory — you will need
-it for verification), then paste:
-
-- If the block exists: replace everything **from the first `<!-- trellis:begin` line through the
-  first `<!-- trellis:end -->` line, inclusive**, with the block content built above. Touch
-  nothing else — not even whitespace outside the markers.
-- If it does not: append one blank separator line, then the block, then a trailing newline.
-- Never write a second block.
+Save the pre-edit target bytes for verification. Running Claude setup then Codex setup, or the
+reverse, may leave exactly one transport in each canonical file only when the all-file scan found
+no old inline/full-rule copy; setup must never claim co-installation is safe while another effective
+rule copy remains.
 
 ## 8. Verify — data, not trust (`kodhama-0007` rule 3)
 
-Run **all five** checks from the project root. Substitute `<p>` and `<target>` (the instructions
-file) for what you actually used.
+Run **all five** checks from the project root. Substitute `<p>`, the selected `<target>`, marker
+names, and payload block for the current host.
 
 **(a) Copied files match the shipped manifest:**
 
@@ -262,7 +308,7 @@ sed -n \
   -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
   -e 's|  trellis-<p>\.md$|  .trellis/internal/trellis.md|p' \
   -e 's|  version$|  .trellis/internal/version|p' \
-  "${CLAUDE_PLUGIN_ROOT}/reference/checksums" | shasum -a 256 -c -
+  "${TRELLIS_PLUGIN_ROOT}/reference/checksums" | shasum -a 256 -c -
 ```
 
 All three lines must print `OK`. (`.trellis/rules.toml` is deliberately outside install-time
@@ -274,46 +320,43 @@ change, `decision-0051` rule 1.)
 — the readout is a static payload file on every install, so the oracle is a plain byte-compare):
 
 ```sh
-diff .trellis/internal/rules.md "${CLAUDE_PLUGIN_ROOT}/reference/rules.md"
+diff .trellis/internal/rules.md "${TRELLIS_PLUGIN_ROOT}/reference/rules.md"
 ```
 
 Empty output = pass.
 
-**(c) Exactly one begin and one end marker** in the target:
+**(c) Exactly one selected-host begin and one end marker** in the target. When step 0 found no
+consented cross-file migration, every other documented instruction file is byte-for-byte identical
+to its snapshot. Otherwise, compare each changed file to the exact snapshot-minus-consented-block
+result:
 
 ```sh
-grep -c 'trellis:begin' <target>   # must print 1
-grep -c 'trellis:end' <target>     # must print 1
+grep -c '<selected-begin-marker>' <target>   # must print 1
+grep -c '<selected-end-marker>' <target>     # must print 1
+cmp <unchanged-instruction-snapshot> <unchanged-instruction-file>
+cmp <staged-snapshot-minus-consented-block> <consented-migration-file>
 ```
 
-**(d) The block is byte-identical to its oracle** — the payload file (import style), or the
-step-7 sandwich re-derived (inline style, so the paste is checked against the rows actually in
-`.trellis/rules.toml`, not a fixed seed-state file):
+**(d) The block is byte-identical to its host oracle**:
 
 ````sh
-# import style:
+# Claude:
 sed -n '/<!-- trellis:begin/,/<!-- trellis:end -->/p' <target> \
-  | diff - <(cat "${CLAUDE_PLUGIN_ROOT}/reference/block-claude.md"; echo)
+  | diff - <(cat "${TRELLIS_PLUGIN_ROOT}/reference/block-claude.md"; echo)
 
-# inline style:
-ref="${CLAUDE_PLUGIN_ROOT}/reference"
-sed -n '/<!-- trellis:begin/,/<!-- trellis:end -->/p' <target> \
-  | diff - <({ cat "$ref"/block-inline-<p>-head.md .trellis/internal/rules.md
-               printf '\n## Active rows (`.trellis/rules.toml`)\n\n```toml\n'
-               cat .trellis/rules.toml
-               printf '```\n'
-               cat "$ref"/block-inline-tail.md; }; echo)
+# Codex:
+sed -n '/<!-- trellis:codex-bootstrap:begin/,/<!-- trellis:codex-bootstrap:end -->/p' <target> \
+  | diff - <(cat "${TRELLIS_PLUGIN_ROOT}/reference/block-codex.md"; echo)
 ````
 
 Empty output = pass. (The `echo` supplies the trailing newline the block's last line gains inside
-the target file; the payload block parts end without one. The inline oracle's readout piece,
-`.trellis/internal/rules.md`, was itself verified in check (b).)
+the target file; payload blocks end without one.)
 
 **(e) Nothing outside the markers changed:**
 
 ```sh
-diff <(sed '/<!-- trellis:begin/,/<!-- trellis:end -->/d' <pre-edit copy>) \
-     <(sed '/<!-- trellis:begin/,/<!-- trellis:end -->/d' <target>)
+diff <(sed '/<selected-begin-marker>/,/<selected-end-marker>/d' <pre-edit copy>) \
+     <(sed '/<selected-begin-marker>/,/<selected-end-marker>/d' <target>)
 ```
 
 On a refresh this must be empty; on a fresh append the only difference is the one added separator
@@ -358,10 +401,11 @@ Tell the user:
 
 - **Where the config came from**: read from `.trellis/rules.toml`'s rows, migrated from a legacy
   `profile:` frontmatter key, or asked and seeded.
-- **Row semantics — live** (`decision-0053`): row edits take effect **immediately** — the import
-  channel reads the current `rules.toml` each session, and an inline block picks edits up when
-  its rows section is re-pasted on refresh; this refresh **validated** the rows and updated the
-  payload copies.
+- **Row semantics — live at the next boundary** (`decision-0053`, clarified by
+  `decision-0058`): row edits take effect at the next supported host context-loading boundary
+  without setup or refresh; they do not mutate a model context already in flight. This ordinary
+  refresh validated the rows and updated generated payload copies but did not perform a preset
+  reset.
 - **Floor overrides, loudly** (`decision-0051` rule 3, held per `decision-0053`): if
   `floor-transparency` or `floor-intent-gate` was set `active = false`, name the row as
   **overridden-by-floor** — the floors are not rows a consumer can turn off; the floor rule
@@ -375,7 +419,8 @@ Tell the user:
 - **Any flat-layout files deleted** by the step-6 migration, and **the disposition of a leftover
   legacy `expression.md`** (content moved into the instructions file, left in place, or deleted
   with consent).
-- Which instructions file was patched and in which style; **any lint/format ignore entry added
+- Which host was selected, which instructions file was patched, and whether Codex native delivery
+  passed the Node.js 20 preflight or is **bootstrap-only**; **any lint/format ignore entry added
   (which file, which line), or that the offer was declined or no tooling was found**; and the
   result of each verification check.
 

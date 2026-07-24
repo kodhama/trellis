@@ -17,8 +17,8 @@ import (
 // stays impossible, and the repo's own overlay is exactly a mechanical copy of the
 // shipped artifact (kodhama-0007 rule 2). The repo's posture is a/conductor (all
 // rows active, so internal/rules.md is the shipped all-active assembly); the
-// per-install `version` stamp stays excluded (gitignored — it's not behavior,
-// decision-0035).
+// installed `version` stamp is tracked too: the self checkout is a real supported
+// Codex startup fixture, so its four authoritative inputs must all exist.
 //
 // Regenerate on failure — the manual copy path, applied to ourselves (from the repo
 // root, after `go run . payload --out ../plugins/trellis/reference` in cli/):
@@ -27,6 +27,7 @@ import (
 //	cp plugins/trellis/reference/trellis-a.md  .trellis/internal/trellis.md
 //	cp plugins/trellis/reference/rules.md      .trellis/internal/rules.md
 //	cp plugins/trellis/reference/invariants.md .trellis/internal/invariants.md
+//	cp plugins/trellis/reference/version       .trellis/internal/version
 func TestRepoOverlayIsCurrent(t *testing.T) {
 	repoTrellis := filepath.Join("..", ".trellis")
 	if _, err := os.Stat(repoTrellis); err != nil {
@@ -34,10 +35,18 @@ func TestRepoOverlayIsCurrent(t *testing.T) {
 	}
 
 	payload := payloadFiles()
+	gitignore, err := os.ReadFile(filepath.Join("..", ".gitignore"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(gitignore), ".trellis/internal/version") {
+		t.Error("repo .gitignore must not exclude the installed version input required by the self Codex startup fixture")
+	}
 	for overlayName, payloadName := range map[string]string{
 		"internal/trellis.md":    "trellis-a.md", // conductor — the repo holds all invariants firmly
 		"internal/rules.md":      "rules.md",     // all rows active — the shipped all-active assembly
 		"internal/invariants.md": "invariants.md",
+		"internal/version":       "version", // diagnostic provenance required by spec-0007
 	} {
 		got, err := os.ReadFile(filepath.Join(repoTrellis, overlayName))
 		if err != nil {
@@ -128,6 +137,7 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	agents := readRepoFile("AGENTS.md")
 	claude := readRepoFile("CLAUDE.md")
 	referenceBlock := readRepoFile("plugins/trellis/reference/block-claude.md")
+	referenceCodexBlock := readRepoFile("plugins/trellis/reference/block-codex.md")
 	normalizedAgents := strings.Join(strings.Fields(agents), " ")
 
 	wantClaude := "@AGENTS.md\n\n" + referenceBlock + "\n"
@@ -167,14 +177,18 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 			t.Errorf("AGENTS.md is missing moved Layer-B/Grove content %q", sharedContent)
 		}
 	}
-	if strings.Contains(agents, trellisBegin) || strings.Contains(agents, trellisEnd) {
-		t.Error("AGENTS.md must contain zero Trellis managed-block markers")
+	if strings.Count(agents, codexBootstrapBegin) != 1 || strings.Count(agents, codexBootstrapEnd) != 1 {
+		t.Error("AGENTS.md must contain exactly one generated Codex bootstrap marker pair (spec-0007@v1)")
 	}
 	if strings.Contains(agents, "@.trellis/") {
-		t.Error("AGENTS.md must contain no @.trellis imports; Codex overlay delivery is out of scope")
+		t.Error("AGENTS.md Codex bootstrap must contain no Claude @.trellis imports")
 	}
-	if strings.Contains(normalizedAgents, "overlay imported below") || !strings.Contains(normalizedAgents, "Codex delivery is separate plugin") {
-		t.Error("AGENTS.md must state the Claude-only overlay boundary without claiming Codex import delivery")
+	if blockStart := strings.Index(agents, codexBootstrapBegin); blockStart < 0 ||
+		agents[blockStart:strings.Index(agents[blockStart:], codexBootstrapEnd)+blockStart+len(codexBootstrapEnd)] != referenceCodexBlock {
+		t.Error("AGENTS.md's Codex bootstrap must be byte-identical to block-codex.md")
+	}
+	if strings.Contains(agents, rulesAuthorityHeader) {
+		t.Error("AGENTS.md must not embed the generated Trellis rule readout")
 	}
 
 	boundedReferences := map[string]struct {

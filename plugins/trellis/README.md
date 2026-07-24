@@ -1,8 +1,27 @@
-# Trellis (Claude Code plugin)
+# Trellis (Claude Code and local Codex plugin)
 
 A governance layer for agentic software development — the native Claude Code way to install it, no
 binary required. This is the **primary install path** (`kodhama-0002`; the Homebrew/curl binary
 channel retired per `kodhama-0007` rule 5).
+
+## Phase 1 host support
+
+Claude keeps its existing `CLAUDE.md` imports and staleness hook. The Codex branch supports
+setup/refresh, **product-wide** remove, and **fresh startup** in a **trusted local Codex**
+repository. It installs the generated `block-codex.md` receipt and **best-effort** fallback in
+`AGENTS.md` and registers only `SessionStart(startup)`. Installed project files are authoritative;
+the plugin's `reference/` files are setup sources, never runtime substitutes.
+
+Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
+bootstrap-only degradation and leaves the installed-file fallback usable. Trellis requires no
+project runtime, daemon, or network service. Row edits take effect at the next supported host
+context-loading boundary without refresh, never in a context already in flight.
+
+Phase 1 excludes Codex resume, clear, compact, subagent boundaries, desktop, IDE,
+headless/automation, and cloud surfaces. There is no per-host disable: `/trellis:remove` removes
+both host blocks and the shared overlay. Ordinary refresh preserves rows, strictness, and
+`seeded_from`; it is not a confirmed preset reset. A Claude-hook replacement, every other
+host-native transport, and revival of the parked `seed` or `custom` presets are also excluded.
 
 ## Install
 
@@ -68,25 +87,27 @@ very next session. Augment-never-clobber; nothing else is touched, and it's idem
   and — only on explicit request — the **M2 morph**: a model-driven rewrite of the project's own
   instructions on a `trellis/morph` git branch, with a recorded rollback point, for the human to
   review (`kodhama-0007` rule 5 moved M2 hosting here from the retired binary).
-- **`skills/remove`** — `/trellis:remove`: cleanly reverse the overlay (delete `.trellis/`, strip the
-  `CLAUDE.md` block, touch nothing else), and point a morphed project at its git rollback.
+- **`skills/remove`** — `/trellis:remove`: cleanly reverse the overlay (strip the Claude and Codex
+  blocks, then delete `.trellis/`, touching nothing else), and point a morphed project at its git
+  rollback.
 - **`reference/`** — the pre-rendered payload (`kodhama-0007`): `invariants.md` (the full signature
   catalog: every invariant with its *why* and a with/without example), the complete rules readout
   (`rules.md`, opened by the live-rows authority header), the `rules-<p>.toml` posture seeds,
   every posture variant of the header and managed blocks, and the checksum manifest the setup
   skill verifies against.
-- **`hooks/`** — a `SessionStart` hook that stays quiet until the installed plugin's payload differs
+- **`hooks/`** — host-isolated hooks: Claude's `SessionStart` staleness hook stays quiet until the installed plugin's payload differs
   from the overlay in your project (`decision-0039` rule 1, mechanics per `decision-0043`), then
   nudges you once: *"the overlay may be stale — run `/trellis:setup`."* Binary-free and network-free:
   it compares your project's `.trellis/internal/version` stamp to the installed plugin's
   `reference/version` — file to file — so it can tell you the overlay is *behind the installed
   plugin*, not how far behind the marketplace. (A stamp still at the legacy flat path
-  `.trellis/version` draws the migration nudge.)
+  `.trellis/version` draws the migration nudge. Codex separately registers a startup-only context
+  hook that validates and transports the installed overlay.)
 
 ## Removing it
 
-Run `/trellis:remove` — it deletes `.trellis/` and strips the managed `CLAUDE.md` block, leaving your
-own content intact; for an M2-morphed project it points you at the recorded git rollback
+Run `/trellis:remove` — it strips the managed blocks in `CLAUDE.md` and `AGENTS.md`, then deletes
+`.trellis/`, leaving your own content intact; for an M2-morphed project it points you at the recorded git rollback
 (`trellis-pre-morph` / `.trellis/rollback`).
 
 ## Plugin vs manual copy

@@ -19,7 +19,6 @@ import (
 // source in core/ by the generate step below (run `go generate ./...` in cli/).
 //
 //go:generate cp ../core/catalog/signature-catalog-v1.md assets/invariants.md
-//
 //go:embed assets/invariants.md
 var invariantsRef string
 
@@ -109,6 +108,13 @@ func extractEntriesSection(s string) string {
 const (
 	trellisBegin = "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->"
 	trellisEnd   = "<!-- trellis:end -->"
+
+	codexBootstrapBegin = "<!-- trellis:codex-bootstrap:begin (managed by trellis — edit .trellis/, not this block) -->"
+	codexBootstrapEnd   = "<!-- trellis:codex-bootstrap:end -->"
+
+	// trellisRulesLoadedSentinel is the stable, posture-independent receipt at
+	// the exact terminal line of generated rules.md (spec-0007@v1 R35).
+	trellisRulesLoadedSentinel = "<!-- trellis:rules-loaded -->"
 )
 
 // strengthLine turns the profile's C1 lean into a plain-language instruction the host
@@ -212,6 +218,37 @@ func renderClaudeBlock() string {
 		trellisEnd
 }
 
+// renderCodexBootstrap is the small AGENTS.md receipt/fallback installed by the
+// Codex host branch (spec-0007@v1 R11-R16). It deliberately contains no rule
+// prose, activation values, generated readout, or posture-specific content.
+// The slug inventory is names-only and exists solely to validate that loaded
+// activation TOML is complete.
+func renderCodexBootstrap() string {
+	return codexBootstrapBegin + `
+# Trellis delivery receipt and fallback
+
+Trellis rules are authoritative only in the installed project files listed below. This bootstrap is a **best-effort** model instruction: it is not proof that a native hook ran, and it never replaces those files.
+
+Before substantive work, assess two independently loaded components:
+
+1. Generated prose is complete only when the exact terminal sentinel ` + "`" + trellisRulesLoadedSentinel + "`" + ` is followed, after only its generated newline, by the fixed footer whose first nonblank line is ` + "`---`" + ` and whose next text is the ambiguity/fallback sentence. A sentinel alone, a diagnostic marker, this bootstrap's mention of the sentinel, or bare slug-name presence is not completion.
+2. Activation TOML is complete only when it parses, strictness is exactly ` + "`firm`" + ` or ` + "`adaptive`" + `, every canonical slug below occurs exactly once, no unknown or duplicate slug occurs, and any disabled floor row is understood as overridden-by-floor:
+
+` + "`" + strings.Join(catalogSlugOrder(), "`, `") + "`" + `
+
+Use this single-copy fallback table:
+
+- If both the sentinel-plus-fixed-footer boundary and valid activation TOML are already present from a setup-verified generated overlay, use the loaded context and read no Trellis file again.
+- If the boundary is present but activation TOML is absent or invalid, read only ` + "`.trellis/rules.toml`" + `.
+- If valid activation TOML is present but the boundary is absent, read only the three ` + "`.trellis/internal/`" + ` files.
+- If neither component is present, read and validate all four installed inputs.
+
+The four inputs are ` + "`.trellis/internal/trellis.md`" + `, ` + "`.trellis/internal/rules.md`" + `, ` + "`.trellis/internal/version`" + `, and ` + "`.trellis/rules.toml`" + `. The generated prose files must be readable and nonempty; trellis.md must contain exactly one exact ` + "`@rules.md`" + ` expansion point; rules.md must carry the one terminal sentinel; version, after at most one terminal newline is trimmed, must match ` + "`^payload@[0-9a-f]{12}$`" + `; and rules.toml must satisfy the complete activation predicate above. The installed files, never plugin-side reference files, are the rule authority.
+
+Missing native-hook delivery is not itself an error: attempt the applicable fallback branch. If the required installed components remain absent, unreadable, or invalid, tell the user exactly **“Trellis was not loaded”** and do not claim governed execution.
+` + codexBootstrapEnd
+}
+
 // renderHeader is the entry point the managed block imports (installed at
 // .trellis/internal/trellis.md): the intro + the governance behavior, then it pulls
 // in its sibling rules.md — the assembled readout — and points at the invariant
@@ -219,7 +256,7 @@ func renderClaudeBlock() string {
 // file; decision-0051 rule 1).
 func renderHeader(p Profile) string {
 	return governanceHeader(p) + "\n" +
-		"@rules.md\n\n" +
+		"@rules.md\n" +
 		"---\n" + invariantsTrigger + "\n"
 }
 
@@ -273,6 +310,10 @@ func renderRulesReadout() string {
 	for _, slug := range catalogSlugOrder() {
 		b.WriteString(ruleFragment(slug))
 	}
+	// The sentinel is manifest-covered and must be the exact terminal line. It
+	// is validation/provenance for transport completeness, not rule prose.
+	b.WriteString(trellisRulesLoadedSentinel)
+	b.WriteByte('\n')
 	return b.String()
 }
 
