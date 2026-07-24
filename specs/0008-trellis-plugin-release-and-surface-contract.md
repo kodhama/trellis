@@ -1,7 +1,7 @@
 ---
 id: spec-0008
 type: spec
-status: gated  # v3 author self-check passed; independent review and a human approval act remain required
+status: approved  # v3 gates passed; records the maintainer's standing family-wave merge authorization
 version: 3
 depends_on: [decision-0059, decision-0058, spec-0007@v1, kodhama/kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v2]
 implements: decision-0059
@@ -1129,7 +1129,7 @@ closest rubric; Trellis has no dedicated spec-quality rubric.
 | Check | Result | Evidence |
 |---|---|---|
 | 1. Required frontmatter | PASS | `id`, `type`, `status`, `version`, `depends_on`, `implements`, `owner`, and `rubric` are present and typed. |
-| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` records the v3 author self-check without reusing either prior version's approval for changed behavior. |
+| 2. Type and lifecycle | PASS | `type: spec`; `status: approved` records the maintainer's standing authorization to merge this family wave after v3's independent spec-adversary and conformance gates passed. |
 | 3. Unique id | PASS | Repository scan finds no other `spec-0008`. |
 | 4. Dependencies resolve | PASS | Append-only decisions are unpinned; local `spec-0007@v1` and approved external family spec `@v2` use the version-pin grammar and resolve. |
 | 5. Directional flow | PASS | Direct upstreams are approved or gated, never draft. |
@@ -1150,10 +1150,11 @@ then authorized this family wave to merge when its independent gates passed.
 V2 received spec-adversary `APPROVE-READY`, conformance `PASS`, and a
 change-scoped corpus `PASS`; recording `approved` here records that maintainer
 act for the family validator-runtime amendment rather than reusing v1's
-approval. V3 returns the artifact to `gated`: its author self-check passes, but
-the acyclic bundle binding and row-before-release workflow have no recorded
-human approval act yet. Its first spec-adversary pass returned
+approval. V3's first spec-adversary pass returned
 `NEEDS-REVISION` on `afbf022` because fresh staging contradicted post-rename
 recovery and stale-temp ownership/platform behavior was undefined; this
-revision makes those states and predicates explicit and awaits a new
-independent verdict.
+revision makes those states and predicates explicit. The second
+spec-adversary pass returned `APPROVE-READY` on `5a9362c`, and the independent
+conformance review returned `PASS` against decision 0059 and the approved
+family contract. Recording `approved` now records the maintainer's standing
+authorization to merge this family wave once its independent gates pass.
