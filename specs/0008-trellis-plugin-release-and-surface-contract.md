@@ -1,8 +1,8 @@
 ---
 id: spec-0008
 type: spec
-status: approved  # Maintainer-authorized merge records v2 approval after independent gates passed
-version: 2
+status: gated  # v3 author self-check passed; independent review and a human approval act remain required
+version: 3
 depends_on: [decision-0059, decision-0058, spec-0007@v1, kodhama/kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v2]
 implements: decision-0059
 owner: agent
@@ -11,6 +11,26 @@ date: 2026-07-24
 ---
 
 # Spec 0008 — Trellis plugin release and surface contract
+
+> **Amended 2026-07-24 — acyclic bundle binding and validated history staging.**
+> **WHAT:** Replaced the recursive raw checksum between `install.sh` and
+> `release-inventory.json` with one exact normalized inventory preimage plus
+> independent raw-install-script field checks, and reordered the post-tag flow
+> so the candidate or already-recorded history row is present before family
+> release validation and is committed only after that validation passes.
+> **WHY:** V2 required each file's raw digest to contain the other's raw digest
+> and invoked `--phase release` before the family-required appended row
+> existed; neither contract admitted a conforming execution.
+> **SCOPE:** Whole-plugin bundle generation/checking, post-tag release/history
+> staging, retry/conflict semantics, S5–S6, S8, S12–S13, and R9, R18, R20, R24,
+> R33–R36; package and payload identities, support rows, validator runtime,
+> product/distribution ownership, and all other v2 behavior remain unchanged.
+> **POINTER:** `decision-0059` point 5 and approved
+> `kodhama/kodhama-spec-0001-family-plugin-release-and-distribution-metadata@v2`
+> S16/S22/S26 and R29/R39/R45.
+> **VALUE:** Trellis maintainers can generate one finite release tree and prove
+> the exact history row before publishing its history-only change.
+> **CONFIDENCE:** verified.
 
 > **Amended 2026-07-24 — family v2 validator-runtime protocol.**
 > **WHAT:** Bound the Trellis extension validator to the family v2 request/result
@@ -84,8 +104,11 @@ the repository root as `--package-root`; the distributed package remains
 `plugins/trellis/release.json`, `release-inventory.json`, `surfaces.json`,
 `SUPPORT.md`, and `bin/release-contract.mjs` are part of the plugin tree and
 therefore part of `install.sh`'s complete file inventory and checksum guard.
-The post-tag history ledger is outside that tree so appending the row permitted
-by the family contract does not change the released package bytes.
+Every plugin file except `release-inventory.json` uses its raw SHA-256 there;
+the inventory uses the acyclic normalized preimage below and independently
+binds the raw `install.sh` bytes. The post-tag history ledger is outside that
+tree so appending the row permitted by the family contract does not change the
+released package bytes.
 
 ## Package and payload identity
 
@@ -225,6 +248,64 @@ workflow, tests, and fixtures are outside the distributed package/public
 contract and are bound by their family-specific release roles. Any other
 tracked path fails inventory generation until this spec's current-truth map is
 revised; no implementation-only allowlist exists.
+
+### Acyclic whole-plugin bundle binding
+
+The `trellis.install.vendor-script` public-contract item remains a
+`file-bytes` extractor over raw `install.sh`. Its `source.sha256` is the
+SHA-256 of those raw bytes. Its `fingerprint` is the family-required SHA-256
+of these canonical JSON bytes with no terminal LF, where `<install-sha256>` is
+that same raw digest:
+
+```json
+{"category":"installation-input","contract_id":"trellis.install.vendor-script","extracted_sha256":"<install-sha256>"}
+```
+
+`install.sh`'s bundle manifest contains every tracked regular file beneath
+`plugins/trellis/` exactly once, sorted by normalized relative path. Every path
+except `release-inventory.json` carries the SHA-256 of its exact raw bytes.
+The `release-inventory.json` entry carries the SHA-256 of this one normalized
+preimage:
+
+1. Require the checked-in inventory to be valid canonical
+   `release-inventory.v1` JSON followed by exactly one LF and equal to the
+   provider's stdout.
+2. Locate exactly one `public_contract_items` row whose `contract_id` is
+   `trellis.install.vendor-script`; require its category, source path, and
+   extractor to be exactly the raw `install.sh` contract above.
+3. In an in-memory copy, replace only that row's `source.sha256` and
+   `fingerprint` values with exactly 64 ASCII `0` characters each.
+4. Canonicalize the complete copied object with the family-v2 canonical JSON
+   grammar, append exactly one LF, and SHA-256 those bytes.
+
+The manifest path selects this normalization; no other path may use a
+normalized or excluded-byte digest. Bundle verification shall recompute that
+normalized digest before installation. Release generation, inventory
+validation, and check mode shall separately recompute the raw repository
+`install.sh` digest, the row's exact `source.sha256`, and its exact family
+fingerprint above. A missing/duplicate row, a different zeroed field, an
+unexpected raw-checksum exception, or any mismatch fails the applicable
+bundle or release check.
+
+Release preparation is ordered and converges without a fixed point while
+preserving `--generate`'s closed write set:
+
+1. run product generation once, forming the complete inventory from the
+   current raw `install.sh`;
+2. run the existing bundle-manifest regeneration over that inventory's
+   normalized preimage and every other plugin path's raw bytes;
+3. run product generation again so the final inventory records the resulting
+   raw `install.sh` source digest and family fingerprint; and
+4. rerun both generators in check mode and fail unless neither direction
+   changes.
+
+This is whole-plugin coverage, not an omitted self-manifest: every other
+plugin byte is raw-hashed by `install.sh`; every inventory byte outside the two
+normalized values affects its bundle digest; the two normalized values are
+recomputed from raw `install.sh` by release validation; and the complete raw
+inventory is additionally bound by the family release-history digest.
+Generation and check mode shall reject a change to any one of those bytes or
+bindings.
 
 ### Family v2 runtime-store and extension-validator interface
 
@@ -487,9 +568,12 @@ carrier, stale projection, or undeclared structured carrier.
 
 After generation, the existing payload regenerate/checksum/self-application
 guards still pass. The whole-plugin `install.sh` manifest is regenerated from
-the complete `plugins/trellis/` file set and fails on any missing, extra, or
-stale digest, including all new release and surface files. Package SemVer is
-never written into `plugins/trellis/reference/version` or
+the complete `plugins/trellis/` file set using the one normalized
+`release-inventory.json` entry and raw checksums for every other path. It fails
+on any missing, extra, stale, multiply listed, or wrongly normalized digest,
+including all new release and surface files. The generated inventory's raw
+install-script source digest and fingerprint must also match the final script.
+Package SemVer is never written into `plugins/trellis/reference/version` or
 `.trellis/internal/version`.
 
 ## Validation, approval, release, and history
@@ -549,35 +633,57 @@ runs the complete pre-tag check, and creates/pushes only the computed
 
 It never creates or rewrites `v0.x.y`, never force-pushes a tag, and never
 chooses or edits a version. After the tag push, the same workflow's
-`post-tag-release` job owns the release phase and invokes exactly:
+`post-tag-release` job owns candidate-row staging, release phase, and the
+history-only follow-up. It first fetches `origin/main`, resolves
+`HISTORY_BASE_COMMIT` from `refs/remotes/origin/main`, and creates one clean
+dedicated history staging worktree at that exact commit. The tag's peeled
+release commit shall be an ancestor of the base, and every release-controlled
+path other than `release/trellis/history.json` shall be byte-identical to its
+tagged retained bytes. In that worktree the exact order is:
 
 ```sh
-"$RUNNER_TEMP/kodhama/distribution/manage" validate-product \
-  --phase release \
-  --package-root "$GITHUB_WORKSPACE" \
-  --release-metadata "plugins/trellis/release.json" \
-  --runtime-store "<caller-supplied-absolute-posix-path>"
-"$GITHUB_WORKSPACE/plugins/trellis/bin/release-contract.mjs" \
-  --package-root "$GITHUB_WORKSPACE" --check
-git -C "$GITHUB_WORKSPACE" fetch origin main
-HISTORY_BASE_COMMIT="$(git -C "$GITHUB_WORKSPACE" rev-parse refs/remotes/origin/main)"
-"$GITHUB_WORKSPACE/plugins/trellis/bin/release-contract.mjs" \
-  --package-root "$GITHUB_WORKSPACE" \
+"$HISTORY_WORKTREE/plugins/trellis/bin/release-contract.mjs" \
+  --package-root "$HISTORY_WORKTREE" \
   --append-release-history \
   --authoritative-history-commit "$HISTORY_BASE_COMMIT"
+"$RUNNER_TEMP/kodhama/distribution/manage" validate-product \
+  --phase release \
+  --package-root "$HISTORY_WORKTREE" \
+  --release-metadata "plugins/trellis/release.json" \
+  --runtime-store "<caller-supplied-absolute-posix-path>"
+"$HISTORY_WORKTREE/plugins/trellis/bin/release-contract.mjs" \
+  --package-root "$HISTORY_WORKTREE" --check
 ```
 
 The job runs only after the tag step succeeds or reports the same tag/commit.
-Release phase resolves only `refs/tags/trellis-v<VERSION>`. On an `appended`
-history outcome, the job re-fetches `origin/main` and fails with `conflict` if
-it no longer equals `HISTORY_BASE_COMMIT`. Otherwise it creates or updates only
-branch `release/trellis-v<VERSION>-history` from that exact base commit,
-commits only `release/trellis/history.json`, and opens or updates its
-history-only PR. An existing branch is reusable only when its history bytes
-equal the same canonical next ledger; divergent branch bytes are `conflict`.
-The job never pushes `main`. The repository's human ship gate owns merging
-that PR. On `already-recorded`, it creates no commit or PR and does not touch
-an old history branch.
+Release phase resolves only `refs/tags/trellis-v<VERSION>` and therefore
+validates the exact row already present in the staging worktree, whether the
+append command just materialized it or authoritative main already contained
+it. Product check runs against that same row. A failed append, release
+validation, or product check leaves the destination ledger either at the
+captured authoritative bytes or at the complete atomically materialized
+candidate, removes the disposable worktree, and creates or updates no branch,
+commit, or PR.
+
+On an `appended` outcome after both validations pass, the job re-fetches
+`origin/main` and fails with `conflict` if it no longer equals
+`HISTORY_BASE_COMMIT`. Otherwise it creates or updates only branch
+`release/trellis-v<VERSION>-history` from that exact base commit, commits only
+`release/trellis/history.json`, and opens or updates its history-only PR. An
+existing branch is reusable only when its history bytes equal the same
+canonical next ledger and its other tree bytes equal the captured base; its
+observed ref may be updated only by compare-and-swap. Divergent branch bytes,
+an unexpected branch-tip change, or another changed path is `conflict`. The
+job never pushes `main`. The repository's human ship gate owns merging that
+PR.
+
+On `already-recorded`, the clean worktree created from authoritative main
+already contains the exact row. The job still runs both validations against
+it, then creates no commit or PR and does not touch an old history branch.
+Before-merge retries reproduce and revalidate the same canonical candidate;
+after-merge retries validate the row from authoritative main and return
+`already-recorded`. No retry uses the immutable tag's pre-row ledger to infer
+whether the row has merged.
 
 The workflow declares one repository-wide concurrency group
 `trellis-release-history` with `cancel-in-progress: false`; every package
@@ -589,7 +695,8 @@ or refresh a history PR at a time.
 `release/trellis/history.json` follows family `release-history.v1`. Before a
 tag, it contains all and only prior `trellis-v<SemVer>` releases. The immutable
 tagged checkout is evidence for that pre-tag state, never the authoritative
-post-tag ledger. After the tag,
+post-tag ledger. After the tag, in the dedicated staging worktree created from
+the captured authoritative main commit,
 `plugins/trellis/bin/release-contract.mjs --package-root <repository-root>
 --append-release-history --authoritative-history-commit <40-hex>` reads the
 ledger only from
@@ -597,18 +704,20 @@ ledger only from
 full commit from `refs/remotes/origin/main`. It changes no tracked path except
 the working copy of `release/trellis/history.json`.
 
-The command verifies that the authoritative commit exists, is an ancestor of
-the fetched `origin/main`, and contains a family-valid ledger. When the current
-row is absent, the tagged checkout's ledger must be byte-identical to that
-authoritative ledger before append. The tagged checkout is never used to
-decide whether an already-merged row exists.
+The command verifies that the authoritative commit exists, still equals the
+captured `origin/main`, descends from the tag's peeled release commit, and
+contains a family-valid ledger. The staging destination must initially be
+byte-identical to that authoritative ledger. When the current row is absent,
+the tagged checkout's ledger must also be byte-identical to that authoritative
+ledger before append. The tagged checkout is never used to decide whether an
+already-merged row exists.
 
 The append operation has exactly these outcomes:
 
 | Starting state | Result |
 |---|---|
-| Authoritative main ledger has no current-version row or later-version row; its bytes equal the tagged pre-row ledger; prior ledger/tag/reference checks pass | Materialize one complete appended row atomically; stdout one canonical JSON line with `outcome: appended`; exit `0` |
-| Authoritative main ledger contains one byte-identical current-version row, all following rows remain family-valid, and the tag still peels to its recorded commit | No write; stdout one canonical JSON line with `outcome: already-recorded`; exit `0`, even though the immutable tagged checkout still has the pre-row ledger |
+| Authoritative main ledger has no current-version row or later-version row; the clean staging destination and tagged pre-row ledger equal its bytes; prior ledger/tag/reference checks pass | Materialize one complete appended row atomically in the staging worktree; stdout one canonical JSON line with `outcome: appended`; exit `0` |
+| Authoritative main ledger and clean staging destination contain one byte-identical current-version row, all following rows remain family-valid, and the tag still peels to its recorded commit | No write; stdout one canonical JSON line with `outcome: already-recorded`; exit `0`, even though the immutable tagged checkout still has the pre-row ledger |
 | Current-version row differs, duplicates exist, a later row exists without the current row, authoritative/tagged prior bytes differ before append, the main ref moved during preparation, or tag identity differs | No write; nonzero exit with `conflict`; never repair or replace |
 
 Success stdout is exactly one LF-terminated line:
@@ -644,8 +753,9 @@ authority. Cleanup failure is `conflict`. It then derives state again from the
 authoritative main ledger. If main contains the exact row, it returns
 `already-recorded`; if main is still pre-row and the working destination is
 starting or canonical-next bytes, it returns/materializes `appended` so the
-same history PR can be opened or updated. Thus neither a crash nor the
-immutable tag's pre-row ledger can recreate a merged history PR.
+same candidate can be release-validated before the history PR is opened or
+updated. Thus neither a crash nor the immutable tag's pre-row ledger can
+recreate a merged history PR.
 
 The append commit may follow the tagged release commit, changes no plugin byte,
 and must exist at a stable reference before Stewards publication.
@@ -754,8 +864,9 @@ and clean-install evidence are not members of that corpus.
 - **When** inventory/generation run twice and check mode follows,
 - **Then** every tracked package/public path matches the exhaustive contract
   map, the three Markdown carriers and any manifest `/support` match the closed
-  grammar, generated bytes are identical, and changing one source causes check
-  mode to name every stale derivative without writing.
+  grammar, the normalized inventory/raw-install-script bindings converge to
+  identical generated bytes, and changing one source causes check mode to name
+  every stale derivative without writing.
 
 **S6 — immutable tag**
 
@@ -763,8 +874,9 @@ and clean-install evidence are not members of that corpus.
 - **When** the release workflow runs,
 - **Then** it creates `trellis-v<VERSION>` at that commit, reruns idempotently
   for the same commit, fails if the tag peels elsewhere, and its
-  `post-tag-release` job owns the exact family release-phase invocation and
-  history-only follow-up.
+  `post-tag-release` job materializes or observes the exact row before the
+  family release-phase invocation and changes the history branch only after
+  that invocation and product check pass.
 
 **S7 — historical namespace isolation**
 
@@ -777,11 +889,13 @@ and clean-install evidence are not members of that corpus.
 
 - **Given** a valid Trellis package tag, its immutable pre-row ledger, and the
   captured authoritative `origin/main` ledger,
-- **When** history materialization runs, is interrupted at either side of the
-  atomic rename, is repeated before PR merge, or is repeated after PR merge,
+- **When** history staging and release validation run, are interrupted at
+  either side of the atomic rename, are repeated before PR merge, or are
+  repeated after PR merge,
 - **Then** it yields exactly one complete family-valid row or the exact
-  `already-recorded` no-op from authoritative main, preserves prior bytes/tag
-  bindings under the exclusive single-writer protocol, never recreates a
+  release-validated `already-recorded` no-op from authoritative main,
+  preserves prior bytes/tag bindings under the exclusive single-writer
+  protocol, never publishes an unvalidated history branch, never recreates a
   merged history PR, and never mutates the plugin package.
 
 **S9 — bump, approval, and adoption**
@@ -813,6 +927,28 @@ and clean-install evidence are not members of that corpus.
   the exact applicable family-v2 runtime diagnostic before validator spawn,
   and does not search, fetch, default, substitute, or continue.
 
+**S12 — acyclic whole-plugin checksum**
+
+- **Given** an inventory whose raw install-script source digest and fingerprint
+  match the final raw `install.sh`,
+- **When** bundle generation, bundle verification, and release check compute
+  their respective bindings,
+- **Then** it zero-normalizes exactly those two fields, raw-hashes every other
+  plugin path, release-checks both raw install-script fields, and fails for any
+  omitted path, extra normalization, or changed byte without requiring a
+  recursive SHA-256 fixed point.
+
+**S13 — row-before-release validation and retries**
+
+- **Given** a valid package tag and a captured authoritative main ledger that
+  either lacks or already contains the exact current row,
+- **When** the post-tag job stages, validates, and is retried before or after
+  the history PR merges,
+- **Then** family release validation always sees the exact appended row, only a
+  validated `appended` result may update the history branch, an exact merged row
+  validates and returns `already-recorded` without a PR, and any main, tag,
+  candidate, or branch divergence returns `conflict`.
+
 ### EARS requirements
 
 - **R1:** Trellis shall use `plugins/trellis/VERSION` as its sole package
@@ -832,8 +968,8 @@ and clean-install evidence are not members of that corpus.
 - **R8:** Release metadata, inventory, history, surfaces, and extensions shall
   conform to family contract version `1`.
 - **R9:** The product inventory provider shall be deterministic,
-  network-disabled, non-mutating, and equal to the exhaustive contract
-  id/path/extractor map.
+  network-disabled, non-mutating, equal to the exhaustive contract
+  id/path/extractor map, and compatible with the exact acyclic bundle preimage.
 - **R10:** Trellis shall carry each family registry-v1 surface exactly once.
 - **R11:** Only Claude local session-load and trusted local Codex fresh startup
   shall be supported in the initial surface contract.
@@ -851,13 +987,16 @@ and clean-install evidence are not members of that corpus.
   version-bound surface contract.
 - **R17:** Check mode shall name every stale derivative and shall write
   nothing.
-- **R18:** The whole-plugin vendoring manifest shall cover every new shipped
-  release/surface file and shall fail on file-set or digest drift.
+- **R18:** The whole-plugin vendoring manifest shall cover every shipped
+  release/surface file exactly once through raw SHA-256 except for the one
+  normalized inventory entry and shall fail on file-set, raw-field, normalized-
+  field, or digest drift.
 - **R19:** Product validation shall preserve existing payload,
   self-application, setup/remove, and host-isolation guards.
 - **R20:** The release workflow shall use the exact pre-tag and release
-  invocations, and `post-tag-release` shall own release-phase validation and
-  the history-only branch/PR.
+  invocations, and `post-tag-release` shall atomically stage or observe the
+  history row before release-phase validation and shall own the validated
+  history-only branch/PR.
 - **R21:** The release workflow shall be idempotent at the same commit and
   shall fail rather than move, reuse, or force-push a tag.
 - **R22:** Trellis shall leave every unprefixed binary-era tag and frozen
@@ -866,9 +1005,9 @@ and clean-install evidence are not members of that corpus.
   and a sufficient bump before tagging.
 - **R24:** Release history shall preserve prior rows/tag bindings and shall
   derive repeat state from the captured authoritative main ledger and shall
-  use the exclusive single-writer/unique-temp/atomic-rename protocol to return
-  exactly `appended`, `already-recorded`, or `conflict` without mutating the
-  tagged plugin tree.
+  use the clean-staging/exclusive-single-writer/unique-temp/atomic-rename
+  protocol to return exactly `appended`, `already-recorded`, or `conflict`
+  without mutating the tagged plugin tree or publishing an unvalidated row.
 - **R25:** The adoption emitter shall emit the closed canonical object and
   shall fail until every required stable reference and legacy element resolves.
 - **R26:** The adoption emitter shall preserve Trellis ownership of product
@@ -896,6 +1035,23 @@ and clean-install evidence are not members of that corpus.
   and exclusion, and shall emit only a deterministic family-v2 pass or
   product-owned fail result without making or absorbing a distribution-
   availability claim.
+- **R33:** The bundle checksum for `release-inventory.json` shall be SHA-256 of
+  the family-canonical inventory plus LF after replacing only the
+  `trellis.install.vendor-script` row's `source.sha256` and `fingerprint` with
+  64 ASCII zeroes each.
+- **R34:** Bundle verification shall recompute the normalized inventory digest;
+  release generation, inventory validation, and check mode shall independently
+  recompute the raw `install.sh` SHA-256, require it as that row's source
+  digest, derive the exact family fingerprint from it, and reject every
+  unlisted path, other normalized field, or mismatch.
+- **R35:** After tag creation, the workflow shall create a clean worktree from
+  captured authoritative main, materialize or observe the exact current row,
+  and run family release validation and product check against that row before
+  creating, updating, or reusing a history branch or PR.
+- **R36:** Before-merge retries shall reproduce and revalidate the same
+  candidate; after-merge retries shall validate authoritative main's exact row
+  and return `already-recorded`; any changed main, tag, candidate, branch tip,
+  or non-history tree path shall fail with `conflict`.
 
 ## Open questions
 
@@ -909,16 +1065,16 @@ closest rubric; Trellis has no dedicated spec-quality rubric.
 | Check | Result | Evidence |
 |---|---|---|
 | 1. Required frontmatter | PASS | `id`, `type`, `status`, `version`, `depends_on`, `implements`, `owner`, and `rubric` are present and typed. |
-| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` records the v2 author self-check without reusing v1's approval for changed behavior. |
+| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` records the v3 author self-check without reusing either prior version's approval for changed behavior. |
 | 3. Unique id | PASS | Repository scan finds no other `spec-0008`. |
 | 4. Dependencies resolve | PASS | Append-only decisions are unpinned; local `spec-0007@v1` and approved external family spec `@v2` use the version-pin grammar and resolve. |
 | 5. Directional flow | PASS | Direct upstreams are approved or gated, never draft. |
-| 6. Required sections and grammars | PASS | `## Acceptance criteria` and `## Open questions` exist; S1–S11 are GWT and R1–R32 are EARS `shall` statements. |
-| 7. Supersede integrity | N/A | This new spec supersedes no artifact. |
+| 6. Required sections and grammars | PASS | `## Acceptance criteria` and `## Open questions` exist; S1–S13 are GWT and R1–R36 are EARS `shall` statements. |
+| 7. Supersede integrity | N/A | This revise-in-place spec has no successor or supersession marker. |
 | 8–11. Typed catalog/profile checks | N/A | This artifact is neither a signature catalog nor an expression profile. |
-| 12. Version semantics | PASS | Testable runtime and validator clauses changed, so the behavioral counter advances from v1 to v2 and the whole-spec delta note identifies scope and provenance. |
-| Decision boundary | PASS | Requirements derive from decision 0059, decision 0058/spec 0007 current behavior, and approved family spec v2; runtime provisioning, provisioner behavior, and unsupported promotions remain excluded. |
-| Adversary exactness | PASS | Literal support/fallback values, exhaustive public-contract map, explicit runtime-store and validator protocol, exact phase invocations/owner, authoritative-main append state machine with enforced single writer, closed adoption object, and bounded support corpus have executable pass/fail boundaries. |
+| 12. Version semantics | PASS | Testable bundle and release/history clauses changed, so the behavioral counter advances from v2 to v3 and the new whole-spec delta note identifies scope and provenance while retaining v2's note. |
+| Decision boundary | PASS | Requirements derive from decision 0059, decision 0058/spec 0007 current behavior, and approved family spec v2; the acyclic digest is a product-local way to satisfy both whole-plugin obligations, the staged row satisfies the family release prerequisite, and runtime provisioning, provisioner behavior, and unsupported promotions remain excluded. |
+| Adversary exactness | PASS | Literal support/fallback values, exhaustive public-contract map, exact two-field normalization plus raw recomputation, explicit runtime-store and validator protocol, row-before-release ordering, authoritative-main retry state machine with enforced single writer, closed adoption object, and bounded support corpus have executable pass/fail boundaries. |
 
 **Result: PASS.**
 
@@ -930,4 +1086,6 @@ then authorized this family wave to merge when its independent gates passed.
 V2 received spec-adversary `APPROVE-READY`, conformance `PASS`, and a
 change-scoped corpus `PASS`; recording `approved` here records that maintainer
 act for the family validator-runtime amendment rather than reusing v1's
-approval.
+approval. V3 returns the artifact to `gated`: its author self-check passes, but
+the acyclic bundle binding and row-before-release workflow have no recorded
+independent review or human approval act yet.
