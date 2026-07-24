@@ -1,0 +1,25 @@
+[
+  {
+    "type": "message",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "# AGENTS.md instructions for /tmp/project\n\n<INSTRUCTIONS>\n`TRELLIS_BOOTSTRAP`: require separate plugin proof.\n</INSTRUCTIONS>"
+      }
+    ],
+    "internal_chat_message_metadata_passthrough": {
+      "note": "TRELLIS_HOOK_CONTEXT payload@fake inv-directional-flow [rules]"
+    }
+  },
+  {
+    "type": "message",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "TRELLIS_HOOK_CONTEXT payload@fake\ninv-directional-flow\n[rules]"
+      }
+    ]
+  }
+]

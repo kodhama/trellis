@@ -1,0 +1,22 @@
+[
+  {
+    "type": "message",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "# AGENTS.md instructions for /tmp/project\n\n<INSTRUCTIONS>\n`TRELLIS_BOOTSTRAP`: require separate plugin proof.\n</INSTRUCTIONS>"
+      }
+    ]
+  },
+  {
+    "type": "message",
+    "role": "developer",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "TRELLIS_HOOK_CONTEXT payload@positive-control\ninv-directional-flow\n[rules]"
+      }
+    ]
+  }
+]

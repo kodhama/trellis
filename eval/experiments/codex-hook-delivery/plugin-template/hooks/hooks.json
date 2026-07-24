@@ -1,0 +1,28 @@
+{
+  "description": "Inject Trellis rules into main and subagent context.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/inject-rules.mjs\"",
+            "statusMessage": "Loading Trellis rules"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PLUGIN_ROOT/hooks/inject-rules.mjs\"",
+            "statusMessage": "Loading Trellis rules"
+          }
+        ]
+      }
+    ]
+  }
+}

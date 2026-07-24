@@ -1,0 +1,20 @@
+{
+  "name": "trellis-hook-prototype",
+  "interface": {
+    "displayName": "Trellis hook prototype"
+  },
+  "plugins": [
+    {
+      "name": "trellis-hook-probe",
+      "source": {
+        "source": "local",
+        "path": "./plugins/trellis-hook-probe"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

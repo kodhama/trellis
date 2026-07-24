@@ -1,0 +1,6 @@
+{
+  "name": "trellis-hook-probe",
+  "version": "0.0.1",
+  "description": "Isolated prototype for plugin-delivered Trellis rules.",
+  "hooks": "./hooks/hooks.json"
+}
