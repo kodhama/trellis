@@ -507,7 +507,7 @@ check is exactly:
 "$RUNNER_TEMP/kodhama/distribution/manage" validate-product \
   --phase pre-tag \
   --package-root "$GITHUB_WORKSPACE" \
-  --release-metadata "$GITHUB_WORKSPACE/plugins/trellis/release.json" \
+  --release-metadata "plugins/trellis/release.json" \
   --runtime-store "<caller-supplied-absolute-posix-path>"
 "$GITHUB_WORKSPACE/plugins/trellis/bin/release-contract.mjs" \
   --package-root "$GITHUB_WORKSPACE" --check
@@ -555,7 +555,7 @@ chooses or edits a version. After the tag push, the same workflow's
 "$RUNNER_TEMP/kodhama/distribution/manage" validate-product \
   --phase release \
   --package-root "$GITHUB_WORKSPACE" \
-  --release-metadata "$GITHUB_WORKSPACE/plugins/trellis/release.json" \
+  --release-metadata "plugins/trellis/release.json" \
   --runtime-store "<caller-supplied-absolute-posix-path>"
 "$GITHUB_WORKSPACE/plugins/trellis/bin/release-contract.mjs" \
   --package-root "$GITHUB_WORKSPACE" --check
