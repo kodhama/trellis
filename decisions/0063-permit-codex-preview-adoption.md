@@ -15,8 +15,8 @@ updated: 2026-07-26
 
 - Trellis permits explicit preview adoption of its Codex plugin through the
   Stewards marketplace.
-- The catalog disclosure names the exact already-supported local boundary and
-  says that broader Codex surfaces are not supported.
+- The catalog disclosure says plainly that the preview listing makes no
+  support claim and sends readers to Trellis's product-owned boundaries.
 - Catalog availability changes no Trellis behavior, package version, surface
   metadata, or support claim.
 
@@ -59,15 +59,31 @@ The catalog entry points directly to the product-owned
 `kodhama/trellis` repository and `plugins/trellis` package path. Its
 description must disclose both sides of the boundary:
 
-> Preview — Trellis governance with live project rules. Support is limited to
-> trusted local Codex fresh starts; resume, compact, subagents, IDE,
-> automation, and cloud are not supported.
+> Preview — Trellis governance with live project rules. This catalog listing
+> makes no support claim; consult Trellis product documentation for exact host
+> and surface boundaries.
 
 Preview is the adoption posture for this catalog route, not a package version,
 release tier, surface-schema value, or support promotion. The existing
 `codex-cli-local-startup` behavior claim remains supported exactly as recorded
 by decision 0058, spec-0007, and `plugins/trellis/surfaces.json`. No other
-Codex surface gains a claim.
+Codex surface gains a claim. The catalog copy deliberately does not restate
+that separate product claim; the product-owned package README and
+`surfaces.json` remain authoritative for it.
+
+Preview use has a two-part practical rollback at the current Codex host
+boundary:
+
+1. in every project where setup was applied, `/trellis:remove` removes the
+   project overlay and both host-managed instruction blocks under the existing
+   product-wide remove contract; and
+2. `codex plugin remove trellis@kodhama` removes the installed plugin from
+   Codex local configuration and cache.
+
+The second step is the host-native uninstall operation; the first is not
+represented as uninstalling the plugin. Removing the shared `kodhama`
+marketplace registration is optional and must not be suggested when other
+installed family plugins still use it.
 
 This decision authorizes one separate Stewards catalog-admission change and
 its catalog validation. It does not change the Trellis package, `VERSION`,
@@ -94,15 +110,15 @@ Claude delivery and the existing Stewards Claude catalog entry are unchanged.
   surface.
 - **Describe the whole Codex plugin as unsupported:** rejected because it
   would contradict the product-owned, already-evidenced local fresh-start
-  claim. The disclosure instead names that supported boundary and the
-  unsupported ones.
+  claim. The catalog disclosure instead makes no support claim of its own and
+  points to the separate product-owned boundaries.
 
 ## Consequences
 
 - Codex users can opt into the real Trellis package through the shared
   marketplace with an explicit preview warning.
-- Preview consumers retain the existing product-wide Trellis remove path as
-  their practical rollback.
+- Preview consumers have an explicit project-cleanup plus plugin-uninstall
+  rollback rather than a misleading claim that either step does both.
 - Trellis can exercise the same acquisition route in later dogfood or hosted
   tests without misrepresenting catalog availability as behavior evidence.
 - The public support boundary stays narrow and product-owned.
@@ -128,4 +144,8 @@ choice in favor of preview from the intended external opt-in audience, recorded
 the rejected alternatives, found no open item, self-checked the artifact
 against the corpus rubric, and moved it to `gated`. The exact decision still
 requires independent soundness review and the human intent act required by
-Trellis's gate profile.
+Trellis's gate profile. The first independent review returned
+`NEEDS-REVISION`: the proposed preview copy made a positive support promise,
+and project cleanup alone did not uninstall the plugin. This revision makes
+the listing itself claim no support and separates product cleanup from the
+verified host-native plugin-removal command.
