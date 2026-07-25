@@ -2,7 +2,7 @@
 id: decision-0063
 type: decision
 status: gated
-depends_on: [decision-0058, decision-0061, decision-0062, kodhama/kodhama-0021-separate-adoption-posture-from-support]
+depends_on: [decision-0058, decision-0061, decision-0062, kodhama/kodhama-0021-separate-adoption-posture-from-support, grove/adr-0039-dogfood-implementation-planner]
 owner: agent
 updated: 2026-07-26
 ---
@@ -50,6 +50,11 @@ package to be catalog-listed before it is supported everywhere, provided the
 listing points to the product-owned source and discloses the limitation.
 Catalog presence and installation do not themselves establish support.
 
+The strategy's minimal-first sequence has completed: approved Grove
+`adr-0039-dogfood-implementation-planner` classifies the already-required
+planner route as dogfood. This Trellis choice follows that first use and
+authorizes one product route only; it is not a whole-family rollout.
+
 ## Decision
 
 Trellis permits its current Codex package — version 0.2.0 when this decision is
@@ -63,8 +68,9 @@ description must disclose both sides of the boundary:
 > makes no support claim; consult Trellis product documentation for exact host
 > and surface boundaries.
 
-Preview is the adoption posture for this catalog route, not a package version,
-release tier, surface-schema value, or support promotion. The existing
+Preview describes an opting consumer's reliance through this route; it is not
+a property of the catalog entry, package version, release tier,
+surface-schema value, or support promotion. The existing
 `codex-cli-local-startup` behavior claim remains supported exactly as recorded
 by decision 0058, spec-0007, and `plugins/trellis/surfaces.json`. No other
 Codex surface gains a claim. The catalog copy deliberately does not restate
@@ -148,4 +154,7 @@ Trellis's gate profile. The first independent review returned
 `NEEDS-REVISION`: the proposed preview copy made a positive support promise,
 and project cleanup alone did not uninstall the plugin. This revision makes
 the listing itself claim no support and separates product cleanup from the
-verified host-native plugin-removal command.
+verified host-native plugin-removal command. A bounded follow-up check also
+found that the draft had not recorded the Stewards strategy's Grove-first
+condition; the qualified dependency and context now record that approved
+dogfood predecessor and keep this change product-local.
