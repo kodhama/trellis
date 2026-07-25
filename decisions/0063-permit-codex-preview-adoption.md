@@ -1,7 +1,7 @@
 ---
 id: decision-0063
 type: decision
-status: draft
+status: gated
 depends_on: [decision-0058, decision-0061, decision-0062, kodhama/kodhama-0021-separate-adoption-posture-from-support]
 owner: agent
 updated: 2026-07-26
@@ -52,8 +52,8 @@ Catalog presence and installation do not themselves establish support.
 
 ## Decision
 
-Trellis permits its version-0.2.0 Codex package to enter the Stewards Codex
-catalog for **preview** adoption.
+Trellis permits its current Codex package — version 0.2.0 when this decision is
+approved — to enter the Stewards Codex catalog for **preview** adoption.
 
 The catalog entry points directly to the product-owned
 `kodhama/trellis` repository and `plugins/trellis` package path. Its
@@ -82,19 +82,50 @@ preview listing and cannot infer support merely from successful acquisition.
 
 Claude delivery and the existing Stewards Claude catalog entry are unchanged.
 
+## Alternatives considered
+
+- **Dogfood-only catalog use:** rejected because the intended route is
+  explicitly available to opt-in consumers outside family-maintenance
+  repositories. Trellis may still dogfood that same route in its own
+  repository without changing the catalog's broader preview disclosure.
+- **Wait for GitHub Actions support evidence:** rejected because the Stewards
+  strategy deliberately separates honest preview distribution from support
+  promotion. Issue #182 remains necessary before Trellis claims that hosted
+  surface.
+- **Describe the whole Codex plugin as unsupported:** rejected because it
+  would contradict the product-owned, already-evidenced local fresh-start
+  claim. The disclosure instead names that supported boundary and the
+  unsupported ones.
+
 ## Consequences
 
 - Codex users can opt into the real Trellis package through the shared
   marketplace with an explicit preview warning.
+- Preview consumers retain the existing product-wide Trellis remove path as
+  their practical rollback.
 - Trellis can exercise the same acquisition route in later dogfood or hosted
   tests without misrepresenting catalog availability as behavior evidence.
 - The public support boundary stays narrow and product-owned.
 - Stewards owns the thin catalog edit; Trellis retains every behavior,
   evidence, and promotion decision.
 
+## Self-check
+
+The artifact has unique decision identity and all required frontmatter and
+body sections. Every `depends_on` edge resolves to an approved local artifact
+or the registered `kodhama/` cross-repository namespace; no draft upstream is
+consumed. The choice resolves decision 0062's deliberately parked local
+follow-up without copying or redefining the Stewards strategy. It authorizes
+one catalog edge, preserves decision 0058's exact support boundary, and
+creates no package, release, schema, or hosted-behavior claim.
+
 ## Lifecycle record
 
 The maintainer reviewed the new family strategy and directed the agreed task
 list to proceed on 2026-07-26. That direction authorized shaping this canvas;
-it did not ratify unseen wording. The exact draft still requires independent
-soundness review and the human intent act required by Trellis's gate profile.
+it did not ratify unseen wording. The shaper resolved the dogfood-versus-preview
+choice in favor of preview from the intended external opt-in audience, recorded
+the rejected alternatives, found no open item, self-checked the artifact
+against the corpus rubric, and moved it to `gated`. The exact decision still
+requires independent soundness review and the human intent act required by
+Trellis's gate profile.
