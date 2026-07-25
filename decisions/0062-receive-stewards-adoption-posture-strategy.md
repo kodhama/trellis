@@ -1,7 +1,7 @@
 ---
 id: decision-0062
 type: decision
-status: gated
+status: approved
 depends_on: [decision-0061, kodhama/kodhama-0021-separate-adoption-posture-from-support, kodhama/kodhama-0022-propagate-collective-strategy]
 owner: agent
 updated: 2026-07-25
@@ -33,6 +33,7 @@ The shared strategy is discoverable in Trellis's local decision graph without
 being copied or redefined. No existing Trellis decision or specification is
 superseded or amended.
 
-The maintainer authorized rolling out the cross-link ADRs on 2026-07-25. This
-artifact is self-checked and `gated` for independent soundness review; exact
-ratification remains a later human intent act.
+The maintainer authorized rolling out the cross-link ADRs on 2026-07-25. An
+independent decision adversary returned `SOUND` for exact commit `cb07665`.
+On 2026-07-25, the maintainer explicitly ratified this receipt and authorized
+its merge; `approved` records that human intent act.
