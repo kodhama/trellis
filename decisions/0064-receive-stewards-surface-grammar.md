@@ -1,7 +1,7 @@
 ---
 id: decision-0064
 type: decision
-status: gated
+status: approved
 depends_on: [decision-0061, kodhama/kodhama-0022-propagate-collective-strategy, kodhama/kodhama-0023-separate-operational-availability-from-support]
 owner: agent
 updated: 2026-07-26
@@ -36,5 +36,6 @@ future product decision must define and authorize any migration from
 `behavior_state`; that work cannot be inferred from this receipt.
 
 The maintainer ratified the upstream strategy and directed its receipt memos
-to roll out on 2026-07-26. This artifact remains gated until independent
-review confirms that it is only the authorized thin receipt.
+to roll out on 2026-07-26. An independent decision adversary returned `SOUND`
+for exact commit `dc5a601`. That rollout direction is the human intent act;
+`approved` records it.
