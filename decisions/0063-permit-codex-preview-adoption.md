@@ -1,7 +1,7 @@
 ---
 id: decision-0063
 type: decision
-status: gated
+status: approved
 depends_on: [decision-0058, decision-0061, decision-0062, kodhama/kodhama-0021-separate-adoption-posture-from-support, grove/adr-0039-dogfood-implementation-planner]
 owner: agent
 updated: 2026-07-26
@@ -157,4 +157,7 @@ the listing itself claim no support and separates product cleanup from the
 verified host-native plugin-removal command. A bounded follow-up check also
 found that the draft had not recorded the Stewards strategy's Grove-first
 condition; the qualified dependency and context now record that approved
-dogfood predecessor and keep this change product-local.
+dogfood predecessor and keep this change product-local. The fresh independent
+review then returned `SOUND` for exact commit `3beca94`. On 2026-07-26, the
+maintainer explicitly approved decision 0063 and authorized the remaining task
+list; `approved` records that human intent act.
