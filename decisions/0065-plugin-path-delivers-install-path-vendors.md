@@ -29,6 +29,10 @@ date: 2026-07-27
 - **A vendored overlay still governs where one exists.** The hook detects
   `.trellis/internal/` and runs its staleness comparison instead of injecting, so
   nothing is delivered twice and no existing consumer breaks.
+- **The plugin path offers no delivery-model choice.** It never rewrites, weaves
+  into, or otherwise touches the project's own instruction files. There is no
+  M1/M2 fork to pick on this path — the question does not arise. See §One model
+  on the plugin path.
 - **Codex loses rule delivery entirely** until a Codex hook ships. Named as a
   regression, not a scope note — see §The gap this decision accepts.
 
@@ -38,9 +42,12 @@ date: 2026-07-27
 
 ### Parked
 
-- The M2 morph (`decision-0050`), removed from the setup skill by this decision
-  rather than reworked — [issue #200](https://github.com/kodhama/trellis/issues/200). Its subject was the project's *own* instructions, never
-  bundle content, so it is a separable feature and not part of setup's one job.
+- Whether the **install path** delivers through a managed block, an inlined
+  block, or an unremovable inline payload. It vendors either way; the shape is
+  deliberately left open.
+- The M2 morph (`decision-0050`) — [issue
+  #200](https://github.com/kodhama/trellis/issues/200). Removed from setup and
+  **not returning to it**. Speculative, with no established use case.
 - Codex delivery — [issue #199](https://github.com/kodhama/trellis/issues/199). The
   prototype at `eval/experiments/codex-hook-delivery/` measured working on Codex
   CLI 0.145.0.
@@ -102,6 +109,33 @@ is in this mode and which therefore cannot go stale.
 `.trellis/rules.toml` is the opt-in signal. The plugin may be installed
 user-wide; a project that never adopted Trellis is never governed by surprise.
 
+### One model on the plugin path
+
+The old skill framed itself as the **M1 "alongside" overlay** and hosted the
+**M2 morph** as an alternative. That fork is removed, not relocated: on the
+plugin path there is exactly one model and no choice to make.
+
+**The vocabulary no longer fits and is retired here rather than reused.** M1 was
+defined as a `.trellis/` bundle *plus a managed block in the instructions file*.
+The plugin path now has neither — one config file and a runtime injection. Saying
+"the plugin path is always M1" would import a definition that has stopped being
+true, so the plugin path is described by what it does instead: **it writes
+`.trellis/rules.toml` and never touches a file the project authored.**
+
+That property is the point, and it is worth more than the naming: whatever the
+project's own `CLAUDE.md`, `AGENTS.md` or README say, Trellis on the plugin path
+cannot have edited them.
+
+**Morph is speculative.** It rewrites the consumer's own prose to interleave the
+rules, and it has no established use case — the maintainer's own assessment on
+2026-07-27 was that it "was just a concept". If it ever returns it is a separate,
+explicitly-invoked skill, plausibly one that weaves the rules in *and removes the
+plugin*, which is a different product from this one. It does not return to setup.
+
+The install path's model stays open: it vendors, and whether it delivers through
+a managed block, an inlined block, or something with no removal affordance at all
+is deliberately not decided here.
+
 ### The envelope
 
 Every `SessionStart` emission SHALL use the nested envelope
@@ -140,7 +174,10 @@ override rather than a reversal.
 **`decision-0049`** — offering to hide `.trellis/` from consumer linters. Its
 subject evaporates when only `rules.toml` remains.
 
-**`decision-0050`** — the M2 morph. Removed from the setup skill, parked above.
+**`decision-0050`** — the M2 morph's cold-isolated rewrite. Not reworked, and not
+merely relocated: the plugin path offers no morph at all, so 0050's subject has no
+home on it. 0050 is not wrong and is not superseded on its merits — a future
+opt-in morph skill would still want its isolation contract.
 
 **`decision-0010` is amended, not superseded.** It permits a support CLI but
 holds that *"the methodology runs without it"*. With the hook as sole carrier on
@@ -192,6 +229,8 @@ family delivery problem rather than a trellis one.
   and **not** the rule bodies.
 - `install.sh` never reads or writes `.trellis/`, and its bundle manifest
   advances in the same commit as any payload change.
+- No surface on the plugin path offers a delivery-model choice, and no skill on
+  it writes to a file the project authored.
 - The Codex gap is recorded in an issue before this decision is ratified — done,
   [#199](https://github.com/kodhama/trellis/issues/199); morph's disposition is
   [#200](https://github.com/kodhama/trellis/issues/200).

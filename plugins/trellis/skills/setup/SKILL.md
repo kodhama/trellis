@@ -115,7 +115,13 @@ gone:
 | Verify copies against the checksum manifest | Nothing is copied |
 | Offer to add `.trellis/` to lint-ignore files (`decision-0049`) | Only `rules.toml` remains, and a project lints its own config |
 | Migrate a pre-`decision-0051` flat overlay | `/trellis:remove`'s job — see below |
-| M2 morph, a model-driven rewrite of the project's own instructions (`decision-0050`) | Removed from this skill; tracked separately |
+| M2 morph, a model-driven rewrite of the project's own instructions (`decision-0050`) | Removed, and not returning — see below |
+
+**This skill never touches a file the project authored.** There is no "alongside
+versus morph" choice to offer on the plugin path — the question does not arise
+here. Whatever the project's own `CLAUDE.md`, `AGENTS.md` or README say, Trellis
+did not write it. If a morph ever ships it will be a separate skill the user
+invokes on purpose, not a mode of this one.
 
 **A project that still has a vendored `.trellis/internal/` keeps working.** The hook detects it and
 runs its staleness comparison instead of injecting, so nothing is delivered twice. Until that
