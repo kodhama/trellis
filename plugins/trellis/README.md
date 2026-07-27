@@ -14,11 +14,14 @@ the repository's `TestPluginPackageParity` Go test. The generated overlay keeps 
 
 ## Phase 1 host support
 
-Claude keeps its existing `CLAUDE.md` imports and staleness hook. The Codex branch supports
-setup/refresh, **product-wide** remove, and **fresh startup** in a **trusted local Codex**
-repository. It installs the generated `block-codex.md` receipt and **best-effort** fallback in
-`AGENTS.md` and registers only `SessionStart(startup)`. Installed project files are authoritative;
-the plugin's `reference/` files are setup sources, never runtime substitutes.
+Since `decision-0065` both hosts deliver the same way: a `SessionStart` hook injects the rules
+from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. Setup writes only
+that config file — no `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
+
+**Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
+the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
+projects the plugin's `reference/` files stay setup sources rather than runtime substitutes, which
+is what the previous contract said of every project.
 
 Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
 bootstrap-only degradation and leaves the installed-file fallback usable. Trellis requires no

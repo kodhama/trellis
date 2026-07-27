@@ -131,8 +131,13 @@ row.
 
 Say exactly:
 
-- which preset was applied, and whether the file was created, replaced, or left alone;
-- the one path written — `.trellis/rules.toml` — and that nothing else was touched;
+- which preset was applied, and whether the file was created, replaced, or left
+  alone — or, on a refresh, that nothing was written at all;
+- **every path touched.** Normally that is `.trellis/rules.toml` and nothing
+  else. **If step 3 ran, name the deleted `.trellis/internal/` directory and the
+  instructions file the managed block was removed from** — the user authorised
+  destructive edits and the handoff must show them, not bury them under a
+  sentence about one config file;
 - that the rules themselves arrive at session start from the plugin, so **the change takes effect in
   the next session, not this one**;
 - any floor row set `active = false`, named, as overridden-by-floor.

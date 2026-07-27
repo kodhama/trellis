@@ -96,6 +96,16 @@ if [ -d "$internal" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — this project has a .trellis/internal/ directory but no version stamp, so its vendored overlay is incomplete. The hook will not inject rules over a broken overlay, and cannot tell which rules the surviving files represent. Tell the user before doing substantive work; /trellis:setup can migrate this project onto plugin-delivered rules."
     exit 0
   fi
+  # A current stamp is not proof the overlay can still load. If a payload file
+  # has been deleted, the import transport is broken and the stamp says nothing
+  # about it — checking the stamp alone left that project silently ungoverned.
+  for f in trellis.md rules.md; do
+    if [ ! -s "$internal/$f" ]; then
+      emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f is missing or empty, so the managed block's imports cannot load the rules. The stamp is intact, which is why nothing else flagged this. Run /trellis:setup to migrate onto plugin-delivered rules, and tell the user before doing substantive work."
+      exit 0
+    fi
+  done
+
   overlay="$(head -n1 "$ver" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent

@@ -81,13 +81,15 @@ leads to.
 
 ### Local Codex support — Phase 1
 
-The same plugin also supports setup/refresh, **product-wide** remove, and a **fresh startup** in a
-**trusted local Codex** repository. The Codex host branch preserves `CLAUDE.md`, installs a small
-receipt and **best-effort** installed-file fallback in `AGENTS.md`, and registers only
-`SessionStart(startup)`. Its native hook reads the installed `.trellis/internal/` payload and
-current `.trellis/rules.toml`; those project files remain authoritative, while plugin files are
-only setup sources. A valid row edit is seen at the next supported startup without refresh and
-does not change a context already in flight.
+The same plugin supports Codex, and since `decision-0065` both hosts work the same way: a
+`SessionStart(startup)` hook injects the rules from the plugin's own payload, together with the
+project's `.trellis/rules.toml`. Setup installs no receipt and no fallback — it writes the config
+file and nothing else.
+
+A project that still carries a vendored `.trellis/internal/` overlay is read from that overlay
+instead, on both hosts, so nothing is delivered twice and no existing consumer breaks. A valid row
+edit is seen at the next startup without refresh, and does not change a context already in
+flight.
 
 Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
 bootstrap-only degradation; Trellis adds no project runtime, daemon, or network service. Native

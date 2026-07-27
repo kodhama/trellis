@@ -59,6 +59,22 @@ func TestStalenessHook(t *testing.T) {
 			if err := os.WriteFile(p, []byte(stamp+"\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
+			// A real vendored overlay carries the payload files the managed
+			// block imports, not just the stamp. The hook now checks they are
+			// present before treating the old transport as healthy, so a
+			// stamp-only fixture models a shape that cannot exist — and one
+			// that, in the wild, is a silently broken install.
+			if strings.Contains(stampRel, "internal") {
+				for name, body := range map[string]string{
+					"trellis.md": payloadFiles()["trellis-b.md"],
+					"rules.md":   payloadFiles()["rules.md"],
+				} {
+					q := filepath.Join(filepath.Dir(p), name)
+					if err := os.WriteFile(q, []byte(body), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
 		}
 		cmd := exec.Command(hook)
 		cmd.Dir = proj
@@ -146,6 +162,7 @@ func TestStalenessHook(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+		writeVendoredPayload(t, filepath.Join(proj, ".trellis", "internal"))
 		cmd := exec.Command(hook)
 		cmd.Dir = proj
 		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
@@ -174,6 +191,7 @@ func TestStalenessHook(t *testing.T) {
 		if err := os.WriteFile(p, []byte("payload@abc\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
+		writeVendoredPayload(t, filepath.Dir(p))
 		cmd := exec.Command(hook)
 		cmd.Dir = proj
 		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+t.TempDir())
@@ -281,6 +299,38 @@ func TestStalenessHook(t *testing.T) {
 			t.Error("vendored project received the rule bodies as well as the nudge")
 		}
 	})
+
+	// A current stamp is not proof the overlay can load. Deleting a payload file
+	// leaves the managed block importing something that is not there, and the
+	// stamp says nothing about it — this project was silently ungoverned.
+	t.Run("current stamp with a gutted payload fails loudly", func(t *testing.T) {
+		proj := t.TempDir()
+		dir := filepath.Join(proj, ".trellis", "internal")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "version"), []byte(shipped), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "trellis.md"), []byte(payloadFiles()["trellis-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// rules.md deliberately absent.
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v): %s", err, out)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(string(out)))
+		if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Errorf("want a loud failure for a gutted overlay, got %q", ctx)
+		}
+		if !strings.Contains(ctx, "rules.md") {
+			t.Error("the failure must name the missing file")
+		}
+	})
 }
 
 // nudgeContext decodes the nested SessionStart envelope the host actually reads.
@@ -302,4 +352,17 @@ func nudgeContext(t *testing.T, out string) string {
 		t.Fatalf("want nested SessionStart envelope, got %q", out)
 	}
 	return v.HookSpecificOutput.AdditionalContext
+
+}
+
+// writeVendoredPayload gives a fixture the payload files a real vendored overlay
+// carries. The hook checks they exist before trusting the stamp, so a stamp-only
+// fixture models a shape that cannot exist in the wild.
+func writeVendoredPayload(t *testing.T, internalDir string) {
+	t.Helper()
+	for name, key := range map[string]string{"trellis.md": "trellis-b.md", "rules.md": "rules.md"} {
+		if err := os.WriteFile(filepath.Join(internalDir, name), []byte(payloadFiles()[key]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
