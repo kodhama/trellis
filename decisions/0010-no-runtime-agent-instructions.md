@@ -6,9 +6,15 @@ depends_on: [decision-0001, invariants-v1]
 owner: gundi
 date: 2026-06-29
 ratified: 2026-06-29
+superseded_in_part_by: [decision-0065]
 ---
 
 # 0010 — Trellis imposes no runtime; it ships as agent instructions (CLI is optional support)
+
+> **Forward pointer.** `decision-0065` amends, not supersedes: on the plugin
+> path a hook is the sole carrier, so "the methodology runs without it"
+> narrows. The Claude hook is bash; the Codex hook has always been Node. The
+> install path remains the runtime-free route.
 
 **Raised by:** the maintainer, catching a category error while scoping the spine — I had
 framed Trellis's conformance check as a Python/Node *script*, treating Trellis as a code tool.

@@ -2,13 +2,17 @@
 id: decision-0043
 type: decision
 status: approved  # ratified by the maintainer's merge of PR #126 on 2026-07-10; approval recorded late under decisions 0022/0042
-superseded_in_part_by: [decision-0059, decision-0061]
+superseded_in_part_by: [decision-0059, decision-0061, decision-0065]
 depends_on: [decision-0010, decision-0025, decision-0035, decision-0036, decision-0039, decision-0041]
 owner: gundi
 date: 2026-07-10
 ---
 
 # 0043 — Generator-only CLI; the overlay stamp is the payload stamp, compared file-to-file
+
+> **Forward pointer.** `decision-0065` narrows rules 2-3 to vendored projects.
+> Where nothing is vendored there is no stamp to copy and nothing to be stale,
+> so the staleness compare has no subject.
 
 ## Context
 

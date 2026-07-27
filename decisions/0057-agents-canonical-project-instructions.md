@@ -2,7 +2,7 @@
 id: decision-0057
 type: decision
 status: approved  # maintainer intent act 2026-07-23: AGENTS is canonical shared prose; CLAUDE retains @AGENTS.md plus the Trellis import block; independent SOUND pass preceded this record
-superseded_in_part_by: [decision-0058]
+superseded_in_part_by: [decision-0058, decision-0065]
 depends_on: [decision-0005, decision-0028, decision-0035, decision-0053]
 informed_by: [research-0010]
 owner: agent
@@ -10,6 +10,11 @@ date: 2026-07-23
 ---
 
 # 0057 — `AGENTS.md` is Trellis's canonical shared project-instruction entrypoint
+
+> **Forward pointer.** `decision-0065` supersedes rules 3-4: the managed
+> Trellis block is no longer written to `CLAUDE.md` on the plugin path, and
+> its CI guard has no subject there. `AGENTS.md` as canonical shared prose is
+> untouched.
 
 > **Human direction (2026-07-23).** The maintainer asked Trellis to adopt the
 > same shared-entrypoint pattern being prepared in Grove, then supplied the

@@ -6,6 +6,7 @@ depends_on: [invariants-v1, signature-catalog-v1]
 informed_by: [spec-0005, decision-0043]
 owner: agent
 date: 2026-07-18
+superseded_in_part_by: [decision-0065]
 ---
 
 > **Provenance.** Lifted from grove's shaping draft `adr-0014`
@@ -17,6 +18,10 @@ date: 2026-07-18
 > provenance in prose, **not** consumed as frontmatter edges.
 
 # 0049 — setup offers to hide `.trellis/` from the consumer's own tooling
+
+> **Forward pointer.** `decision-0065` retires the offer to hide `.trellis/`
+> from consumer tooling. With only `rules.toml` remaining, a project lints its
+> own config.
 
 ## Context
 

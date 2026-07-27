@@ -26,12 +26,16 @@ const SLUGS = [
   "floor-intent-gate",
 ];
 const SLUG_SET = new Set(SLUGS);
-const AUTHORITATIVE_FILES = [
-  ".trellis/internal/trellis.md",
-  ".trellis/internal/rules.md",
-  ".trellis/internal/version",
-  ".trellis/rules.toml",
-];
+// The project always owns its rows. The three payload files come from the
+// vendored overlay when one exists, and from the plugin's own payload when it
+// does not (decision-0065: the plugin path vendors nothing). Vendored projects
+// keep reading their own copies, so nothing about them changes.
+const PROJECT_CONFIG = ".trellis/rules.toml";
+const VENDORED_PAYLOAD = {
+  prose: ".trellis/internal/trellis.md",
+  rules: ".trellis/internal/rules.md",
+  version: ".trellis/internal/version",
+};
 
 function emit(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
@@ -314,36 +318,65 @@ if (projectRoot === null) {
   process.exit(0);
 }
 
-const installed = new Map();
-for (const relativePath of AUTHORITATIVE_FILES) {
-  const result = readRequired(projectRoot, relativePath);
+// The rows are read first: they carry the posture that selects which prose
+// variant the plugin payload should supply.
+const configResult = readRequired(projectRoot, PROJECT_CONFIG);
+if (configResult.error) {
+  fail(configResult.label ?? PROJECT_CONFIG, configResult.error);
+  process.exit(0);
+}
+const rulesToml = configResult.value;
+
+// The `.trellis/internal/` DIRECTORY decides the mode, not any file inside it.
+// Present -> vendored: every file within is required, and a missing one is a
+// broken overlay that must fail loudly rather than silently falling through to
+// the plugin's payload. Absent -> plugin-native. Using a file as the
+// discriminator would turn a half-deleted overlay into a silent mode switch.
+const vendored = existingDirectory(path.join(projectRoot, ".trellis", "internal"));
+// Both TOML string forms. parseRulesToml below accepts literal strings, so
+// matching only the basic form served a firm project the adaptive posture
+// without saying so.
+const posture = /^\s*strictness\s*=\s*(?:"firm"|'firm')\s*(?:#.*)?$/mu.test(rulesToml)
+  ? "a"
+  : "b";
+const sources = vendored
+  ? { root: projectRoot, ...VENDORED_PAYLOAD }
+  : {
+      root: pluginRoot,
+      prose: `reference/trellis-${posture}.md`,
+      rules: "reference/rules.md",
+      version: "reference/version",
+    };
+
+const payload = {};
+for (const key of ["prose", "rules", "version"]) {
+  const result = readRequired(sources.root, sources[key]);
   if (result.error) {
-    fail(result.label ?? relativePath, result.error);
+    fail(result.label ?? sources[key], result.error);
     process.exit(0);
   }
-  installed.set(relativePath, result.value);
+  payload[key] = result.value;
 }
 
-const trellis = installed.get(".trellis/internal/trellis.md");
-const rules = installed.get(".trellis/internal/rules.md");
-const version = installed.get(".trellis/internal/version");
-const rulesToml = installed.get(".trellis/rules.toml");
+const trellis = payload.prose;
+const rules = payload.rules;
+const version = payload.version;
 
 if (trellis.length === 0) {
-  fail(".trellis/internal/trellis.md", "empty-prose");
+  fail(sources.prose, "empty-prose");
   process.exit(0);
 }
 if (rules.length === 0) {
-  fail(".trellis/internal/rules.md", "empty-prose");
+  fail(sources.rules, "empty-prose");
   process.exit(0);
 }
 if (!/^payload@[0-9a-f]{12}\n?$/u.test(version)) {
-  fail(".trellis/internal/version", "invalid-version");
+  fail(sources.version, "invalid-version");
   process.exit(0);
 }
 const rows = parseRulesToml(rulesToml);
 if (rows === null) {
-  fail(".trellis/rules.toml", "invalid-rules");
+  fail(PROJECT_CONFIG, "invalid-rules");
   process.exit(0);
 }
 if (trellis.split("@rules.md").length - 1 !== 1) {

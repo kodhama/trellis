@@ -24,12 +24,15 @@ run the setup skill in any project:
 
 `/trellis:setup` asks one thing — a **posture** (`conductor` / `author-adapt`) — or reads the
 config from `.trellis/rules.toml` if the project already carries one, then copies Trellis onto
-your project as the **M1 "alongside" overlay**: a managed block in your `CLAUDE.md` plus a
-`.trellis/` bundle split by authority (`decision-0051`, as amended) — your `rules.toml` at the
-root (which rules apply — edit a row, done: rows govern at read time, `decision-0053`; the one
-consumer-owned file), the generated files (the header, the complete rules readout, the invariant
-reference) under `.trellis/internal/`. Augment-never-clobber, idempotent, verified against a shipped checksum
-manifest. On explicit request it also runs the **M2 morph** — a model-driven rewrite of your own
+your project by writing **one file**: `.trellis/rules.toml`, seeded from the preset you pick
+(which rules apply — edit a row, done: rows govern at read time, `decision-0053`). It vendors
+nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
+plugin's payload, so there is no copy in your repo to install, refresh or let drift
+(`decision-0065`). A project set up before that change still carries a vendored `.trellis/`
+bundle and a managed block in your `CLAUDE.md`, and keeps working — the hook detects the overlay
+and steps aside, so the rules still arrive exactly once. `/trellis:setup` offers to migrate it.
+That earlier behaviour — the managed block, the vendored bundle, and an optional **M2 morph**
+rewriting your own
 instructions, on a fresh git branch you review. The plugin lives in
 [`plugins/trellis`](plugins/trellis).
 
@@ -78,13 +81,15 @@ leads to.
 
 ### Local Codex support — Phase 1
 
-The same plugin also supports setup/refresh, **product-wide** remove, and a **fresh startup** in a
-**trusted local Codex** repository. The Codex host branch preserves `CLAUDE.md`, installs a small
-receipt and **best-effort** installed-file fallback in `AGENTS.md`, and registers only
-`SessionStart(startup)`. Its native hook reads the installed `.trellis/internal/` payload and
-current `.trellis/rules.toml`; those project files remain authoritative, while plugin files are
-only setup sources. A valid row edit is seen at the next supported startup without refresh and
-does not change a context already in flight.
+The same plugin supports Codex, and since `decision-0065` both hosts work the same way: a
+`SessionStart(startup)` hook injects the rules from the plugin's own payload, together with the
+project's `.trellis/rules.toml`. Setup installs no receipt and no fallback — it writes the config
+file and nothing else.
+
+A project that still carries a vendored `.trellis/internal/` overlay is read from that overlay
+instead, on both hosts, so nothing is delivered twice and no existing consumer breaks. A valid row
+edit is seen at the next startup without refresh, and does not change a context already in
+flight.
 
 Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
 bootstrap-only degradation; Trellis adds no project runtime, daemon, or network service. Native
@@ -93,9 +98,10 @@ than deterministic.
 
 Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desktop, IDE,
 headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
-host blocks and the shared overlay. Ordinary refresh preserves the consumer's rows, strictness,
-and `seeded_from`; it is not the separately deferred, confirmed preset reset. Also excluded are a
-Claude-hook replacement, any other host-native transport, and revival of the parked `seed` or
+host blocks and the shared overlay. Applying a preset **replaces** the consumer's rows, strictness
+and `seeded_from` — `/trellis:setup` diffs first and requires explicit confirmation before
+overwriting an existing file (`decision-0065`). Also excluded are a
+any other host-native transport, and revival of the parked `seed` or
 `custom` presets.
 
 **Any other harness — the manual copy path.** Every bundle file is pre-rendered plain text in

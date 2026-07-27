@@ -2,7 +2,7 @@
 id: decision-0053
 type: decision
 status: approved  # maintainer's intent act 2026-07-20, in-conversation ("flip and fold executor run in the same PR") — this flip records it (decision-0046); pre-gate: corpus-reviewer no-violation (stats recomputed from raw runs), its open check closed by git diff, precision+scope notes applied
-superseded_in_part_by: [decision-0058]
+superseded_in_part_by: [decision-0058, decision-0065]
 depends_on: [decision-0051, research-0012]
 owner: agent
 date: 2026-07-20
@@ -19,6 +19,11 @@ date: 2026-07-20
 > record's `approved` flip.
 
 # 0053 — live rows: the readout ships complete, `rules.toml` governs at read time; assembly retires
+
+> **Forward pointer.** `decision-0065` supersedes rule 2's delivery of the
+> rows through the managed block on the plugin path. The rows still govern at
+> read time and the tested wording is still the shipped wording; only the
+> carrier moves from an import to a session-start injection.
 
 ## Context
 

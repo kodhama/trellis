@@ -14,22 +14,31 @@ the repository's `TestPluginPackageParity` Go test. The generated overlay keeps 
 
 ## Phase 1 host support
 
-Claude keeps its existing `CLAUDE.md` imports and staleness hook. The Codex branch supports
-setup/refresh, **product-wide** remove, and **fresh startup** in a **trusted local Codex**
-repository. It installs the generated `block-codex.md` receipt and **best-effort** fallback in
-`AGENTS.md` and registers only `SessionStart(startup)`. Installed project files are authoritative;
-the plugin's `reference/` files are setup sources, never runtime substitutes.
+Since `decision-0065` both hosts deliver the same way: a `SessionStart` hook injects the rules
+from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. Setup writes only
+that config file — no `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
+
+**Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
+the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
+projects the plugin's `reference/` files stay setup sources rather than runtime substitutes, which
+is what the previous contract said of every project.
 
 Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
 bootstrap-only degradation and leaves the installed-file fallback usable. Trellis requires no
 project runtime, daemon, or network service. Row edits take effect at the next supported host
 context-loading boundary without refresh, never in a context already in flight.
 
-Phase 1 excludes Codex resume, clear, compact, subagent boundaries, desktop, IDE,
-headless/automation, and cloud surfaces. There is no per-host disable: `/trellis:remove` removes
-both host blocks and the shared overlay. Ordinary refresh preserves rows, strictness, and
-`seeded_from`; it is not a confirmed preset reset. A Claude-hook replacement, every other
-host-native transport, and revival of the parked `seed` or `custom` presets are also excluded.
+**What is verified, and what is not.** `decision-0065` moved rule delivery to the plugin's
+`SessionStart` hooks on both hosts. Measured against a real session with file tools disabled:
+`startup` and `resume` fire and the injected rules reach the model, including under headless
+`claude -p`. **Not verified on any surface:** `compact`, `clear`, `fork`, subagent boundaries,
+desktop, IDE, cloud, and CI runners. A bare subagent is not a session, so `SessionStart` never
+fires for one. `install.sh` registers no hook at all, so a vendored install delivers no rules —
+see issue #201.
+
+Applying a preset **replaces** rows, strictness and `seeded_from`; `/trellis:setup` diffs first
+and requires explicit confirmation. There is no per-host disable: `/trellis:remove` removes both
+host blocks and the shared overlay. The parked `seed` and `custom` presets stay parked.
 
 ## Install
 
@@ -83,11 +92,9 @@ very next session. Augment-never-clobber; nothing else is touched, and it's idem
   instructions file (outside the managed block), or to leave the file in place; a pure seed stub
   may be offered for deletion.
 - **Hand-authored content in the generated readout** (the clobber target of
-  [#112](https://github.com/kodhama/trellis/issues/112) — a refresh rewrites generated files
-  whole): setup compares generated files against the payload — and, in a legacy readout, detects
-  anything after its closing "(Generated from your …" line (the retired footer that older
-  installs still carry) — and offers to move hand-authored content into your own instructions
-  file before overwriting.
+  [#112](https://github.com/kodhama/trellis/issues/112)): moot on the plugin path since
+  `decision-0065` — setup no longer writes generated files, so there is nothing to rewrite whole.
+  It survives as a concern for `install.sh`, which does vendor them.
 
 ## What it bundles
 

@@ -59,6 +59,22 @@ func TestStalenessHook(t *testing.T) {
 			if err := os.WriteFile(p, []byte(stamp+"\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
+			// A real vendored overlay carries the payload files the managed
+			// block imports, not just the stamp. The hook now checks they are
+			// present before treating the old transport as healthy, so a
+			// stamp-only fixture models a shape that cannot exist — and one
+			// that, in the wild, is a silently broken install.
+			if strings.Contains(stampRel, "internal") {
+				for name, body := range map[string]string{
+					"trellis.md": payloadFiles()["trellis-b.md"],
+					"rules.md":   payloadFiles()["rules.md"],
+				} {
+					q := filepath.Join(filepath.Dir(p), name)
+					if err := os.WriteFile(q, []byte(body), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
 		}
 		cmd := exec.Command(hook)
 		cmd.Dir = proj
@@ -75,16 +91,26 @@ func TestStalenessHook(t *testing.T) {
 		if out == "" {
 			t.Fatal("want a staleness message, got silence")
 		}
+		// The envelope must be nested. A bare top-level {"additionalContext": ...}
+		// parses fine but is silently discarded by the host, so decoding the flat
+		// shape here is what let the hook ship un-delivered: the test passed while
+		// no model ever saw the nudge. Decode only the shape the host reads.
 		var v struct {
-			AdditionalContext string `json:"additionalContext"`
+			HookSpecificOutput struct {
+				HookEventName     string `json:"hookEventName"`
+				AdditionalContext string `json:"additionalContext"`
+			} `json:"hookSpecificOutput"`
 		}
 		if err := json.Unmarshal([]byte(out), &v); err != nil {
 			t.Fatalf("output is not valid JSON: %v (%q)", err, out)
 		}
-		if !strings.Contains(v.AdditionalContext, "/trellis:setup") {
-			t.Errorf("message should point at /trellis:setup: %q", v.AdditionalContext)
+		if v.HookSpecificOutput.HookEventName != "SessionStart" {
+			t.Errorf("want nested SessionStart envelope, got %q", out)
 		}
-		return v.AdditionalContext
+		if !strings.Contains(v.HookSpecificOutput.AdditionalContext, "/trellis:setup") {
+			t.Errorf("message should point at /trellis:setup: %q", v.HookSpecificOutput.AdditionalContext)
+		}
+		return v.HookSpecificOutput.AdditionalContext
 	}
 
 	t.Run("no overlay is silent", func(t *testing.T) {
@@ -136,6 +162,7 @@ func TestStalenessHook(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+		writeVendoredPayload(t, filepath.Join(proj, ".trellis", "internal"))
 		cmd := exec.Command(hook)
 		cmd.Dir = proj
 		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
@@ -164,6 +191,7 @@ func TestStalenessHook(t *testing.T) {
 		if err := os.WriteFile(p, []byte("payload@abc\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
+		writeVendoredPayload(t, filepath.Dir(p))
 		cmd := exec.Command(hook)
 		cmd.Dir = proj
 		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+t.TempDir())
@@ -175,4 +203,166 @@ func TestStalenessHook(t *testing.T) {
 			t.Errorf("want silent (can't read the installed payload stamp), got %q", out)
 		}
 	})
+
+	// Path B — plugin-native delivery. A project that carries only the config
+	// file gets the rules injected from the plugin's own payload. This is the
+	// mode that lets a consumer stop vendoring `.trellis/internal/` entirely.
+	t.Run("config-only project receives the rules from the plugin", func(t *testing.T) {
+		full := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(full, "reference"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, body := range payloadFiles() {
+			if err := os.WriteFile(filepath.Join(full, "reference", name), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		proj := t.TempDir()
+		toml := filepath.Join(proj, ".trellis", "rules.toml")
+		if err := os.MkdirAll(filepath.Dir(toml), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(toml, []byte(payloadFiles()["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+full)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v): %s", err, out)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(string(out)))
+
+		// The always-loaded chain, assembled at runtime instead of via imports.
+		if strings.Contains(ctx, "@rules.md") {
+			t.Error("the @rules.md import must be resolved, not passed through")
+		}
+		for _, want := range []string{
+			"How to work in this project", // posture header
+			"inv-directional-flow",        // a rule body from rules.md
+			"[rules]",                     // the project's live rows
+			"floor-intent-gate",
+		} {
+			if !strings.Contains(ctx, want) {
+				t.Errorf("injected context missing %q", want)
+			}
+		}
+		// The vendored path does not exist in this mode; the pointer must name
+		// the plugin's copy, which is the payload this session is running.
+		if strings.Contains(ctx, ".trellis/internal/invariants.md") {
+			t.Error("invariants pointer still names the vendored path")
+		}
+		if !strings.Contains(ctx, filepath.Join(full, "reference", "invariants.md")) {
+			t.Error("invariants pointer does not name the plugin's copy")
+		}
+	})
+
+	// The two paths are mutually exclusive: a vendored project must never also
+	// receive the rules, or every session would carry them twice.
+	t.Run("vendored project never also receives the rules", func(t *testing.T) {
+		full := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(full, "reference"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, body := range payloadFiles() {
+			if err := os.WriteFile(filepath.Join(full, "reference", name), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		proj := t.TempDir()
+		for rel, body := range map[string]string{
+			".trellis/internal/version": "payload@stale\n",
+			".trellis/rules.toml":       payloadFiles()["rules-b.toml"],
+		} {
+			p := filepath.Join(proj, filepath.FromSlash(rel))
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+full)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v): %s", err, out)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(string(out)))
+		if strings.Contains(ctx, "inv-directional-flow") {
+			t.Error("vendored project received the rule bodies as well as the nudge")
+		}
+	})
+
+	// A current stamp is not proof the overlay can load. Deleting a payload file
+	// leaves the managed block importing something that is not there, and the
+	// stamp says nothing about it — this project was silently ungoverned.
+	t.Run("current stamp with a gutted payload fails loudly", func(t *testing.T) {
+		proj := t.TempDir()
+		dir := filepath.Join(proj, ".trellis", "internal")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "version"), []byte(shipped), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "trellis.md"), []byte(payloadFiles()["trellis-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// rules.md deliberately absent.
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v): %s", err, out)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(string(out)))
+		if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Errorf("want a loud failure for a gutted overlay, got %q", ctx)
+		}
+		if !strings.Contains(ctx, "rules.md") {
+			t.Error("the failure must name the missing file")
+		}
+	})
+}
+
+// nudgeContext decodes the nested SessionStart envelope the host actually reads.
+func nudgeContext(t *testing.T, out string) string {
+	t.Helper()
+	if out == "" {
+		t.Fatal("want injected context, got silence")
+	}
+	var v struct {
+		HookSpecificOutput struct {
+			HookEventName     string `json:"hookEventName"`
+			AdditionalContext string `json:"additionalContext"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal([]byte(out), &v); err != nil {
+		t.Fatalf("output is not valid JSON: %v (%q)", err, out)
+	}
+	if v.HookSpecificOutput.HookEventName != "SessionStart" {
+		t.Fatalf("want nested SessionStart envelope, got %q", out)
+	}
+	return v.HookSpecificOutput.AdditionalContext
+
+}
+
+// writeVendoredPayload gives a fixture the payload files a real vendored overlay
+// carries. The hook checks they exist before trusting the stamp, so a stamp-only
+// fixture models a shape that cannot exist in the wild.
+func writeVendoredPayload(t *testing.T, internalDir string) {
+	t.Helper()
+	for name, key := range map[string]string{"trellis.md": "trellis-b.md", "rules.md": "rules.md"} {
+		if err := os.WriteFile(filepath.Join(internalDir, name), []byte(payloadFiles()[key]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
