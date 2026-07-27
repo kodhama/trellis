@@ -262,12 +262,12 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 7c8a75ec425b9539ba40ebebf37a5f08e76c66db02ec196c5800780536af8a97  .claude-plugin/plugin.json
 b7b3e94e0b846f2893dc350520ac5f0f94f07b1459ace7fd63e2c2ade98ea874  .codex-plugin/plugin.json
-8e762782e9cb550929f57d793237f8b28540905058fe3aea75577a94fb7f1964  README.md
+462d4f3d06566030b23a9e07820a87c518d06eb15a0e8257230a082776f72441  README.md
 1f930dd1f133c1f97a94fe3acb8db34372cf4c01ffdb2b3ff4ca72f9494121e9  VERSION
-d29097c385774e8089dc6dfe5a7ef845e1fab4e6504ade058096c80d1c8b8b16  hooks/codex-context.mjs
+10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-c5741b17e08d874691cdfe92bd4d0240374e524c6a2ee2884eb67d01a45e50a6  hooks/staleness.sh
+113487f407bc7e8980e45ceb6e34dcb78490bc9a7a875bd1284b0a889a77fe92  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -284,7 +284,7 @@ d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trel
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
 f63c4d15f8ce3cf4932ed3412e141e3e47b886daed15223c8402b1c3718049c3  reference/version
 b986e4e18b4b9620d41490adc5d6fa39e88ba83c84d74b0e66c2e86dfe891523  skills/remove/SKILL.md
-56a4f3a31dec5afa553699231cbbb416d52c10ef7d5e0c5e9b86c5db727afa3b  skills/setup/SKILL.md
+19c47e1fffd5793cfef88359fe53efcecf4df3c14fd0bdc993ed2a2cf96a3f11  skills/setup/SKILL.md
 8fa6e111df256dd99daf490e857785a415f2a6a28de0ce5c26f346fb28d49903  surfaces.json
 TRELLIS_BUNDLE_MANIFEST
 }
@@ -344,5 +344,5 @@ if [ "$scope" = "project" ]; then
 fi
 say ""
 say "Then run /trellis:setup in the project you want to govern. That skill (the real"
-say "interactive writer — LLM-driven, no decision logic in this script) reads your"
-say "posture, writes .trellis/, patches your instructions file, and verifies itself."
+say "interactive writer — LLM-driven, no decision logic in this script) asks for a"
+say "preset and writes .trellis/rules.toml. It writes nothing else (decision-0065)."

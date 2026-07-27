@@ -24,12 +24,15 @@ run the setup skill in any project:
 
 `/trellis:setup` asks one thing — a **posture** (`conductor` / `author-adapt`) — or reads the
 config from `.trellis/rules.toml` if the project already carries one, then copies Trellis onto
-your project as the **M1 "alongside" overlay**: a managed block in your `CLAUDE.md` plus a
-`.trellis/` bundle split by authority (`decision-0051`, as amended) — your `rules.toml` at the
-root (which rules apply — edit a row, done: rows govern at read time, `decision-0053`; the one
-consumer-owned file), the generated files (the header, the complete rules readout, the invariant
-reference) under `.trellis/internal/`. Augment-never-clobber, idempotent, verified against a shipped checksum
-manifest. On explicit request it also runs the **M2 morph** — a model-driven rewrite of your own
+your project by writing **one file**: `.trellis/rules.toml`, seeded from the preset you pick
+(which rules apply — edit a row, done: rows govern at read time, `decision-0053`). It vendors
+nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
+plugin's payload, so there is no copy in your repo to install, refresh or let drift
+(`decision-0065`). A project set up before that change still carries a vendored `.trellis/`
+bundle and a managed block in your `CLAUDE.md`, and keeps working — the hook detects the overlay
+and steps aside, so the rules still arrive exactly once. `/trellis:setup` offers to migrate it.
+That earlier behaviour — the managed block, the vendored bundle, and an optional **M2 morph**
+rewriting your own
 instructions, on a fresh git branch you review. The plugin lives in
 [`plugins/trellis`](plugins/trellis).
 
@@ -93,9 +96,10 @@ than deterministic.
 
 Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desktop, IDE,
 headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
-host blocks and the shared overlay. Ordinary refresh preserves the consumer's rows, strictness,
-and `seeded_from`; it is not the separately deferred, confirmed preset reset. Also excluded are a
-Claude-hook replacement, any other host-native transport, and revival of the parked `seed` or
+host blocks and the shared overlay. Applying a preset **replaces** the consumer's rows, strictness
+and `seeded_from` — `/trellis:setup` diffs first and requires explicit confirmation before
+overwriting an existing file (`decision-0065`). Also excluded are a
+any other host-native transport, and revival of the parked `seed` or
 `custom` presets.
 
 **Any other harness — the manual copy path.** Every bundle file is pre-rendered plain text in

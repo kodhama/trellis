@@ -2,13 +2,17 @@
 id: decision-0035
 type: decision
 status: ratified
-superseded_in_part_by: [decision-0043, decision-0057]
+superseded_in_part_by: [decision-0043, decision-0057, decision-0065]
 depends_on: [decision-0005, decision-0010, decision-0028]
 owner: gundi
 ratified: 2026-07-06
 ---
 
 # 0035 — Trellis self-applies through its own install boundary; overlay↔product drift is never silent
+
+> **Forward pointer.** `decision-0065` supersedes rule 2's requirement that a
+> repo run setup, commit `.trellis/` plus the block, and guard it in CI. On
+> the plugin path there is no overlay to commit or guard.
 
 > **Superseded in part by `decision-0043` (2026-07-10, #120; text below preserved as written).**
 > Rule 3's user-facing surface (`trellis status`, "update the tool, then re-run `trellis setup`")

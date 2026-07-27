@@ -5,9 +5,15 @@ status: approved  # maintainer intent act 2026-07-24: document the rollout phase
 depends_on: [decision-0039, decision-0043, decision-0051, decision-0053, decision-0057]
 owner: agent
 date: 2026-07-24
+superseded_in_part_by: [decision-0065]
 ---
 
 # 0058 — phase host-native live-rule delivery; keep the installed overlay as the common truth
+
+> **Forward pointer.** `decision-0065` claims phase 4 for the Claude host: it
+> supersedes rule 2's retention of the managed import block, and narrows rule
+> 1's `.trellis/internal/` source to vendored projects. Phases 1-3 and the
+> unclaimed-surface warning stand unchanged.
 
 > **Human direction (2026-07-24).** The maintainer rejected refresh-time rule
 > activation and asked for a progressive rollout: keep Claude's working import

@@ -537,9 +537,13 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 	}
 }
 
-// guards spec-0007@v1 R17-R30, R38-R40, S10-S18, S21
+// Guards what survives of spec-0007@v1's host-boundary contract after
+// decision-0065. It no longer guards R17-R30/R38-R40/S10-S18/S21 — those
+// covered setup's two-host vendoring contract, which the product removed. The
+// comment is narrowed with the body rather than left overstating it: a test
+// whose docstring claims more than it checks is how the delivery bug survived.
 func TestPhaseOneSkillsAndDocsDeclareHostBoundaries(t *testing.T) {
-	// Narrowed by adr(trellis)-0058. This test asserted setup's two-host
+	// Narrowed by decision-0065. This test asserted setup's two-host
 	// vendoring contract: the preflight, the instruction-file inventory, the
 	// canonical opposite-host block, byte-for-byte copying. Setup no longer
 	// writes any of that — it writes .trellis/rules.toml and nothing else — so
@@ -548,7 +552,7 @@ func TestPhaseOneSkillsAndDocsDeclareHostBoundaries(t *testing.T) {
 	// What still holds is the docs' host boundary, so that is what remains here.
 	// KNOWN GAP, recorded rather than hidden: with setup's vendored Codex block
 	// gone and no Codex SessionStart hook shipped, Codex receives no Trellis
-	// rules at all. See adr(trellis)-0058 and the Codex delivery issue.
+	// rules at all. See decision-0065 and the Codex delivery issue.
 	remove := readFileT(t, "../plugins/trellis/skills/remove/SKILL.md")
 
 	// Remove still operates over vendored state, because vendored overlays still

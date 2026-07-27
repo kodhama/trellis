@@ -25,11 +25,17 @@ bootstrap-only degradation and leaves the installed-file fallback usable. Trelli
 project runtime, daemon, or network service. Row edits take effect at the next supported host
 context-loading boundary without refresh, never in a context already in flight.
 
-Phase 1 excludes Codex resume, clear, compact, subagent boundaries, desktop, IDE,
-headless/automation, and cloud surfaces. There is no per-host disable: `/trellis:remove` removes
-both host blocks and the shared overlay. Ordinary refresh preserves rows, strictness, and
-`seeded_from`; it is not a confirmed preset reset. A Claude-hook replacement, every other
-host-native transport, and revival of the parked `seed` or `custom` presets are also excluded.
+**What is verified, and what is not.** `decision-0065` moved rule delivery to the plugin's
+`SessionStart` hooks on both hosts. Measured against a real session with file tools disabled:
+`startup` and `resume` fire and the injected rules reach the model, including under headless
+`claude -p`. **Not verified on any surface:** `compact`, `clear`, `fork`, subagent boundaries,
+desktop, IDE, cloud, and CI runners. A bare subagent is not a session, so `SessionStart` never
+fires for one. `install.sh` registers no hook at all, so a vendored install delivers no rules —
+see issue #201.
+
+Applying a preset **replaces** rows, strictness and `seeded_from`; `/trellis:setup` diffs first
+and requires explicit confirmation. There is no per-host disable: `/trellis:remove` removes both
+host blocks and the shared overlay. The parked `seed` and `custom` presets stay parked.
 
 ## Install
 
@@ -83,11 +89,9 @@ very next session. Augment-never-clobber; nothing else is touched, and it's idem
   instructions file (outside the managed block), or to leave the file in place; a pure seed stub
   may be offered for deletion.
 - **Hand-authored content in the generated readout** (the clobber target of
-  [#112](https://github.com/kodhama/trellis/issues/112) — a refresh rewrites generated files
-  whole): setup compares generated files against the payload — and, in a legacy readout, detects
-  anything after its closing "(Generated from your …" line (the retired footer that older
-  installs still carry) — and offers to move hand-authored content into your own instructions
-  file before overwriting.
+  [#112](https://github.com/kodhama/trellis/issues/112)): moot on the plugin path since
+  `decision-0065` — setup no longer writes generated files, so there is nothing to rewrite whole.
+  It survives as a concern for `install.sh`, which does vendor them.
 
 ## What it bundles
 

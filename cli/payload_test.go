@@ -411,7 +411,7 @@ func TestPayloadRulesTomlSeeds(t *testing.T) {
 func TestSetupSkillWritesOnlyTheConfig(t *testing.T) {
 	// Replaces TestSetupSkillCopiesCompleteReadout. That test guarded setup's
 	// vendoring contract — that it copied the complete readout into
-	// .trellis/internal/. adr(trellis)-0058 retires vendoring from the plugin
+	// .trellis/internal/. decision-0065 retires vendoring from the plugin
 	// path: the rules are injected at session start and setup writes exactly one
 	// file. The drift guard is still wanted, so it now guards the new invariant
 	// rather than being deleted with the old one.
@@ -422,8 +422,26 @@ func TestSetupSkillWritesOnlyTheConfig(t *testing.T) {
 	s := string(b)
 
 	// The one write, and it must be a copy of a preset rather than a composition.
-	if !strings.Contains(s, `cp "${TRELLIS_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml`) {
+	if !strings.Contains(s, `cp "$root/reference/rules-<p>.toml" .trellis/rules.toml`) {
 		t.Error("SKILL.md must seed .trellis/rules.toml by copying the chosen preset")
+	}
+	// The plugin root must come from a variable a host actually exports. An
+	// earlier draft used ${TRELLIS_PLUGIN_ROOT}, which nothing in this repo
+	// defines — it had been set by the deleted preflight — so the one write
+	// command expanded to `cp "/reference/rules-b.toml"`. This test asserted the
+	// broken literal and passed.
+	if !strings.Contains(s, `root="${CLAUDE_PLUGIN_ROOT:-$PLUGIN_ROOT}"`) {
+		t.Error("SKILL.md must resolve the plugin root from a host-exported variable")
+	}
+	if strings.Contains(s, "TRELLIS_PLUGIN_ROOT") {
+		t.Error("SKILL.md references TRELLIS_PLUGIN_ROOT, which nothing defines")
+	}
+	// The migration is the only path off a vendored overlay: /trellis:remove
+	// deletes all of .trellis/, including the rules.toml this skill writes.
+	for _, required := range []string{"trellis:begin", ".trellis/internal/", "never impose"} {
+		if !strings.Contains(s, required) {
+			t.Errorf("SKILL.md must describe the vendored-overlay migration (%q)", required)
+		}
 	}
 
 	// No vendoring may creep back in. Asserted against the file's *commands*

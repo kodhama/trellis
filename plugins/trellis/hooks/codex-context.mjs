@@ -333,7 +333,12 @@ const rulesToml = configResult.value;
 // the plugin's payload. Absent -> plugin-native. Using a file as the
 // discriminator would turn a half-deleted overlay into a silent mode switch.
 const vendored = existingDirectory(path.join(projectRoot, ".trellis", "internal"));
-const posture = /^\s*strictness\s*=\s*"firm"/mu.test(rulesToml) ? "a" : "b";
+// Both TOML string forms. parseRulesToml below accepts literal strings, so
+// matching only the basic form served a firm project the adaptive posture
+// without saying so.
+const posture = /^\s*strictness\s*=\s*(?:"firm"|'firm')\s*(?:#.*)?$/mu.test(rulesToml)
+  ? "a"
+  : "b";
 const sources = vendored
   ? { root: projectRoot, ...VENDORED_PAYLOAD }
   : {

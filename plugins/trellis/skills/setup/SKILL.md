@@ -44,6 +44,18 @@ rule. Today the two differ only in `strictness` and `seeded_from` — every row 
 both. If a future preset turns rows off, this skill needs no change, because it copies the preset
 file rather than composing it.
 
+## 0. Two things to resolve first
+
+**The plugin root.** Every path below is relative to it. The host exports it:
+Claude sets `CLAUDE_PLUGIN_ROOT`, Codex sets `PLUGIN_ROOT`. Use
+`${CLAUDE_PLUGIN_ROOT:-$PLUGIN_ROOT}` and, if both are empty, **stop and say so**
+— without it the copy below would read from `/reference/`, which is not a path
+this plugin owns.
+
+**The project root.** Run from the repository root, so `.trellis/rules.toml`
+lands at the top of the project rather than in whatever subdirectory the session
+happens to be in. If the working directory is not the root, change to it first.
+
 ## 1. Pick the preset
 
 - The user named one (`conductor`/`a`, `author-adapt`/`b`) → use it.
@@ -60,14 +72,15 @@ file rather than composing it.
 **If `.trellis/rules.toml` does not exist** — write it:
 
 ```sh
+root="${CLAUDE_PLUGIN_ROOT:-$PLUGIN_ROOT}"
 mkdir -p .trellis
-cp "${TRELLIS_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml
+cp "$root/reference/rules-<p>.toml" .trellis/rules.toml
 ```
 
 **If it already exists** — this overwrites the project's own configuration, including any rows they
 turned off by hand. That is a destructive write on a consumer-owned file, so:
 
-1. `diff` the current file against `${TRELLIS_PLUGIN_ROOT}/reference/rules-<p>.toml`.
+1. `diff` the current file against `$root/reference/rules-<p>.toml`.
 2. If they are identical, say so and write nothing.
 3. Otherwise **show the diff and ask for explicit confirmation**, calling out by name any row that
    is `active = false` today and would return to `active = true`. Applying a preset is the point of
@@ -77,7 +90,34 @@ turned off by hand. That is a destructive write on a consumer-owned file, so:
 If no human is available to confirm, **do not write** — report what would have changed and stop
 (`floor-intent-gate`).
 
-## 3. Check what you wrote
+## 3. Migrate a vendored overlay, if there is one
+
+A project set up before plugin delivery carries `.trellis/internal/` and a
+managed block in its instructions file. **Those still govern it** — the hook
+detects the overlay and steps aside — so such a project is running on a copy the
+plugin no longer refreshes, and its staleness nudge now points here.
+
+This is the one place the skill removes files. Removing a retired overlay is not
+vendoring, and without it a vendored project has no way forward: `/trellis:remove`
+deletes the whole of `.trellis/`, including the `rules.toml` you just wrote.
+
+If `.trellis/internal/` exists, **offer** the migration — never impose it:
+
+1. Say what will be removed: the `.trellis/internal/` directory, and the block
+   between the `<!-- trellis:begin` and `<!-- trellis:end -->` markers in the
+   instructions file that carries them (`CLAUDE.md`, or whichever file holds the
+   markers). Say what is kept: `.trellis/rules.toml`, with their rows intact.
+2. Say what changes: the rules will arrive from the plugin at session start
+   instead of by import, and **the switch takes effect next session**.
+3. On confirmation, delete the directory and remove exactly the marked block,
+   leaving every other byte of that file untouched. If more than one file carries
+   the markers, ask which — never guess.
+4. If declined, change nothing and say the project stays on its vendored copy.
+
+With no human available, do not migrate; report that the project has a vendored
+overlay and stop.
+
+## 4. Check what you wrote
 
 Read the file back and confirm it parses: `strictness` is `"firm"` or `"adaptive"`, and there is one
 `[rules]` row per rule the payload ships. If it does not, say so plainly — do not repair it by hand.
@@ -87,7 +127,7 @@ Note for the report, without changing anything: a floor row (`floor-transparency
 `floor-intent-gate`) set to `active = false` **is not honored**. The floors hold regardless of their
 row.
 
-## 4. Report
+## 5. Report
 
 Say exactly:
 
@@ -97,7 +137,7 @@ Say exactly:
   the next session, not this one**;
 - any floor row set `active = false`, named, as overridden-by-floor.
 
-## 5. Hand back
+## 6. Hand back
 
 Perform no git operations and impose no landing workflow (`decision-0048`). Committing
 `.trellis/rules.toml` is the user's call.
@@ -114,7 +154,7 @@ gone:
 | Patch the `trellis:begin`/`trellis:end` managed block | The hook delivers the same chain; the block is no longer written |
 | Verify copies against the checksum manifest | Nothing is copied |
 | Offer to add `.trellis/` to lint-ignore files (`decision-0049`) | Only `rules.toml` remains, and a project lints its own config |
-| Migrate a pre-`decision-0051` flat overlay | `/trellis:remove`'s job — see below |
+| Migrate a pre-`decision-0051` flat overlay | Step 3 above, on confirmation |
 | M2 morph, a model-driven rewrite of the project's own instructions (`decision-0050`) | Removed, and not returning — see below |
 
 **This skill never touches a file the project authored.** There is no "alongside

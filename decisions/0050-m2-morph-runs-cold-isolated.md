@@ -6,6 +6,7 @@ depends_on: [invariants-v1, signature-catalog-v1]
 informed_by: [decision-0048, decision-0043]
 owner: agent
 date: 2026-07-18
+superseded_in_part_by: [decision-0065]
 ---
 
 > **Provenance.** Closes the M2 open question parked in `decision-0048`
@@ -14,6 +15,11 @@ date: 2026-07-18
 > cold/interactive split) — cited in prose, not as frontmatter edges.
 
 # 0050 — the M2 morph's rewrite runs in a cold, isolated sub-agent
+
+> **Forward pointer.** `decision-0065` removes the M2 morph from
+> `/trellis:setup`; the plugin path offers no morph at all, so this record's
+> cold-isolated rewrite contract has no subject there. It is not superseded on
+> its merits and remains the right contract for any future opt-in morph skill.
 
 ## Context
 

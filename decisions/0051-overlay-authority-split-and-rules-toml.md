@@ -2,7 +2,7 @@
 id: decision-0051
 type: decision
 status: approved
-superseded_in_part_by: [decision-0053, decision-0058]  # maintainer's intent act 2026-07-19, in-conversation ("Approved. Continue to implementation") — this flip records it (decision-0046); corpus-reviewer conformance pass (all checks PASS) ran before the gate; grove adr-0018/0020 approved statuses confirmed against grove origin/main frontmatter before the gate
+superseded_in_part_by: [decision-0053, decision-0058, decision-0065]  # maintainer's intent act 2026-07-19, in-conversation ("Approved. Continue to implementation") — this flip records it (decision-0046); corpus-reviewer conformance pass (all checks PASS) ran before the gate; grove adr-0018/0020 approved statuses confirmed against grove origin/main frontmatter before the gate
 depends_on: [invariants-v1, signature-catalog-v1, decision-0033]
 informed_by: [grove/adr-0018-gate-profile-and-trigger-split, grove/adr-0020-dispatcher-honors-gate-profile, decision-0016, decision-0043, decision-0049]
 owner: agent
@@ -19,6 +19,11 @@ date: 2026-07-19
 > of a then-draft.
 
 # 0051 — the overlay splits by authority: consumer-owned `rules.toml`, generated files under `.trellis/internal/`
+
+> **Forward pointer.** `decision-0065` supersedes rule 1's vendoring of
+> `.trellis/internal/` on the plugin path; the layout stands for projects that
+> already have one and for `install.sh`. Rule 1's rejection of a per-session
+> hook rested on "no reader exists" — a reader exists now.
 
 ## Context
 

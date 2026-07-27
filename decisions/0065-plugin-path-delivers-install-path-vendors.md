@@ -2,8 +2,8 @@
 id: decision-0065
 type: decision
 status: gated
-depends_on: [decision-0010, decision-0012, decision-0035, decision-0039, decision-0043, decision-0049, decision-0050, decision-0051, decision-0053, decision-0057]
-informed_by: [research-0013]
+depends_on: [decision-0010, decision-0012, decision-0035, decision-0039, decision-0043, decision-0049, decision-0050, decision-0051, decision-0053, decision-0057, decision-0058]
+informed_by: []  # research-0013 is an unmerged draft; see §Standing on research-0013
 owner: agent
 date: 2026-07-27
 ---
@@ -157,6 +157,67 @@ Every `SessionStart` emission SHALL use the nested envelope
 `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"..."}}`.
 The flat form is silently discarded. Contract tests SHALL decode only the nested
 shape, so a regression fails rather than passing quietly.
+
+## This decision operates under `decision-0058` phase 4
+
+**An earlier draft of this record did not cite `decision-0058` at all.** That was
+the sharpest defect in it: 0058 is `approved` (maintainer intent act 2026-07-24)
+and its phase table governs precisely this act. Both an independent adversary and
+the repository's own Codex reviewer raised it separately.
+
+0058 does not forbid this change. Its phase 4 (`:123`) **conditionally authorises**
+it:
+
+> | 4 | Other hosts, including any Claude hook replacement | A host-native proof at
+> least as strong as Phase 1; remove or disable the old transport in the same
+> change so rules still arrive once |
+
+and `:188-189` sets the boundary condition:
+
+> The Claude import may eventually be replaced by a verified Claude hook, but
+> **never while both paths would inject the full rule payload.**
+
+This decision claims phase 4 and must show it clears both bars:
+
+**Host-native proof.** Phase 1's bar is a live startup positive control plus
+production contract and reversibility tests. Measured against a real Claude
+session with `Read`/`Bash`/`Glob`/`Grep` disabled, so injected context was the
+only possible source: the model quoted a rule's failure example verbatim,
+reported the posture, and stated that the floor rules hold regardless of their
+rows. Contract tests cover both hooks across config-only, vendored, absent and
+partial-overlay projects. Reversibility is §Migrating a vendored overlay.
+
+**Rules arrive exactly once.** Both hooks discriminate on the `.trellis/internal/`
+directory. A project that still has an overlay keeps its import transport and the
+hooks inject nothing; a project without one has no import block and receives the
+injection. There is no state in which both paths carry the payload — that is
+tested, not asserted.
+
+**What 0058 loses.** Its rule 2 — *"Claude's existing import transport stands.
+Setup and refresh retain the managed import block in `CLAUDE.md`"* — is
+superseded, which is exactly the "remove or disable the old transport" phase 4
+contemplates. Its rule 1's *"from `.trellis/internal/`"* narrows to vendored
+projects. Its `:182-183` claim that `.trellis/internal/` "remains useful rather
+than vestigial" holds only for those projects.
+
+**What 0058 keeps.** Phases 1–3 stand untouched: this decision claims nothing
+about Codex resume, clear, compact, subagents, desktop, IDE, headless or cloud,
+and `:186-187`'s warning that those are "named next experiments, not fine print"
+applies to the Claude hook exactly as written. `startup` and `resume` are
+measured; nothing else is.
+
+## Standing on `research-0013`
+
+An earlier draft listed `research-0013` under `informed_by`. **It is not in this
+repository** — it exists only on an unmerged branch, and its own title records it
+as parked. Building on a draft is what `inv-directional-flow` forbids, so the
+dependency is removed rather than dressed up.
+
+The relationship is the other way around: this work **tested** two of that
+draft's premises and found one false. It doubted that headless `claude -p` was
+covered by a hook; measured, the hook fires and its injection reaches the model.
+Nothing here is built on it, and if it lands later it should be updated to record
+that result.
 
 ## Supersession
 

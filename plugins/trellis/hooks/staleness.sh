@@ -58,7 +58,12 @@ current="$(head -n1 "$ref" 2>/dev/null | tr -d '[:space:]')"
 # so the whole payload rides on the single line the output contract wants. UTF-8
 # passes through untouched — it is valid inside a JSON string.
 json_escape() {
-  awk '
+  # Neutralise C0 control characters first. Anything below 0x20 other than tab
+  # (escaped below), newline (the line separator) and carriage return (escaped
+  # below) would make the JSON string invalid — a form feed in rules.toml did
+  # exactly that. A config file has no business carrying one, so replace rather
+  # than emit nothing: a stray byte degrades the payload, not the session.
+  tr '\001-\010\013\014\016-\037' '    ' | awk '
     BEGIN { ORS = "" }
     {
       gsub(/\\/, "\\\\")
@@ -71,6 +76,14 @@ json_escape() {
   '
 }
 
+# Emit one nested SessionStart envelope, escaping the message body. Every
+# emission goes through here: interpolating untrusted text into the JSON
+# directly is what this file's own headline bug was.
+emit() {
+  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
+    "$(printf '%s' "$1" | json_escape)"
+}
+
 # ---------------------------------------------------------------------- path A
 # The `.trellis/internal/` DIRECTORY decides the mode, not the stamp inside it.
 # A half-deleted overlay is a broken vendored install, not a config-only project,
@@ -79,13 +92,15 @@ json_escape() {
 internal="$root/.trellis/internal"
 ver="$internal/version"
 if [ -d "$internal" ]; then
-  [ -f "$ver" ] || exit 0                         # broken overlay → say nothing, inject nothing
+  if [ ! -f "$ver" ]; then
+    emit "TRELLIS_RULES_NOT_LOADED — this project has a .trellis/internal/ directory but no version stamp, so its vendored overlay is incomplete. The hook will not inject rules over a broken overlay, and cannot tell which rules the surviving files represent. Tell the user before doing substantive work; /trellis:setup can migrate this project onto plugin-delivered rules."
+    exit 0
+  fi
   overlay="$(head -n1 "$ver" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
   if [ "$overlay" != "$current" ]; then
-    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Trellis overlay may be stale: this project'"'"'s .trellis/internal/version stamp is %s, but the installed Trellis plugin ships payload %s. The invariants may have moved on; run /trellis:setup to refresh the overlay (or re-copy it from the plugin'"'"'s reference/ payload)."}}\n' \
-      "$overlay" "$current"
+    emit "Trellis overlay may be stale: this project's .trellis/internal/version stamp is $overlay, but the installed Trellis plugin ships payload $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, run /trellis:setup and accept the migration — it removes .trellis/internal/ and the managed block and keeps your .trellis/rules.toml rows. Until then this session is governed by the vendored copy."
   fi
   exit 0
 fi
@@ -95,8 +110,7 @@ if [ -f "$legacy" ]; then
   overlay="$(head -n1 "$legacy" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
-  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version (%s; the installed plugin ships payload %s). Run /trellis:setup to refresh — the refresh migrates the overlay to the new layout."}}\n' \
-    "$overlay" "$current"
+  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships payload $current). Run /trellis:setup and accept the migration — it removes the legacy overlay and keeps your .trellis/rules.toml rows."
   exit 0
 fi
 
@@ -105,7 +119,15 @@ toml="$root/.trellis/rules.toml"
 [ -f "$toml" ] || exit 0                          # not a Trellis project → silent
 
 # Posture selects the header, exactly as the import channel does.
-strictness="$(awk -F'"' '/^[[:space:]]*strictness[[:space:]]*=/ { print $2; exit }' "$toml" 2>/dev/null)"
+# Both TOML string forms: "firm" and 'firm' are equally valid, and the Codex
+# hook's parser accepts both, so matching only double quotes served the wrong
+# posture to a firm project without saying so.
+strictness="$(awk '
+  /^[[:space:]]*strictness[[:space:]]*=/ {
+    if (match($0, /"[^"]*"/) || match($0, /\x27[^\x27]*\x27/)) {
+      print substr($0, RSTART + 1, RLENGTH - 2); exit
+    }
+  }' "$toml" 2>/dev/null)"
 case "$strictness" in
   firm) header="$plugin/reference/trellis-a.md" ;;
   *)    header="$plugin/reference/trellis-b.md" ;;
@@ -115,8 +137,7 @@ rules="$plugin/reference/rules.md"
 # Fail loudly rather than govern silently on a partial payload. A hook cannot
 # report that it never ran, but it can report that it ran and could not deliver.
 if [ ! -f "$header" ] || [ ! -f "$rules" ]; then
-  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read its own rules payload (looked for %s and %s). This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned. Tell the user before doing substantive work."}}\n' \
-    "$header" "$rules"
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read its own rules payload (looked for $header and $rules). This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -126,6 +147,11 @@ fi
 # stale, because it names the payload this session is actually running.
 payload="$(
   awk -v rules="$rules" -v inv="$plugin/reference/invariants.md" '
+    BEGIN {
+      # awk expands `&` in a gsub replacement to the matched text, and `\` escapes
+      # there too, so a plugin root under e.g. R&D silently corrupted the pointer.
+      gsub(/[\\&]/, "\\\\&", inv)
+    }
     /^@rules\.md[[:space:]]*$/ { while ((getline line < rules) > 0) print line; next }
     { gsub(/`\.trellis\/internal\/invariants\.md`/, "`" inv "`"); print }
   ' "$header"
@@ -135,5 +161,16 @@ payload="$(
   printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
 )"
 
-printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$(printf '%s' "$payload" | json_escape)"
+# A bounded payload, like the Codex hook's MAX_CONTEXT_BYTES. Without this a
+# runaway rules.toml becomes a multi-megabyte injection: measured, a 5 MB file
+# produced 4.8 MB of valid JSON and exit 0, which quietly consumes the session's
+# context instead of failing. Refuse loudly instead.
+limit=32768
+size=$(printf '%s' "$payload" | wc -c | tr -d '[:space:]')
+if [ "$size" -gt "$limit" ]; then
+  emit "TRELLIS_RULES_NOT_LOADED — the assembled Trellis rules are ${size} bytes, over the ${limit}-byte injection budget, so nothing was injected. This usually means .trellis/rules.toml has grown far beyond a row list. Tell the user before doing substantive work."
+  exit 0
+fi
+
+emit "$payload"
 exit 0
