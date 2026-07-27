@@ -141,6 +141,44 @@ if [ ! -f "$header" ] || [ ! -f "$rules" ]; then
   exit 0
 fi
 
+# Validate the rows before injecting them. The Codex hook has always done this
+# (parseRulesToml against a known slug list); the Claude hook did not, so a
+# truncated or hand-broken rules.toml was injected verbatim and the session ran
+# on a config nobody checked. The slugs the payload actually ships are the
+# authority: each must have exactly one row, and no row may name anything else.
+slug_report="$(
+  awk '
+    FNR == NR {
+      # Rule slugs as rules.md declares them: a trailing `slug` on a rule line.
+      if (match($0, /`(inv|floor)-[a-z-]+`[[:space:]]*$/)) {
+        s = substr($0, RSTART + 1, RLENGTH - 2)
+        sub(/`[[:space:]]*$/, "", s)
+        want[s] = 1
+      }
+      next
+    }
+    /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
+      row = $1
+      sub(/[^a-z-].*$/, "", row)
+      if (row in seen) { dup = dup " " row }
+      seen[row] = 1
+      if (!(row in want)) { unknown = unknown " " row }
+    }
+    END {
+      for (s in want) if (!(s in seen)) missing = missing " " s
+      if (length(want) == 0) print "no-slugs-in-payload"
+      else if (missing != "") print "missing:" missing
+      else if (unknown != "") print "unknown:" unknown
+      else if (dup != "") print "duplicate:" dup
+      else print "ok"
+    }
+  ' "$rules" "$toml"
+)"
+if [ "$slug_report" != "ok" ]; then
+  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Run /trellis:setup to reapply a preset, and tell the user before doing substantive work."
+  exit 0
+fi
+
 # The header carries `@rules.md`, an import the hook resolves itself, and a
 # pointer at the vendored invariants path, which does not exist in this mode.
 # Repointing it at the plugin keeps the trigger-read affordance and cannot go
