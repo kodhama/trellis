@@ -1,34 +1,84 @@
 #!/usr/bin/env bash
-# Trellis staleness surface — SessionStart hook (decision-0039 rule 1, mechanics
-# reworked by decision-0043 / kodhama-0007 slice 4, kodhama/trellis#120; compared
-# path moved by decision-0051's authority split).
+# Trellis SessionStart hook (decision-0039 rule 1, mechanics reworked by
+# decision-0043 / kodhama-0007 slice 4, kodhama/trellis#120; compared path moved
+# by decision-0051's authority split).
 #
-# Binary-free and git-free: compares the project's .trellis/internal/version stamp
-# against the installed plugin's reference/version payload stamp — a file-to-file
-# comparison. Both sides speak payload@<content-hash> (the stamp changes exactly when
-# the payload content changes), so the nudge fires only when the overlay genuinely
-# differs from what the installed plugin would write. A stamp found only at the
-# legacy flat path (.trellis/version — pre-decision-0051 layouts, and before them the
-# plugin@<sha> / bare-semver stamps of pre-#120 installs) always draws the nudge: the
-# layout itself is stale, and /trellis:setup's refresh is the migration vehicle. With
-# `trellis status` retired, this hook is the only drift surface (decision-0035: drift
-# is made visible, not silent).
+# Two paths, selected by what the project actually has:
 #
-# Output contract (SessionStart): exit 0; a single-line JSON {"additionalContext": "..."}
-# on stdout injects context; empty stdout injects nothing. Never exit non-zero — a hook
+#   A. Vendored overlay (.trellis/internal/version present) — the staleness
+#      surface, unchanged. Compares the project's stamp against the installed
+#      plugin's reference/version payload stamp, a file-to-file comparison. Both
+#      sides speak payload@<content-hash> (the stamp changes exactly when the
+#      payload content changes), so the nudge fires only when the overlay
+#      genuinely differs from what the installed plugin would write. A stamp
+#      found only at the legacy flat path (.trellis/version — pre-decision-0051
+#      layouts, and before them the plugin@<sha> / bare-semver stamps of pre-#120
+#      installs) always draws the nudge: the layout itself is stale, and
+#      /trellis:setup's refresh is the migration vehicle. With `trellis status`
+#      retired, this hook is the only drift surface (decision-0035: drift is made
+#      visible, not silent).
+#
+#   B. Config only (.trellis/rules.toml present, no .trellis/internal/) —
+#      plugin-native delivery. The rules are injected from the installed plugin's
+#      own payload instead of read from vendored copies. Same always-loaded chain
+#      the import channel delivers — posture header, rules, live rows — so the
+#      tested wording stays the shipped wording (decision-0053). The one edit is
+#      repointing the invariants path at the plugin, which is where the file
+#      actually is in this mode, and which therefore cannot go stale.
+#
+# `.trellis/rules.toml` is the opt-in signal. A project with neither path gets
+# nothing: this plugin may be installed user-wide, and a project that never
+# adopted Trellis must not be governed by surprise.
+#
+# The two paths are mutually exclusive by construction, so a project that has
+# vendored the overlay never receives the rules twice.
+#
+# Binary-free, git-free and node-free: bash plus head/tr/awk (decision-0010 —
+# Trellis resources are agent instructions that require no runtime).
+#
+# Output contract (SessionStart): exit 0; a single-line JSON object on stdout
+# injects context; empty stdout injects nothing. Never exit non-zero — a hook
 # failure must not disrupt the session.
+#
+# The envelope MUST be nested:
+#   {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"..."}}
+# A bare top-level {"additionalContext": "..."} is accepted by the host and then
+# silently discarded — measured 2026-07-27 against Claude Code, flat vs nested,
+# with file tools disabled so context was the only possible source: the nested
+# codeword came back, the flat one was absent. This file previously emitted the
+# flat form, which is why the staleness nudge had never actually reached a model
+# and overlays drifted unnoticed (decision-0035 expected drift to be visible).
 
 root="${CLAUDE_PROJECT_DIR:-.}"
-ref="${CLAUDE_PLUGIN_ROOT:-/nonexistent}/reference/version"
+plugin="${CLAUDE_PLUGIN_ROOT:-/nonexistent}"
+ref="$plugin/reference/version"
 current="$(head -n1 "$ref" 2>/dev/null | tr -d '[:space:]')"
 
+# Escape stdin as a JSON string body (no surrounding quotes). Newlines become \n,
+# so the whole payload rides on the single line the output contract wants. UTF-8
+# passes through untouched — it is valid inside a JSON string.
+json_escape() {
+  awk '
+    BEGIN { ORS = "" }
+    {
+      gsub(/\\/, "\\\\")
+      gsub(/"/, "\\\"")
+      gsub(/\t/, "\\t")
+      gsub(/\r/, "\\r")
+      if (NR > 1) printf "\\n"
+      printf "%s", $0
+    }
+  '
+}
+
+# ---------------------------------------------------------------------- path A
 ver="$root/.trellis/internal/version"
 if [ -f "$ver" ]; then
   overlay="$(head -n1 "$ver" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
   if [ "$overlay" != "$current" ]; then
-    printf '{"additionalContext": "Trellis overlay may be stale: this project'"'"'s .trellis/internal/version stamp is %s, but the installed Trellis plugin ships payload %s. The invariants may have moved on; run /trellis:setup to refresh the overlay (or re-copy it from the plugin'"'"'s reference/ payload)."}\n' \
+    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Trellis overlay may be stale: this project'"'"'s .trellis/internal/version stamp is %s, but the installed Trellis plugin ships payload %s. The invariants may have moved on; run /trellis:setup to refresh the overlay (or re-copy it from the plugin'"'"'s reference/ payload)."}}\n' \
       "$overlay" "$current"
   fi
   exit 0
@@ -39,7 +89,45 @@ if [ -f "$legacy" ]; then
   overlay="$(head -n1 "$legacy" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
-  printf '{"additionalContext": "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version (%s; the installed plugin ships payload %s). Run /trellis:setup to refresh — the refresh migrates the overlay to the new layout."}\n' \
+  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version (%s; the installed plugin ships payload %s). Run /trellis:setup to refresh — the refresh migrates the overlay to the new layout."}}\n' \
     "$overlay" "$current"
+  exit 0
 fi
+
+# ---------------------------------------------------------------------- path B
+toml="$root/.trellis/rules.toml"
+[ -f "$toml" ] || exit 0                          # not a Trellis project → silent
+
+# Posture selects the header, exactly as the import channel does.
+strictness="$(awk -F'"' '/^[[:space:]]*strictness[[:space:]]*=/ { print $2; exit }' "$toml" 2>/dev/null)"
+case "$strictness" in
+  firm) header="$plugin/reference/trellis-a.md" ;;
+  *)    header="$plugin/reference/trellis-b.md" ;;
+esac
+rules="$plugin/reference/rules.md"
+
+# Fail loudly rather than govern silently on a partial payload. A hook cannot
+# report that it never ran, but it can report that it ran and could not deliver.
+if [ ! -f "$header" ] || [ ! -f "$rules" ]; then
+  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read its own rules payload (looked for %s and %s). This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned. Tell the user before doing substantive work."}}\n' \
+    "$header" "$rules"
+  exit 0
+fi
+
+# The header carries `@rules.md`, an import the hook resolves itself, and a
+# pointer at the vendored invariants path, which does not exist in this mode.
+# Repointing it at the plugin keeps the trigger-read affordance and cannot go
+# stale, because it names the payload this session is actually running.
+payload="$(
+  awk -v rules="$rules" -v inv="$plugin/reference/invariants.md" '
+    /^@rules\.md[[:space:]]*$/ { while ((getline line < rules) > 0) print line; next }
+    { gsub(/`\.trellis\/internal\/invariants\.md`/, "`" inv "`"); print }
+  ' "$header"
+  printf '\n## Project rule activation\n\n'
+  printf 'Rows from this project'"'"'s .trellis/rules.toml. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
+  cat "$toml"
+  printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
+)"
+
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$(printf '%s' "$payload" | json_escape)"
 exit 0
