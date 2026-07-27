@@ -1,7 +1,7 @@
 ---
 id: decision-0065
 type: decision
-status: gated
+status: approved  # maintainer intent act 2026-07-27: "Yes, I approve decision 65 that overrides decision 57. The other was done in a context that is no longer applicable."
 depends_on: [decision-0010, decision-0012, decision-0035, decision-0039, decision-0043, decision-0049, decision-0050, decision-0051, decision-0053, decision-0057, decision-0058]
 informed_by: []  # research-0013 is an unmerged draft; see §Standing on research-0013
 owner: agent
@@ -241,11 +241,19 @@ plugin path.
 **`decision-0057` rules 3–4** — the managed Trellis block remaining in
 `CLAUDE.md`, byte-identical to `block-claude.md`, plus its CI guard. **This is
 the sharpest supersession here**, because `0057:17-19` records that the block is
-present by *explicit maintainer requirement*. It is overridden by the maintainer's
-later direction of 2026-07-27, in the same voice: setup vendors nothing, the
-plugin path carries no files. `0057`'s scoping of itself as *"a repo shared-entrypoint
-change, not a new Trellis delivery contract"* is what makes this a bounded
-override rather than a reversal.
+present by *explicit maintainer requirement*.
+
+**The maintainer overrode it directly on 2026-07-27**, naming it: *"I approve
+decision 65 that overrides decision 57. The other was done in a context that is
+no longer applicable."* The context that changed: when 0057 was written the
+managed block was the only way rules reached a Claude model, and the staleness
+hook that should have flagged drift was emitting into a shape the host discards
+— so the block was load-bearing and its failure mode was invisible. A working
+hook removes the first condition and fixes the second.
+
+Trellis's own `CLAUDE.md` keeps its block: the repo is a vendored consumer and
+stays one until it migrates, so 0057's self-application guard still has a
+subject.
 
 **`decision-0049`** — offering to hide `.trellis/` from consumer linters. Its
 subject evaporates when only `rules.toml` remains.
@@ -340,6 +348,11 @@ The direction was put twice. The first time I raised that `decision-0057` and
 `research-0013`'s parking were the maintainer's own recorded direction *against*
 it; the direction was then restated explicitly, which is what this record acts on.
 
-`gated`. Awaiting an independent adversary pass and the maintainer's intent act.
-The implementation is on the same branch and does not depend on this record being
-ratified to be reverted — nothing is deleted from a consumer repo by this change.
+**`approved` 2026-07-27** by the maintainer's intent act quoted in the frontmatter,
+after two independent reviews — an adversary pass and the repository's Codex
+reviewer — which agreed on four defects without seeing each other's work. All are
+fixed on this branch; the review record is in PR #198.
+
+Nothing is deleted from a consumer repo by this change: a project that already
+carries a vendored overlay keeps it, and keeps being governed by it, until it
+chooses the migration.
