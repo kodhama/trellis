@@ -408,27 +408,55 @@ func TestPayloadRulesTomlSeeds(t *testing.T) {
 // false as overridden-by-floor, never silently honored. (Replaces
 // TestSetupSkillAssemblyOrderMatchesCatalog — the catalog-order second home retired
 // with the assembly command it pinned.)
-func TestSetupSkillCopiesCompleteReadout(t *testing.T) {
+func TestSetupSkillWritesOnlyTheConfig(t *testing.T) {
+	// Replaces TestSetupSkillCopiesCompleteReadout. That test guarded setup's
+	// vendoring contract — that it copied the complete readout into
+	// .trellis/internal/. adr(trellis)-0058 retires vendoring from the plugin
+	// path: the rules are injected at session start and setup writes exactly one
+	// file. The drift guard is still wanted, so it now guards the new invariant
+	// rather than being deleted with the old one.
 	b, err := os.ReadFile("../plugins/trellis/skills/setup/SKILL.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	s := string(b)
-	if !strings.Contains(s, `cp "${TRELLIS_PLUGIN_ROOT}/reference/rules.md" .trellis/internal/rules.md`) {
-		t.Error("SKILL.md must install the readout as a plain copy of the shipped rules.md (decision-0053: assembly retires)")
+
+	// The one write, and it must be a copy of a preset rather than a composition.
+	if !strings.Contains(s, `cp "${TRELLIS_PLUGIN_ROOT}/reference/rules-<p>.toml" .trellis/rules.toml`) {
+		t.Error("SKILL.md must seed .trellis/rules.toml by copying the chosen preset")
 	}
-	if strings.Contains(s, `"$ref"/rules/`) {
-		t.Error("SKILL.md still carries fragment-assembly commands — retired with decision-0053")
+
+	// No vendoring may creep back in. Asserted against the file's *commands*
+	// rather than its prose: the skill legitimately names the retired paths to
+	// forbid them ("never touch anything under .trellis/internal/") and to record
+	// where each old job went, so a substring ban cannot tell "do X" from "never
+	// do X". What is unambiguous is what it tells the agent to run.
+	var writes []string
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "cp ") || strings.HasPrefix(line, "mkdir ") ||
+			strings.HasPrefix(line, "cat >") || strings.HasPrefix(line, "printf ") {
+			writes = append(writes, line)
+		}
 	}
-	if !strings.Contains(s, "take effect at the next supported") {
-		t.Error("SKILL.md must state the live row semantics at the next supported context boundary (spec-0007@v1 R2/R3)")
+	if len(writes) == 0 {
+		t.Fatal("SKILL.md declares no write commands at all")
 	}
-	if !strings.Contains(s, "overridden-by-floor") {
-		t.Error("SKILL.md must name a floor row set false as overridden-by-floor, loudly (decision-0053 point 3)")
+	for _, w := range writes {
+		if !strings.Contains(w, ".trellis/rules.toml") && !strings.Contains(w, "mkdir -p .trellis") {
+			t.Errorf("setup may only write .trellis/rules.toml, but SKILL.md runs: %s", w)
+		}
 	}
-	for _, banned := range []string{"no effect until", "re-assemble", "next refresh — there is no per-session reader"} {
-		if strings.Contains(s, banned) {
-			t.Errorf("SKILL.md still carries the absence-era claim %q (decision-0053 point 4)", banned)
+
+	// The consumer-owned file may not be clobbered without a human saying so.
+	for _, required := range []string{
+		"explicit confirmation",
+		"floor-intent-gate",
+		"overridden-by-floor",
+		"next session, not this one",
+	} {
+		if !strings.Contains(s, required) {
+			t.Errorf("SKILL.md missing required contract phrase %q", required)
 		}
 	}
 }
