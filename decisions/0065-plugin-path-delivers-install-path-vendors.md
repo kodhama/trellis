@@ -33,8 +33,11 @@ date: 2026-07-27
   into, or otherwise touches the project's own instruction files. There is no
   M1/M2 fork to pick on this path — the question does not arise. See §One model
   on the plugin path.
-- **Codex loses rule delivery entirely** until a Codex hook ships. Named as a
-  regression, not a scope note — see §The gap this decision accepts.
+- **Both hosts deliver.** Trellis already ships a Codex `SessionStart` hook
+  (`hooks/codex-context.mjs`, declared by `hooks/codex-hooks.json`). It read the
+  vendored overlay as required input, so removing vendoring would have broken it;
+  it now reads the plugin payload when no overlay is present, exactly as the
+  Claude hook does.
 
 ### Open
 
@@ -48,9 +51,9 @@ date: 2026-07-27
 - The M2 morph (`decision-0050`) — [issue
   #200](https://github.com/kodhama/trellis/issues/200). Removed from setup and
   **not returning to it**. Speculative, with no established use case.
-- Codex delivery — [issue #199](https://github.com/kodhama/trellis/issues/199). The
-  prototype at `eval/experiments/codex-hook-delivery/` measured working on Codex
-  CLI 0.145.0.
+- Verifying the Codex hook against a live Codex session — [issue
+  #199](https://github.com/kodhama/trellis/issues/199). The change is verified by
+  direct invocation across all four project shapes, not yet by a real session.
 
 ## Context
 
@@ -136,6 +139,18 @@ The install path's model stays open: it vendors, and whether it delivers through
 a managed block, an inlined block, or something with no removal affordance at all
 is deliberately not decided here.
 
+### Both hooks, one rule
+
+`hooks/staleness.sh` (Claude) and `hooks/codex-context.mjs` (Codex) take the same
+two paths and use the same discriminator: **the `.trellis/internal/` directory**,
+not any file inside it.
+
+Directory present → vendored mode: every payload file within is required, and a
+missing one is a broken overlay that fails loudly. Directory absent → the plugin's
+payload. A *file* discriminator would silently convert a half-deleted overlay into
+a config-only project, which is a mode switch nobody asked for; the existing Codex
+failure-vocabulary test caught exactly that.
+
 ### The envelope
 
 Every `SessionStart` emission SHALL use the nested envelope
@@ -179,38 +194,56 @@ merely relocated: the plugin path offers no morph at all, so 0050's subject has 
 home on it. 0050 is not wrong and is not superseded on its merits — a future
 opt-in morph skill would still want its isolation contract.
 
-**`decision-0010` is amended, not superseded.** It permits a support CLI but
-holds that *"the methodology runs without it"*. With the hook as sole carrier on
-the plugin path, that clause narrows: the methodology runs without a *binary*,
-and the hook is bash — no node, no compiled artifact. The install path remains
-the runtime-free route, which is what keeps 0010's intent intact.
+**`decision-0010` is amended, not superseded**, and the amendment is wider than a
+first reading suggests. 0010 permits a support CLI but holds that *"the
+methodology runs without it"*. Two things narrow that here:
+
+- On the plugin path the hook is the sole carrier, so the methodology no longer
+  runs without *something* executing. The Claude hook is bash — no node, no
+  compiled artifact — which keeps the spirit.
+- **The Codex hook has always been Node** (`node "${PLUGIN_ROOT}/hooks/codex-context.mjs"`).
+  That predates this decision and is not introduced by it, but this record is the
+  first to say so plainly: 0010's runtime-free claim has not been literally true
+  on the Codex path for some time.
+
+The install path remains the genuinely runtime-free route, which is what keeps
+0010's intent intact where it still holds.
 
 `specs/0004` (`/trellis:remove`) is **not** superseded and is left as it stands:
 vendored overlays still exist in the wild and removing them is exactly its job.
 
 ## The gap this decision accepts
 
-**Codex receives no Trellis rules at all.** Setup's vendored Codex block is gone
-and no Codex `SessionStart` hook ships. Until one does, a Codex-only consumer that
-runs the new setup is configured but ungoverned.
+**An earlier draft of this record claimed Codex would be left ungoverned. That was
+wrong** — it rested on a survey finding that `hooks/codex-context.mjs` did not
+exist. It does, it ships, and it is declared by `hooks/codex-hooks.json`. The real
+risk was subtler and is fixed here: the Codex hook required the vendored overlay,
+so removing vendoring would have broken working delivery rather than leaving an
+absence. Recorded rather than quietly amended, because the corrected version is
+the weaker claim and the graph should show which one this decision acted on.
 
-This is a regression, stated as one. Three things bound it: the maintainer's
-direction was explicitly *"let's focus on Claude, which is what we're running at
-the moment"*; the prototype at `eval/experiments/codex-hook-delivery/` already
-measured working on Codex CLI 0.145.0, so closing the gap is a port rather than a
-design; and an existing consumer keeps its vendored overlay until it chooses to
-remove it.
+What genuinely remains uncovered:
 
-**Also uncovered:** bare subagent workers, which are not sessions and so never
-fire `SessionStart`; and plugin provisioning in ephemeral containers, which is a
-family delivery problem rather than a trellis one.
+- **The install path delivers nothing after this change** —
+  [#201](https://github.com/kodhama/trellis/issues/201). `install.sh` copies
+  `hooks/hooks.json` and `staleness.sh` into `.claude/skills/trellis/` but
+  **registers no hook** — no settings write, no plugin manifest — so a vendored
+  skill install has no injection, and setup no longer writes a managed block.
+  Its delivery has to be a file the model already loads, because that path exists
+  for hosts that do not run our code.
+- **Bare subagent workers**, which are not sessions and so never fire
+  `SessionStart`, on either host.
+- **Plugin provisioning in ephemeral containers**, a family delivery problem
+  rather than a trellis one.
+- **`compact`, `clear`, `fork`, cloud and CI-runner surfaces** are unverified.
+  `startup` and `resume` are measured, including under headless `claude -p`.
 
 ## Consequences
 
 - A new consumer's Trellis footprint is one file, ~20 lines, instead of 373.
 - The overlay cannot go stale, because there is no overlay.
 - Rule changes take effect at the next session, not at the next `setup` run.
-- Codex is ungoverned on the plugin path until its hook ships.
+- The install path delivers no rules at all until it gets its own mechanism.
 - `install.sh` is now the only vendoring route, and the only route for harnesses
   without plugins.
 
@@ -231,9 +264,10 @@ family delivery problem rather than a trellis one.
   advances in the same commit as any payload change.
 - No surface on the plugin path offers a delivery-model choice, and no skill on
   it writes to a file the project authored.
-- The Codex gap is recorded in an issue before this decision is ratified — done,
-  [#199](https://github.com/kodhama/trellis/issues/199); morph's disposition is
-  [#200](https://github.com/kodhama/trellis/issues/200).
+- Both hooks deliver from the plugin payload for a config-only project, and both
+  fail loudly rather than switching modes on a partial overlay.
+- The install path's delivery gap is recorded in an issue before ratification —
+  done, [#201](https://github.com/kodhama/trellis/issues/201).
 
 ## Lifecycle record
 

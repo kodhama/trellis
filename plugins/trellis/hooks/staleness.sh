@@ -18,7 +18,7 @@
 #      retired, this hook is the only drift surface (decision-0035: drift is made
 #      visible, not silent).
 #
-#   B. Config only (.trellis/rules.toml present, no .trellis/internal/) —
+#   B. Config only (.trellis/rules.toml present, no .trellis/internal/ directory) —
 #      plugin-native delivery. The rules are injected from the installed plugin's
 #      own payload instead of read from vendored copies. Same always-loaded chain
 #      the import channel delivers — posture header, rules, live rows — so the
@@ -72,8 +72,14 @@ json_escape() {
 }
 
 # ---------------------------------------------------------------------- path A
-ver="$root/.trellis/internal/version"
-if [ -f "$ver" ]; then
+# The `.trellis/internal/` DIRECTORY decides the mode, not the stamp inside it.
+# A half-deleted overlay is a broken vendored install, not a config-only project,
+# and must not silently become one — path B would then inject alongside whatever
+# vendored prose survived.
+internal="$root/.trellis/internal"
+ver="$internal/version"
+if [ -d "$internal" ]; then
+  [ -f "$ver" ] || exit 0                         # broken overlay → say nothing, inject nothing
   overlay="$(head -n1 "$ver" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
