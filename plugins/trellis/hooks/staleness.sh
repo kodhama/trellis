@@ -110,7 +110,7 @@ if [ -d "$internal" ]; then
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
   if [ "$overlay" != "$current" ]; then
-    emit "Trellis overlay may be stale: this project's .trellis/internal/version stamp is $overlay, but the installed Trellis plugin ships payload $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, run /trellis:setup and accept the migration — it removes .trellis/internal/ and the managed block and keeps your .trellis/rules.toml rows. Until then this session is governed by the vendored copy."
+    emit "Trellis overlay may be stale: this project's .trellis/internal/version stamp is $overlay, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, run /trellis:setup and accept the migration — it removes .trellis/internal/ and the managed block and keeps your .trellis/rules.toml rows. Until then this session is governed by the vendored copy."
   fi
   exit 0
 fi
@@ -120,7 +120,7 @@ if [ -f "$legacy" ]; then
   overlay="$(head -n1 "$legacy" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
-  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships payload $current). Run /trellis:setup and accept the migration — it removes the legacy overlay and keeps your .trellis/rules.toml rows."
+  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships $current). Run /trellis:setup and accept the migration — it removes the legacy overlay and keeps your .trellis/rules.toml rows."
   exit 0
 fi
 
