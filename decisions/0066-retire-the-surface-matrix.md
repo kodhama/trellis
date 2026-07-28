@@ -14,8 +14,11 @@ updated: 2026-07-28
 Stewards
 [`kodhama-0025`](https://github.com/kodhama/stewards/blob/main/decisions/0025-retire-the-surface-matrix.md)
 is `approved` and retires the surface matrix as a **family contract**. It does
-not and cannot retire `plugins/trellis/surfaces.json`, which is Trellis's own
-artifact authorized by `decision-0061` §3. `decision-0064`'s Consequences
+not and cannot *authorize* removing `plugins/trellis/surfaces.json`, which is
+Trellis's own artifact under `decision-0061` §3 — though its own acceptance
+criteria name this removal and its atomicity requirement directly, so the
+maintainer's intent is on record upstream and this decision is that intent's
+local authority, not its origin. `decision-0064`'s Consequences
 reserved that explicitly: *"A future product decision must define and authorize
 any migration from `behavior_state`."* This is that decision.
 
@@ -81,7 +84,7 @@ its Go contract tests are removed. Trellis carries no exact surface rows, no
 `plugins/trellis/README.md` gains — or has pinned — one paragraph naming the
 hosts Trellis is known to work on, **which check establishes that**, and **that
 support is not claimed**, per `kodhama-0025` §2. The first two are largely
-present at `:28-36` (*"Measured against a real session with file tools disabled"*
+present at `:31-37` (*"Measured against a real session with file tools disabled"*
 … *"Not verified on any surface: `compact`, `clear`, `fork`…"*); the third is
 absent from the file entirely, as is the marketplace hedge.
 
@@ -99,8 +102,9 @@ is a **deliverable of this decision**, not an existing guarantee.
 verifies checksums. Removing the file while the manifest still lists it makes
 `curl -fsSL` 404 and `fail` for every user, immediately, before checksums are
 even reached. The reverse — dropping the manifest line while the file remains —
-fails `install_script_test.go:256` plus seven vendor integration tests, because
-`assertBundleVendored` (`:195-199`) walks the bundle and compares file sets.
+fails `install_script_test.go:256` plus the vendor integration tests, because
+`assertBundleVendored` (`:195-199`) walks the bundle and compares file sets —
+**eight call sites across seven test functions**.
 
 Both directions fail closed, which is why one commit is the requirement rather
 than the tidy option. The manifest also hashes **every** bundle file, so editing
@@ -111,13 +115,20 @@ commit therefore removes `install.sh:288` **and** re-hashes `install.sh:265`.
 ### 4. The two JSON-hardening subtests are re-homed, not deleted
 
 `TestPackageValidatorsRejectMalformedMetadata` (`cli/plugin_package_test.go:331`)
-has six subtests. Three are matrix-specific (`:353`, `:377`, `:401`) and go. Two
-are **not**: `:408` *"raw JSON must be valid UTF-8"* and `:415` *"JSON escapes
-require valid surrogate pairs"*. They merely *use* the observation fixture; what
+has **seven** subtests. Three are matrix-specific (`:353`, `:377`, `:401`) and
+go. Two are untouched by any of this (`:332` SemVer prerelease identifiers,
+`:338` manifest symlink escape). Two are the interesting case: `:408` *"raw JSON
+must be valid UTF-8"* and `:415` *"JSON escapes require valid surrogate pairs"*. They merely *use* the observation fixture; what
 they exercise is `validateJSONUnicodeEscapes` (`:136`) and the UTF-8 check inside
 `decodeJSON` (`:90`) — and `decodeJSON` stays live for **both host manifests** at
 `:443`. They are re-pointed at a plugin-manifest fixture. `TestPluginPackageParity`
 (`:429`) likewise survives; only its `surfaces.json` block at `:458-491` goes.
+
+**The observation machinery retires with the matrix**, stated explicitly because
+§4 otherwise reads as if only the subtests move: `marketplaceObservation`,
+`validateObservation`, `validateInitialSurfaceRows` (`:261-306`) and the
+`validObservationJSON` fixture all go. Leaving them would also leave four live
+occurrences of the field names AC6 forbids — `:59`, `:212`, `:218`, `:312`.
 
 ### 5. `VERSION` stays `0.2.0`, and that is a judgment
 
@@ -127,16 +138,38 @@ that judgment."* Removing a file from the shipped bundle and editing the shipped
 README **is** a package change, so two different byte-sets would ship as `0.2.0`.
 The judgment made here: no bump, because nothing a consumer can invoke changes —
 no skill, hook, command, or rule payload is touched, and the removed file was
-never read at runtime. Named rather than left silent, so it can be overruled.
+never read at runtime. Nothing in the repository relates package bytes to
+`VERSION`: `reference/checksums` covers only `reference/*`, and the bundle
+manifest hashes bytes without ever comparing them to the version. One fact a
+reader weighing the overrule should have: `cli/plugin_package_test.go:431`
+hardcodes `"0.2.0\n"`, so bumping would also require a test edit — the no-bump
+option is also the zero-test-change option, which is a reason to distrust it
+rather than to prefer it. Named rather than left silent, so it can be overruled.
 
 ## Supersession
 
-**`decision-0061` §3 and §4 — superseded in part.** §3 (`:97-150`) authorized
-`surfaces.json` and its closed row shape. §4 (`:150-160`) lists what the parity
-guard validates, including *"`surfaces.json.version` equality and its closed row
-shape"* and *"every present marketplace observation's closed structure and row
-match"* — those two bullets go. **§1, §2 and §5 stand unchanged**: independent
+**`decision-0061` §3 and §4 — superseded in part.** §3 (`:97-147`) authorized
+`surfaces.json` and its closed row shape. §4 (`:149-166`) lists what the parity
+guard validates. **Three of its six bullets are matrix-only and go** — `:155`
+*"`surfaces.json.version` equality and its closed row shape"*, `:156` *"unique,
+valid surface identifiers and allowed states"*, and `:157` *"every present
+marketplace observation's closed structure and row match"*. `:156` is easy to
+miss and is not a near-miss: "surface identifiers" and "allowed states" are
+`surface_id` and `behavior_state`, defined at `0061:119-121`, which the host
+manifests do not have; its implementation is `validateInitialSurfaceRows`
+(`cli/plugin_package_test.go:261-306`), which dies with the file. The other
+three — `VERSION` as canonical SemVer, cross-manifest identity and version
+equality, and manifest-declared path existence — stand.
+
+**§1 (`:68-84`), §2 (`:86-95`) and §5 (`:168-187`) stand unchanged**: independent
 package SemVer, the two host manifests, and their parity are untouched.
+
+**`0061`'s Consequences (`:189-201`) are historical narration and are not
+amended**, per the append-only rule — but two bullets read false after this
+change and a reader should be told which: `:194-195` *"Surface facts have one
+small product-owned home"* (that home becomes the README) and `:198-199`
+*"Future surface tests can add bounded rows or observations"* (they cannot; no
+row remains to add to). The prose forward pointer AC7 requires names both.
 `decisions/0061-independent-dual-host-plugin-package.md` gains
 `superseded_in_part_by: [decision-0066]`.
 
@@ -153,7 +186,7 @@ the catalog copy, or the rollback path changes.
 `surfaces.json`. `:82` is the **`VERSION`** row — *"both host manifests **and
 `surfaces.json`** must match it"* — which is a version-parity claim, not a
 bundle-membership one, and would be missed by a scope worded around the bundle.
-Both go. The table is normative: `:88-90` says *"AC1 depends on this table's left
+Both go. The table is normative: `:90-91` says *"AC1 depends on this table's left
 column being exhaustive for the actual `plugins/trellis/` tree at build time"*,
 so a stale row is a live spec defect. `specs/0005-curl-install-mechanical-vendoring.md`
 gains `superseded_in_part_by: [decision-0066]`.
@@ -163,9 +196,12 @@ with `superseded_by: [decision-0060]`, and `decision-0061:185-187` already
 declares *"Superseded `decision-0059` and `spec-0008` remain historical and
 authorize nothing."* Their many `surfaces.json` references are inert archive.
 
-**`decision-0064` already carries its forward pointer to `kodhama-0025`**, landed
-separately as pure graph maintenance under that approved record's own acceptance
-criterion. This decision adds nothing to it.
+**`decision-0064`'s forward pointer to `kodhama-0025` is in flight, not landed** —
+PR #203, split out as pure graph maintenance under that approved record's own
+acceptance criterion rather than carried here. As of this drafting,
+`grep 0025 decisions/0064-*.md` returns nothing on `main`. This decision adds
+nothing to it either way; #203 landing first is tidier but is not a
+precondition.
 
 **Full sweep result.** Greps for `surfaces.json`, `behavior_state`, `surface_id`
 and `marketplace_test_observations` across all of `decisions/` and `specs/` hit
@@ -240,20 +276,42 @@ applies.
 **AC5 — that paragraph is guarded, and `:9-11` is corrected.** A new assertion
 covers `plugins/trellis/README.md` (the existing `docSurfaces` list does not).
 The `surfaces.json` clause and its relative link at `:9-11` are gone. Both
-verified by mutation: deleting the support sentence, and restoring the link, each
-turn the suite red.
+verified by mutation: restoring the link, and deleting **each** element AC4
+requires — the hosts, the check that establishes them, the non-support statement,
+and the marketplace hedge — each turn the suite red. Scoping the mutation proof
+to one sentence would leave the other three deletable with the suite green.
 
-**AC6 — the reintroduction guard is two-part.** A single content grep is **not**
-implementable: `surfaces.json` appears today in `decisions/0059`, `0061`, `0063`,
-`specs/0005` and `specs/0008` — the append-only archive, which must keep the
-name. Such a guard is red on day one and degenerates into an exclusion list. The
-implementable shape, both halves verified to return empty against the
-post-deletion tree:
+**AC6 — the reintroduction guard is two-part, and part 2 must not match itself.**
+A single repo-wide content grep is **not** implementable: `surfaces.json` appears
+today in `decisions/0059`, `0061`, `0063`, `specs/0005` and `specs/0008` — the
+append-only archive, which must keep the name. Such a guard is red on day one and
+degenerates into an exclusion list. The shape:
 
 1. a repo walk excluding `.git` that fails on **any file whose basename is
-   `surfaces.json`** (case-insensitive); and
+   `surfaces.json`** (case-insensitive). Verified to return empty against a
+   simulated post-deletion tree, and it does not self-match — the guard's own
+   basename is not `surfaces.json`.
 2. a **code-scoped** content assertion over `cli/`, `plugins/` and `install.sh`
-   only, for `behavior_state|marketplace_test_observations|surface_id`.
+   only, for the three retired field names.
+
+**Part 2 has a self-reference problem that an earlier draft of this record got
+wrong, so it is specified rather than left to the implementer.** `cli/` is the
+repo's only Go package and AC8 gates on `go test ./...`, so the guard lives
+*inside* the directory it scans. Written naively it carries the three literals
+and fails on itself — proven by execution against a simulated post-deletion
+tree:
+
+```
+--- FAIL: TestNoMatrixFieldsInCode
+    part2: matrix field name survives in ../cli/surface_matrix_guard_test.go
+```
+
+Which is the exact failure this criterion diagnoses one paragraph above,
+reproduced in the replacement. **Either** construct the needles from fragments so
+the source contains no literal occurrence, **or** exclude exactly the guard's own
+file path and nothing else. A second exclusion entry means the guard is wrong,
+not that the exclusion list needs extending — that is the line between a
+self-reference carve-out and the degenerate list.
 
 **AC7 — the graph is closed.** `decision-0061`, `decision-0063` and `specs/0005`
 each carry `superseded_in_part_by: [decision-0066]` with a scope note, and their
@@ -273,9 +331,20 @@ Drafted 2026-07-28 under `kodhama-0025`, which the maintainer approved
 2026-07-27 with an acceptance criterion naming this repository's atomicity
 requirement directly.
 
-**This is the second draft.** The first was reviewed by an independent
-`decision-adversary` and returned **NEEDS-REVISION** with twelve defects, three
-blocking. The blocking ones were: it claimed the README paragraph was *"already
+**This is the third draft.** The second was reviewed by an independent
+`decision-adversary` and returned **NEEDS-REVISION** with two further blocking
+defects, both introduced by the revision itself. AC6's replacement guard — written
+to fix the first round's unimplementable one — was itself unimplementable, and
+proven so by execution rather than argued: the guard matched its own source. And
+the `decision-0061` §4 amendment named two of its **three** matrix-only bullets,
+which is the first round's own D8 defect class (an amendment scoped to a subset of
+the affected sites) reproduced on a different target. Five smaller corrections
+came with them: a subtest count, four off-by-N line ranges, a present-tense claim
+about a pointer that has not landed, an inconsistent test denominator, and
+"cannot retire" where "cannot authorize" is the defensible word.
+
+**The first draft** was reviewed by the same agent and returned
+**NEEDS-REVISION** with twelve defects, three blocking. The blocking ones were: it claimed the README paragraph was *"already
 under a doc-consistency test"* when no test covers that file at all (disproved by
 simulation — the full deletion passes `go test ./...` with the README's dead link
 intact); it never named `plugins/trellis/README.md:9-11`, so the change would
