@@ -196,12 +196,12 @@ with `superseded_by: [decision-0060]`, and `decision-0061:185-187` already
 declares *"Superseded `decision-0059` and `spec-0008` remain historical and
 authorize nothing."* Their many `surfaces.json` references are inert archive.
 
-**`decision-0064`'s forward pointer to `kodhama-0025` is in flight, not landed** —
-PR #203, split out as pure graph maintenance under that approved record's own
-acceptance criterion rather than carried here. As of this drafting,
-`grep 0025 decisions/0064-*.md` returns nothing on `main`. This decision adds
-nothing to it either way; #203 landing first is tidier but is not a
-precondition.
+**`decision-0064` carries its forward pointer to `kodhama-0025`** as of #203,
+merged 2026-07-28 — split out as pure graph maintenance under that approved
+record's own acceptance criterion rather than carried here. It marks the
+*received upstream* only; the Consequences clause reserving migration to a
+future product decision is what this record answers. This decision adds nothing
+to it.
 
 **Full sweep result.** Greps for `surfaces.json`, `behavior_state`, `surface_id`
 and `marketplace_test_observations` across all of `decisions/` and `specs/` hit
