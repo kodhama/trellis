@@ -6,9 +6,9 @@ binary channel retired per `kodhama-0007` rule 5).
 
 ## Package identity
 
-[`VERSION`](VERSION) is the sole plugin-package SemVer authority. Both host manifests and
-[`surfaces.json`](surfaces.json) carry that same value, guarded by
-the repository's `TestPluginPackageParity` Go test. The generated overlay keeps its separate content identity in
+[`VERSION`](VERSION) is the sole plugin-package SemVer authority. Both host manifests carry that
+same value, guarded by the repository's `TestPluginPackageParity` Go test. The generated overlay
+keeps its separate content identity in
 [`reference/version`](reference/version): package SemVer identifies the plugin package, while the
 `payload@…` stamp identifies the exact generated rule bytes.
 
@@ -28,13 +28,20 @@ bootstrap-only degradation and leaves the installed-file fallback usable. Trelli
 project runtime, daemon, or network service. Row edits take effect at the next supported host
 context-loading boundary without refresh, never in a context already in flight.
 
-**What is verified, and what is not.** `decision-0065` moved rule delivery to the plugin's
-`SessionStart` hooks on both hosts. Measured against a real session with file tools disabled:
-`startup` and `resume` fire and the injected rules reach the model, including under headless
-`claude -p`. **Not verified on any surface:** `compact`, `clear`, `fork`, subagent boundaries,
-desktop, IDE, cloud, and CI runners. A bare subagent is not a session, so `SessionStart` never
-fires for one. `install.sh` registers no hook at all, so a vendored install delivers no rules —
-see issue #201.
+**Where Trellis is known to work, and what that does not mean.** The hosts Trellis is known to
+work on are **Claude Code** and the trusted-local **Codex CLI** startup boundary — no others.
+What establishes that is a check, not an assurance: `decision-0065` moved rule delivery to the
+plugin's `SessionStart` hooks on both hosts, and measured against a real session with file tools
+disabled, `startup` and `resume` fire and the injected rules reach the model, including under
+headless `claude -p`. **Not verified on any surface:** `compact`, `clear`, `fork`, subagent
+boundaries, desktop, IDE, cloud, and CI runners — a bare subagent is not a session, so
+`SessionStart` never fires for one, and `install.sh` registers no hook at all, so a vendored
+install delivers no rules (see issue #201). **Trellis claims no support.** "Known to work" names
+a check that ran; support is not claimed for any host, surface, or version, and nothing here
+undertakes to keep any of them working or to repair them if they stop. And **no marketplace
+install has been evidenced**: no recorded check has exercised installing this package from a
+marketplace listing, on either host, so a catalog entry means Trellis is listed — not that the
+listed install path has been shown to work.
 
 Applying a preset **replaces** rows, strictness and `seeded_from`; `/trellis:setup` diffs first
 and requires explicit confirmation. There is no per-host disable: `/trellis:remove` removes both
