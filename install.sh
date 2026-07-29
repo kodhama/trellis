@@ -260,10 +260,10 @@ trap 'rm -rf "$stage"' EXIT
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-7c8a75ec425b9539ba40ebebf37a5f08e76c66db02ec196c5800780536af8a97  .claude-plugin/plugin.json
-b7b3e94e0b846f2893dc350520ac5f0f94f07b1459ace7fd63e2c2ade98ea874  .codex-plugin/plugin.json
+3855cc8a1fce7c347ea652a71fdaa06ea88b16921d0cb0268759901a3d4f72c1  .claude-plugin/plugin.json
+aed6e801ed1f3523c764e62f3ed702f1fb830626802f9e528c1470216d835076  .codex-plugin/plugin.json
 16f00544073201b871694467c238d7be35502c7179576327dc69e279811564b8  README.md
-1f930dd1f133c1f97a94fe3acb8db34372cf4c01ffdb2b3ff4ca72f9494121e9  VERSION
+d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
