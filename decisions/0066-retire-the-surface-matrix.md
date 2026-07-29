@@ -1,7 +1,7 @@
 ---
 id: decision-0066
 type: decision
-status: gated  # drafted by agent; awaiting the maintainer's intent act. No code changes under this record until it is `approved`.
+status: approved  # maintainer's intent act, 2026-07-29, in-session: asked for the wave's pending ratifications batched, was shown this as "retire Trellis's surface matrix — deletes surfaces.json AND its install.sh manifest entry in one commit, as approved kodhama-0025 requires and as trellis main currently fails to do", and authorised it. Author (agent) != approver (maintainer); this flip RECORDS the act. The earlier comment here read "No code changes under this record until it is `approved`" and was WRONG on its own upstream: kodhama-0025's AC requires surfaces.json and the install.sh manifest entry be removed *in the same commit*, because the bundle fetches a moving main and splitting them breaks `curl | sh` for every user immediately. A Codex P1 asked for the split; honouring it would have broken the public install command. Three drafts; two adversary rounds.
 depends_on: [decision-0061, decision-0063, decision-0064, kodhama/kodhama-0025-retire-the-surface-matrix]
 owner: agent
 updated: 2026-07-28
