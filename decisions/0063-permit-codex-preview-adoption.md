@@ -3,11 +3,28 @@ id: decision-0063
 type: decision
 status: approved
 depends_on: [decision-0058, decision-0061, decision-0062, kodhama/kodhama-0021-separate-adoption-posture-from-support, grove/adr-0039-dogfood-implementation-planner]
+superseded_in_part_by: [decision-0066]  # 2026-07-29 — the §Preview co-authority clause only. The codex-cli-local-startup behavior claim remains supported; a co-author is removed, not an authority. Preview adoption, the catalog copy, and the rollback path are untouched
 owner: agent
 updated: 2026-07-26
 ---
 
 # 0063 — permit Codex preview adoption through the Stewards catalog
+
+> **Forward pointer.** [`decision-0066`](0066-retire-the-surface-matrix.md)
+> retires `plugins/trellis/surfaces.json` and supersedes this record in part, at
+> one clause only. **What moved:** the §Preview sentences naming
+> `plugins/trellis/surfaces.json` alongside the README — *"the product-owned
+> package **README** and `surfaces.json` remain authoritative for it"*. After
+> `decision-0066` the README alone is authoritative. This record already named
+> the README as co-authoritative, so what is removed is a co-author, not an
+> authority.
+>
+> **What stands:** the `codex-cli-local-startup` behavior claim **remains
+> supported**, exactly as recorded by `decision-0058` and `spec-0007`. Preview
+> adoption, the catalog copy, and the two-part rollback are untouched. The
+> surface identifier itself survives the matrix's deletion — it is carried in
+> this record's own prose, which is part of why the matrix's unique payload was
+> judged replaceable.
 
 ## Decision state
 
