@@ -60,7 +60,7 @@ func TestPluginReadmeStatesHostSupportClaim(t *testing.T) {
 		{"the hosts it is known to work on — Codex", "Codex CLI"},
 		{"which check establishes them", "measured against a real session with file tools disabled"},
 		{"that support is not claimed", "support is not claimed"},
-		{"the marketplace hedge the retired surface rows carried", "marketplace"},
+		{"the marketplace hedge the retired surface rows carried", "not that the listed install path"},
 	} {
 		if !strings.Contains(paragraph, required.needle) {
 			t.Errorf("%s: the host-support paragraph must state %s, and does not — no %q in it. "+
