@@ -3,11 +3,40 @@ id: decision-0061
 type: decision
 status: approved  # maintainer intent: "Approve whatever needs approval, merge and continue"; independent decision-adversary SOUND after one revision
 depends_on: [decision-0043, decision-0058, decision-0060, kodhama/kodhama-spec-0003-marketplace-test-observation@v1]
+superseded_in_part_by: [decision-0066]  # 2026-07-29 — §3 (the surfaces.json artifact and its closed row shape) and three of §4's six parity bullets. §1, §2, §5, and §4's other three bullets stand
 owner: agent
 date: 2026-07-24
 ---
 
 # 0061 — version the Trellis dual-host plugin independently and carry lean surface metadata
+
+> **Forward pointer.** [`decision-0066`](0066-retire-the-surface-matrix.md)
+> retires `plugins/trellis/surfaces.json` and supersedes this record in part.
+> **What moved:**
+>
+> - **§3 "Lean, product-owned surface metadata"** — the artifact it authorized
+>   and its closed row shape are gone. Where Trellis is known to work is stated
+>   in `plugins/trellis/README.md`, under a test that did not exist when this
+>   record was written.
+> - **§4, three of its six bullets** — *"`surfaces.json.version` equality and
+>   its closed row shape"*, *"unique, valid surface identifiers and allowed
+>   states"*, and *"every present marketplace observation's closed structure and
+>   row match"*. The second is easy to miss and is not a near-miss: "surface
+>   identifiers" and "allowed states" are `surface_id` and `behavior_state`,
+>   defined in §3, which the host manifests do not have. The other three
+>   bullets — `VERSION` as canonical SemVer, cross-manifest identity and version
+>   equality, and manifest-declared path existence — stand, and
+>   `TestPluginPackageParity` still enforces them.
+>
+> **What stands unchanged:** §1 (independent package SemVer), §2 (the two host
+> manifests), §5, and this record's `VERSION` line at `0.2.0`.
+>
+> **Two Consequences bullets below read false after that change**, and are left
+> in place because Consequences are historical narration and this repository's
+> decisions are append-only. A reader should be told which: *"Surface facts have
+> one small product-owned home"* — that home is now the README, not a JSON
+> artifact; and *"Future surface tests can add bounded rows or observations"* —
+> they cannot, because no row remains to add to.
 
 ## Decision state
 

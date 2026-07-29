@@ -3,12 +3,30 @@ id: spec-0005
 type: spec
 status: gated
 depends_on: [kodhama/kodhama-0007-one-render-many-copiers, decision-0043]
+superseded_in_part_by: [decision-0066]  # 2026-07-29 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. Everything else in this spec stands
 owner: agent
 rubric: rubric-artifact-contract
 date: 2026-07-10
 ---
 
 # Spec 0005 — The curl install path: `install.sh` as a mechanical vendoring copier
+
+> **Forward pointer.** [`decision-0066`](../decisions/0066-retire-the-surface-matrix.md)
+> retires `plugins/trellis/surfaces.json` and supersedes this spec in part, at
+> **two sites in §1's bundle table**, both amended in place rather than left
+> stale — §1 declares the table normative (*"AC1 depends on this table's left
+> column being exhaustive for the actual `plugins/trellis/` tree at build
+> time"*), so a row naming a file that no longer exists is a live spec defect,
+> not archive.
+>
+> **What moved:** the `surfaces.json` row (a bundle-membership claim), and the
+> version-parity clause inside the `VERSION` row, which read *"both host
+> manifests **and `surfaces.json`** must match it"*. The second is a
+> version-parity claim rather than a bundle-membership one and would be missed
+> by a scope worded around the bundle alone. **What stands:** everything else,
+> including AC1's exhaustiveness requirement itself — the bundle is now 25 files,
+> and `TestInstallScriptBundleManifestIsCurrent` enforces that the manifest and
+> the tree agree in the same commit.
 
 > **This spec corrects kodhama/trellis#124's issue text; the issue should be edited to match
 > after this spec lands.** The issue as currently written describes a "thin copier" that
@@ -79,9 +97,8 @@ not just the M1 overlay payload:
 
 | Path | Why it must come along |
 |---|---|
-| `VERSION` | The Trellis plugin package's canonical SemVer (`decision-0061`); both host manifests and `surfaces.json` must match it. |
+| `VERSION` | The Trellis plugin package's canonical SemVer (`decision-0061`); both host manifests must match it. (Amended by `decision-0066`: `surfaces.json` was named here too, and is retired.) |
 | `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` | Identify the vendored directory as the `trellis` plugin to Claude Code and Codex respectively. The Codex declaration does not expand this Claude-oriented installer into a Codex installer. |
-| `surfaces.json` | Product-owned metadata for the exact host boundaries Trellis has established; marketplace observations remain distinct from behavior support. |
 | `skills/setup/SKILL.md`, `skills/remove/SKILL.md` | The actual skills — `install.sh` gets you *to* these, it does not replace them. Both, not just `setup`: a vendored install with no `/trellis:remove` is a governance tool with no clean exit, which spec-0004 already treats as a trust defect. |
 | `hooks/hooks.json`, `hooks/staleness.sh`, `hooks/codex-hooks.json`, `hooks/codex-context.mjs` | The complete host-isolated hook set. Claude's files provide the `decision-0043` staleness surface; Codex's files provide the trusted-local fresh-start context boundary from `decision-0058` and `spec-0007@v1`. They remain bundle bytes even though this installer exposes only the Claude host. |
 | `reference/*` (all 15 files, including `checksums`) | The pre-rendered payload `/trellis:setup` copies from — unchanged, verbatim. |
