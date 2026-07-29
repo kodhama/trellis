@@ -40,3 +40,19 @@ jobs:
           # --comment makes the skill POST findings as inline PR comments (without it,
           # the review runs but buffers nothing — "No buffered inline comments").
           prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment"
+          # Without this the run log does not carry the review's own verdict, so a
+          # run that delivered nothing is indistinguishable from one that found
+          # nothing — and the evidence needed to tell them apart is the thing that
+          # is missing. Measured on this repo: #204 ran three times (45s/56s/45s),
+          # all `success`, zero comments; #202 ran ~5 min and posted "No issues
+          # found". Duration was the only available signal.
+          show_full_output: true
+          # The review posts via `gh api ... --input` and locates/quotes this repo's
+          # own rules with `find`/`grep`; both need Bash, and Write stages the
+          # comment payloads under /tmp. Matched to what a known-good run in a
+          # sibling repo actually used, not guessed.
+          #
+          # NOT a sandbox and not hardening — unrestricted Bash writes anywhere.
+          # Read it as "what the job was handed".
+          claude_args: |
+            --allowedTools Bash,Read,Write
