@@ -3,7 +3,7 @@ id: spec-0005
 type: spec
 status: gated
 depends_on: [kodhama/kodhama-0007-one-render-many-copiers, decision-0043]
-superseded_in_part_by: [decision-0066]  # 2026-07-29 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. Everything else in this spec stands
+superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068 — AC2's blanket "never … writes any instructions file" ONLY, narrowed to permit the one rendered rules file; AC2's "zero decision logic" heading, its posture/marker prohibitions, and its `.trellis/` prohibition all stand untouched. Everything else in this spec stands
 owner: agent
 rubric: rubric-artifact-contract
 date: 2026-07-10
@@ -180,9 +180,19 @@ On success, in order, `install.sh` prints (and performs none of b–e itself):
 5. **The suggested next step, verbatim:** run `/trellis:setup`.
 
 `install.sh` never invokes `/trellis:setup` itself, never touches `.trellis/`, never touches any
-instructions file, and never runs a git-mutating command (`add`, `commit`, or otherwise) — the only
-git invocation permitted anywhere in this script is the read-only `git rev-parse --show-toplevel`
-of §2. Committing the vendored bundle (project scope) is the human's decision; the script suggests
+**pre-existing** instructions file, and never runs a git-mutating command (`add`, `commit`, or
+otherwise) — the only git invocation permitted anywhere in this script is the read-only
+`git rev-parse --show-toplevel` of §2.
+
+> **Amended by `decision-0068` (2026-07-30), matching AC2.** The one exception is
+> `.claude/rules/trellis.md`, a file the script wholly owns and writes fresh. It edits no file it
+> did not create, and `.trellis/` remains untouched — so item 5's "run `/trellis:setup`" is still
+> the step that activates the rules beyond the two floors.
+
+Output item 1 ("what was written") names the rendered rules file alongside the bundle. Item 5's
+suggestion gains its reason: **until `/trellis:setup` writes `.trellis/rules.toml`, only
+`floor-transparency` and `floor-intent-gate` apply**, because every other rule is gated on a row
+that does not yet exist. Committing the vendored bundle (project scope) is the human's decision; the script suggests
 it, never does it.
 
 ## Acceptance criteria
@@ -192,9 +202,37 @@ it, never does it.
   to the source `plugins/trellis/` tree at the pinned commit.
 - **AC2 — zero decision logic.** The script contains no posture prompt, no target/style detection
   for any instructions file, no managed-block marker handling, and never reads or writes
-  `.trellis/` or any instructions file (`CLAUDE.md`, `AGENTS.md`, etc.). (Checkable by absence:
-  grep the script source for `trellis:begin`, `expression.md`, `profile-`, `CLAUDE.md` outside of
-  comments/help text — none should drive a write decision.)
+  `.trellis/` or any *pre-existing* instructions file (`CLAUDE.md`, `AGENTS.md`, etc.). (Checkable
+  by absence: grep the script source for `trellis:begin`, `expression.md`, `profile-`, `CLAUDE.md`
+  outside of comments/help text — none should drive a write decision.)
+
+  > **Amended by `decision-0068` (2026-07-30) — one clause, narrowly.** The script **does** now
+  > write exactly one instructions file it wholly owns: `.claude/rules/trellis.md`, rendered from
+  > bundle bytes. Measured basis: with user scope excluded, the vendored bundle alone delivers
+  > **no rules at all** (issue #201), while this file delivers them.
+  >
+  > **What is amended:** only the blanket "never … writes any instructions file".
+  > **What is NOT:** the "zero decision logic" heading and everything under it. The script still
+  > makes no posture choice — it writes no `rules.toml` and reads none to select prose. It still
+  > **never touches `.trellis/`**, so `/trellis:setup` keeps sole ownership of `rules.toml` and
+  > `decision-0065`'s "exactly one file … and nothing else, ever" needs no amendment.
+  >
+  > With no `.trellis/rules.toml` present the install is inert but for the two `floor-` rows, which
+  > "apply regardless of their row value" — a defined default requiring no seed.
+
+- **AC2a — the rendered rules file, and the import form is the assertion.** A fresh run writes
+  `.claude/rules/trellis.md` containing the posture prose, the rules body, and the exact import
+  line `@../../.trellis/rules.toml`. The test asserts **that** form and asserts the sibling form
+  `@rules.toml` is absent. Both were measured: each is correct in one location and **silently loads
+  nothing** in the other — no error, no content. A reword that swaps them ships a file that governs
+  nothing and passes every other check in this spec.
+
+- **AC2b — the plugin hook stands down when this file exists.** Measured: with the plugin installed
+  *and* `.claude/rules/trellis.md` present, the rules arrive **twice** — once in the
+  project-instructions block, once in the hook's `additionalContext`. `hooks/staleness.sh` gains a
+  branch: when `.claude/rules/trellis.md` exists it injects nothing and says so, exactly as it does
+  today for a vendored `.trellis/internal/` overlay. Red-first: a fixture with both present must
+  show one delivery, not two.
 - **AC3 — project scope resolves via git root, never `$PWD`.** Running the script from the repo
   root and from an arbitrary subdirectory of the same repo (same scope, no explicit target
   override) produce a byte-identical vendored tree at the same absolute path.

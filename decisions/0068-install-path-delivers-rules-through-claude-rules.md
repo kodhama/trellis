@@ -64,23 +64,31 @@ a test rather than by care.
 
 ## Decision
 
-**1. The install path delivers rules by rendering one file and linking to it.**
+**1. The install path delivers rules by rendering exactly one file.**
 
 ```
-.trellis/trellis.md   rendered: posture prose + rules body + `@rules.toml`
-.trellis/rules.toml   the project's rows — seeded if absent, never overwritten
-.claude/rules/trellis.md → symlink to ../../.trellis/trellis.md
+.claude/rules/trellis.md   rendered: posture prose + rules body + `@../../.trellis/rules.toml`
 ```
 
-`install.sh` renders one file and makes one link. It registers no hook and edits
-no settings file.
+`install.sh` writes that file and nothing else new. It registers no hook, edits
+no settings file, creates no symlink, and **never touches `.trellis/`**.
 
-**2. `.trellis/` is the home; `.claude/rules/` is only the discovery point.**
+**2. `install.sh` owns `.claude/`; `/trellis:setup` owns `.trellis/`.**
 
-No harness lets a project nominate its own always-on directory — every one fixes
-its own location, and files in arbitrary subdirectories load lazily or not at
-all. Keeping the real file in `.trellis/` means one file to render and to keep
-current, with a thin pointer per harness when others are added (#209).
+An earlier draft of this record put the real file at `.trellis/trellis.md` and
+symlinked it into `.claude/rules/`. **Withdrawn**, for three reasons:
+
+- **Windows.** A symlink narrows the Git Bash slice on top of the POSIX-`sh`
+  barrier, and a copy fallback there could not use the sibling import form —
+  it would need a different one and would fail silently if got wrong. Without
+  the link, #210 is purely about the shell again.
+- **Ownership.** `/trellis:setup` writes `.trellis/rules.toml` and nothing else,
+  ever. A symlink would place an install-owned object inside setup's directory.
+- **Count.** One filesystem object rather than two, for the same delivered bytes.
+
+The cost is a longer import path, and it is cosmetic: **whichever form is
+correct, the other is a silent no-op**, so the test in D4 is mandatory either
+way. Once it exists, `../../` being uglier costs nothing.
 
 **3. The rows stay live. The rendered file is not a snapshot.**
 
@@ -90,10 +98,12 @@ the plugin path's behaviour, which re-splices the rows every session.
 
 **4. The import form is load-bearing and is pinned by a test.**
 
-The rendered file carries `@rules.toml` — a sibling reference, valid because the
-symlink resolves to `.trellis/`. A test asserts the emitted form, and asserts
-that the `../../` form is *not* emitted. Without it, a future reword ships a file
-that loads nothing and passes every other check.
+The rendered file carries `@../../.trellis/rules.toml`, correct because the file
+is real and lives at `.claude/rules/`. A test asserts that exact emitted form and
+asserts the sibling form `@rules.toml` is *not* emitted. Both were measured; each
+is correct in one location and silently loads nothing in the other. Without the
+test a future reword ships a file that loads nothing and passes every other
+check.
 
 **5. Claude only, deliberately, and stated rather than implied.**
 
@@ -103,16 +113,28 @@ have no equivalent that inlines a non-markdown file; the research is recorded in
 existing prose authority sentence at `reference/rules.md:1` remains the fallback
 for the rows anywhere that cannot import them.
 
-**6. Platform boundary: macOS, Linux, WSL — recorded, not discovered later.**
+**6. Platform boundary: macOS, Linux, WSL — and this record adds nothing to it.**
 
-`install.sh` is `#!/bin/sh` with POSIX dependencies, so Windows was already
-outside the install path before symlinks arose. WSL is unaffected — symlinks are
-native there. Only the Git Bash slice narrows further, and **a copy fallback is
-not a drop-in**: a copied file cannot use `@rules.toml`, because the import
-resolves from the real file's directory and a copy's differs. It would have to
-inline the rows and accept the snapshot. Tracked in **#210**.
+`install.sh` is `#!/bin/sh` with POSIX dependencies, so Windows is already
+outside the install path. Because D2 drops the symlink, **this change narrows
+nothing further** — #210 stays purely about the shell, and a future PowerShell or
+Go installer inherits no symlink problem.
 
-**7. The plugin hook stands down when the install artifact is present. This is
+**7. With no `.trellis/rules.toml`, the install is inert except the floors — and
+that needs no seeding.**
+
+`install.sh` makes no posture choice and writes no `rules.toml`; that is
+`/trellis:setup`'s single file. The rules text already defines this state: the
+two `floor-` rows *"apply regardless of their row value"*, and every other rule
+applies **only** where its row says `active = true`. So a bare install yields
+exactly `floor-transparency` and `floor-intent-gate` — a safe, well-defined
+default that requires no seed and no decision from the script. The rendered file
+directs the reader to `/trellis:setup` to activate the rest.
+
+This is why `decision-0065`'s clause that setup writes "exactly one file …
+and nothing else, ever" **needs no amendment**: this record does not widen it.
+
+**8. The plugin hook stands down when the install artifact is present. This is
 required, not optional — the alternative was measured and it double-delivers.**
 
 With the user-scope plugin installed *and* `.claude/rules/trellis.md` present,
@@ -122,13 +144,18 @@ hook's `additionalContext`. Measured, not predicted.
 `staleness.sh` already has this shape — it detects `.trellis/internal/` and
 declines to inject over a vendored overlay, so that "a project that vendored the
 overlay never receives the rules twice". The install path needs the same branch
-keyed on its own artifact: **if `.trellis/trellis.md` exists, the hook injects
-nothing** and says so, exactly as it does for the overlay today.
+keyed on its own artifact: **if `.claude/rules/trellis.md` exists, the hook
+injects nothing** and says so, exactly as it does for the overlay today.
+
+An earlier draft claimed this came free by reusing the `.trellis/internal/`
+path-A discriminator. **That was wrong** — it held only while invariants were
+also placed there, which this record no longer does. Path A never fires under
+this design, so the branch is new code, roughly three lines, and explicit.
 
 This widens the change beyond the installer, and that is stated rather than
 discovered at implementation: **`decision-0065`'s hook gains a third path.**
 
-**8. Out of scope, named rather than silently retained: whether the bundle
+**9. Out of scope, named rather than silently retained: whether the bundle
 vendoring stays.** `install.sh` also vendors the whole `plugins/trellis/` tree so
 `/trellis:setup` and `/trellis:remove` have a home (`spec-0005` §1). Whether
 those skills actually load from that location is **unmeasured** — this record
@@ -139,26 +166,33 @@ measured rule delivery only, and does not touch the bundle.
 - **A path that shipped nothing now ships something.** That is the whole value;
   everything else is simplification.
 - `install.sh` no longer needs to reason about hooks or host manifests for rule
-  delivery. The hook files remain bundle bytes under `spec-0005` §1 until D8 is
-  answered — and D7 keeps the plugin's copy of them from firing here.
+  delivery. The hook files remain bundle bytes under `spec-0005` §1 until D9 is
+  answered — and D8 keeps the plugin's copy of them from firing here.
 - **The install path vendors, and that is correct here.** `decision-0065`'s split
   is "plugin configures, install.sh vendors". Staleness is inherent to vendoring
   and is what the version stamp exists for. It was only the *plugin* path where
   writing into a consumer repo was the error.
-- A committed symlink is a new artifact class for this repo. It is portable on
-  every platform the install path claims.
+- **No new artifact class.** An earlier draft introduced a committed symlink; D2
+  withdrew it, so the install path writes only ordinary files.
+- **Invariants stay a vendored file** at `.claude/skills/trellis/reference/invariants.md`,
+  and the rendered pointer names that path. That is already better than today,
+  where the shipped prose names `.trellis/internal/invariants.md` and nothing on
+  the install path creates it. `decision-0067` replaces the pointer with a skill
+  on **both** paths afterwards; between the two records the install path is
+  correct and the plugin path keeps its runtime substitution.
 - **Cost:** two delivery mechanisms now exist for Claude — hook injection via the
-  plugin, file discovery via the install. D7 keeps them mutually exclusive; without
+  plugin, file discovery via the install. D8 keeps them mutually exclusive; without
   it a repo with both receives the rules twice, which is measured, not feared.
   `.trellis/rules.toml` cannot be the discriminator because both paths require it,
   so the install artifact itself is the signal.
 
 ## Open questions
 
-1. **Do the vendored skills load at all?** D8 defers it; the same trust-dialog
+1. **Do the vendored skills load at all?** D9 defers it; the same trust-dialog
    question that defeated hook registration may defeat them.
-3. **Should `/trellis:remove` remove the symlink and the rendered file?** It
-   deletes `.trellis/` today; the link would dangle.
+3. **Should `/trellis:remove` delete `.claude/rules/trellis.md`?** It removes
+   `.trellis/` today, which would leave the rendered file importing a path that
+   no longer exists — inert, but present.
 
 ## Self-check (gate)
 
@@ -169,7 +203,8 @@ measured rule delivery only, and does not touch the bundle.
 | 3 | Both import forms tested, not just the working one | **PASS** — the failing form is recorded because it fails silently |
 | 4 | Non-Claude harnesses checked before claiming Claude-only | **PASS** — #209, four harnesses, sources cited there |
 | 5 | The platform boundary is stated with its real cause | **PASS** — POSIX `sh`, not the symlink; #210 |
-| 6 | Scope creep resisted and named | **PASS** — D8 leaves the bundle untouched and says so |
+| 6 | Scope creep resisted and named | **PASS** — D9 leaves the bundle untouched and says so |
 | 7 | Acceptance criteria | **DEFERRED to the spec amendment**, which this record pairs with |
-| 8 | Double-delivery risk surfaced | **PASS** — measured rather than deferred: both paths live delivers the rules twice, so it became D7 (the hook stands down) instead of an open question. Found because the risk was written down and then tested |
-| 9 | `status: gated` earned | **PASS** — self-check run; no partials remain, because the one that existed was resolved by measurement rather than downgraded |
+| 8 | Double-delivery risk surfaced | **PASS** — measured rather than deferred: both paths live delivers the rules twice, so it became D8 (the hook stands down) instead of an open question. Found because the risk was written down and then tested |
+| 9 | A withdrawn design is struck, not deleted | **PASS** — D2 records the symlink and the three reasons it lost; D8 records that its "free mutual exclusion" claim was conditional and wrong |
+| 10 | `status: gated` earned | **PASS** — self-check run; no partials remain, because the one that existed was resolved by measurement rather than downgraded |
