@@ -99,3 +99,53 @@ func TestPluginReadmeLinksResolve(t *testing.T) {
 		}
 	}
 }
+
+// decision-0068 D11. The install path renders `.claude/rules/trellis.md`, a
+// Trellis-authored instructions file the remove skill did not know about.
+// Unchanged, `/trellis:remove` would delete `.trellis/` — the rows — while
+// leaving the governing file behind with a dangling import, still loaded into
+// every session, with nothing left to activate any rule.
+//
+// spec-0005 §1 names the standard itself: "a vendored install with no
+// /trellis:remove is a governance tool with no clean exit, which spec-0004
+// already treats as a trust defect."
+func TestRemoveSkillEnumeratesTheRenderedRulesFile(t *testing.T) {
+	body := readFileT(t, "../plugins/trellis/skills/remove/SKILL.md")
+
+	if !strings.Contains(body, ".claude/rules/trellis.md") {
+		t.Fatalf("/trellis:remove does not enumerate .claude/rules/trellis.md — it would delete the rows and leave the governing file behind")
+	}
+
+	// Ordering is the substantive half. An interrupted removal must never leave
+	// the governing file present with its rows already gone: rules that cannot
+	// be activated, in always-loaded context, is a worse state than either end.
+	iRendered := strings.Index(body, ".claude/rules/trellis.md")
+	iOverlay := strings.LastIndex(body, "then removes `.trellis/`")
+	if iOverlay < 0 {
+		iOverlay = strings.LastIndex(body, "removes `.trellis/`")
+	}
+	if iOverlay >= 0 && iRendered > iOverlay {
+		t.Errorf("the rendered rules file must be removed BEFORE .trellis/, so an interrupted removal never strands a governing file without its rows")
+	}
+}
+
+// decision-0068 makes the README's install-path sentence false, and its own
+// host-support test would keep passing while it shipped to every consumer's
+// disk. The claim is load-bearing: it is the paragraph a reader consults to
+// decide whether the curl path governs anything.
+func TestPluginReadmeInstallPathClaimIsCurrent(t *testing.T) {
+	body := readFileT(t, "../plugins/trellis/README.md")
+
+	if strings.Contains(body, "install.sh` registers no hook at all, so a vendored") ||
+		strings.Contains(body, "install delivers no rules") {
+		t.Fatalf("the README still says a vendored install delivers no rules; decision-0068 D1 renders .claude/rules/trellis.md, so this ships false to every consumer")
+	}
+	if !strings.Contains(body, ".claude/rules/trellis.md") {
+		t.Errorf("the README should name the delivery mechanism the install path now uses")
+	}
+	// The honesty of the surrounding paragraph must survive the correction: the
+	// change fixes project scope only, and personal scope still delivers nothing.
+	if !strings.Contains(body, "personal") {
+		t.Errorf("the corrected claim must still name the scope that delivers no rules, or it over-claims")
+	}
+}

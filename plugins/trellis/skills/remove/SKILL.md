@@ -7,7 +7,9 @@ description: Remove Trellis from this project — delete the .trellis/ overlay, 
 
 Cleanly reverse the shared **M1 overlay** from either host. This is a **product-wide** remove, not a
 per-host disable: it handles both the Claude block in `CLAUDE.md` and the Codex receipt/fallback in
-`AGENTS.md`, then removes `.trellis/`. Preserve every surrounding user byte.
+`AGENTS.md`, removes the curl install path's rendered
+`.claude/rules/trellis.md`, and **then** removes `.trellis/`. Preserve every
+surrounding user byte.
 
 ## 1. Preflight every target before any edit
 
@@ -22,8 +24,22 @@ Snapshot the complete project paths this operation may touch. Inspect **every do
 
 Also inspect, without writing:
 
+- `.claude/rules/trellis.md` — rendered by `install.sh` on the curl install path
+  (`decision-0068` D1). It is a Trellis-authored instructions file loaded into
+  every session, and it imports `.trellis/rules.toml`;
 - `.trellis/`, including consumer-owned `rules.toml` and any legacy `expression.md`;
 - every recognized lint/format ignore target that may contain a setup-added `.trellis/` line.
+
+**Order matters between those two.** Remove `.claude/rules/trellis.md` *before*
+`.trellis/`. An interrupted removal must never leave the governing file present
+with its rows already gone: a posture header and a full rules body in
+always-loaded context, importing a file that no longer exists, with nothing left
+to activate any rule. That is a worse state than either end of the operation.
+
+Remove only `.claude/rules/trellis.md`. `.claude/rules/` is a shared directory a
+project may fill with unrelated rules of its own, and the directory itself is not
+Trellis's to delete — the same file-not-directory boundary the hook's path C
+uses.
 
 For each marker family, require either no marker or exactly one nonnested paired region. Duplicate,
 unpaired, nested, overlapping, or otherwise ambiguous markers stop the entire operation **before**
