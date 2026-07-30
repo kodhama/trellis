@@ -949,6 +949,21 @@ func TestVendorRendersClaudeRulesFile(t *testing.T) {
 		t.Errorf("D5 requires the file to name .trellis/rules.toml's strictness key as authoritative over the frozen sentence above it")
 	}
 
+	// --- the drift surface. Without an embedded stamp the hook can only stand
+	// down blindly, and a file rendered by an older installer would govern
+	// forever with no signal — decision-0035's floor applied to this artifact,
+	// and the gap decision-0068's own Open 4 recorded before Codex found it.
+	// Verified by mutation: before this assertion, removing the stamp entirely
+	// left the suite green.
+	stampRe := regexp.MustCompile(`<!-- trellis:rendered-from payload@[0-9a-f]{12} -->`)
+	if !stampRe.MatchString(got) {
+		t.Errorf("the rendered file carries no payload stamp — the hook cannot tell a stale install from a current one:\n%s", got)
+	}
+	shipped := strings.TrimSpace(files["version"])
+	if !strings.Contains(got, "<!-- trellis:rendered-from "+shipped+" -->") {
+		t.Errorf("the embedded stamp must be the payload actually vendored (%s), or the drift check compares against the wrong thing", shipped)
+	}
+
 	// --- the invariants pointer must name a path this install actually creates.
 	// The shipped header names .trellis/internal/invariants.md, which the install
 	// path never writes (D1: install.sh never touches .trellis/).

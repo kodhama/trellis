@@ -271,7 +271,7 @@ d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-d6d07198de945b5b58107496a45ba5a4d064b3cfade43c2a91f527c4423e7d1f  hooks/staleness.sh
+3a8d7311d4a22be24057a15775738c62419121443c20ea470656c1b9d76cc40e  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -403,6 +403,10 @@ if [ "$scope" = "project" ]; then
     printf '## Project rule activation\n'
     printf '\n'
     printf '@../../.trellis/rules.toml\n'
+    # The drift surface. Without a stamp the hook can only stand down blindly,
+    # and a file rendered by an older installer would govern forever with no
+    # signal — decision-0035's floor applied to this artifact.
+    printf '\n<!-- trellis:rendered-from %s -->\n' "$stamp"
   } > "$rendered_tmp" || {
     rm -f "$rendered_tmp"
     fail "could not write $rendered_tmp — the rules file was not rendered and nothing was replaced. The bundle is already vendored; fix the permission and re-run."

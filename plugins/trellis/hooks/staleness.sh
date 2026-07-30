@@ -163,6 +163,17 @@ rendered="$root/.claude/rules/trellis.md"
 # middle. This is path A's completeness gate applied to path C's artifact:
 # "checking the stamp alone left that project silently ungoverned".
 if [ -f "$rendered" ] && grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/dev/null; then
+  # Standing down is not the end of this hook's duty. A rendered file written by
+  # an OLDER installer, with a NEWER plugin now installed, would otherwise sit on
+  # stale rule bytes forever: the newer plugin neither injects nor warns.
+  # decision-0035's floor is that drift is made visible, not silent — path A has
+  # carried that for the vendored overlay since decision-0043 rule 3, and path C
+  # shipped without it until review said so.
+  rendered_stamp="$(sed -n 's/.*<!-- trellis:rendered-from \(payload@[0-9a-f]*\) -->.*/\1/p' "$rendered" 2>/dev/null | head -n1)"
+  if [ -n "$rendered_stamp" ] && [ -n "$current" ] && [ "$rendered_stamp" != "$current" ]; then
+    emit "Trellis rules come from .claude/rules/trellis.md (the curl install path), and that file is STALE: it was rendered from $rendered_stamp, but the installed plugin ships $current. This hook injected nothing — the rendered file governs this session and it is out of date. Re-run install.sh to refresh it, or delete it to move onto plugin-delivered rules."
+    exit 0
+  fi
   emit "Trellis rules are already loaded from .claude/rules/trellis.md (the curl install path), so this hook injected nothing — delivering them here too would put the same rules in context twice. That file and .trellis/rules.toml govern this session. To move onto plugin-delivered rules instead, delete .claude/rules/trellis.md."
   exit 0
 fi

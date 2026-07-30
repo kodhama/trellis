@@ -496,6 +496,63 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 	// stamp alone left that project silently ungoverned" — and path C did not
 	// inherit it until an independent review said so. Verified by mutation:
 	// before this test, flipping -s back to -f left the whole suite green.
+	// Codex P1 on #212, and the gap decision-0068's own Open 4 recorded and then
+	// shipped anyway: a rendered file made by an OLDER installer, with a NEWER
+	// plugin now installed, sat on stale rule bytes forever. Path C stood down
+	// without comparing stamps, so the newer plugin neither injected nor warned.
+	// decision-0035's floor is that drift is made visible, not silent — path A
+	// has carried that for the vendored overlay since decision-0043 rule 3, and
+	// path C shipped without it.
+	t.Run("a stale rendered file still nudges instead of standing down silently", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// Complete by the sentinel test, but stamped with a payload the installed
+		// plugin has moved past.
+		body := files["rules.md"] + "\n<!-- trellis:rendered-from payload@000000000000 -->\n"
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero: %v: %s", err, out)
+		}
+		s := string(out)
+		// Case-insensitive: the message says "STALE" for emphasis, and an
+		// assertion that depends on casing tests the copy, not the behaviour.
+		if !strings.Contains(strings.ToLower(s), "stale") {
+			t.Fatalf("a rendered file from an older installer must draw a staleness nudge, not silence; got:\n%s", s)
+		}
+		if !strings.Contains(s, "000000000000") || !strings.Contains(s, strings.TrimSpace(files["version"])) {
+			t.Errorf("the nudge must name BOTH stamps, or the reader cannot tell what is stale; got:\n%s", s)
+		}
+		if strings.Contains(s, ruleSlug) {
+			t.Errorf("nudging must not also inject — that is the double delivery path C exists to prevent; got:\n%s", s)
+		}
+	})
+
+	t.Run("a current rendered file stands down quietly", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := files["rules.md"] + "\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if strings.Contains(strings.ToLower(string(out)), "stale") {
+			t.Fatalf("a CURRENT rendered file must not be called stale — a nudge that always fires is noise; got:\n%s", out)
+		}
+	})
+
 	t.Run("a zero-byte rendered file is not delivery: the hook still delivers", func(t *testing.T) {
 		proj := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
