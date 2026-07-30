@@ -421,7 +421,9 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 			// delivered file. Anchored to the shipped bytes rather than a
 			// hand-written approximation, so it cannot drift from what
 			// install.sh actually renders.
-			body := "# rendered by install.sh\n\n" + files["rules.md"]
+			body := "# rendered by install.sh\n\n" + files["rules.md"] +
+				"\n@../../.trellis/rules.toml\n" +
+				"\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
 			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
 				t.Fatal(err)
 			}
@@ -510,7 +512,8 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		}
 		// Complete by the sentinel test, but stamped with a payload the installed
 		// plugin has moved past.
-		body := files["rules.md"] + "\n<!-- trellis:rendered-from payload@000000000000 -->\n"
+		body := files["rules.md"] + "\n@../../.trellis/rules.toml\n" +
+			"\n<!-- trellis:rendered-from payload@000000000000 -->\n"
 		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -540,7 +543,8 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		body := files["rules.md"] + "\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
+		body := files["rules.md"] + "\n@../../.trellis/rules.toml\n" +
+			"\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
 		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -550,6 +554,44 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		out, _ := cmd.CombinedOutput()
 		if strings.Contains(strings.ToLower(string(out)), "stale") {
 			t.Fatalf("a CURRENT rendered file must not be called stale — a nudge that always fires is noise; got:\n%s", out)
+		}
+	})
+
+	// Codex P1: a file cut immediately AFTER the rules-body sentinel passed the
+	// old guard while having lost the import line and the stamp — so the hook
+	// stood down and NO activation rows were ever delivered. The boundary is the
+	// END of the file, not the end of the rules body.
+	t.Run("truncated after the sentinel: incomplete, and said out loud", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for _, body := range []string{
+			files["rules.md"], // sentinel present, import and stamp lost
+			files["rules.md"] + "\n@../../.trellis/rules.toml\n", // stamp lost
+		} {
+			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			out, _ := cmd.CombinedOutput()
+			s := string(out)
+			// Either outcome is acceptable — deliver the rules, or refuse loudly.
+			// What must NOT happen is a quiet "already loaded" over a file whose
+			// rows never arrive.
+			delivered := strings.Contains(s, ruleSlug)
+			loud := strings.Contains(s, "TRELLIS_RULES_NOT_LOADED")
+			if !delivered && !loud {
+				t.Fatalf("silent stand-down over an incomplete file (%d bytes) — no rows delivered and no warning; got:\n%s", len(body), s)
+			}
 		}
 	})
 

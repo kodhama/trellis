@@ -1095,3 +1095,38 @@ func TestInstalledRulesFileSilencesTheHookExactlyOnce(t *testing.T) {
 		t.Fatalf("the hook stood down without naming what it deferred to:\n%s", out)
 	}
 }
+
+// Codex P1: a pre-plugin-delivery consumer still has `.trellis/internal/` AND a
+// CLAUDE.md managed block importing `@.trellis/internal/trellis.md`. Rendering
+// `.claude/rules/trellis.md` there puts BOTH static chains into context, because
+// Claude loads them itself before any hook runs. The hook's path-A-first ordering
+// suppresses only what the HOOK injects — it cannot un-load a file Claude already
+// read. So this combination has to be refused at install time; there is no
+// runtime fix for it.
+func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	internal := filepath.Join(repo, ".trellis", "internal")
+	if err := os.MkdirAll(internal, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(internal, "version"), []byte("payload@000000000000\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+		t.Fatalf("rendered over a vendored overlay — both static chains would load, and no hook can prevent it")
+	}
+	combined := res.stdout + res.stderr
+	if !strings.Contains(combined, ".trellis/internal") {
+		t.Errorf("refusing silently is its own defect: the output must name the overlay as the reason; got:\n%s", combined)
+	}
+	if !strings.Contains(combined, "/trellis:setup") && !strings.Contains(combined, "/trellis:remove") {
+		t.Errorf("a refusal with no way forward strands the user; name the migration route; got:\n%s", combined)
+	}
+	// The bundle itself must still vendor — the overlay conflicts with the
+	// rendered file, not with the plugin package.
+	assertBundleVendored(t, filepath.Join(repo, ".claude", "skills", "trellis"))
+}

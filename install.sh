@@ -271,7 +271,7 @@ d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-3a8d7311d4a22be24057a15775738c62419121443c20ea470656c1b9d76cc40e  hooks/staleness.sh
+a0839086a5bfcae2f8f83d07c99ee83fc59d573345f1417be9650e87d21d84d9  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -355,7 +355,26 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 #      file is meant to be committed, and an absolute path would carry this
 #      machine's layout to every collaborator.
 rendered_note="no rules file (project scope only)"
-if [ "$scope" = "project" ]; then
+if [ "$scope" = "project" ] && [ -d "$git_root/.trellis/internal" ]; then
+  # A pre-plugin-delivery consumer whose CLAUDE.md managed block imports
+  # @.trellis/internal/trellis.md. Rendering here would put BOTH static chains
+  # into context: Claude loads the managed block's imports AND .claude/rules/*.md
+  # itself, before any hook runs. The hook's path-A-first ordering suppresses only
+  # what the HOOK injects — it cannot un-load a file Claude already read. So this
+  # is refused at install time, because there is no runtime fix for it.
+  #
+  # This is the ONE place this script reads .trellis/, and it reads a directory's
+  # existence, never a file's contents: no posture is inferred and nothing is
+  # written there (spec-0005 AC2's surviving clause).
+  rendered_note="no rules file — .trellis/internal/ present"
+  say "NOT rendering .claude/rules/trellis.md: this project still has a vendored"
+  say ".trellis/internal/ overlay, and its managed block already imports those"
+  say "rules. Adding the rendered file would deliver the same rules twice, and no"
+  say "hook can undo that — both are loaded before any hook runs."
+  say "Migrate first: run /trellis:setup and accept the migration (it removes"
+  say ".trellis/internal/ and the managed block, keeping your rules.toml rows), or"
+  say "/trellis:remove to take Trellis out entirely. Then re-run this installer."
+elif [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
   mkdir -p "$rules_dir" || fail "could not create $rules_dir (is .claude/rules present as a file?). The bundle is already vendored; re-run once the path is clear."
 

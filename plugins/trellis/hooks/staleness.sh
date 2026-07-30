@@ -162,15 +162,28 @@ rendered="$root/.claude/rules/trellis.md"
 # the LAST line of that body — a truncation cannot keep the end and lose the
 # middle. This is path A's completeness gate applied to path C's artifact:
 # "checking the stamp alone left that project silently ungoverned".
-if [ -f "$rendered" ] && grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/dev/null; then
+if [ -f "$rendered" ] && grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/dev/null \
+   && grep -q '^@\.\./\.\./\.trellis/rules\.toml$' "$rendered" 2>/dev/null; then
   # Standing down is not the end of this hook's duty. A rendered file written by
   # an OLDER installer, with a NEWER plugin now installed, would otherwise sit on
   # stale rule bytes forever: the newer plugin neither injects nor warns.
   # decision-0035's floor is that drift is made visible, not silent — path A has
   # carried that for the vendored overlay since decision-0043 rule 3, and path C
   # shipped without it until review said so.
+  # The stamp is the LAST line install.sh writes, so its presence proves the
+  # whole file arrived. An earlier version keyed on the rules-body sentinel and
+  # argued a truncation "cannot keep the end and lose the middle" — wrong: the
+  # sentinel ends the rules BODY, and the rendered file continues past it with
+  # the invariants footer, the authoritative-source sentence, the import line and
+  # this stamp. A file cut immediately after the sentinel passed that guard while
+  # having lost the import — so the hook stood down and NO rows were ever
+  # delivered. Requiring the stamp makes the boundary the actual end of the file.
   rendered_stamp="$(sed -n 's/.*<!-- trellis:rendered-from \(payload@[0-9a-f]*\) -->.*/\1/p' "$rendered" 2>/dev/null | head -n1)"
-  if [ -n "$rendered_stamp" ] && [ -n "$current" ] && [ "$rendered_stamp" != "$current" ]; then
+  if [ -z "$rendered_stamp" ]; then
+    emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: it carries no trellis:rendered-from stamp, which install.sh writes as its last line, so the file was truncated and its rule activation rows are missing. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to the reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."
+    exit 0
+  fi
+  if [ -n "$current" ] && [ "$rendered_stamp" != "$current" ]; then
     emit "Trellis rules come from .claude/rules/trellis.md (the curl install path), and that file is STALE: it was rendered from $rendered_stamp, but the installed plugin ships $current. This hook injected nothing — the rendered file governs this session and it is out of date. Re-run install.sh to refresh it, or delete it to move onto plugin-delivered rules."
     exit 0
   fi
