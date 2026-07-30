@@ -9,6 +9,59 @@ date: 2026-07-30
 
 # 0067 — what must apply is injected; what is consulted is a skill
 
+> **SCOPE NARROWED after independent adversary review, 2026-07-30 —
+> NEEDS-REVISION.** The review verified five factual errors in the original
+> draft and one design objection that cuts at its premise. **D4 (deleting the
+> posture files) is withdrawn to its own future record**, and this record is now
+> **plugin-path-only**. What survives is D1's boundary and a narrowed D2. The
+> errors are listed in §Corrections rather than edited away, because the record
+> claimed measurement discipline it did not exercise.
+
+## Corrections — what the first draft got wrong
+
+Each verified against the tree, not accepted on the reviewer's word.
+
+1. **"`codex-context.mjs` computes the same paths and inherits the same
+   fragility"** — false. `grep -c invariants` on that file returns **0**. Codex
+   never rewrites the pointer; it ships `.trellis/internal/invariants.md`
+   verbatim into sessions where that path does not exist. That is a *different*
+   defect, arguably worse, and the record mis-diagnosed it while grading the row
+   PASS.
+2. **D4 is blocked by Codex, not merely unresolved for it.**
+   `codex-context.mjs:382-385` hard-fails the entire injection unless the prose
+   carries **exactly one** `@rules.md`. D4 deletes that placeholder. The record
+   blocked its own decision while Open 1 said "not resolved here".
+3. **The preamble and pointer live in six and five payload files**, not two —
+   `trellis-a/b.md` plus the `block-inline-*` fragments, and
+   `cli/payload_test.go` pins the pointer in them. The measured table covered 5
+   of 15 files and self-check row 1 graded it PASS.
+4. **`decision-0053` was mis-attributed** to the `does-trellis-help` experiment.
+   0053 never mentions it; its evidence is `research-0012` /
+   `annotation-vs-absence`. Row 4 ("upstream constraints checked") was PASS on a
+   citation to the wrong experiment.
+5. **"The pointer is meaningless … on the install path"** — false. On a vendored
+   overlay the pointer is *relative* and resolves. The absolute-path defect is
+   **plugin-path-only**, which is also why the narrowing below is coherent.
+6. **The eval harness copies the two files D4 deletes.**
+   `eval/experiments/does-trellis-help/run.sh:79-81` copies `invariants.md` and
+   `trellis-a.md` into a vendored `.trellis/internal/`. Open 3's "moving them
+   *may* touch it" is a verified certainty.
+
+## The design objection, which is better than the record's own reasoning
+
+D1 sorts payload into *must apply* (injected) and *consulted* (a skill).
+**`invariants.md` does not sit cleanly in either bucket: it is a deviation
+gate.** Its own trigger reads "read its entry … **before deviating**". A gate
+that loads only when the model elects to load it is the same conditional-floor
+failure D1 rejects for `rules.md` — and the model about to deviate is precisely
+the one whose judgment about consulting the reference is least trustworthy.
+
+The record half-conceded this in Consequences ("a reduction against the intent of
+the current design") while D1 still asserted the boundary as clean. **A two-way
+sort is insufficient; a third bucket is needed** — *reference you may want*
+versus *reference you must read before deviating*. That is unresolved and is now
+Open 1.
+
 ## Context
 
 `decision-0065` moved rule delivery to the plugin's own SessionStart hooks. That
@@ -73,7 +126,14 @@ ambiguous* is the opposite case, and belongs behind on-demand loading.
 
 This is the rule for future payload additions, not only for today's files.
 
-**2. `invariants.md` becomes a skill, on both delivery paths.**
+**2. `invariants.md` becomes a skill on the PLUGIN path only.**
+
+*(Narrowed from "on both delivery paths".)* The install path keeps a vendored
+`invariants.md` and a working relative pointer — correction 5 shows that path is
+not broken. The absolute-path computation this replaces exists only in
+`staleness.sh`. **`codex-context.mjs`, the `block-inline-*` fragments and the
+vendored/inline shapes are explicitly out of scope**, which is what makes this
+compatible with `decision-0068`'s sequencing rather than atomic with it.
 
 The skill is addressed as `${CLAUDE_SKILL_DIR}/invariants.md` — documented as
 "the directory containing the skill's `SKILL.md`… regardless of the current
@@ -91,12 +151,27 @@ is `/trellis-invariants`. Naming either in the always-on text would re-create th
 path-fragility one layer up. Model invocation from the description is the
 mechanism.
 
-**4. `trellis-a.md` and `trellis-b.md` are deleted.** The preamble moves to the
-head of `rules.md`; the strictness sentence becomes a two-branch string chosen
-from the `strictness` value both hooks already read; the `@rules.md` self-import
-and the invariants pointer cease to exist. **Two payload files and two of the
-hook's three runtime string edits go with them.** The third — splicing the live
-rows from `rules.toml` — stays, because it is genuinely per-project.
+**4. WITHDRAWN — the posture-file collapse moves to its own record.**
+
+~~`trellis-a.md` and `trellis-b.md` are deleted; the preamble moves to `rules.md`;
+the strictness sentence becomes a two-branch string.~~ Struck, not deleted,
+because the reasoning holds and only the scope was wrong. It cannot land here:
+
+- it is **blocked by Codex** (correction 2);
+- it touches **six files, not two** (correction 3);
+- it changes the **tested configuration** of a live experiment (correction 6);
+- and it **cannot satisfy D6**. Measured on the emitted stream: the `---`
+  separator at line 42 exists only to introduce the pointer footer. Delete it and
+  the diff is two lines, failing D6's "exactly one difference"; keep it and the
+  payload ships an orphaned rule. The acceptance criterion rejects both available
+  implementations.
+
+A further defect the first draft missed: posture today is a **file selection**
+(`staleness.sh:141-144`), not a string edit. Folding the preamble into `rules.md`
+forces the strictness sentence to be injected *inside* that file — requiring a
+placeholder or a `gsub` on literal text, which is **the exact mechanism this
+record condemns**. So "two of the hook's three runtime string edits go with them"
+was wrong: it goes 3 -> 2, and the survivor is the same failure class.
 
 **5. `reference/rules-<p>.toml` moves into `skills/setup/`.** Its only reader is
 that skill. Supporting files beside a `SKILL.md` are the documented home for
@@ -133,33 +208,37 @@ change, not a new decision.
 
 ## Open questions
 
-1. **What does Codex get?** Skills are a Claude mechanism. `codex-context.mjs`
-   computes the same paths and inherits the same fragility. Inlining 23.6 KB per
-   session is not acceptable; leaving Codex on a path pointer keeps the defect on
-   one host. Not resolved here.
-2. **Does the skill listing cost anything measurable?** The listing budget is 1%
-   of the context window and descriptions are truncated at 1,536 characters. One
-   more skill should be free; `/context` reports the real figure and should be
-   checked rather than assumed.
-3. **Does the `does-trellis-help` result survive the assembly change?** D6 says
-   the bytes are identical, so it should — but the experiment's own harness reads
-   the payload files, and moving them may touch it.
-4. **Should `rules.md`'s preamble be per-posture too?** Today only line 5 varies.
-   Folding the preamble in may make that harder to keep true.
+1. **Is the injected/consulted boundary sufficient?** See §The design objection —
+   `invariants.md` is a deviation gate, and a gate the model elects to load is
+   the failure D1 rejects elsewhere. **This cuts at D1's premise and is not
+   resolved here.** A third bucket may be needed. Until it is answered, D2 buys
+   a correct pointer but does not prove the reference is *read*.
+2. **Is the model-invocation assumption measurable?** The whole record turns on
+   the model invoking the skill when a rule is ambiguous, and **that is the one
+   thing not measured** — in a repo with a working eval harness. `decision-0053`
+   set the precedent that this class of question is settled by experiment.
+3. **What does Codex get?** Corrections 1-2 show the Codex hook has a different,
+   unaddressed defect and hard-fails on D4's deletion. Out of scope here by D2's
+   narrowing; it does not go away.
+4. **Four Claude Code mechanism claims carry no source and no measurement** —
+   `${CLAUDE_SKILL_DIR}` semantics, the skill-listing budget figures, the
+   invocation naming, and whether a skill nested inside a vendored bundle is
+   discovered at all. Self-check row 6 graded them PASS with no source named.
+   They should be cited or measured before implementation.
 
 ## Self-check (gate)
 
-Per `charters/lifecycle.md`. Every row re-derived from the tree, not from the
-drafting conversation.
+Re-derived after independent adversary review. **Four rows the first draft graded
+PASS were false**; they are corrected, not restated.
 
 | # | check | result |
 |---|---|---|
-| 1 | Every measurement is from the installed payload or a live session | **PASS** — sizes from `0.3.0`; the stale `0.2.0` pointer is quoted from this session's own injected context |
-| 2 | The `trellis-a`/`trellis-b` claim is a diff, not a reading | **PASS** — `diff` reports one changed line of nine |
-| 3 | "Nobody reads `invariants.md`" is a grep, not an inference | **PASS** — both hooks and both skills grepped; only a path string is built |
-| 4 | Upstream constraints checked before proposing | **PASS** — `decision-0053`'s tested-wording clause found and made D6 rather than discovered later |
-| 5 | Both hosts checked, not just Claude | **PASS** — `codex-context.mjs:339` uses the same posture files; recorded as Open 1 |
-| 6 | The skills mechanism is quoted from its documentation, not assumed | **PASS** — `${CLAUDE_SKILL_DIR}` semantics and supporting-file loading |
-| 7 | Acceptance criteria | **PRESENT** — D6 is mechanically checkable by diffing emitted context |
-| 8 | Nothing is deleted whose absence is unguarded | **PARTIAL** — D4 deletes two payload files pinned by `TestVendoredPayloadIsCurrent` and `TestRepoOverlayIsCurrent`; both must be advanced in the same change, and neither is advanced by this record |
-| 9 | `status: gated` earned | **PASS** — self-check run; its one partial is recorded, not hidden |
+| 1 | The payload inventory is complete | **WAS FALSE** — measured 5 of 15 files; preamble and pointer live in 6 and 5. Now scoped so the inventory it relies on is the one it measured |
+| 2 | Diff-based claims are arithmetic, not estimate | **WAS FALSE** — D6's "exactly one difference" rejects both available implementations. D4 withdrawn |
+| 3 | Both hosts checked | **WAS FALSE** — the Codex claim was the opposite of true (`grep -c invariants` = 0), and Codex hard-fails on the deletion |
+| 4 | Upstream constraints checked | **WAS FALSE** — `decision-0053` attributed to the wrong experiment; the real harness copies the files D4 deletes |
+| 5 | The install-path claim | **WAS FALSE** — the vendored pointer is relative and resolves; the defect is plugin-path-only. This is also what makes the narrowing coherent |
+| 6 | Mechanism claims are cited or measured | **STILL FALSE** — four claims carry neither. Open 4 |
+| 7 | Guard inventory complete | **WAS FALSE** — row 8 named 2 of 8 pins, and the payload is generated, so "two files are deleted" was really "the generator changes" |
+| 8 | The premise survives review | **NO** — Open 1 records an objection that cuts at D1's own boundary and is unresolved |
+| 9 | `status: gated` earned | **NO.** Scope narrowed, D4 withdrawn, premise contested. This record is **not ready for an intent act**; it is kept `gated` and open so the corrections are not lost |
