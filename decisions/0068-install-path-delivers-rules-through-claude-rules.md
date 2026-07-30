@@ -78,11 +78,25 @@ a test rather than by care.
 
 ## Decision
 
-**1. The install path delivers rules by rendering exactly one file.**
+**1. The install path delivers rules by rendering exactly one file, in PROJECT
+SCOPE ONLY.** *(Maintainer, 2026-07-30.)*
 
 ```
-.claude/rules/trellis.md   rendered: posture prose + rules body + `@../../.trellis/rules.toml`
+<repo-root>/.claude/rules/trellis.md   posture prose + rules body + `@../../.trellis/rules.toml`
 ```
+
+**A `--scope personal` run renders nothing and prints why.** The alternative was
+measured unworkable in both readings: `~/.claude/rules/trellis.md` would import
+`~/.trellis/rules.toml`, which nothing writes — shipping precisely the
+silent-no-op artifact this record exists to prevent — and it would govern **every
+repo on the machine**, contradicting `decision-0065:112-114` ("a project that
+never adopted Trellis is never governed by surprise"). The git-root reading
+contradicts `install.sh:193`, which forbids any git invocation under explicit
+personal scope, by design and by its own test.
+
+**The cost is named, not hidden:** personal-scope installs keep delivering no
+rules, exactly as today. This record fixes one half of the install path and says
+so.
 
 `install.sh` writes that file and nothing else new. It registers no hook, edits
 no settings file, creates no symlink, and **never touches `.trellis/`**.
@@ -139,10 +153,18 @@ It entered the payload through `decision-0034`, not through the experiment. So
 Therefore the rendered file emits **`reference/trellis-b.md`'s posture prose as a
 shipped constant, not a choice** — `staleness.sh:141-144` already resolves absent
 or unreadable strictness to `b`, so the install path inherits a ratified default
-instead of inventing one. **No new prose enters the delivered chain**, and the
-two edits it does perform (resolving `@rules.md`, repointing the invariants path)
-are both edits `staleness.sh` already performs under `decision-0065`'s "one edit"
-allowance.
+instead of inventing one. The two edits it performs (resolving `@rules.md`, repointing the invariants
+path) are both edits `staleness.sh` already performs under `decision-0065`'s "one
+edit" allowance.
+
+**One sentence of new prose IS added, deliberately, and it is the only one.**
+*(Maintainer, 2026-07-30.)* The frozen posture sentence and the imported
+`rules.toml` land in the same always-loaded context and can disagree — a project
+whose rows say `strictness = "firm"` would read the adaptive sentence above them.
+Rather than resolve that by reading `.trellis/` (which AC2's surviving clause
+forbids) the rendered file **states which one is authoritative**: the `strictness`
+key in `.trellis/rules.toml`, not the sentence above it. The mismatch is recorded
+where a reader will hit it, instead of being left to look like a contradiction.
 
 **6. `decision-0058` phase 4 is satisfied by D8, and this record says so rather
 than leaving it inferred.** `decision-0058:123` governs "any Claude hook
@@ -202,7 +224,21 @@ this design, so the branch is new code, roughly three lines, and explicit.
 This widens the change beyond the installer, and that is stated rather than
 discovered at implementation: **`decision-0065`'s hook gains a third path.**
 
-**11. Out of scope, named rather than silently retained: whether the bundle
+**11. `/trellis:remove` enumerates the rendered file, in this change.**
+*(Maintainer, 2026-07-30.)*
+
+`plugins/trellis/skills/remove/SKILL.md` deletes `.trellis/` and does not know
+about `.claude/rules/trellis.md`. Unchanged, it would delete the rows while
+leaving the governing file behind — a posture header, a full rules body and a
+dangling import, still in always-loaded context, with nothing left to activate
+any rule. `spec-0005` §1 names that standard itself: *"a vendored install with no
+`/trellis:remove` is a governance tool with no clean exit, which spec-0004
+already treats as a trust defect."*
+
+Ordering matters: the rendered file is removed **before** `.trellis/`, so an
+interrupted removal never leaves the governing file without its rows.
+
+**12. Out of scope, named rather than silently retained: whether the bundle
 vendoring stays.** `install.sh` also vendors the whole `plugins/trellis/` tree so
 `/trellis:setup` and `/trellis:remove` have a home (`spec-0005` §1). Whether
 those skills actually load from that location is **unmeasured** — this record
@@ -213,7 +249,7 @@ measured rule delivery only, and does not touch the bundle.
 - **A path that shipped nothing now ships something.** That is the whole value;
   everything else is simplification.
 - `install.sh` no longer needs to reason about hooks or host manifests for rule
-  delivery. The hook files remain bundle bytes under `spec-0005` §1 until D11 is
+  delivery. The hook files remain bundle bytes under `spec-0005` §1 until D12 is
   answered — and D10 keeps the plugin's copy of them from firing here.
 - **The install path vendors, and that is correct here.** `decision-0065`'s split
   is "plugin configures, install.sh vendors". Staleness is inherent to vendoring
@@ -241,10 +277,11 @@ measured rule delivery only, and does not touch the bundle.
 struck when it became D10, in a record whose self-check claims withdrawn material
 is struck. Renumbered and recorded.
 
-**Three of these are ratification acts, not agent choices. They are listed first
-and this record should not be implemented until they are ruled.**
+**The three ratification acts are RULED (2026-07-30) and have moved into
+Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
+(`/trellis:remove`). They are struck here rather than deleted.**
 
-1. **Personal scope.** `spec-0005:117` and AC4 make `~/.claude/skills/trellis/` a
+1. ~~**Personal scope.**~~ **RULED: project scope only — D1.** `spec-0005:117` and AC4 make `~/.claude/skills/trellis/` a
    supported target; this record measured **project scope only**. Neither reading
    works: `~/.claude/rules/trellis.md` would govern **every repo on the machine**
    and import `~/.trellis/rules.toml`, which nothing writes — shipping exactly the
@@ -254,7 +291,7 @@ and this record should not be implemented until they are ruled.**
    ("explicit personal scope: no git invocation at all, by design") and its own
    test. **Ruling needed:** project-scope-only, or something else.
 
-2. **The posture is a snapshot; the rows are live.** D5 emits `trellis-b`'s
+2. ~~**The posture is a snapshot; the rows are live.**~~ **RULED: ship the adaptive constant and state which source is authoritative — D5.** D5 emits `trellis-b`'s
    adaptive sentence as a constant. A firm project installed by curl would read
    *"**By default** — follow them unless you have a clear, specific reason not
    to"* and, a few lines below in the same always-loaded context, its imported
@@ -263,7 +300,7 @@ and this record should not be implemented until they are ruled.**
    thing D5 just established is unnecessary; (c) accept the mismatch and record
    it. **All three are ratification acts.**
 
-3. **`/trellis:remove`.** It deletes `.trellis/` and does not enumerate
+3. ~~**`/trellis:remove`.**~~ **RULED: fixed in this change — D11.** It deletes `.trellis/` and does not enumerate
    `.claude/rules/trellis.md`, so it would leave a governing file with a dangling
    import in always-loaded context while deleting the rows it imports.
    `spec-0005` §1 names the standard itself: "a vendored install with no
@@ -280,7 +317,7 @@ and this record should not be implemented until they are ruled.**
    silent", has no subject here. A cheap fix exists: make D10's branch **nudge on
    a stamp mismatch** rather than stand down silently.
 
-5. **Do the vendored skills load at all?** D11 defers it; the same trust-dialog
+5. **Do the vendored skills load at all?** D12 defers it; the same trust-dialog
    question that defeated hook registration may defeat them. §4 item 5's whole
    point is "run `/trellis:setup`" — a vendored skill — so if they do not load,
    the rendered file instructs the reader to run something absent and the install
@@ -304,11 +341,12 @@ graded PASS were false.** They are corrected here rather than quietly restated.
 | 3 | The **shipped** import form is measured, not just the withdrawn one | **WAS FALSE, NOW PASS** — an earlier draft tabulated only the symlink configuration while shipping a different one. The measurement existed and had never been written down, which for a reader is the same as not existing. Run 5 |
 | 4 | Non-Claude harnesses checked before claiming Claude-only | **PASS** — #209, four harnesses, sources cited there |
 | 5 | The platform boundary is stated with its real cause | **PASS** — POSIX `sh`, not the symlink; #210 |
-| 6 | Scope creep resisted and named | **PASS** — D11 leaves the bundle untouched and says so |
+| 6 | Scope creep resisted and named | **PASS** — D12 leaves the bundle untouched and says so |
 | 7 | Every declared dependency is argued, not just listed | **WAS FALSE, NOW PASS** — `decision-0053` and `decision-0058` were in `depends_on` and appeared nowhere in the body. Now D5 and D6 |
 | 8 | No gated draft is cited as settled ground | **WAS FALSE, NOW PASS** — an earlier draft leaned on an unmerged `decision-0067`; removed per `decision-0065:209-220` |
 | 9 | The maintainer's rulings are in the record, including one that reversed the author | **PASS** — frontmatter carries all three, and marks the wording exception as granted-but-unnecessary |
 | 10 | Double-delivery risk surfaced | **PASS** — measured rather than deferred, so it became D10 |
 | 11 | A withdrawn design is struck, not deleted | **PARTIAL** — D2 and D10 record their withdrawals, but an open question was deleted rather than struck; corrected with a note rather than reconstructed |
 | 12 | Acceptance criteria | **DEFERRED to the paired `spec-0005` amendment**, which is on this branch and itself returned FAIL on first review |
-| 13 | `status: gated` earned | **NO — and stated plainly.** Three open questions are ratification acts (personal scope, posture-vs-rows, `/trellis:remove`). This record is **not implementable** until they are ruled, and the gate is not claimed |
+| 13 | The three blocking ratification acts are ruled | **PASS** — ruled 2026-07-30 and folded into D1, D5 and D11; struck in §Open questions rather than deleted |
+| 14 | `status: gated` earned | **PASS** — self-check run after four independent reviews; three false rows corrected, one partial recorded, the blocking questions ruled. What remains open (drift surface, vendored skills, VERSION) is named and none of it blocks implementation |
