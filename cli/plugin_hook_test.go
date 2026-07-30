@@ -378,19 +378,28 @@ func writeVendoredPayload(t *testing.T, internalDir string) {
 // `trellis.md` inside it means Trellis is already delivered. That is the mirror
 // of decision-0065's argument for the vendored overlay, where the DIRECTORY is
 // the artifact and the file inside it is not.
-// renderedFile mirrors install.sh §3b's assembly order: posture prose, rules
-// body, the fixed footer (invariants pointer + authoritative-source note), the
-// import, then the terminal stamp. Hand-rolled approximations of this file are
-// what let two guards ship broken — a fixture missing the footer looked complete
-// to a marker-counting check and was not.
+// renderedFile reproduces install.sh §3b's output EXACTLY, landmark for
+// landmark, because the hook validates an ORDERED boundary rather than a set of
+// substrings. Three separate guards shipped broken behind approximations of this
+// file: a fixture that merely contained the right words passed a check that a
+// real truncated file would also have passed. If install.sh's footer changes,
+// this must change with it — and the ordered check is what makes that failure
+// loud instead of silent.
 func renderedFile(files map[string]string, stamp string) string {
 	return "# How to work in this project\n\n" + files["rules.md"] +
-		"\n---\nIf a rule seems ambiguous, read its entry in " +
-		"`.claude/skills/trellis/reference/invariants.md` before deviating.\n" +
-		"\n**If the posture sentence above and the rows below disagree, the rows win:**\n" +
-		"the `strictness` key in `.trellis/rules.toml` is authoritative.\n" +
-		"\n@../../.trellis/rules.toml\n" +
-		"\n<!-- trellis:rendered-from " + stamp + " -->\n"
+		"---\n" +
+		"If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.claude/skills/trellis/reference/invariants.md` — the description and with/without examples — before deviating.\n" +
+		"\n" +
+		"**If the posture sentence above and the rows below disagree, the rows win:**\n" +
+		"the `strictness` key in `.trellis/rules.toml` is authoritative. The sentence\n" +
+		"above was fixed when this file was written; the rows are read fresh every\n" +
+		"session. Run `/trellis:setup` to change the posture.\n" +
+		"\n" +
+		"## Project rule activation\n" +
+		"\n" +
+		"@../../.trellis/rules.toml\n" +
+		"\n" +
+		"<!-- trellis:rendered-from " + stamp + " -->\n"
 }
 
 func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
@@ -505,8 +514,11 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("hook exited non-zero (%v): %s", err, out)
 		}
-		if !strings.Contains(string(out), "stale") {
-			t.Fatalf("a migrating project loses its ONLY drift signal if path C preempts path A; got:\n%s", out)
+		// Both static paths present now trips the coexistence branch, which sits
+		// BEFORE path A deliberately: double delivery is live and more urgent
+		// than staleness. What must never happen is silence.
+		if !strings.Contains(string(out), "TRELLIS_RULES_LOADED_TWICE") {
+			t.Fatalf("both static paths present must warn about live double delivery; got:\n%s", out)
 		}
 	})
 
@@ -609,6 +621,65 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 			if !delivered && !loud {
 				t.Fatalf("silent stand-down over an incomplete file (%d bytes) — no rows delivered and no warning; got:\n%s", len(body), s)
 			}
+		}
+	})
+
+	// The ordering guard path A still needs: overlay ALONE and stale must nudge,
+	// with no rendered file to trip the coexistence branch.
+	t.Run("stale overlay alone still nudges — path C must not preempt path A", func(t *testing.T) {
+		proj := t.TempDir()
+		internal := filepath.Join(proj, ".trellis", "internal")
+		if err := os.MkdirAll(internal, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(internal, "version"), []byte("payload@000000000000\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		for name, key := range map[string]string{"trellis.md": "trellis-b.md", "rules.md": "rules.md"} {
+			if err := os.WriteFile(filepath.Join(internal, name), []byte(files[key]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if !strings.Contains(strings.ToLower(string(out)), "stale") {
+			t.Fatalf("a stale overlay with no rendered file must still draw path A's nudge; got:\n%s", out)
+		}
+	})
+
+	// Codex P2, and the gap my own fix left: checking for marker WORDS is not
+	// checking for a STRUCTURE. This file contains every substring the previous
+	// guard looked for — "invariants.md", "is authoritative", the import, a
+	// current stamp — with the fixed footer entirely absent. The old four-grep
+	// check called it complete; a reader gets no ambiguity fallback and no
+	// invariants pointer.
+	t.Run("marker words without the ordered footer are not a complete file", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := files["rules.md"] +
+			"some prose mentioning invariants.md in passing\n" +
+			"and a line where something is authoritative, but not the footer\n" +
+			"@../../.trellis/rules.toml\n" +
+			"<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if !strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("marker words in arbitrary positions were accepted as a complete render; got:\n%s", out)
 		}
 	})
 

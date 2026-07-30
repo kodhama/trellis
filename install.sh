@@ -271,7 +271,7 @@ d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-5d30f9a07240c41972d4ce54865beb5faf997bad908eb2997101ece86fcfd48b  hooks/staleness.sh
+bee259f2688530a7abd87c8af2a08686c07a73e6692b5cfd23fa7d87ffa29420  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -370,7 +370,13 @@ if [ "$scope" = "project" ]; then
   if [ -z "$static_conflict" ]; then
     for f in CLAUDE.md AGENTS.md; do
       [ -f "$git_root/$f" ] || continue
-      grep -q '<!-- trellis:begin' "$git_root/$f" 2>/dev/null && { static_conflict="managed block in $f"; break; }
+      # A PAIRED region, not a mention. An unanchored search for the opening
+      # marker classified contributor guidance that merely documents the literal
+      # `<!-- trellis:begin` string as static delivery — suppressing the render
+      # and reporting a conflict that does not exist. Both markers, or no block.
+      grep -q '<!-- trellis:begin' "$git_root/$f" 2>/dev/null \
+        && grep -q '<!-- trellis:end -->' "$git_root/$f" 2>/dev/null \
+        && { static_conflict="managed block in $f"; break; }
     done
   fi
 fi

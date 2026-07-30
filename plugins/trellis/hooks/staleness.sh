@@ -101,6 +101,18 @@ emit() {
 # vendored prose survived.
 internal="$root/.trellis/internal"
 ver="$internal/version"
+
+# BOTH static paths at once. install.sh refuses to create this state, but it can
+# arrive the other way round — a branch checkout or a collaborator's commit
+# landing an overlay into a project that already had the rendered file. Path A
+# would then exit first and, with a CURRENT stamp, emit nothing at all: the
+# session receives the rules twice in silence, while the installer warns loudly
+# about the very same state. Checked before path A for that reason.
+if [ -d "$internal" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
+  emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored .trellis/internal/ overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or run /trellis:setup and accept the migration to keep the rendered file. Tell the user before doing substantive work."
+  exit 0
+fi
+
 if [ -d "$internal" ]; then
   if [ ! -f "$ver" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — this project has a .trellis/internal/ directory but no version stamp, so its vendored overlay is incomplete. The hook will not inject rules over a broken overlay, and cannot tell which rules the surviving files represent. Tell the user before doing substantive work; /trellis:setup can migrate this project onto plugin-delivered rules."
@@ -189,11 +201,30 @@ if [ -f "$rendered" ]; then
   # independent markers accepted a file with the entire footer removed — the
   # hook claimed the rules were fully loaded while the ambiguity fallback and the
   # invariants pointer were absent.
-  incomplete=""
-  grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/dev/null || incomplete="rules body"
-  [ -z "$incomplete" ] && { grep -q 'invariants\.md' "$rendered" 2>/dev/null || incomplete="invariants pointer"; }
-  [ -z "$incomplete" ] && { grep -q 'is authoritative' "$rendered" 2>/dev/null || incomplete="authoritative-source note"; }
-  [ -z "$incomplete" ] && { grep -q '^@\.\./\.\./\.trellis/rules\.toml$' "$rendered" 2>/dev/null || incomplete="rule activation import"; }
+  # ORDERED boundary, one pass, not a bag of substrings. The previous version
+  # ran four independent greps, so a file with the whole footer replaced by
+  # arbitrary lines that merely CONTAINED "invariants.md" and "is authoritative"
+  # passed — reported by review, reproduced. Words appearing somewhere is not a
+  # structure; this walks install.sh's generated sequence in order and names the
+  # first landmark that is missing or out of place.
+  incomplete="$(awk '
+    BEGIN { stage = 0 }
+    stage == 0 && /^<!-- trellis:rules-loaded -->$/            { stage = 1; next }
+    stage == 1 && /^---$/                                      { stage = 2; next }
+    stage == 2 && /^If a rule seems ambiguous, /               { stage = 3; next }
+    stage == 3 && /rows below disagree, the rows win/          { stage = 4; next }
+    stage == 4 && /^## Project rule activation$/               { stage = 5; next }
+    stage == 5 && /^@\.\.\/\.\.\/\.trellis\/rules\.toml$/          { stage = 6; next }
+    stage == 6 && /^<!-- trellis:rendered-from payload@[0-9a-f]+ -->$/ { stage = 7; next }
+    END {
+      if (stage == 0) print "rules body (no trellis:rules-loaded sentinel)"
+      else if (stage == 1) print "footer separator"
+      else if (stage == 2) print "invariants pointer"
+      else if (stage == 3) print "authoritative-source note"
+      else if (stage == 4) print "rule-activation heading"
+      else if (stage == 5) print "rule-activation import"
+      else if (stage == 6) print "rendered-from stamp"
+    }' "$rendered" 2>/dev/null)"
   if [ -n "$incomplete" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: its $incomplete is missing, so this project is NOT governed by the rules it appears to carry. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to a reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."
     exit 0

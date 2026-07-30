@@ -3,7 +3,7 @@ id: spec-0005
 type: spec
 status: gated
 depends_on: [kodhama/kodhama-0007-one-render-many-copiers, decision-0043]
-superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068 — AC2's blanket "never … writes any instructions file" ONLY, narrowed to permit the one rendered rules file; AC2's "zero decision logic" heading, its posture/marker prohibitions, and its `.trellis/` prohibition all stand untouched. Everything else in this spec stands
+superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068, in TWO amendments: (a) AC2's blanket "never … writes any instructions file", narrowed to permit the one rendered rules file; and (b) after review, AC2's blanket "never reads … .trellis/" AND its managed-block-detection prohibition, both narrowed to permit an EXISTENCE-ONLY read of static-delivery state (.trellis/internal/, the legacy flat .trellis/trellis.md, and a PAIRED trellis:begin/end region in CLAUDE.md/AGENTS.md) whose only outcome is render-or-refuse-loudly. What still stands untouched: the "zero decision logic" heading, the posture-prompt and marker-PATCHING prohibitions, and "never WRITES to .trellis/". §Scope and §1's scope note are amended in the same act.
 owner: agent
 rubric: rubric-artifact-contract
 date: 2026-07-10
@@ -31,7 +31,8 @@ date: 2026-07-10
 > **This spec corrects kodhama/trellis#124's issue text; the issue should be edited to match
 > after this spec lands.** The issue as currently written describes a "thin copier" that
 > reimplements the setup skill's own mechanical steps in shell — target/style detection, posture
-> resolution (prompt-or-`expression.md`), managed-block marker patching, and the four-check
+> resolution (prompt-or-`expression.md`), managed-block marker patching (detection is narrowly
+> permitted per `decision-0068`'s second amendment; patching is not), and the four-check
 > payload verify. A first implementation of that reading (kodhama/trellis#128, `feat/124-curl-writer-script`)
 > was built and closed unmerged after maintainer review: reimplementing those steps in a second
 > language is itself a **second writer** of decision logic that only `/trellis:setup` should own —
@@ -84,7 +85,9 @@ mechanism discovers it. `install.sh` is a **sibling writer under kodhama-0007**,
 vs. project) selection; fail-closed integrity verification; post-write guidance text.
 
 **Out of scope (stays `/trellis:setup`'s job, run afterward, unmodified by this spec):** posture
-resolution, `.trellis/` bundle composition, managed-block detection/patching/verification, the
+resolution, `.trellis/` bundle composition, managed-block **patching/verification** (detection is
+narrowly in scope per `decision-0068`'s second amendment — existence-only, to refuse rendering into a
+project that already delivers the rules statically; the script still patches nothing and verifies nothing), the
 `#112` hand-authored-content backstop, and anything else SKILL.md (`plugins/trellis/skills/setup/SKILL.md`)
 already owns. **Also out of scope:** any git mutation (`add`/`commit`); any GitHub release
 mechanism (retired, `decision-0043` §4) — the fetch source is a pinned commit's raw content, not a
@@ -297,7 +300,7 @@ it, never does it.
 | Re-run over an already-vendored tree | Idempotency, no duplication/drift | AC8 |
 | Tampered fetch (corrupted file or mismatched manifest hash) | Fails closed: non-zero exit, named check, empty/untouched target directory | AC6, AC7 |
 | No controlling tty, scope ambiguous (no git repo, no flag/env) | Exits non-zero with an actionable message; never hangs | AC5 |
-| Two otherwise-identical fixture repos, vendored to the same scope: one carrying a pre-existing `CLAUDE.md` with `trellis:begin`/`trellis:end` managed-block markers plus a `.trellis/expression.md` declaring a posture; the other carrying an `AGENTS.md` instead and no `.trellis/` at all | The vendored bundle tree and stdout are byte-identical between the two runs (only the absolute target path differs — a scope-resolution input, not a decision-logic one); the first fixture repo's `CLAUDE.md` and `.trellis/expression.md` are byte-identical before and after the run (untouched — not read-and-rewritten, not read-and-left-alone-by-luck). A script that branched on target-file presence, content, or posture — under any name — fails at least one of these assertions | AC2 |
+| Two otherwise-identical fixture repos, vendored to the same scope: one carrying a pre-existing `CLAUDE.md` with hand-authored prose plus a `.trellis/expression.md` declaring a posture (the managed-block markers moved to the refusal scenario, since `decision-0068`'s second amendment makes a PAIRED block a legitimate branch input — leaving them here would assert the opposite of the contract); the other carrying an `AGENTS.md` instead and no `.trellis/` at all | The vendored bundle tree and stdout are byte-identical between the two runs (only the absolute target path differs — a scope-resolution input, not a decision-logic one); the first fixture repo's `CLAUDE.md` and `.trellis/expression.md` are byte-identical before and after the run (untouched — not read-and-rewritten, not read-and-left-alone-by-luck). A script that branched on target-file presence, content, or posture — under any name — fails at least one of these assertions | AC2 |
 | Every scope/error path from the rows above (personal, project-from-root, project-from-subdirectory, ambiguous-no-tty fail-closed, tampered-fetch fail-closed) plus an invalid-`--scope`-value run and a re-run, each executed with a logging `git` shim shadowing `PATH` | The shim's invocation log, read back across every path, contains only `rev-parse --show-toplevel` calls — zero `add`/`commit`/or-any-other-subcommand invocations anywhere, on the success paths or the failure paths alike | AC9 |
 
 **Existence-proof cross-check against PR #129 (informational, not authoritative — the rows above

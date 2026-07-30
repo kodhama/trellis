@@ -1146,3 +1146,24 @@ func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
 	// rendered file, not with the plugin package.
 	assertBundleVendored(t, filepath.Join(repo, ".claude", "skills", "trellis"))
 }
+
+// Codex P2: an unanchored search for the opening marker classified any file that
+// merely MENTIONS `<!-- trellis:begin` — contributor guidance, a changelog, this
+// project's own docs — as static delivery, suppressing the render and reporting
+// a conflict that does not exist. That leaves the curl path without its only
+// measured delivery mechanism, for a document that delivers nothing.
+func TestVendorRendersDespiteAMereMentionOfTheManagedMarker(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
+		"# Contributing\n\nTrellis writes a managed block delimited by `<!-- trellis:begin` and its\n"+
+			"closing marker. Do not hand-edit inside it.\n")
+
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+	if res.code != 0 {
+		t.Fatalf("exit %d: %s", res.code, res.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+		t.Fatalf("a document that merely NAMES the marker is not a managed block — the render was suppressed for a conflict that does not exist: %v", err)
+	}
+}
