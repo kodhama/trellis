@@ -154,3 +154,38 @@ func TestPluginReadmeInstallPathClaimIsCurrent(t *testing.T) {
 		t.Errorf("the corrected claim must still name the scope that delivers no rules, or it over-claims")
 	}
 }
+
+// Codex P1 on #212. After a project-scope install and BEFORE /trellis:setup runs,
+// `.claude/rules/trellis.md` exists while no managed block and no `.trellis/`
+// overlay do. The unchanged §5 no-op rule ("If no managed block or overlay was
+// present, make no change and say Trellis is already absent") then contradicts
+// the new deletion requirement — and leaves an always-loaded governing file on
+// disk while reporting Trellis absent.
+func TestRemoveSkillNoOpPredicateCountsTheRenderedFile(t *testing.T) {
+	body := readFileT(t, "../plugins/trellis/skills/remove/SKILL.md")
+
+	if strings.Contains(body, "If no managed block or overlay was present, make no change") {
+		t.Fatalf("the no-op rule still keys on block-or-overlay only; a rendered-only install would be reported ABSENT while its governing file stays on disk")
+	}
+	// Anchor on the PREDICATE CLAUSE, not on a window and not on sentence
+	// splitting. `.claude/rules/trellis.md` also appears in the inventory line
+	// above, so a window check cannot tell "the predicate counts it" from "the
+	// inventory lists it" — verified by mutation, reverting the predicate left a
+	// window assertion green. Splitting on "." fails too: the path contains dots.
+	// "only when there is no" appears in the predicate and nowhere else.
+	const anchor = "only when there is no"
+	j := strings.Index(body, anchor)
+	if j < 0 {
+		t.Fatalf("cannot locate the no-op predicate clause — this assertion would silently not run")
+	}
+	end := j + 300
+	if end > len(body) {
+		end = len(body)
+	}
+	predicate := body[j:end]
+	for _, needle := range []string{"managed block", "overlay", ".claude/rules/trellis.md"} {
+		if !strings.Contains(predicate, needle) {
+			t.Errorf("the no-op PREDICATE does not name %q — a rendered-only install would be reported absent.\npredicate: %s", needle, predicate)
+		}
+	}
+}

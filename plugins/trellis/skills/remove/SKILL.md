@@ -80,9 +80,15 @@ failed, verify that every block and the overlay remain unchanged.
 ## 5. Confirm
 
 Report every recognized item as removed, retained, ambiguous, or absent: the Claude block, Codex
-bootstrap, shared overlay, legacy consumer content, and ignore entries. If no managed block or
-overlay was present, make no change and say Trellis is **already absent**. A second remove is this
-same reported no-op.
+bootstrap, shared overlay, the rendered `.claude/rules/trellis.md`, legacy consumer content, and
+ignore entries.
+
+**The no-op predicate counts all three installed shapes, not two.** Say Trellis is
+**already absent** — and make no change — only when there is no managed block, no overlay, **and no
+`.claude/rules/trellis.md`**. A curl install that has not yet run `/trellis:setup` has the rendered
+file and neither of the other two: reporting that project "already absent" would leave an
+always-loaded governing file on disk while telling the user Trellis was gone. A second remove is
+this same reported no-op, once all three are genuinely absent.
 
 ## Reversing an M2 morph
 

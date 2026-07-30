@@ -416,7 +416,13 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 			}
 		}
 		if withRulesFile {
-			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte("# rendered by install.sh\n"), 0o644); err != nil {
+			// A REALISTIC fixture: the guard keys on the terminal sentinel that
+			// ends the rules body, so a stub without it is — correctly — not a
+			// delivered file. Anchored to the shipped bytes rather than a
+			// hand-written approximation, so it cannot drift from what
+			// install.sh actually renders.
+			body := "# rendered by install.sh\n\n" + files["rules.md"]
+			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -513,6 +519,41 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		}
 		if !strings.Contains(string(out), ruleSlug) {
 			t.Fatalf("an EMPTY rendered file silenced the hook — the session would run ungoverned while both the installer and the hook claim rules are loaded; got:\n%s", out)
+		}
+	})
+
+	// Codex P1 on #212, reproduced: `-s` only proves NON-EMPTY. A one-byte file
+	// passes it and contains none of the rules, so the hook stood down and the
+	// session ran ungoverned while the stand-down message claimed the rules were
+	// loaded. Non-empty is not complete — the guard must key on a load-bearing
+	// content boundary, and `rules.md` already ships one.
+	t.Run("a truncated but non-empty rendered file is not delivery either", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// One byte, and separately: a plausible-looking truncation that keeps the
+		// header but loses the rules. Both must fail to silence the hook.
+		for _, body := range []string{"x", "# How to work in this project\n\nYou are working in a project that follows **Trellis**\n"} {
+			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("hook exited non-zero: %v: %s", err, out)
+			}
+			if !strings.Contains(string(out), ruleSlug) {
+				t.Fatalf("a truncated rendered file (%d bytes) silenced the hook — ungoverned session, with the stand-down message claiming rules are loaded; got:\n%s", len(body), out)
+			}
 		}
 	})
 

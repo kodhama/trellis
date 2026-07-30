@@ -151,11 +151,18 @@ fi
 # gets — decision-0035's floor is that drift is made visible, not silent. Move
 # this block above path A and that consumer goes quiet.
 rendered="$root/.claude/rules/trellis.md"
-# -s, not -f. A zero-byte or truncated file would otherwise silence this
-# hook while governing nothing — path A already carries this lesson at the
-# completeness gate above ("checking the stamp alone left that project
-# silently ungoverned"), and path C did not inherit it until review said so.
-if [ -s "$rendered" ]; then
+# Existence is not delivery, and NON-EMPTY is not delivery either. `-f` let a
+# zero-byte file silence this hook; `-s` still let a one-byte file do it —
+# reproduced both times, and both leave a session ungoverned while the stand-down
+# message below claims the rules are loaded.
+#
+# The guard keys on the same terminal sentinel `rules.md` ships and the Codex
+# hook already validates (`codex-context.mjs` requires exactly one). A file
+# carrying it has the whole rules body by construction, because the sentinel is
+# the LAST line of that body — a truncation cannot keep the end and lose the
+# middle. This is path A's completeness gate applied to path C's artifact:
+# "checking the stamp alone left that project silently ungoverned".
+if [ -f "$rendered" ] && grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/dev/null; then
   emit "Trellis rules are already loaded from .claude/rules/trellis.md (the curl install path), so this hook injected nothing — delivering them here too would put the same rules in context twice. That file and .trellis/rules.toml govern this session. To move onto plugin-delivered rules instead, delete .claude/rules/trellis.md."
   exit 0
 fi
