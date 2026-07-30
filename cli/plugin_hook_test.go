@@ -366,3 +366,127 @@ func writeVendoredPayload(t *testing.T, internalDir string) {
 		}
 	}
 }
+
+// decision-0068 D10 / spec-0005 AC2b. The install path renders
+// `.claude/rules/trellis.md`, which Claude Code loads at launch on its own. If
+// the plugin is ALSO present its hook would inject the same rules a second time
+// — measured, not predicted: both present delivers the rule bodies twice, once
+// in the project-instructions block and once in additionalContext.
+//
+// The discriminator is the FILE, not the directory holding it. `.claude/rules/`
+// is a shared directory any project may use for unrelated rules; only
+// `trellis.md` inside it means Trellis is already delivered. That is the mirror
+// of decision-0065's argument for the vendored overlay, where the DIRECTORY is
+// the artifact and the file inside it is not.
+func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	// A complete plugin root: path B reads the header, the rules and the stamp.
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"version", "rules.md", "trellis-a.md", "trellis-b.md", "invariants.md"} {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(files[name]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// ruleSlug appears in every injected rules body and in none of the
+	// stand-down or staleness messages, so it is a clean proxy for "the payload
+	// was delivered".
+	const ruleSlug = "inv-directional-flow"
+
+	run := func(t *testing.T, withRulesFile, withEmptyRulesDir bool) string {
+		t.Helper()
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if withRulesFile || withEmptyRulesDir {
+			if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if withRulesFile {
+			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte("# rendered by install.sh\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
+		}
+		return string(out)
+	}
+
+	t.Run("baseline: no install artifact, the hook delivers", func(t *testing.T) {
+		out := run(t, false, false)
+		if !strings.Contains(out, ruleSlug) {
+			t.Fatalf("path B must still deliver the rules when nothing else does; got:\n%s", out)
+		}
+	})
+
+	t.Run("install artifact present: the hook delivers nothing and says so", func(t *testing.T) {
+		out := run(t, true, false)
+		if strings.Contains(out, ruleSlug) {
+			t.Fatalf("DOUBLE DELIVERY: the rules file is already loaded by the host, so the hook must not inject them again; got:\n%s", out)
+		}
+		if !strings.Contains(out, ".claude/rules/trellis.md") {
+			t.Fatalf("standing down silently is the failure this repo keeps hitting — the hook must NAME the artifact it deferred to; got:\n%s", out)
+		}
+	})
+
+	// Placement guard. A project MIGRATING off a vendored overlay can hold both
+	// artifacts at once, and path A's staleness nudge is the only signal it gets.
+	// decision-0035's floor is that drift is made visible, not silent — so path C
+	// must sit AFTER path A, not before it.
+	t.Run("migrating project: a stale overlay still nudges, even with the install artifact", func(t *testing.T) {
+		proj := t.TempDir()
+		internal := filepath.Join(proj, ".trellis", "internal")
+		if err := os.MkdirAll(internal, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(internal, "version"), []byte("payload@000000000000\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		for name, key := range map[string]string{"trellis.md": "trellis-b.md", "rules.md": "rules.md"} {
+			if err := os.WriteFile(filepath.Join(internal, name), []byte(files[key]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte("# rendered\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v): %s", err, out)
+		}
+		if !strings.Contains(string(out), "stale") {
+			t.Fatalf("a migrating project loses its ONLY drift signal if path C preempts path A; got:\n%s", out)
+		}
+	})
+
+	t.Run("empty .claude/rules/ is not the artifact: the hook still delivers", func(t *testing.T) {
+		out := run(t, false, true)
+		if !strings.Contains(out, ruleSlug) {
+			t.Fatalf("the discriminator is the FILE, not the directory — an unrelated .claude/rules/ must not silence Trellis; got:\n%s", out)
+		}
+	})
+}

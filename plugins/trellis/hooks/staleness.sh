@@ -124,6 +124,28 @@ if [ -f "$legacy" ]; then
   exit 0
 fi
 
+# ---------------------------------------------------------------------- path C
+# The curl install path renders `.claude/rules/trellis.md`, which Claude Code
+# loads at launch by itself (decision-0068 D1). If the plugin is also present,
+# injecting here would deliver the same rules a SECOND time — measured, not
+# predicted: both present puts the rule bodies in the project-instructions block
+# and in additionalContext at once.
+#
+# The discriminator is the FILE, not the directory. `.claude/rules/` is a shared
+# directory any project may fill with unrelated rules; only `trellis.md` inside
+# it means Trellis is already delivered. This is the mirror of path A, where the
+# `.trellis/internal/` DIRECTORY is the artifact.
+#
+# Placed AFTER path A on purpose. A project migrating off a vendored overlay can
+# hold both artifacts at once, and path A's staleness nudge is the only signal it
+# gets — decision-0035's floor is that drift is made visible, not silent. Move
+# this block above path A and that consumer goes quiet.
+rendered="$root/.claude/rules/trellis.md"
+if [ -f "$rendered" ]; then
+  emit "Trellis rules are already loaded from .claude/rules/trellis.md (the curl install path), so this hook injected nothing — delivering them here too would put the same rules in context twice. That file and .trellis/rules.toml govern this session. To move onto plugin-delivered rules instead, delete .claude/rules/trellis.md."
+  exit 0
+fi
+
 # ---------------------------------------------------------------------- path B
 toml="$root/.trellis/rules.toml"
 [ -f "$toml" ] || exit 0                          # not a Trellis project → silent
