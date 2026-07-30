@@ -324,10 +324,67 @@ chmod +x "$target/hooks/staleness.sh"
 stamp="$(head -n1 "$stage/bundle/reference/version" 2>/dev/null | tr -d '[:space:]')"
 nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 
+# --- 3b. Render the rules file (decision-0068 D1) -------------------------------
+#
+# Without this the vendored bundle delivers NO rules at all: measured, with user
+# scope excluded, a bundle at .claude/skills/trellis/ produces nothing, because
+# the skills-directory-plugin path needs a workspace-trust dialog a headless run
+# cannot grant (issue #201). `.claude/rules/*.md` loads at launch with no hook,
+# no settings write and no dialog.
+#
+# PROJECT SCOPE ONLY (D1, maintainer 2026-07-30). ~/.claude/rules/trellis.md
+# would govern every repo on the machine and import ~/.trellis/rules.toml, which
+# nothing writes.
+#
+# This is still zero decision logic (spec-0005 AC2, unamended on that point): the
+# script reads no .trellis/ file and chooses no posture. It emits trellis-b's
+# prose as a CONSTANT — staleness.sh already resolves absent strictness to `b`,
+# so the install path inherits a ratified default rather than inventing one.
+#
+# Two edits, both of which staleness.sh already performs under decision-0065's
+# "one edit" allowance:
+#   1. resolve the @rules.md placeholder — left in place it resolves to
+#      .claude/rules/rules.md, which does not exist, and the whole rules body
+#      silently vanishes;
+#   2. repoint the invariants pointer, which ships naming .trellis/internal/ —
+#      a path this script never creates (D1). Repo-relative, never absolute: the
+#      file is meant to be committed, and an absolute path would carry this
+#      machine's layout to every collaborator.
+rendered_note="no rules file (project scope only)"
+if [ "$scope" = "project" ]; then
+  rules_dir="$git_root/.claude/rules"
+  mkdir -p "$rules_dir"
+  {
+    # Posture prose, up to but excluding the placeholder line.
+    sed -n '1,/^@rules\.md$/p' "$stage/bundle/reference/trellis-b.md" | sed '$d'
+    # The rules body, byte-for-byte as shipped.
+    cat "$stage/bundle/reference/rules.md"
+    # The rest of the header, with the invariants pointer repointed at the copy
+    # this install actually writes.
+    sed -n '/^@rules\.md$/,$p' "$stage/bundle/reference/trellis-b.md" | sed '1d' \
+      | sed 's|`\.trellis/internal/invariants\.md`|`.claude/skills/trellis/reference/invariants.md`|'
+    # D5's single sentence of new prose. The posture sentence above is frozen at
+    # install time; the rows below are live and carry their own `strictness`.
+    # They can disagree, and the reader is told which wins rather than left to
+    # see a contradiction.
+    printf '\n'
+    printf '**If the posture sentence above and the rows below disagree, the rows win:**\n'
+    printf 'the `strictness` key in `.trellis/rules.toml` is authoritative. The sentence\n'
+    printf 'above was fixed when this file was written; the rows are read fresh every\n'
+    printf 'session. Run `/trellis:setup` to change the posture.\n'
+    printf '\n'
+    printf '## Project rule activation\n'
+    printf '\n'
+    printf '@../../.trellis/rules.toml\n'
+  } > "$rules_dir/trellis.md"
+  rendered_note=".claude/rules/trellis.md"
+fi
+
 # --- 4. Confirm — never a git mutation; the commit is yours -----------------------
 
 say "vendored the Trellis plugin ($stamp) to $target"
 say "  $nfiles files written; manifest verify OK on every byte before anything was written"
+say "  rules: $rendered_note"
 if [ "$scope" = "project" ]; then
   say ""
   say "Claude Code will show its workspace-trust dialog the next time you launch it"
@@ -345,3 +402,7 @@ say ""
 say "Then run /trellis:setup in the project you want to govern. That skill (the real"
 say "interactive writer — LLM-driven, no decision logic in this script) asks for a"
 say "preset and writes .trellis/rules.toml. It writes nothing else (decision-0065)."
+if [ "$scope" = "project" ]; then
+  say "Until it does, only floor-transparency and floor-intent-gate apply: every other"
+  say "rule is gated on a row in .trellis/rules.toml, and that file does not exist yet."
+fi

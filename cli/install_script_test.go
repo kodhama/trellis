@@ -305,10 +305,15 @@ func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	}
 
 	lines := strings.Split(strings.TrimRight(res.stdout, "\n"), "\n")
-	const wantLines = 7 // item 1 (scope + vendored-to + files-written = 3 lines) + blank
-	// separator + item 5 (3-line next-step pointer) = 7; items 2-4 never fire for
-	// personal scope. See install.sh's post-write block (guarded by `[ "$scope" =
-	// "project" ]`) for the source of this count.
+	const wantLines = 8 // item 1 (scope + vendored-to + files-written + rules = 4
+	// lines) + blank separator + item 5 (3-line next-step pointer) = 8; items 2-4
+	// never fire for personal scope. See install.sh's post-write block (guarded by
+	// `[ "$scope" = "project" ]`) for the source of this count.
+	//
+	// 7 -> 8 per decision-0068 D1: item 1 now names what was rendered, and on
+	// personal scope that is "no rules file (project scope only)". The line is
+	// deliberate, not incidental — silently delivering nothing is the exact defect
+	// this change fixes, so the path that still delivers nothing has to say so.
 	if len(lines) != wantLines {
 		t.Errorf("personal-scope stdout has %d lines, want exactly %d (spec-0005 AC10 — items 1 and 5 only, nothing more); got:\n%s", len(lines), wantLines, res.stdout)
 	}
@@ -864,4 +869,120 @@ func TestVendorNeverInvokesGitBeyondRevParse(t *testing.T) {
 		}
 		assertOnlyRevParseShowToplevel(t, logPath)
 	})
+}
+
+// decision-0068 D1/D4/D5 and spec-0005 AC2a. The rendered rules file is the
+// whole point of the change: before it, a vendored install delivered NO rules at
+// all (measured; issue #201). Everything asserted here is a silent-failure mode
+// — none of it errors when wrong, it just governs nothing.
+func TestVendorRendersClaudeRulesFile(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+	if res.code != 0 {
+		t.Fatalf("exit %d\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
+	}
+	rendered := filepath.Join(repo, ".claude", "rules", "trellis.md")
+	raw, err := os.ReadFile(rendered)
+	if err != nil {
+		t.Fatalf("the rules file is the delivery mechanism; without it the install ships nothing: %v", err)
+	}
+	got := string(raw)
+	lines := strings.Split(got, "\n")
+	hasLine := func(want string) bool {
+		for _, l := range lines {
+			if strings.TrimRight(l, "\r") == want {
+				return true
+			}
+		}
+		return false
+	}
+
+	// --- the import form. Both spellings are legal markdown and each is correct
+	// in exactly one location; in the other it loads NOTHING, with no error and
+	// no content. Measured both ways. This file is real (not a symlink) and sits
+	// at .claude/rules/, so the ../../ form is the correct one.
+	if !hasLine("@../../.trellis/rules.toml") {
+		t.Errorf("missing the import line @../../.trellis/rules.toml — the rows would never load:\n%s", got)
+	}
+	if hasLine("@rules.toml") {
+		t.Errorf("emitted the SIBLING import form @rules.toml — correct only from a symlinked file in .trellis/, silently loads nothing from here")
+	}
+	if hasLine("@.trellis/rules.toml") {
+		t.Errorf("emitted the project-root import form — measured NOT to resolve, silently")
+	}
+	// --- the placeholder the payload header ships must be RESOLVED, not copied.
+	// Left in place it resolves to .claude/rules/rules.md, which does not exist,
+	// and the entire rules body vanishes while every other assertion still passes.
+	if hasLine("@rules.md") {
+		t.Errorf("the @rules.md placeholder survived the render — the rules body would silently drop out")
+	}
+
+	// --- content anchored to shipped payload bytes, not to literals in this test.
+	// This is what makes decision-0053's "the tested wording is the shipped
+	// wording" mechanical instead of reviewed.
+	files := payloadFiles()
+	body := files["rules.md"]
+	if !strings.Contains(got, body) {
+		t.Errorf("the rules body is not byte-identical to the shipped reference/rules.md")
+	}
+	posture := "**How strictly to follow them:** **By default**"
+	if !strings.Contains(got, posture) {
+		t.Errorf("missing trellis-b's posture prose; decision-0068 D5 ships it as a constant")
+	}
+	if strings.Contains(got, "**Firmly** — treat these as hard requirements") {
+		t.Errorf("emitted trellis-a's firm posture; D5 ships the adaptive default, matching staleness.sh's absent-strictness branch")
+	}
+
+	// --- ordering. The authority header states the rows are "loaded below the
+	// rules"; emitting the import above them makes the shipped text lie.
+	iBody := strings.Index(got, "inv-directional-flow")
+	iImport := strings.Index(got, "@../../.trellis/rules.toml")
+	if iBody < 0 || iImport < 0 || iImport < iBody {
+		t.Errorf("the import must come AFTER the rules body (the authority header says rows load below the rules)")
+	}
+
+	// --- D5's one sentence of new prose: which source is authoritative. The
+	// frozen posture sentence and the live rows can disagree, and a reader must
+	// be told which wins rather than left to see a contradiction.
+	if !strings.Contains(got, "strictness") || !strings.Contains(got, "authoritative") {
+		t.Errorf("D5 requires the file to name .trellis/rules.toml's strictness key as authoritative over the frozen sentence above it")
+	}
+
+	// --- the invariants pointer must name a path this install actually creates.
+	// The shipped header names .trellis/internal/invariants.md, which the install
+	// path never writes (D1: install.sh never touches .trellis/).
+	if strings.Contains(got, ".trellis/internal/invariants.md") {
+		t.Errorf("the rendered file points at .trellis/internal/invariants.md, which this path never creates — a dead reference")
+	}
+	if !strings.Contains(got, ".claude/skills/trellis/reference/invariants.md") {
+		t.Errorf("the invariants pointer must name the vendored copy this install DOES create")
+	}
+	// An absolute path would leak the installing machine's filesystem into a file
+	// §4 actively suggests committing, and would be wrong on a collaborator's box.
+	if strings.Contains(got, repo) {
+		t.Errorf("the rendered file embeds an absolute path from the installing machine")
+	}
+}
+
+// D1 ruled project scope only. A personal install renders nothing and says why:
+// ~/.claude/rules/trellis.md would govern EVERY repo on the machine and import
+// ~/.trellis/rules.toml, which nothing writes — shipping precisely the
+// silent-no-op artifact this change exists to prevent.
+func TestVendorPersonalScopeRendersNoRulesFile(t *testing.T) {
+	home := t.TempDir()
+	work := t.TempDir()
+	res := runVendor(t, work, home, vendoredBundleAbs(t), "--scope", "personal")
+	if res.code != 0 {
+		t.Fatalf("exit %d\nstderr: %s", res.code, res.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude", "rules", "trellis.md")); err == nil {
+		t.Fatalf("personal scope must NOT render a user-wide rules file")
+	}
+	if _, err := os.Stat(filepath.Join(work, ".claude", "rules", "trellis.md")); err == nil {
+		t.Fatalf("personal scope must not render into the working directory either")
+	}
+	if !strings.Contains(res.stdout, "no rules file") {
+		t.Errorf("silently delivering nothing is the defect this change fixes; personal scope must SAY it rendered no rules file:\n%s", res.stdout)
+	}
 }
