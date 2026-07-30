@@ -483,6 +483,39 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		}
 	})
 
+	// A zero-byte or truncated rendered file must NOT silence the hook. Standing
+	// down on it produces the worst state available: an ungoverned session in
+	// which both the installer and the hook affirmatively claim rules are loaded.
+	// Path A already carries this lesson at its completeness gate — "checking the
+	// stamp alone left that project silently ungoverned" — and path C did not
+	// inherit it until an independent review said so. Verified by mutation:
+	// before this test, flipping -s back to -f left the whole suite green.
+	t.Run("a zero-byte rendered file is not delivery: the hook still delivers", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero: %v: %s", err, out)
+		}
+		if !strings.Contains(string(out), ruleSlug) {
+			t.Fatalf("an EMPTY rendered file silenced the hook — the session would run ungoverned while both the installer and the hook claim rules are loaded; got:\n%s", out)
+		}
+	})
+
 	t.Run("empty .claude/rules/ is not the artifact: the hook still delivers", func(t *testing.T) {
 		out := run(t, false, true)
 		if !strings.Contains(out, ruleSlug) {

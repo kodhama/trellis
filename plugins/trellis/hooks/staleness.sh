@@ -3,7 +3,7 @@
 # decision-0043 / kodhama-0007 slice 4, kodhama/trellis#120; compared path moved
 # by decision-0051's authority split).
 #
-# Two paths, selected by what the project actually has:
+# Three paths, selected by what the project actually has:
 #
 #   A. Vendored overlay (.trellis/internal/version present) — the staleness
 #      surface, unchanged. Compares the project's stamp against the installed
@@ -26,12 +26,22 @@
 #      repointing the invariants path at the plugin, which is where the file
 #      actually is in this mode, and which therefore cannot go stale.
 #
-# `.trellis/rules.toml` is the opt-in signal. A project with neither path gets
-# nothing: this plugin may be installed user-wide, and a project that never
-# adopted Trellis must not be governed by surprise.
+#   C. Curl install (.claude/rules/trellis.md present) — the install path
+#      rendered that file and Claude Code loads it at launch on its own, so this
+#      hook injects nothing and says which artifact it deferred to
+#      (decision-0068 D10). Checked with -s, not -f: a truncated or zero-byte
+#      file must not silence this hook while governing nothing.
 #
-# The two paths are mutually exclusive by construction, so a project that has
-# vendored the overlay never receives the rules twice.
+# `.trellis/rules.toml` is the opt-in signal for path B. A project with none of
+# the three gets nothing: this plugin may be installed user-wide, and a project
+# that never adopted Trellis must not be governed by surprise. Path C is the one
+# exception — it fires on its own artifact, with or without rules.toml, because
+# that file is itself proof the project adopted Trellis.
+#
+# The three paths are mutually exclusive by construction, so a project that has
+# vendored the overlay, or installed by curl, never receives the rules twice.
+# Order matters: A before C, so a project MIGRATING off a vendored overlay still
+# gets its staleness nudge (decision-0035: drift is made visible, not silent).
 #
 # Binary-free, git-free and node-free: bash plus head/tr/awk (decision-0010 —
 # Trellis resources are agent instructions that require no runtime).
@@ -141,7 +151,11 @@ fi
 # gets — decision-0035's floor is that drift is made visible, not silent. Move
 # this block above path A and that consumer goes quiet.
 rendered="$root/.claude/rules/trellis.md"
-if [ -f "$rendered" ]; then
+# -s, not -f. A zero-byte or truncated file would otherwise silence this
+# hook while governing nothing — path A already carries this lesson at the
+# completeness gate above ("checking the stamp alone left that project
+# silently ungoverned"), and path C did not inherit it until review said so.
+if [ -s "$rendered" ]; then
   emit "Trellis rules are already loaded from .claude/rules/trellis.md (the curl install path), so this hook injected nothing — delivering them here too would put the same rules in context twice. That file and .trellis/rules.toml govern this session. To move onto plugin-delivered rules instead, delete .claude/rules/trellis.md."
   exit 0
 fi

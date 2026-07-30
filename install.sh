@@ -43,7 +43,11 @@
 # makes), fetches the whole plugins/trellis/ tree, verifies every byte against the
 # manifest baked in below, and writes it to the resolved scope directory
 # (overwriting the plugin's own prior files on a re-run — same idempotent-artifact
-# principle as the rest of this family). It NEVER touches a project's .trellis/ —
+# principle as the rest of this family). On PROJECT scope it additionally renders
+# one file it wholly owns, .claude/rules/trellis.md, from bundle bytes — that is
+# how the rules actually reach a session, since a vendored bundle alone delivers
+# none (decision-0068; issue #201). It still makes no posture choice and reads no
+# project file to decide anything. It NEVER touches a project's .trellis/ —
 # that is /trellis:setup's job entirely, not this script's — and it NEVER runs a git
 # command that mutates anything (no add, no commit): it prints a suggested next
 # command for project scope and leaves the commit to you.
@@ -267,7 +271,7 @@ d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-c8652500a01dbbbfe9700c979b1bd5dbd96419c3ec5e878c3960af90c377e82a  hooks/staleness.sh
+fe64ce585b48c83e8901523a69d2c3d69f95127a82f3525838fa0e17dd064579  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -353,15 +357,38 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 rendered_note="no rules file (project scope only)"
 if [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
-  mkdir -p "$rules_dir"
+  mkdir -p "$rules_dir" || fail "could not create $rules_dir (is .claude/rules present as a file?). The bundle is already vendored; re-run once the path is clear."
+
+  # The placeholder must exist or the first sed silently emits the whole file
+  # minus its last line and the second emits nothing — a truncated render that
+  # every other check would pass. Unreachable through a verified fetch; this is
+  # defence in depth against a coordinated payload edit.
+  grep -q '^@rules\.md[[:space:]]*$' "$stage/bundle/reference/trellis-b.md" \
+    || fail "reference/trellis-b.md carries no @rules.md placeholder line; refusing to render a truncated rules file"
+
+  # Render to a sibling temp file and move it into place only on success.
+  # `{ ...; } > target` truncates the target BEFORE the body runs and swallows a
+  # redirect failure: measured, a read-only target produced exit 0, a success
+  # banner, and the user's prior bytes untouched — the installer lying about what
+  # it did. It is also shell-dependent (bash continues; dash aborts bare). A
+  # partial render is worse still: the hook stands down on the leftover file and
+  # the session runs ungoverned while both the installer and the hook claim rules
+  # are loaded.
+  # A non-regular target must be refused BEFORE the move. `mv file dir` moves the
+  # file INTO the directory: measured, that produced exit 0, a success banner, no
+  # rules file, and a stray temp file buried inside .claude/rules/trellis.md/.
+  if [ -e "$rules_dir/trellis.md" ] && [ ! -f "$rules_dir/trellis.md" ]; then
+    fail "$rules_dir/trellis.md exists and is not a regular file; refusing to render over it. The bundle is already vendored; clear that path and re-run."
+  fi
+  rendered_tmp="$rules_dir/.trellis.md.$$"
   {
     # Posture prose, up to but excluding the placeholder line.
-    sed -n '1,/^@rules\.md$/p' "$stage/bundle/reference/trellis-b.md" | sed '$d'
+    sed -n '1,/^@rules\.md[[:space:]]*$/p' "$stage/bundle/reference/trellis-b.md" | sed '$d'
     # The rules body, byte-for-byte as shipped.
     cat "$stage/bundle/reference/rules.md"
     # The rest of the header, with the invariants pointer repointed at the copy
     # this install actually writes.
-    sed -n '/^@rules\.md$/,$p' "$stage/bundle/reference/trellis-b.md" | sed '1d' \
+    sed -n '/^@rules\.md[[:space:]]*$/,$p' "$stage/bundle/reference/trellis-b.md" | sed '1d' \
       | sed 's|`\.trellis/internal/invariants\.md`|`.claude/skills/trellis/reference/invariants.md`|'
     # D5's single sentence of new prose. The posture sentence above is frozen at
     # install time; the rows below are live and carry their own `strictness`.
@@ -376,7 +403,18 @@ if [ "$scope" = "project" ]; then
     printf '## Project rule activation\n'
     printf '\n'
     printf '@../../.trellis/rules.toml\n'
-  } > "$rules_dir/trellis.md"
+  } > "$rendered_tmp" || {
+    rm -f "$rendered_tmp"
+    fail "could not write $rendered_tmp — the rules file was not rendered and nothing was replaced. The bundle is already vendored; fix the permission and re-run."
+  }
+  [ -s "$rendered_tmp" ] || {
+    rm -f "$rendered_tmp"
+    fail "the rendered rules file came out empty; refusing to install a file that would silence the plugin hook while governing nothing"
+  }
+  mv -f "$rendered_tmp" "$rules_dir/trellis.md" || {
+    rm -f "$rendered_tmp"
+    fail "could not move the rendered rules file into place at $rules_dir/trellis.md"
+  }
   rendered_note=".claude/rules/trellis.md"
 fi
 
@@ -396,7 +434,7 @@ if [ "$scope" = "project" ]; then
   say ""
   say "Review the new files, then commit them yourself if you want collaborators to"
   say "get them on clone — this script never runs git:"
-  say "  git -C \"$git_root\" add .claude/skills/trellis && git -C \"$git_root\" commit -m 'chore: vendor the Trellis plugin'"
+  say "  git -C \"$git_root\" add .claude/skills/trellis .claude/rules/trellis.md && git -C \"$git_root\" commit -m 'chore: vendor the Trellis plugin'"
 fi
 say ""
 say "Then run /trellis:setup in the project you want to govern. That skill (the real"

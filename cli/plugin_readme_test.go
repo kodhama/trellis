@@ -120,9 +120,14 @@ func TestRemoveSkillEnumeratesTheRenderedRulesFile(t *testing.T) {
 	// the governing file present with its rows already gone: rules that cannot
 	// be activated, in always-loaded context, is a worse state than either end.
 	iRendered := strings.Index(body, ".claude/rules/trellis.md")
-	iOverlay := strings.LastIndex(body, "then removes `.trellis/`")
+	// The needle must survive the prose's own emphasis markers. An earlier
+	// version searched for "then removes `.trellis/`" and matched ZERO times,
+	// because SKILL.md writes "and **then** removes" — so this assertion never
+	// ran. Anchor on the unadorned phrase instead, and fail loudly if even that
+	// stops matching rather than silently skipping the check.
+	iOverlay := strings.LastIndex(body, "removes `.trellis/`")
 	if iOverlay < 0 {
-		iOverlay = strings.LastIndex(body, "removes `.trellis/`")
+		t.Fatalf("cannot locate the .trellis/ removal step — the ordering assertion would silently not run")
 	}
 	if iOverlay >= 0 && iRendered > iOverlay {
 		t.Errorf("the rendered rules file must be removed BEFORE .trellis/, so an interrupted removal never strands a governing file without its rows")

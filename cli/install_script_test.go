@@ -986,3 +986,97 @@ func TestVendorPersonalScopeRendersNoRulesFile(t *testing.T) {
 		t.Errorf("silently delivering nothing is the defect this change fixes; personal scope must SAY it rendered no rules file:\n%s", res.stdout)
 	}
 }
+
+// HIGH, found by independent code review and reproduced: `{ ...; } > file`
+// swallows a redirect failure. With a read-only .claude/rules/trellis.md the
+// script exited 0, printed "rules: .claude/rules/trellis.md", and left the
+// user's prior bytes untouched — the installer lying about what it did, which is
+// the same silent-delivery class this whole change exists to fix. It is also
+// shell-dependent: bash continues, dash aborts with a bare exit 2.
+func TestVendorRenderFailureIsLoudAndFailsClosed(t *testing.T) {
+	for _, tc := range []struct{ name, kind string }{
+		{"read-only target", "file"},
+		{"directory in the way", "dir"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			dst := filepath.Join(repo, ".claude", "rules", "trellis.md")
+			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			switch tc.kind {
+			case "file":
+				if err := os.WriteFile(dst, []byte("PRIOR USER CONTENT\n"), 0o444); err != nil {
+					t.Fatal(err)
+				}
+			case "dir":
+				if err := os.MkdirAll(dst, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			if tc.kind == "file" {
+				// A read-only regular file is REPLACED, and that is correct: the
+				// install owns this path by name, and re-running must be
+				// idempotent. Render-to-temp-then-mv makes it work where the
+				// direct redirect silently did not.
+				if res.code != 0 {
+					t.Fatalf("a read-only target should be replaced, not fail: exit %d\n%s", res.code, res.stderr)
+				}
+				b, err := os.ReadFile(dst)
+				if err != nil || strings.Contains(string(b), "PRIOR USER CONTENT") {
+					t.Errorf("the read-only file was not replaced; got %q (%v)", string(b), err)
+				}
+				return
+			}
+			// A non-regular target must fail loudly. `mv file dir` moves the file
+			// INTO the directory: measured, exit 0, a success banner, no rules
+			// file, and a stray temp file buried inside it.
+			if res.code == 0 {
+				t.Fatalf("reported SUCCESS with a directory in the way — exit 0 with stdout:\n%s", res.stdout)
+			}
+			if strings.Contains(res.stdout, "rules: .claude/rules/trellis.md") {
+				t.Errorf("claimed it rendered the rules file when it could not")
+			}
+			if !strings.Contains(res.stdout+res.stderr, "trellis: FAIL:") {
+				t.Errorf("failed without the script's own fail() message — a bare shell error is not a diagnosis:\n%s", res.stdout+res.stderr)
+			}
+		})
+	}
+}
+
+// The writer and the reader are only tied together by running both. Every other
+// test uses a literal fixture for one side or the other; verified by mutation,
+// renaming install.sh's output leaves the hook test green.
+func TestInstalledRulesFileSilencesTheHookExactlyOnce(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
+		t.Fatalf("install failed: %s", res.stderr)
+	}
+	if err := os.MkdirAll(filepath.Join(repo, ".trellis"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".trellis", "rules.toml"), []byte(payloadFiles()["rules-b.toml"]), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(hook)
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+repo,
+		"CLAUDE_PLUGIN_ROOT="+filepath.Join(repo, ".claude", "skills", "trellis"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("hook exited non-zero: %v: %s", err, out)
+	}
+	if strings.Contains(string(out), "inv-directional-flow") {
+		t.Fatalf("DOUBLE DELIVERY against the REAL rendered file — the hook injected over it:\n%s", out)
+	}
+	if !strings.Contains(string(out), ".claude/rules/trellis.md") {
+		t.Fatalf("the hook stood down without naming what it deferred to:\n%s", out)
+	}
+}
