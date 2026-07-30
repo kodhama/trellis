@@ -238,7 +238,22 @@ already treats as a trust defect."*
 Ordering matters: the rendered file is removed **before** `.trellis/`, so an
 interrupted removal never leaves the governing file without its rows.
 
-**12. Out of scope, named rather than silently retained: whether the bundle
+**12. The installer reads static-delivery state, and that widens AC2 a second
+time. Flagged, not assumed.** *(Added 2026-07-30 after review; NOT covered by the
+D1 ruling.)*
+
+`install.sh` refuses to render when the project already delivers the rules
+statically — `.trellis/internal/`, the legacy flat `.trellis/trellis.md`, or a
+`trellis:begin` block in `CLAUDE.md`/`AGENTS.md`. There is no alternative: **both
+static chains are loaded by the host before any hook runs**, so D10's stand-down
+cannot reach them, and rendering blindly ships guaranteed double delivery.
+
+The read is existence-only, on files this script never writes, and selects
+nothing — the only outcome is render or refuse-loudly. No posture, no style, no
+marker patching. But it is state-dependent behaviour in a script whose spec says
+"zero decision logic", so it is an amendment and is recorded as one.
+
+**13. Out of scope, named rather than silently retained: whether the bundle
 vendoring stays.** `install.sh` also vendors the whole `plugins/trellis/` tree so
 `/trellis:setup` and `/trellis:remove` have a home (`spec-0005` §1). Whether
 those skills actually load from that location is **unmeasured** — this record
@@ -249,7 +264,7 @@ measured rule delivery only, and does not touch the bundle.
 - **A path that shipped nothing now ships something.** That is the whole value;
   everything else is simplification.
 - `install.sh` no longer needs to reason about hooks or host manifests for rule
-  delivery. The hook files remain bundle bytes under `spec-0005` §1 until D12 is
+  delivery. The hook files remain bundle bytes under `spec-0005` §1 until D13 is
   answered — and D10 keeps the plugin's copy of them from firing here.
 - **The install path vendors, and that is correct here.** `decision-0065`'s split
   is "plugin configures, install.sh vendors". Staleness is inherent to vendoring
@@ -325,7 +340,7 @@ Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
    silent", has no subject here. A cheap fix exists: make D10's branch **nudge on
    a stamp mismatch** rather than stand down silently.
 
-5. **Do the vendored skills load at all?** D12 defers it; the same trust-dialog
+5. **Do the vendored skills load at all?** D13 defers it; the same trust-dialog
    question that defeated hook registration may defeat them. §4 item 5's whole
    point is "run `/trellis:setup`" — a vendored skill — so if they do not load,
    the rendered file instructs the reader to run something absent and the install
@@ -349,7 +364,7 @@ graded PASS were false.** They are corrected here rather than quietly restated.
 | 3 | The **shipped** import form is measured, not just the withdrawn one | **WAS FALSE, NOW PASS** — an earlier draft tabulated only the symlink configuration while shipping a different one. The measurement existed and had never been written down, which for a reader is the same as not existing. Run 5 |
 | 4 | Non-Claude harnesses checked before claiming Claude-only | **PASS** — #209, four harnesses, sources cited there |
 | 5 | The platform boundary is stated with its real cause | **PASS** — POSIX `sh`, not the symlink; #210 |
-| 6 | Scope creep resisted and named | **PASS** — D12 leaves the bundle untouched and says so |
+| 6 | Scope creep resisted and named | **PASS** — D13 leaves the bundle untouched and says so |
 | 7 | Every declared dependency is argued, not just listed | **WAS FALSE, NOW PASS** — `decision-0053` and `decision-0058` were in `depends_on` and appeared nowhere in the body. Now D5 and D6 |
 | 8 | No gated draft is cited as settled ground | **WAS FALSE, NOW PASS** — an earlier draft leaned on an unmerged `decision-0067`; removed per `decision-0065:209-220` |
 | 9 | The maintainer's rulings are in the record, including one that reversed the author | **PASS** — frontmatter carries all three, and marks the wording exception as granted-but-unnecessary |

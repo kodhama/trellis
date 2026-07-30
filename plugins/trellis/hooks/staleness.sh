@@ -162,8 +162,13 @@ rendered="$root/.claude/rules/trellis.md"
 # the LAST line of that body — a truncation cannot keep the end and lose the
 # middle. This is path A's completeness gate applied to path C's artifact:
 # "checking the stamp alone left that project silently ungoverned".
-if [ -f "$rendered" ] && grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/dev/null \
-   && grep -q '^@\.\./\.\./\.trellis/rules\.toml$' "$rendered" 2>/dev/null; then
+# The FILE'S EXISTENCE claims this path — validation happens inside, never as
+# part of the condition. An earlier version made completeness part of the guard,
+# so an incomplete file fell through to path B: with no rules.toml path B exited
+# SILENTLY, and once /trellis:setup later wrote one, path B injected the full
+# payload on top of the body the host had already loaded. Falling through was the
+# double delivery this path exists to prevent, arriving one step later.
+if [ -f "$rendered" ]; then
   # Standing down is not the end of this hook's duty. A rendered file written by
   # an OLDER installer, with a NEWER plugin now installed, would otherwise sit on
   # stale rule bytes forever: the newer plugin neither injects nor warns.
@@ -178,6 +183,21 @@ if [ -f "$rendered" ] && grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/
   # this stamp. A file cut immediately after the sentinel passed that guard while
   # having lost the import — so the hook stood down and NO rows were ever
   # delivered. Requiring the stamp makes the boundary the actual end of the file.
+  # The full boundary, in the order install.sh writes it: rules sentinel, then
+  # the fixed footer (the invariants pointer and the authoritative-source
+  # sentence), then the import, then the terminal stamp. Checking three
+  # independent markers accepted a file with the entire footer removed — the
+  # hook claimed the rules were fully loaded while the ambiguity fallback and the
+  # invariants pointer were absent.
+  incomplete=""
+  grep -q '<!-- trellis:rules-loaded -->' "$rendered" 2>/dev/null || incomplete="rules body"
+  [ -z "$incomplete" ] && { grep -q 'invariants\.md' "$rendered" 2>/dev/null || incomplete="invariants pointer"; }
+  [ -z "$incomplete" ] && { grep -q 'is authoritative' "$rendered" 2>/dev/null || incomplete="authoritative-source note"; }
+  [ -z "$incomplete" ] && { grep -q '^@\.\./\.\./\.trellis/rules\.toml$' "$rendered" 2>/dev/null || incomplete="rule activation import"; }
+  if [ -n "$incomplete" ]; then
+    emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: its $incomplete is missing, so this project is NOT governed by the rules it appears to carry. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to a reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."
+    exit 0
+  fi
   rendered_stamp="$(sed -n 's/.*<!-- trellis:rendered-from \(payload@[0-9a-f]*\) -->.*/\1/p' "$rendered" 2>/dev/null | head -n1)"
   if [ -z "$rendered_stamp" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: it carries no trellis:rendered-from stamp, which install.sh writes as its last line, so the file was truncated and its rule activation rows are missing. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to the reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."

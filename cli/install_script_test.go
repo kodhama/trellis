@@ -641,7 +641,17 @@ func TestVendorNonInteractiveFlagAppliesDefaultWithoutPrompting(t *testing.T) {
 func TestVendorZeroDecisionLogicAcrossInstructionFileVariants(t *testing.T) {
 	repoA := t.TempDir()
 	initGitRepo(t, repoA)
-	claudeMD := "# Project A\n\n<!-- trellis:begin (managed by trellis) -->\nSome existing overlay content that a decision-logic script might try to detect or patch.\n<!-- trellis:end -->\n"
+	// Fixture A used to carry a `trellis:begin` managed block. That block is now
+	// a STATIC-DELIVERY CONFLICT signal (decision-0068, AC2's amendment): the
+	// installer must refuse to render over it, so stdout legitimately differs.
+	// Keeping it here would make this test assert the opposite of the contract.
+	//
+	// What this test still guards — and what AC2's "zero decision logic" heading
+	// still means — is that the script never branches on POSTURE, STYLE, or
+	// instructions-file CONTENT. Fixture A keeps the posture bait and the
+	// hand-authored prose; only the conflict marker moved out, to
+	// TestVendorRefusesToRenderOverAVendoredOverlay where it is asserted directly.
+	claudeMD := "# Project A\n\nHand-authored prose a decision-logic script might try to detect or patch.\n"
 	writeFileT(t, filepath.Join(repoA, "CLAUDE.md"), claudeMD)
 	expressionMD := "---\nprofile: b\n---\n\nOur hand-authored expression — a decision-logic script might try to read this posture.\n"
 	writeFileT(t, filepath.Join(repoA, ".trellis", "expression.md"), expressionMD)
@@ -1118,6 +1128,12 @@ func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
 		t.Fatalf("rendered over a vendored overlay — both static chains would load, and no hook can prevent it")
+	}
+	// The git-add suggestion must not name a file this path never wrote:
+	// `git add` on a missing pathspec exits 128, and the `&&` means the commit
+	// never runs either — so the printed command stages nothing at all.
+	if strings.Contains(res.stdout, "add .claude/skills/trellis .claude/rules/trellis.md") {
+		t.Errorf("the commit suggestion names the rendered file on a path that did not render it — the printed command would fail with exit 128")
 	}
 	combined := res.stdout + res.stderr
 	if !strings.Contains(combined, ".trellis/internal") {

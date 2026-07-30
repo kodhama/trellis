@@ -139,6 +139,21 @@ func TestRemoveSkillEnumeratesTheRenderedRulesFile(t *testing.T) {
 	// because SKILL.md writes "and **then** removes" — so this assertion never
 	// ran. Anchor on the unadorned phrase instead, and fail loudly if even that
 	// stops matching rather than silently skipping the check.
+	// The rendered file must be removed BEFORE the managed-block writes, not just
+	// before the overlay. A project mid-migration holds both paths; removing the
+	// block first leaves an interruption window where NEITHER governs — the block
+	// is gone, the rendered file is gone, and a surviving .trellis/internal/ makes
+	// the hook's path A exit without injecting.
+	tx := body[i4:i5]
+	iRend := strings.Index(tx, ".claude/rules/trellis.md")
+	iBlock := strings.Index(tx, "documented instruction-file result")
+	if iRend < 0 || iBlock < 0 {
+		t.Fatalf("cannot locate both transaction steps to compare their order")
+	}
+	if iRend > iBlock {
+		t.Errorf("the rendered file is removed AFTER the instruction-file writes — that ordering has an interruption window in which no delivery path governs at all")
+	}
+
 	iOverlay := strings.LastIndex(body, "removes `.trellis/`")
 	if iOverlay < 0 {
 		t.Fatalf("cannot locate the .trellis/ removal step — the ordering assertion would silently not run")

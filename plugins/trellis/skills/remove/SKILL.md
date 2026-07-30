@@ -70,12 +70,24 @@ in step 1; never guess.
 
 Only after every preflight and consent succeeds:
 
-1. write or delete every staged documented instruction-file result;
-2. apply the staged, consented ignore cleanup;
-3. delete the rendered `.claude/rules/trellis.md` if present — **before** step 4,
-   so an interrupted removal never leaves that governing file importing rows that
-   are already gone; and
+1. delete the rendered `.claude/rules/trellis.md` if present;
+2. write or delete every staged documented instruction-file result;
+3. apply the staged, consented ignore cleanup; and
 4. delete the shared `.trellis/` overlay last.
+
+**Why the rendered file goes FIRST, not third.** A project mid-migration can hold
+both delivery paths at once — a managed block plus `.trellis/internal/`, and a
+rendered file. Removing the block (step 2) before the rendered file leaves an
+interruption window in which *neither* path governs: the block is gone, the
+rendered file is gone, and the surviving `.trellis/internal/` makes the plugin
+hook's path A exit without injecting. The session that follows is ungoverned
+while the removal looks half-done in both directions.
+
+Ordering it first inverts that: every interruption window leaves **at least one**
+delivery path intact, and the last thing removed is the overlay, which is what
+the guarantee at the end of this section already promises. An interrupted removal
+may leave the rendered file gone and the block still importing rows — governed,
+if redundantly — which is the safe direction.
 
 Delete only the file. `.claude/rules/` is a shared directory a project may fill
 with unrelated rules of its own, and the directory itself is not Trellis's to

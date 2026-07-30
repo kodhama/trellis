@@ -378,6 +378,21 @@ func writeVendoredPayload(t *testing.T, internalDir string) {
 // `trellis.md` inside it means Trellis is already delivered. That is the mirror
 // of decision-0065's argument for the vendored overlay, where the DIRECTORY is
 // the artifact and the file inside it is not.
+// renderedFile mirrors install.sh §3b's assembly order: posture prose, rules
+// body, the fixed footer (invariants pointer + authoritative-source note), the
+// import, then the terminal stamp. Hand-rolled approximations of this file are
+// what let two guards ship broken — a fixture missing the footer looked complete
+// to a marker-counting check and was not.
+func renderedFile(files map[string]string, stamp string) string {
+	return "# How to work in this project\n\n" + files["rules.md"] +
+		"\n---\nIf a rule seems ambiguous, read its entry in " +
+		"`.claude/skills/trellis/reference/invariants.md` before deviating.\n" +
+		"\n**If the posture sentence above and the rows below disagree, the rows win:**\n" +
+		"the `strictness` key in `.trellis/rules.toml` is authoritative.\n" +
+		"\n@../../.trellis/rules.toml\n" +
+		"\n<!-- trellis:rendered-from " + stamp + " -->\n"
+}
+
 func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
@@ -421,9 +436,7 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 			// delivered file. Anchored to the shipped bytes rather than a
 			// hand-written approximation, so it cannot drift from what
 			// install.sh actually renders.
-			body := "# rendered by install.sh\n\n" + files["rules.md"] +
-				"\n@../../.trellis/rules.toml\n" +
-				"\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
+			body := renderedFile(files, strings.TrimSpace(files["version"]))
 			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
 				t.Fatal(err)
 			}
@@ -481,8 +494,7 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		// still pass. It DID guard when written, against the then-looser `-f`
 		// check — and my own later hardening of that guard silently made it
 		// vacuous. Anchored to the real boundary now.
-		rendered := files["rules.md"] + "\n@../../.trellis/rules.toml\n" +
-			"\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
+		rendered := renderedFile(files, strings.TrimSpace(files["version"]))
 		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(rendered), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -519,8 +531,7 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		}
 		// Complete by the sentinel test, but stamped with a payload the installed
 		// plugin has moved past.
-		body := files["rules.md"] + "\n@../../.trellis/rules.toml\n" +
-			"\n<!-- trellis:rendered-from payload@000000000000 -->\n"
+		body := renderedFile(files, "payload@000000000000")
 		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -550,8 +561,7 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		body := files["rules.md"] + "\n@../../.trellis/rules.toml\n" +
-			"\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
+		body := renderedFile(files, strings.TrimSpace(files["version"]))
 		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -623,8 +633,8 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("hook exited non-zero: %v: %s", err, out)
 		}
-		if !strings.Contains(string(out), ruleSlug) {
-			t.Fatalf("an EMPTY rendered file silenced the hook — the session would run ungoverned while both the installer and the hook claim rules are loaded; got:\n%s", out)
+		if !strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("an EMPTY rendered file drew neither a warning nor delivery — silence here is an ungoverned session; got:\n%s", out)
 		}
 	})
 
@@ -657,8 +667,12 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 			if err != nil {
 				t.Fatalf("hook exited non-zero: %v: %s", err, out)
 			}
-			if !strings.Contains(string(out), ruleSlug) {
-				t.Fatalf("a truncated rendered file (%d bytes) silenced the hook — ungoverned session, with the stand-down message claiming rules are loaded; got:\n%s", len(body), out)
+			// The file's EXISTENCE claims path C; falling through to path B was
+			// itself a defect (with no rules.toml path B exits silently, and a
+			// later /trellis:setup then injects on top of what the host already
+			// loaded). So an incomplete file must be reported, not delivered over.
+			if !strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+				t.Fatalf("a truncated rendered file (%d bytes) drew neither a warning nor delivery; got:\n%s", len(body), out)
 			}
 		}
 	})

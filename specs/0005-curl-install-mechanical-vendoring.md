@@ -211,11 +211,29 @@ it, never does it.
   > bundle bytes. Measured basis: with user scope excluded, the vendored bundle alone delivers
   > **no rules at all** (issue #201), while this file delivers them.
   >
-  > **What is amended:** only the blanket "never … writes any instructions file".
+  > **What is amended:** the blanket "never … writes any instructions file", **and** the blanket
+  > "never reads … `.trellis/`" — the second one widened after review, see below.
   > **What is NOT:** the "zero decision logic" heading and everything under it. The script still
-  > makes no posture choice — it writes no `rules.toml` and reads none to select prose. It still
-  > **never touches `.trellis/`**, so `/trellis:setup` keeps sole ownership of `rules.toml` and
-  > `decision-0065`'s "exactly one file … and nothing else, ever" needs no amendment.
+  > makes no posture choice — it writes no `rules.toml`, reads none to select prose, patches no
+  > marker, and detects no style. It still **never WRITES to `.trellis/`**, so `/trellis:setup`
+  > keeps sole ownership of `rules.toml` and `decision-0065`'s "exactly one file … and nothing
+  > else, ever" needs no amendment.
+  >
+  > **Second amendment, 2026-07-30, after an independent reviewer refused the first as
+  > insufficient.** The script now **reads** whether the project already delivers the rules
+  > statically — `.trellis/internal/`, the legacy flat `.trellis/trellis.md`, or a
+  > `trellis:begin` managed block in `CLAUDE.md`/`AGENTS.md` — and refuses to render when any is
+  > present.
+  >
+  > This is a genuine widening and is recorded as one rather than smuggled in a test. The reviewer's
+  > words: *"either obtain the intent-level amendment or preserve the mechanical, state-independent
+  > installer contract."* The contract cannot be preserved: **both static chains are loaded by the
+  > host before any hook runs**, so there is no runtime fix, and rendering blindly would ship
+  > guaranteed double delivery. The read is existence-only, of files this script never writes, and
+  > it selects **nothing** — its only outcome is render-or-refuse-loudly.
+  >
+  > **This widening postdates what the maintainer was shown when D1 was ruled** and is flagged for
+  > the same intent act rather than assumed under it.
   >
   > With no `.trellis/rules.toml` present the install is inert but for the two `floor-` rows, which
   > "apply regardless of their row value" — a defined default requiring no seed.

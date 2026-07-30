@@ -271,7 +271,7 @@ d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-a0839086a5bfcae2f8f83d07c99ee83fc59d573345f1417be9650e87d21d84d9  hooks/staleness.sh
+5d30f9a07240c41972d4ce54865beb5faf997bad908eb2997101ece86fcfd48b  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -287,7 +287,7 @@ a675233ee08c0c41b5c0490a163f4d6ff4e95c6bbf9964eac59e4772f6597454  reference/rule
 d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trellis-a.md
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
 f63c4d15f8ce3cf4932ed3412e141e3e47b886daed15223c8402b1c3718049c3  reference/version
-a66836d90f185267576ab1939e5ff6e05301e80e97325504415792e4600fe265  skills/remove/SKILL.md
+83170b02a34ab55a4daa630e81fd84ec9a1a10ec8e8adc6d0924b6867ed3f1df  skills/remove/SKILL.md
 ede44a010ea096fa714df1122f0ccc14d11ad0811e607579a926bb0e5b0a2799  skills/setup/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
@@ -355,7 +355,26 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 #      file is meant to be committed, and an absolute path would carry this
 #      machine's layout to every collaborator.
 rendered_note="no rules file (project scope only)"
-if [ "$scope" = "project" ] && [ -d "$git_root/.trellis/internal" ]; then
+static_conflict=""
+if [ "$scope" = "project" ]; then
+  # Every shape that already delivers the rules STATICALLY. Checking only
+  # .trellis/internal/ missed two, both reported by review:
+  #   - the pre-decision-0051 FLAT layout, whose managed block imports
+  #     @.trellis/trellis.md with no internal/ directory at all; and
+  #   - the managed block itself, which is the thing that actually does the
+  #     importing. .trellis/version is gitignored (decision-0043), so a fresh
+  #     clone of a legacy project has the import chain and no stamp file — the
+  #     block is the only reliable signal there.
+  [ -d "$git_root/.trellis/internal" ] && static_conflict=".trellis/internal/ overlay"
+  [ -z "$static_conflict" ] && [ -f "$git_root/.trellis/trellis.md" ] && static_conflict="legacy flat .trellis/ overlay"
+  if [ -z "$static_conflict" ]; then
+    for f in CLAUDE.md AGENTS.md; do
+      [ -f "$git_root/$f" ] || continue
+      grep -q '<!-- trellis:begin' "$git_root/$f" 2>/dev/null && { static_conflict="managed block in $f"; break; }
+    done
+  fi
+fi
+if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   # A pre-plugin-delivery consumer whose CLAUDE.md managed block imports
   # @.trellis/internal/trellis.md. Rendering here would put BOTH static chains
   # into context: Claude loads the managed block's imports AND .claude/rules/*.md
@@ -366,13 +385,24 @@ if [ "$scope" = "project" ] && [ -d "$git_root/.trellis/internal" ]; then
   # This is the ONE place this script reads .trellis/, and it reads a directory's
   # existence, never a file's contents: no posture is inferred and nothing is
   # written there (spec-0005 AC2's surviving clause).
-  rendered_note="no rules file — .trellis/internal/ present"
-  say "NOT rendering .claude/rules/trellis.md: this project still has a vendored"
-  say ".trellis/internal/ overlay, and its managed block already imports those"
-  say "rules. Adding the rendered file would deliver the same rules twice, and no"
-  say "hook can undo that — both are loaded before any hook runs."
-  say "Migrate first: run /trellis:setup and accept the migration (it removes"
-  say ".trellis/internal/ and the managed block, keeping your rules.toml rows), or"
+  rendered_note="no rules file — $static_conflict present"
+  say "NOT rendering .claude/rules/trellis.md: this project already delivers the"
+  say "rules statically ($static_conflict). Adding the rendered file would deliver"
+  say "them twice, and no hook can undo that — both are loaded before any hook runs."
+  if [ -f "$git_root/.claude/rules/trellis.md" ]; then
+    # Refusing does not help if the file is ALREADY there: an earlier run
+    # rendered it and the overlay arrived afterwards (a collaborator's commit, a
+    # reverted migration). Double delivery is live right now, and saying
+    # "no rules file" would be false at the moment it is printed.
+    rendered_note="LEFT IN PLACE — .claude/rules/trellis.md exists AND $static_conflict"
+    say ""
+    say "WARNING: .claude/rules/trellis.md ALREADY EXISTS in this project, so the"
+    say "double delivery described above is live right now — this installer did not"
+    say "create it and has not removed it. Delete that file, or migrate off the"
+    say "static overlay, before relying on either."
+  fi
+  say "Migrate first: run /trellis:setup and accept the migration (it removes the"
+  say "overlay and the managed block, keeping your .trellis/rules.toml rows), or"
   say "/trellis:remove to take Trellis out entirely. Then re-run this installer."
 elif [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
@@ -457,13 +487,26 @@ if [ "$scope" = "project" ]; then
   say ""
   say "Review the new files, then commit them yourself if you want collaborators to"
   say "get them on clone — this script never runs git:"
-  say "  git -C \"$git_root\" add .claude/skills/trellis .claude/rules/trellis.md && git -C \"$git_root\" commit -m 'chore: vendor the Trellis plugin'"
+  if [ "$rendered_note" = ".claude/rules/trellis.md" ]; then
+    add_paths=".claude/skills/trellis .claude/rules/trellis.md"
+  else
+    # On any refusal path the file was not written. Naming it would make the
+    # printed command fail with `pathspec ... did not match any files` (exit
+    # 128), and because of the `&&` the commit would never run either.
+    add_paths=".claude/skills/trellis"
+  fi
+  say "  git -C \"$git_root\" add $add_paths && git -C \"$git_root\" commit -m 'chore: vendor the Trellis plugin'"
 fi
 say ""
 say "Then run /trellis:setup in the project you want to govern. That skill (the real"
 say "interactive writer — LLM-driven, no decision logic in this script) asks for a"
 say "preset and writes .trellis/rules.toml. It writes nothing else (decision-0065)."
-if [ "$scope" = "project" ]; then
+if [ "$scope" = "project" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
+  # Gated on the file's ABSENCE, not just on scope. Unconditional, this claimed
+  # "that file does not exist yet" while re-running after /trellis:setup, and on
+  # the overlay-refusal path — which by construction HAS rules.toml, so the claim
+  # contradicted the "keeping your .trellis/rules.toml rows" line printed just
+  # above it in the same output.
   say "Until it does, only floor-transparency and floor-intent-gate apply: every other"
   say "rule is gated on a row in .trellis/rules.toml, and that file does not exist yet."
 fi
