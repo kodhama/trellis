@@ -116,6 +116,20 @@ func TestRemoveSkillEnumeratesTheRenderedRulesFile(t *testing.T) {
 		t.Fatalf("/trellis:remove does not enumerate .claude/rules/trellis.md — it would delete the rows and leave the governing file behind")
 	}
 
+	// PRESENCE IS NOT DELETION. An earlier version of this test asserted only
+	// that the path appeared somewhere in the document — and it passed while
+	// every mention sat in §1 ("Also inspect, WITHOUT writing") and §5
+	// (report-only). §4 is the only mutating section, and it never touched the
+	// file. The skill documented an intent it did not carry out.
+	i4 := strings.Index(body, "## 4.")
+	i5 := strings.Index(body, "## 5.")
+	if i4 < 0 || i5 < 0 || i5 < i4 {
+		t.Fatalf("cannot isolate §4, the delete transaction — this assertion would silently not run")
+	}
+	if !strings.Contains(body[i4:i5], ".claude/rules/trellis.md") {
+		t.Fatalf("§4 (the complete product-wide transaction, the ONLY mutating section) does not delete .claude/rules/trellis.md — the skill says it removes the file and then does not")
+	}
+
 	// Ordering is the substantive half. An interrupted removal must never leave
 	// the governing file present with its rows already gone: rules that cannot
 	// be activated, in always-loaded context, is a worse state than either end.

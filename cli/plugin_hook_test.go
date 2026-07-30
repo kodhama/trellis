@@ -476,7 +476,14 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte("# rendered\n"), 0o644); err != nil {
+		// The fixture must satisfy path C's guard, or this subtest asserts nothing
+		// about ordering: path C would never fire and moving it above path A would
+		// still pass. It DID guard when written, against the then-looser `-f`
+		// check — and my own later hardening of that guard silently made it
+		// vacuous. Anchored to the real boundary now.
+		rendered := files["rules.md"] + "\n@../../.trellis/rules.toml\n" +
+			"\n<!-- trellis:rendered-from " + strings.TrimSpace(files["version"]) + " -->\n"
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(rendered), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		cmd := exec.Command(hook)

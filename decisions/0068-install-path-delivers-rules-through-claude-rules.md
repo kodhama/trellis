@@ -308,8 +308,16 @@ Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
    already treats as a trust defect." **Parking this makes the product worse than
    today**, so it is a ruling rather than a follow-up.
 
-4. **The rendered file has no staleness surface, and this record's claim that "the
-   version stamp exists for" it is unsupported.** `decision-0043` rule 3 pins the
+4. ~~**The rendered file has no staleness surface.**~~ **CLOSED IN THIS PR** —
+   implemented rather than left open, after an independent reviewer found the
+   record proposing a fix it had not taken. `install.sh` now embeds
+   `<!-- trellis:rendered-from payload@<stamp> -->` as the rendered file's last
+   line, and path C compares it against the installed plugin's
+   `reference/version`, emitting a nudge naming **both** stamps on mismatch while
+   still injecting nothing. The original text is kept below because the reasoning
+   is what produced the fix.
+
+   ~~This record's claim that "the version stamp exists for" it is unsupported.~~ `decision-0043` rule 3 pins the
    compare to `.trellis/version`; D1 forbids writing there, and D10 makes the hook
    stand down rather than compare. So the new vendored artifact has zero drift
    visibility in either configuration — with the plugin (D10 silences it) or
@@ -349,4 +357,5 @@ graded PASS were false.** They are corrected here rather than quietly restated.
 | 11 | A withdrawn design is struck, not deleted | **PARTIAL** — D2 and D10 record their withdrawals, but an open question was deleted rather than struck; corrected with a note rather than reconstructed |
 | 12 | Acceptance criteria | **DEFERRED to the paired `spec-0005` amendment**, which is on this branch and itself returned FAIL on first review |
 | 13 | The three blocking ratification acts are ruled | **PASS** — ruled 2026-07-30 and folded into D1, D5 and D11; struck in §Open questions rather than deleted |
-| 14 | `status: gated` earned | **PASS** — self-check run after four independent reviews; three false rows corrected, one partial recorded, the blocking questions ruled. What remains open (drift surface, vendored skills, VERSION) is named and none of it blocks implementation |
+| 14 | The record matches the code shipped beside it | **WAS FALSE, NOW PASS** — Open 4 declared "no staleness surface" and proposed a fix that this same PR then implemented, leaving the record contradicting its own branch. Found by review, not by me. `inv-graph-maintenance` applies to a record and its own implementation, not only to downstream artifacts |
+| 15 | `status: gated` earned | **PASS** — self-check run after four independent reviews; three false rows corrected, one partial recorded, the blocking questions ruled. What remains open (drift surface, vendored skills, VERSION) is named and none of it blocks implementation |

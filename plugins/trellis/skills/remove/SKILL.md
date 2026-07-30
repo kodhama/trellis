@@ -71,8 +71,15 @@ in step 1; never guess.
 Only after every preflight and consent succeeds:
 
 1. write or delete every staged documented instruction-file result;
-2. apply the staged, consented ignore cleanup; and
-3. delete the shared `.trellis/` overlay last.
+2. apply the staged, consented ignore cleanup;
+3. delete the rendered `.claude/rules/trellis.md` if present — **before** step 4,
+   so an interrupted removal never leaves that governing file importing rows that
+   are already gone; and
+4. delete the shared `.trellis/` overlay last.
+
+Delete only the file. `.claude/rules/` is a shared directory a project may fill
+with unrelated rules of its own, and the directory itself is not Trellis's to
+remove.
 
 Verify surrounding instruction-file and ignore-file bytes against the snapshots. If a preflight
 failed, verify that every block and the overlay remain unchanged.
