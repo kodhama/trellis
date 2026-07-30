@@ -21,7 +21,13 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 10 # fail fast if a run wedges (infra hang) instead of spinning ~1h
+    # 20, matching grove/stewards/wisp/design-system. At 10 this cap was the
+    # thing PREVENTING review: the /code-review skill spawns background agents,
+    # and trellis runs were being cut off before they returned — PR #206 was
+    # CANCELLED at 10m16s, and #212 ended mid-sentence at 8 turns with "Both
+    # background agents are running — I will wait for their results" and posted
+    # nothing. Still a fail-fast cap against an infra hang, just above the work.
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
