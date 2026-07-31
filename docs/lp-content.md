@@ -34,31 +34,37 @@ the Homebrew tab retired with the end-user binary channel, `kodhama-0007` rule 5
 kodhama/trellis#120, and the family marketplace is the canonical front door per
 `kodhama-0002`. The curl tab returned in kodhama/trellis#124 as a **plugin vendor
 script** — a different, much smaller artifact class than the retired binary
-installer: it makes exactly one decision, scope, and composes nothing else):
+installer. It vends the plugin bundle and, on project scope, renders one rules
+file it wholly owns; `decision-0068` amended the earlier "composes nothing else"
+framing, which is why this copy changed):
 
 - `cc` (Claude Code, default/active tab):
   ```
   > /plugin marketplace add kodhama/kodhama
   > /plugin install trellis@kodhama
-  > /trellis:setup    # the plugin covers the overlay natively
+  > /trellis:setup    # writes .trellis/rules.toml — the one file it writes
   ```
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
-  $ # vends .claude/skills/trellis (project scope, default) or ~/.claude/skills/trellis
-  $ # (--scope personal); then run /trellis:setup as above
+  $ # project scope (default): vends .claude/skills/trellis AND renders
+  $ # .claude/rules/trellis.md — the rules themselves. Claude Code only.
+  $ # --scope personal vends the plugin but delivers no rules.
+  $ # then run /trellis:setup as above
   ```
-- `manual` (any other harness):
+- `manual` (harnesses the plugin does not cover — **not** Claude Code or
+  Codex CLI, which the two tabs above serve; `decision-0069`):
   ```
   $ git clone --depth 1 https://github.com/kodhama/trellis
   $ cp trellis/plugins/trellis/reference/... .trellis/    # copy, paste, shasum -c — see the README
   ```
 
 **Note under the terminal:** No binary, no runtime — the bundle is
-pre-rendered plain files with a checksum manifest; the plugin (or you)
-just copies and verifies them. Clean exits, always: `/trellis:remove`
-clears it from a project, and a bundled session hook tells you when the
-overlay is behind the installed plugin.
+pre-rendered plain files with a checksum manifest, verified before
+anything is written. Clean exits, always: `/trellis:remove` clears it
+from a project, and a bundled session hook delivers the rules on the
+plugin path, stands down when the curl path has already delivered them,
+and warns if it ever finds both.
 
 **CTAs:**
 - Primary → `invariants.html` — "Explore the invariants →"
@@ -112,8 +118,8 @@ row, a "with" row):
 **Eyebrow:** How it works
 **Heading:** One command. It reads your project, you choose the fit.
 **Lede:** Trellis rides your existing harness (Claude Code today). It
-asks, copies, and — only with your go-ahead — verifies itself onto
-your project. No runtime, no lock-in.
+verifies every byte before it writes one, asks you which posture fits,
+and leaves one file you own. No runtime, no lock-in.
 
 Four-step flow (`01` – `04`):
 
@@ -122,26 +128,34 @@ Four-step flow (`01` – `04`):
 2. **02 · posture — Pick a posture.** Conductor or author-adapt — seeded
    as explicit rows in your `rules.toml`: how strict, and what's active.
    A refresh reads the rows and asks nothing.
-3. **03 · mode — Alongside or rewrite.** Overlay next to your rules, or
-   — on request — morph them in on a branch.
-4. **04 · verify — You approve.** Augment-never-clobber, checked against
-   a shipped checksum manifest. Trellis proposes; the merge is yours.
+3. **03 · deliver — The rules arrive on their own.** On the plugin path a
+   session hook injects them; on the curl path they are rendered into
+   `.claude/rules/`. Never both — the hook stands down when it finds the
+   rendered file, and says so if it ever sees both.
+4. **04 · verify — You approve.** Every byte checked against a shipped
+   checksum manifest before anything is written; `/trellis:setup` diffs
+   and asks before replacing rows you already have. Trellis proposes;
+   the merge is yours.
 
 **Repo footprint** (rendered as a small code block, not the terminal
 pattern — this is a file-tree illustration, not a shell session):
 
 ```
-CLAUDE.md          # + a small managed block importing the header + your rules.toml
 .trellis/
-  rules.toml       # which rules are active, how strictly — yours to edit
-  internal/        # generated, refreshed verbatim:
-    trellis.md     #   the header your agents read
-    rules.md       #   the rules readout — always loaded; your rules.toml rows say which apply
-    invariants.md  #   the full why + examples — on demand
+  rules.toml       # which rules are active, how strictly — yours to edit,
+                   #   and the ONLY file /trellis:setup writes
+.claude/           # curl path only — the plugin path leaves neither:
+  rules/
+    trellis.md     #   the rules readout, loaded every session — Trellis owns
+                   #   this file and replaces it wholesale on re-install
+  skills/
+    trellis/       #   the vendored plugin bundle
 ```
 
-Label above it: "What it leaves in your repo — small, single-source, and
-yours to remove:"
+Label above it: "What it leaves in your repo — small, yours to edit
+where it says so, and yours to remove:" *(dropped "single-source": the
+curl path leaves two trees under `.claude/`, so the old label was no
+longer true.)*
 
 ## Section: The core (alt background)
 

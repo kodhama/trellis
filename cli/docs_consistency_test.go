@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -17,6 +18,11 @@ var docSurfaces = []string{
 	"../docs/index.html",
 	"../docs/invariants.html",
 	"../install.sh",
+	// docs/lp-content.md is the LP's source of truth and was NOT checked here
+	// until 2026-07-31. It is the copy an author edits; index.html is the page a
+	// consumer reads. Leaving the source out meant the one file most likely to
+	// be edited was the one file nothing verified.
+	"../docs/lp-content.md",
 }
 
 // proseAfterTrellis are lowercase words that legitimately follow "trellis" in prose
@@ -76,4 +82,71 @@ func pluginSkills(t *testing.T) map[string]bool {
 		}
 	}
 	return skills
+}
+
+// docs/index.html claims in its own header to be "Generated per kodhama/design-system's
+// lp-generator.md contract … composed against this repo's own docs/lp-content.md".
+// No generator exists: there is no build script, no workflow step, and nothing
+// outside lp-content.md even references it. The two files are maintained BY HAND
+// IN PARALLEL, and by 2026-07-31 they had silently diverged — lp-content.md
+// documented both install scopes in the curl tab while index.html documented only
+// project scope, and index.html's copy-to-clipboard object had lost its `curl` key
+// entirely, so the curl tab's copy button wrote the string "undefined".
+//
+// Until a real generator exists, this is the cheapest thing that makes the drift
+// visible: the install commands a consumer is told to run must appear in BOTH
+// files. It deliberately checks commands rather than prose — prose should be
+// allowed to differ between a content brief and rendered HTML; the commands
+// must not.
+func readDocSurface(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+	return string(b)
+}
+
+func TestLandingPageSourceAndRenderedPageAgreeOnCommands(t *testing.T) {
+	source := readDocSurface(t, "../docs/lp-content.md")
+	page := readDocSurface(t, "../docs/index.html")
+	for _, cmd := range []string{
+		"/plugin marketplace add kodhama/kodhama",
+		"/plugin install trellis@kodhama",
+		"/trellis:setup",
+		"curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh",
+		"git clone --depth 1 https://github.com/kodhama/trellis",
+	} {
+		inSource, inPage := strings.Contains(source, cmd), strings.Contains(page, cmd)
+		if inSource != inPage {
+			where := "docs/index.html but not docs/lp-content.md"
+			if inSource {
+				where = "docs/lp-content.md but not docs/index.html"
+			}
+			t.Errorf("install command %q appears in %s — the two are hand-maintained in parallel, so a change to one must be made in the other", cmd, where)
+		}
+	}
+}
+
+// The copy button reads commands[activeTab]; a tab with no key copies the literal
+// string "undefined". That shipped on the curl tab. Every rendered tab must have
+// a key.
+func TestEveryTerminalTabHasACopyCommand(t *testing.T) {
+	page := readDocSurface(t, "../docs/index.html")
+	tabs := regexp.MustCompile(`data-panel="([a-z]+)"`).FindAllStringSubmatch(page, -1)
+	if len(tabs) < 2 {
+		t.Fatalf("found %d terminal panels; this test's premise has drifted", len(tabs))
+	}
+	obj := page[strings.Index(page, "var commands = {"):]
+	obj = obj[:strings.Index(obj, "};")]
+	seen := map[string]bool{}
+	for _, m := range tabs {
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		if !strings.Contains(obj, m[1]+":") {
+			t.Errorf("terminal tab %q has no entry in the commands object — its copy button writes the string \"undefined\"", m[1])
+		}
+	}
 }
