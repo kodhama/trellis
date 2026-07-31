@@ -356,9 +356,15 @@ const configResult = readRequired(projectRoot, PROJECT_CONFIG);
 // whether a project was governed. A BOM in particular failed toward GOVERNING a
 // project that had refused.
 try {
+  // Only the region BEFORE the first table header. `governed = false` appended
+  // under `[rules]` is not a top-level key and must not opt out — D5 defines it
+  // as top-level, and a raw multiline match honoured it anywhere in the file, so
+  // a misplaced line silently disabled all fourteen rules instead of reaching
+  // parseRulesToml and surfacing as invalid-rules.
   const raw = fs
     .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
-    .replace(/^\uFEFF/, "");
+    .replace(/^\uFEFF/, "")
+    .split(/^[^\S\r\n]*\[/m)[0];
   // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
   // read as an opt-out on both hosts and silently disabled every rule —
   // a typo is supposed to fail loudly as invalid-rules, not govern nothing.

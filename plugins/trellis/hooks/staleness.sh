@@ -121,7 +121,16 @@ emit() {
 # nothing when it is set. It never reads the rows; those are live, editable, and
 # read by the model on demand, which is the behaviour this design is for.
 bom="$(printf '\357\273\277')"
-if [ -f "$root/.trellis/rules.toml" ] && grep -qE "^($bom)?[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$" "$root/.trellis/rules.toml" 2>/dev/null; then
+# KNOWN, NARROWED DIVERGENCE. A misplaced `governed = false` UNDER `[rules]` is
+# not a top-level key, so neither host opts out — but they then differ: this hook
+# ignores the stray line and governs normally (14 rules), while codex-context.mjs
+# rejects the file as invalid-rules, because its parser validates every row shape
+# and this one does not. Both fail SAFE — neither silently disables anything,
+# which was the defect — but Codex is louder. Aligning them means teaching this
+# awk slug check to reject unknown row shapes, which is a larger change than the
+# bug warrants; recorded here so the next person sees it as known rather than
+# discovering it as new.
+if [ -f "$root/.trellis/rules.toml" ] && sed -n '/^[[:space:]]*\[/q;p' "$root/.trellis/rules.toml" 2>/dev/null | grep -qE "^($bom)?[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$" 2>/dev/null; then
   # One thing the hook cannot do is UN-load. On the curl path the host reads
   # .claude/rules/trellis.md at launch, before any hook runs, so by now those
   # rules are already in context and no amount of silence removes them. Injecting

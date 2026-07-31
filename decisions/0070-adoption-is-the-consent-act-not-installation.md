@@ -191,9 +191,13 @@ decision, with Codex's own scope model measured rather than assumed by analogy.
 ## Consequences
 
 - `decision-0065` gains a `superseded_in_part_by` pointer for **two** clauses:
-  "setup writes exactly one file … ever" (D2), and "a project that never adopted
-  Trellis is never governed by surprise" (D4), the second narrowed to preserve
-  *by surprise* while releasing *never governed*.
+  `:26-29`'s plugin/install split — *"`install.sh` is vendoring and never
+  configures … and continues to never touch `.trellis/`"* (D2) — and `:113-114`'s
+  *"a project that never adopted Trellis is never governed by surprise"* (D4),
+  the second narrowed to preserve *by surprise* while releasing *never governed*.
+  **`:18-19`'s "setup writes exactly one file … ever" is NOT superseded**; D2 does
+  not change what `/trellis:setup` writes. This bullet named it until 2026-07-31,
+  which left this record contradicting both D2 above and 0065's own pointer.
 - `/trellis:setup` stops being the thing that turns rules **on** and becomes the
   thing that changes **posture** and rows. Its name still fits on the user-scope
   path, where the file genuinely may not exist.
