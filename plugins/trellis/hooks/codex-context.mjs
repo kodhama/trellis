@@ -244,6 +244,16 @@ function parseRulesToml(source) {
 
     if (!inRules) {
       const assignment = line.match(/^([A-Za-z_][A-Za-z0-9_-]*)[ \t]*=[ \t]*(.*)$/u);
+      // `governed` is skipped, not parsed. decision-0070 D5 gave it meaning, and
+      // the opt-out is handled far earlier by a raw-text match that never reaches
+      // this parser. But leaving it OFF the accepted set made `governed = true` —
+      // the natural way to reverse an opt-out without deleting the line — a fatal
+      // `invalid-rules` on Codex while Claude governed normally: measured, 12
+      // rules vs 0. A key one host acts on and the other rejects is worse than a
+      // key neither knows.
+      if (assignment && assignment[1] === "governed") {
+        continue;
+      }
       if (
         !assignment ||
         (assignment[1] !== "seeded_from" && assignment[1] !== "strictness") ||

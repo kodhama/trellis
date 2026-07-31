@@ -292,10 +292,10 @@ bundle_manifest() {
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
 57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
-64e29b46fa097be30b5ee69047bd384d611730fa689abb24efda1dec895de056  hooks/codex-context.mjs
+322add07b3a166a52adb3378f50ef31fa9b99c02a8722d6f7d7cc29212c04f3c  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-4dab06a14d129c24506082a095b3860b961a06f17106c392a4a8593a9df9968d  hooks/staleness.sh
+be1238392a0ac44452225104f659ebc3f29e96e8a91baa39b5e4456404487f5a  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -700,8 +700,21 @@ case "${seeded_rows:-}" in
     say "Run /trellis:setup, or create .trellis/rules.toml yourself, to activate the rest."
     ;;
   *)
-    say "Run /trellis:setup to change the posture or turn individual rules off. That"
-    say "skill (the real interactive writer — LLM-driven, no decision logic in this"
-    say "script) writes .trellis/rules.toml and nothing else (decision-0065)."
+    # Nothing was seeded on this run — either the rows already existed, or the
+    # render was refused (a static-delivery conflict), or this is personal scope.
+    # Those are NOT the same state, and the old code only ever printed one line
+    # for all of them. `seeded_rows` is unset here, so ask the disk instead.
+    if [ "$scope" = "project" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
+      # The floors-only warning, restored. Dropping it was a regression: a
+      # static-conflict repo with no rows is running on two rules out of fourteen
+      # and was no longer told so.
+      say "This project has no .trellis/rules.toml, so only floor-transparency and"
+      say "floor-intent-gate apply — every other rule is gated on a row in that file."
+      say "Run /trellis:setup, or write it yourself, to activate the rest."
+    else
+      say "Run /trellis:setup to change the posture or turn individual rules off. That"
+      say "skill (the real interactive writer — LLM-driven, no decision logic in this"
+      say "script) writes .trellis/rules.toml and nothing else (decision-0065)."
+    fi
     ;;
 esac
