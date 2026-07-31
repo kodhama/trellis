@@ -154,6 +154,10 @@ func TestRemoveSkillEnumeratesTheRenderedRulesFile(t *testing.T) {
 		t.Errorf("the rendered file is removed AFTER the instruction-file writes — that ordering has an interruption window in which no delivery path governs at all")
 	}
 
+	// NOTE: this pair is near-unfalsifiable — both needles sit in the same summary
+	// sentence, so their order barely moves. The REAL §4 ordering guard is the
+	// iRend/iBlock comparison above, which reads the transaction itself. Kept as a
+	// cheap summary check, and labelled so nobody mistakes it for the guard.
 	iOverlay := strings.LastIndex(body, "removes `.trellis/`")
 	if iOverlay < 0 {
 		t.Fatalf("cannot locate the .trellis/ removal step — the ordering assertion would silently not run")

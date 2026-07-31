@@ -40,8 +40,10 @@
 # exception — it fires on its own artifact, with or without rules.toml, because
 # that file is itself proof the project adopted Trellis.
 #
-# The three paths are mutually exclusive by construction, so a project that has
-# vendored the overlay, or installed by curl, never receives the rules twice.
+# The paths are mutually exclusive, and where they cannot be — a project holding
+# BOTH a static overlay and a rendered file — the coexistence branch reports it
+# rather than pretending otherwise. An earlier version of this note claimed
+# exclusivity "by construction", which was false for exactly that state.
 # Order matters: A before C, so a project MIGRATING off a vendored overlay still
 # gets its staleness nudge (decision-0035: drift is made visible, not silent).
 #
@@ -110,8 +112,11 @@ ver="$internal/version"
 # would then exit first and, with a CURRENT stamp, emit nothing at all: the
 # session receives the rules twice in silence, while the installer warns loudly
 # about the very same state. Checked before path A for that reason.
-if [ -d "$internal" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
-  emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored .trellis/internal/ overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or run /trellis:setup and accept the migration to keep the rendered file. Tell the user before doing substantive work."
+static_overlay=""
+[ -d "$internal" ] && static_overlay=".trellis/internal/ overlay"
+[ -z "$static_overlay" ] && [ -f "$root/.trellis/trellis.md" ] && static_overlay="legacy flat .trellis/ overlay"
+if [ -n "$static_overlay" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
+  emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored $static_overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or run /trellis:setup and accept the migration to keep the rendered file. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -160,10 +165,11 @@ fi
 # it means Trellis is already delivered. This is the mirror of path A, where the
 # `.trellis/internal/` DIRECTORY is the artifact.
 #
-# Placed AFTER path A on purpose. A project migrating off a vendored overlay can
-# hold both artifacts at once, and path A's staleness nudge is the only signal it
-# gets — decision-0035's floor is that drift is made visible, not silent. Move
-# this block above path A and that consumer goes quiet.
+# Placed after path A. NOTE: the coexistence branch above is what now protects a
+# migrating consumer — moving this block between that branch and path A is
+# behaviour-preserving. An earlier version of this comment claimed the ordering
+# itself was load-bearing; it was, before the coexistence branch existed, and was
+# not retracted when that stopped being true.
 rendered="$root/.claude/rules/trellis.md"
 # Existence is not delivery, and NON-EMPTY is not delivery either. `-f` let a
 # zero-byte file silence this hook; `-s` still let a one-byte file do it —
@@ -189,49 +195,40 @@ if [ -f "$rendered" ]; then
   # decision-0035's floor is that drift is made visible, not silent — path A has
   # carried that for the vendored overlay since decision-0043 rule 3, and path C
   # shipped without it until review said so.
-  # The stamp is the LAST line install.sh writes, so its presence proves the
-  # whole file arrived. An earlier version keyed on the rules-body sentinel and
-  # argued a truncation "cannot keep the end and lose the middle" — wrong: the
-  # sentinel ends the rules BODY, and the rendered file continues past it with
-  # the invariants footer, the authoritative-source sentence, the import line and
-  # this stamp. A file cut immediately after the sentinel passed that guard while
-  # having lost the import — so the hook stood down and NO rows were ever
-  # delivered. Requiring the stamp makes the boundary the actual end of the file.
-  # The full boundary, in the order install.sh writes it: rules sentinel, then
-  # the fixed footer (the invariants pointer and the authoritative-source
-  # sentence), then the import, then the terminal stamp. Checking three
-  # independent markers accepted a file with the entire footer removed — the
-  # hook claimed the rules were fully loaded while the ambiguity fallback and the
-  # invariants pointer were absent.
-  # ORDERED boundary, one pass, not a bag of substrings. The previous version
-  # ran four independent greps, so a file with the whole footer replaced by
-  # arbitrary lines that merely CONTAINED "invariants.md" and "is authoritative"
-  # passed — reported by review, reproduced. Words appearing somewhere is not a
-  # structure; this walks install.sh's generated sequence in order and names the
-  # first landmark that is missing or out of place.
+  # Validated on MACHINE-OWNED markers plus actual content — never on prose.
+  # Two earlier designs failed opposite ways: unordered substring greps accepted
+  # a file whose footer was replaced by arbitrary lines containing the right
+  # words; then ordered PROSE landmarks made any legitimate payload reword
+  # produce a permanent false "not governed" warning on every fresh install,
+  # with the suite green. Both were reported by review.
+  #
+  # Four landmarks, all owned by install.sh or the payload's own generated
+  # markers, in order — plus one CONTENT assertion, because order alone accepted
+  # a 207-byte file of nothing but landmarks. Trailing CR and whitespace are
+  # tolerated: this file is committed, and a collaborator on core.autocrlf=true
+  # otherwise gets told a complete file is incomplete.
   incomplete="$(awk '
-    BEGIN { stage = 0 }
-    stage == 0 && /^<!-- trellis:rules-loaded -->$/            { stage = 1; next }
-    stage == 1 && /^---$/                                      { stage = 2; next }
-    stage == 2 && /^If a rule seems ambiguous, /               { stage = 3; next }
-    stage == 3 && /rows below disagree, the rows win/          { stage = 4; next }
-    stage == 4 && /^## Project rule activation$/               { stage = 5; next }
-    stage == 5 && /^@\.\.\/\.\.\/\.trellis\/rules\.toml$/          { stage = 6; next }
-    stage == 6 && /^<!-- trellis:rendered-from payload@[0-9a-f]+ -->$/ { stage = 7; next }
+    { line = $0; sub(/[ \t\r]+$/, "", line) }
+    stage == 0 && line == "<!-- trellis:rendered-begin -->"        { stage = 1; next }
+    stage == 1 && line == "<!-- trellis:rules-loaded -->"          { stage = 2; next }
+    stage >= 1 && line ~ /`(inv|floor)-[a-z-]+`/                   { body = 1 }
+    stage == 2 && line == "@../../.trellis/rules.toml"             { stage = 3; next }
+    stage == 3 && line ~ /^<!-- trellis:rendered-from payload@[0-9a-f]+ -->$/ { stage = 4; next }
     END {
-      if (stage == 0) print "rules body (no trellis:rules-loaded sentinel)"
-      else if (stage == 1) print "footer separator"
-      else if (stage == 2) print "invariants pointer"
-      else if (stage == 3) print "authoritative-source note"
-      else if (stage == 4) print "rule-activation heading"
-      else if (stage == 5) print "rule-activation import"
-      else if (stage == 6) print "rendered-from stamp"
+      if (stage == 0) print "opening marker"
+      else if (stage == 1) print "rules body (no trellis:rules-loaded sentinel)"
+      else if (body != 1) print "rule text (the markers are present but no rule survived)"
+      else if (stage == 2) print "rule-activation import"
+      else if (stage == 3) print "rendered-from stamp"
     }' "$rendered" 2>/dev/null)"
   if [ -n "$incomplete" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: its $incomplete is missing, so this project is NOT governed by the rules it appears to carry. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to a reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."
     exit 0
   fi
-  rendered_stamp="$(sed -n 's/.*<!-- trellis:rendered-from \(payload@[0-9a-f]*\) -->.*/\1/p' "$rendered" 2>/dev/null | head -n1)"
+  # tail -n1, not head: the validator above walks to the LAST stamp line, so a
+  # decoy stamp placed above the real content would otherwise pass validation and
+  # then be reported STALE against the wrong value. The two readers must agree.
+  rendered_stamp="$(sed -n 's/.*<!-- trellis:rendered-from \(payload@[0-9a-f]*\) -->.*/\1/p' "$rendered" 2>/dev/null | tail -n1)"
   if [ -z "$rendered_stamp" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: it carries no trellis:rendered-from stamp, which install.sh writes as its last line, so the file was truncated and its rule activation rows are missing. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to the reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."
     exit 0
@@ -241,6 +238,16 @@ if [ -f "$rendered" ]; then
     exit 0
   fi
   emit "Trellis rules are already loaded from .claude/rules/trellis.md (the curl install path), so this hook injected nothing — delivering them here too would put the same rules in context twice. That file and .trellis/rules.toml govern this session. To move onto plugin-delivered rules instead, delete .claude/rules/trellis.md."
+  exit 0
+fi
+
+# A legacy FLAT overlay with no stamp reaches here — the stamp file is gitignored
+# (decision-0043), so a fresh clone of such a project has the managed block's
+# import chain and nothing for path A to compare. Injecting would deliver the
+# rules a second time on top of that chain. The installer already refuses this
+# shape; the hook did not know it existed.
+if [ -f "$root/.trellis/trellis.md" ]; then
+  emit "TRELLIS_RULES_NOT_LOADED — this project carries a legacy flat .trellis/trellis.md overlay, which its managed block imports directly. This hook injected nothing: doing so would deliver the same rules twice. Run /trellis:setup and accept the migration to move onto plugin-delivered rules. Tell the user before doing substantive work."
   exit 0
 fi
 

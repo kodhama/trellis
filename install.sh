@@ -150,11 +150,12 @@ EOF
 }
 
 SCOPE_FLAG=""
+SCOPE_GIVEN=0   # "was the flag PRESENT", separate from "is it non-empty"
 NONINTERACTIVE=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --scope)     [ $# -ge 2 ] || fail "--scope needs a value (personal or project)"; SCOPE_FLAG="$2"; shift ;;
-    --scope=*)   SCOPE_FLAG="${1#--scope=}" ;;
+    --scope)     [ $# -ge 2 ] || fail "--scope needs a value (personal or project)"; SCOPE_FLAG="$2"; SCOPE_GIVEN=1; shift ;;
+    --scope=*)   SCOPE_FLAG="${1#--scope=}"; SCOPE_GIVEN=1 ;;
     --non-interactive) NONINTERACTIVE=1 ;;
     --help|-h)   usage; exit 0 ;;
     *)           fail "unknown flag: $1 (see --help)" ;;
@@ -166,12 +167,14 @@ done
 # so a bad --scope/env value fails instantly, before any network fetch or git call.
 requested=""
 requested_origin=""
-if [ -n "$SCOPE_FLAG" ]; then
+if [ "$SCOPE_GIVEN" -eq 1 ]; then
+  # Presence, not emptiness. `--scope ""` used to fall straight through this
+  # branch to the default, silently ignoring a flag the user explicitly passed.
   requested="$SCOPE_FLAG"; requested_origin="--scope"
 elif [ -n "${TRELLIS_SKILLS_SCOPE:-}" ]; then
   requested="$TRELLIS_SKILLS_SCOPE"; requested_origin="\$TRELLIS_SKILLS_SCOPE"
 fi
-if [ -n "$requested" ]; then
+if [ "$SCOPE_GIVEN" -eq 1 ] || [ -n "$requested" ]; then
   case "$requested" in
     personal|project) ;;
     *) fail "scope must be personal or project, got: $requested (from $requested_origin)" ;;
@@ -271,7 +274,7 @@ bundle_manifest() {
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-d5d15e8751c0a702b9a356261ea501f9bdba431587de8e4880a32054422b4ba8  hooks/staleness.sh
+bc04fb35ead8703e17d3ce7ba8b6387794fbed7fdce6a1183f40d5fdf049d114  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -374,8 +377,13 @@ if [ "$scope" = "project" ]; then
       # marker classified contributor guidance that merely documents the literal
       # `<!-- trellis:begin` string as static delivery — suppressing the render
       # and reporting a conflict that does not exist. Both markers, or no block.
-      grep -q '<!-- trellis:begin' "$git_root/$f" 2>/dev/null \
-        && grep -q '<!-- trellis:end -->' "$git_root/$f" 2>/dev/null \
+      # ANCHORED at column 0. Requiring both markers anywhere still matched prose
+      # that merely NAMES the delimiters — which is verbatim how this plugin's own
+      # setup skill describes a managed region — suppressing the render and
+      # claiming a conflict that does not exist. A real block always starts at
+      # column 0 (reference/block-claude.md:1).
+      grep -q '^<!-- trellis:begin' "$git_root/$f" 2>/dev/null \
+        && grep -q '^<!-- trellis:end -->$' "$git_root/$f" 2>/dev/null \
         && { static_conflict="managed block in $f"; break; }
     done
   fi
@@ -444,6 +452,13 @@ elif [ "$scope" = "project" ]; then
   fi
   rendered_tmp="$rules_dir/.trellis.md.$$"
   {
+    # A MACHINE-OWNED opening marker. The hook used to validate this file by
+    # matching prose landmarks — the invariants sentence, the posture note, the
+    # activation heading. All of that is payload text that may legitimately be
+    # reworded, and when it was, every freshly installed project got a permanent
+    # false "not governed" warning while the whole suite stayed green. Markers
+    # this script owns cannot drift out from under the reader.
+    printf '<!-- trellis:rendered-begin -->\n'
     # Posture prose, up to but excluding the placeholder line.
     sed -n '1,/^@rules\.md[[:space:]]*$/p' "$stage/bundle/reference/trellis-b.md" | sed '$d'
     # The rules body, byte-for-byte as shipped.

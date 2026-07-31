@@ -1101,8 +1101,15 @@ func TestInstalledRulesFileSilencesTheHookExactlyOnce(t *testing.T) {
 	if strings.Contains(string(out), "inv-directional-flow") {
 		t.Fatalf("DOUBLE DELIVERY against the REAL rendered file — the hook injected over it:\n%s", out)
 	}
-	if !strings.Contains(string(out), ".claude/rules/trellis.md") {
-		t.Fatalf("the hook stood down without naming what it deferred to:\n%s", out)
+	// The stand-down assertion must NOT be a substring both messages share. Both
+	// the quiet stand-down and TRELLIS_RULES_NOT_LOADED name the path, so
+	// asserting the path alone passed on the very failure this test exists to
+	// catch — found by review, not by mutation.
+	if strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+		t.Fatalf("the hook judged the REAL installer's own output incomplete:\n%s", out)
+	}
+	if !strings.Contains(string(out), "already loaded from .claude/rules/trellis.md") {
+		t.Fatalf("expected the quiet stand-down naming the artifact; got:\n%s", out)
 	}
 }
 
@@ -1200,4 +1207,46 @@ func TestVendorRefusesForEveryStaticDeliveryShape(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Two guards added in response to earlier review findings shipped with NO test —
+// deleting either left the whole suite green. Found by the code reviewer, not by
+// mutation, because nothing existed to mutate.
+func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
+	t.Run("pre-existing rendered file plus an overlay is reported as LIVE", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		// Rendered first, overlay arrives later — a collaborator's commit, or a
+		// reverted migration. Refusing does not help: double delivery is already on.
+		writeFileT(t, filepath.Join(repo, ".claude", "rules", "trellis.md"), "previously rendered\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "internal", "version"), "payload@000000000000\n")
+
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if !strings.Contains(res.stdout, "ALREADY EXISTS") {
+			t.Errorf("saying 'no rules file' here is false at the moment it prints — the file is on disk and delivering; got:\n%s", res.stdout)
+		}
+		if b, err := os.ReadFile(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil || !strings.Contains(string(b), "previously rendered") {
+			t.Errorf("the installer must not silently remove a file it did not create")
+		}
+	})
+
+	t.Run("a mere prose mention of BOTH delimiters is not a managed block", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		// Verbatim the shape this plugin's own setup skill uses to describe a
+		// managed region. Requiring both markers anywhere still matched it.
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
+			"# Contributing\n\nA managed region is delimited by `<!-- trellis:begin ... -->`\n"+
+				"and `<!-- trellis:end -->`. Never hand-edit between them.\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+			t.Fatalf("prose naming both delimiters suppressed the render — issue #201 restored, for a conflict that does not exist: %v", err)
+		}
+	})
 }

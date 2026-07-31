@@ -378,28 +378,20 @@ func writeVendoredPayload(t *testing.T, internalDir string) {
 // `trellis.md` inside it means Trellis is already delivered. That is the mirror
 // of decision-0065's argument for the vendored overlay, where the DIRECTORY is
 // the artifact and the file inside it is not.
-// renderedFile reproduces install.sh §3b's output EXACTLY, landmark for
-// landmark, because the hook validates an ORDERED boundary rather than a set of
-// substrings. Three separate guards shipped broken behind approximations of this
-// file: a fixture that merely contained the right words passed a check that a
-// real truncated file would also have passed. If install.sh's footer changes,
-// this must change with it — and the ordered check is what makes that failure
-// loud instead of silent.
+// renderedFile builds the fixture from the SHIPPED PAYLOAD BYTES, not from Go
+// string literals. The literal version drifted immediately — it emitted only the
+// H1 where install.sh emits trellis-b.md's whole head, so the fixture asserted a
+// footer referring to "the posture sentence above" over a file that had none —
+// and no test could notice, because the fixture was the only definition of
+// correct. Derived from the same payload install.sh reads, it drifts only if the
+// payload does, which is the point.
 func renderedFile(files map[string]string, stamp string) string {
-	return "# How to work in this project\n\n" + files["rules.md"] +
-		"---\n" +
-		"If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.claude/skills/trellis/reference/invariants.md` — the description and with/without examples — before deviating.\n" +
-		"\n" +
-		"**If the posture sentence above and the rows below disagree, the rows win:**\n" +
-		"the `strictness` key in `.trellis/rules.toml` is authoritative. The sentence\n" +
-		"above was fixed when this file was written; the rows are read fresh every\n" +
-		"session. Run `/trellis:setup` to change the posture.\n" +
-		"\n" +
-		"## Project rule activation\n" +
-		"\n" +
-		"@../../.trellis/rules.toml\n" +
-		"\n" +
-		"<!-- trellis:rendered-from " + stamp + " -->\n"
+	head, tail, _ := strings.Cut(files["trellis-b.md"], "@rules.md\n")
+	return "<!-- trellis:rendered-begin -->\n" + head + files["rules.md"] + tail +
+		"\n**If the posture sentence above and the rows below disagree, the rows win:**\n" +
+		"the `strictness` key in `.trellis/rules.toml` is authoritative.\n" +
+		"\n## Project rule activation\n\n@../../.trellis/rules.toml\n" +
+		"\n<!-- trellis:rendered-from " + stamp + " -->\n"
 }
 
 func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
