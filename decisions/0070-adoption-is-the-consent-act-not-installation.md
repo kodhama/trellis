@@ -143,15 +143,26 @@ and asks** — the failure mode is one extra question, never governing by surpri
 
 ## Open questions
 
-1. **The announcement fires in every unadopted repo until answered.** One
-   injected paragraph per project, once. Is that acceptable noise, or should a
-   declined-projects list live under `~/.claude/` so a declined repo is never
-   written to at all? Repo-local was chosen for visibility; visibility and quiet
-   are in tension here.
+1. ~~**Where the answer persists, and the cost of an unexpected commit.**~~
+   **RULED 2026-07-31 — repo-local, and the commit is the point.** The maintainer:
+   *"the user made the choice when he said okay, install this globally … it does
+   imply an additional commit that wasn't expected, but I think that's a low cost
+   to pay."*
 
-   Sharper under D4's opt-out than it was under the opt-in: an accepted project
-   gets a file it did not ask for. That is the cost of making the choice
-   inspectable and committable, and it is stated rather than hidden.
+   The reasoning that settles it, and which a `~/.claude/` declined-list would
+   have destroyed: **`governed = false` is a project fact, not a personal one.**
+   It lands in the diff, so the people working on that project review it like any
+   other change. If they agree the project is ungoverned, it is — by their
+   decision, recorded. If they disagree, they change the file and say so
+   explicitly. A machine-local list would let one developer's global install
+   silently decide governance for a repository their colleagues share, with no
+   artifact anyone else can see or contest.
+
+   So the "unexpected commit" is not a cost the design tolerates; it is the
+   mechanism by which a personal install stops being a personal decision. What
+   the record cannot do is control what a developer installs on their own
+   machine — it can only make the consequence visible to the project, which is
+   `decision-0008`'s floor applied one layer out.
 2. **The eval never tested "no rows at all".** `annotation-vs-absence` covers
    `active = false`, not a missing rows file. D3's default rests on a suppression
    mechanism proven for one state and assumed for its neighbour. An arm should be
