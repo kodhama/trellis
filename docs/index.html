@@ -122,6 +122,19 @@
   .bar nav { display: flex; align-items: center; gap: 22px; font-size: 15px; }
   .bar nav a { color: var(--text); text-decoration: none; }
   .bar nav a:hover { color: var(--accent-ink); }
+  /* The header had NO responsive treatment at all. Measured at 375px: the
+     wordmark and the first link ran together as "TrellisHow", "Free & open"
+     wrapped to three lines and overflowed the fixed 60px bar, and the theme
+     toggle was sliced by the right edge — on a sticky bar, so it followed the
+     reader down every screen. Below 640px the two same-page anchors drop; the
+     Invariants page, GitHub and the toggle stay. A hamburger is overkill for
+     four links, and Invariants earns its place — it is the page that makes the
+     product concrete, so it is the last thing that should vanish on a phone. */
+  @media (max-width: 640px) {
+    .bar .wrap { height: auto; min-height: 56px; padding-top: 8px; padding-bottom: 8px; gap: 12px; }
+    .bar nav { gap: 14px; font-size: 14px; }
+    .bar nav a[href^="#"] { display: none; }
+  }
   .toggle {
     font-family: var(--mono); font-size: 12px; cursor: pointer;
     background: transparent; color: var(--muted); border: 1px solid var(--line);
@@ -169,7 +182,9 @@
   }
   .tab:hover { color: #cfe9db; }
   .tab.active { background: #ffffff14; color: #d7e6dd; }
-  .terminal .panel { display: none; padding: 9px 0; }
+  /* The tallest panel sets the height. Without this, switching tabs moved
+     everything below it by up to 107px and pushed the hero CTA off screen. */
+  .terminal .panel { display: none; padding: 9px 0; min-height: 125px; }
   .terminal .panel.active { display: block; }
   .terminal .cmd {
     padding: 7px 16px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
@@ -184,7 +199,7 @@
     background: #ffffff12; color: #cfe9db; border: 0; border-radius: 7px; padding: 6px 11px;
   }
   .copy:hover { background: #ffffff22; }
-  .terminal .cmt { color: #ffffff40; }
+  .terminal .cmt { color: #ffffff8c; } /* was #ffffff40 — 2.25:1, under AA */
   .tnote { margin-top: 14px; color: var(--muted); font-size: 0.92rem; max-width: 640px; }
   .tnote code { font-family: var(--mono); font-size: 0.85em; background: color-mix(in srgb, var(--accent) 13%, transparent); padding: 1px 6px; border-radius: 5px; color: var(--accent-ink); }
 
@@ -252,7 +267,7 @@
   }
   .fp-code .fp-c { color: #82bfa6; }
   .fp-code .fp-a { color: var(--code-accent); }
-  .fp-code .fp-m { color: #ffffff44; }
+  .fp-code .fp-m { color: #ffffff8c; } /* was #ffffff44 — 2.38:1, under AA */
 
   @media (prefers-reduced-motion: no-preference) {
     .btn, .toggle, .copy, .tab { transition: all 0.15s ease; }
@@ -311,18 +326,15 @@
         </div>
         <div class="panel" data-panel="curl">
           <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
-          <div class="cmd"><code><span class="prompt">$ </span><span class="cmt"># project scope (default): vends .claude/skills/trellis AND renders</span></code></div>
-          <div class="cmd"><code><span class="prompt">$ </span><span class="cmt"># .claude/rules/trellis.md — the rules themselves. Claude Code only.</span></code></div>
-          <div class="cmd"><code><span class="prompt">$ </span><span class="cmt"># --scope personal vends the plugin but delivers no rules.</span></code></div>
-          <div class="cmd"><code><span class="prompt">$ </span><span class="cmt"># then run /trellis:setup</span></code></div>
+          <div class="cmd"><code><span class="cmt"># then run /trellis:setup</span></code></div>
         </div>
         <div class="panel" data-panel="manual">
           <div class="cmd"><code><span class="prompt">$ </span>git clone --depth 1 https://github.com/kodhama/trellis</code></div>
-          <div class="cmd"><code><span class="prompt">$ </span><span class="cmt"># then follow the copy recipe in the README — this path is for</span></code></div>
-          <div class="cmd"><code><span class="prompt">$ </span><span class="cmt"># harnesses the plugin does not cover, not Claude Code or Codex.</span></code></div>
+          <div class="cmd"><code><span class="cmt"># then follow the copy recipe in the README — this path is</span></code></div>
+          <div class="cmd"><code><span class="cmt"># for harnesses the plugin does not cover.</span></code></div>
         </div>
       </div>
-      <p class="tnote">No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest, verified before anything is written. Clean exits: <code>/trellis:remove</code> clears the rules and config from a project (on the curl path the vendored bundle is yours to delete — <code>rm -rf .claude/skills/trellis</code>), and a bundled session hook delivers the rules on the plugin path, stands down when the curl path has already delivered them, and warns if it ever finds both.</p>
+      <p class="tnote">The curl path is <strong>Claude Code, project scope</strong>: it vends the plugin <em>and</em> renders the rules to <code>.claude/rules/</code>. <code>--scope personal</code> vends the plugin but delivers no rules, and other hosts get them from the marketplace tab instead. No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest, verified before anything is written. Clean exits: <code>/trellis:remove</code> clears the rules and config from a project (on the curl path the vendored bundle is yours to delete — <code>rm -rf .claude/skills/trellis</code>), and a bundled session hook delivers the rules on the plugin path, stands down when the curl path has already delivered them, and warns if it ever finds both.</p>
 
       <div class="cta">
         <a class="btn btn-primary" href="invariants.html">Explore the invariants →</a>

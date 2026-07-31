@@ -47,22 +47,22 @@ framing, which is why this copy changed):
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
-  $ # project scope (default): vends .claude/skills/trellis AND renders
-  $ # .claude/rules/trellis.md — the rules themselves. Claude Code only.
-  $ # --scope personal vends the plugin but delivers no rules.
-  $ # then run /trellis:setup
+  # then run /trellis:setup
   ```
 - `manual` (harnesses the plugin does not cover — **not** Claude Code or
   Codex CLI, which the tabs above serve between them; `decision-0069`):
   ```
   $ git clone --depth 1 https://github.com/kodhama/trellis
-  $ # then follow the copy recipe in the README — this path is for
-  $ # harnesses the plugin does not cover, not Claude Code or Codex.
+  # then follow the copy recipe in the README — this path is
+  # for harnesses the plugin does not cover.
   ```
 
-**Note under the terminal:** No binary, no runtime — the bundle is
-pre-rendered plain files with a checksum manifest, verified before
-anything is written. Clean exits: `/trellis:remove` clears the rules and config
+**Note under the terminal:** The curl path is **Claude Code, project
+scope**: it vends the plugin *and* renders the rules to
+`.claude/rules/`. `--scope personal` vends the plugin but delivers no
+rules, and other hosts get them from the marketplace tab instead. No
+binary, no runtime — the bundle is pre-rendered plain files with a
+checksum manifest, verified before anything is written. Clean exits: `/trellis:remove` clears the rules and config
 from a project — on the curl path the vendored bundle under
 `.claude/skills/trellis/` is yours to delete — and a bundled session hook delivers the rules on the
 plugin path, stands down when the curl path has already delivered them,
