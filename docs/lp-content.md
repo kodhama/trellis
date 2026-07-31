@@ -26,7 +26,7 @@ carry the `.em` accent-ink emphasis)
 
 **Subtitle:** Trellis is a governance layer for agentic software
 development. It fits whatever methodology your project already uses,
-teaches it to your coding agents, and enforces a small set of invariants —
+teaches it to your coding agents, and governs a small set of invariants —
 so a process glitch never has to happen twice.
 
 **Install block** (terminal pattern, three tabs — Claude Code / curl / manual copy;
@@ -34,31 +34,39 @@ the Homebrew tab retired with the end-user binary channel, `kodhama-0007` rule 5
 kodhama/trellis#120, and the family marketplace is the canonical front door per
 `kodhama-0002`. The curl tab returned in kodhama/trellis#124 as a **plugin vendor
 script** — a different, much smaller artifact class than the retired binary
-installer: it makes exactly one decision, scope, and composes nothing else):
+installer. It vends the plugin bundle and, on project scope, renders one rules
+file it wholly owns; `decision-0068` amended the earlier "composes nothing else"
+framing, which is why this copy changed):
 
 - `cc` (Claude Code, default/active tab):
   ```
   > /plugin marketplace add kodhama/kodhama
   > /plugin install trellis@kodhama
-  > /trellis:setup    # the plugin covers the overlay natively
+  > /trellis:setup    # optional — changes posture or turns rules off
   ```
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
-  $ # vends .claude/skills/trellis (project scope, default) or ~/.claude/skills/trellis
-  $ # (--scope personal); then run /trellis:setup as above
+  # that's it — all 14 rules active, adaptive posture
   ```
-- `manual` (any other harness):
+- `manual` (harnesses the plugin does not cover — **not** Claude Code,
+  which the tabs above serve; `decision-0069`):
   ```
   $ git clone --depth 1 https://github.com/kodhama/trellis
-  $ cp trellis/plugins/trellis/reference/... .trellis/    # copy, paste, shasum -c — see the README
+  # then follow the copy recipe in the README — this path is
+  # for harnesses the plugin does not cover.
   ```
 
-**Note under the terminal:** No binary, no runtime — the bundle is
-pre-rendered plain files with a checksum manifest; the plugin (or you)
-just copies and verifies them. Clean exits, always: `/trellis:remove`
-clears it from a project, and a bundled session hook tells you when the
-overlay is behind the installed plugin.
+**Note under the terminal:** The curl path is **Claude Code, project
+scope**: it vends the plugin *and* renders the rules to
+`.claude/rules/`. `--scope personal` vends the plugin but delivers no
+rules. No
+binary, no runtime — the bundle is pre-rendered plain files with a
+checksum manifest, verified before anything is written. Clean exits: `/trellis:remove` clears the rules and config
+from a project — on the curl path the vendored bundle under
+`.claude/skills/trellis/` is yours to delete — and a bundled session hook delivers the rules on the
+plugin path, stands down when the curl path has already delivered them,
+and warns if it ever finds both.
 
 **CTAs:**
 - Primary → `invariants.html` — "Explore the invariants →"
@@ -111,57 +119,71 @@ row, a "with" row):
 
 **Eyebrow:** How it works
 **Heading:** One command. It reads your project, you choose the fit.
-**Lede:** Trellis rides your existing harness (Claude Code today). It
-asks, copies, and — only with your go-ahead — verifies itself onto
-your project. No runtime, no lock-in.
+**Lede:** Trellis rides your existing harness — Claude Code today. The
+rules land as plain instructions your agents read, and one small config
+file you own says how strictly they apply. No runtime, no lock-in.
+
+*(Codex CLI is deliberately not named. The plugin supports it and the
+hook is real, but there is no way to install it there — `trellis#220`.
+Naming a host a visitor cannot reach is worse than not naming it.)*
 
 Four-step flow (`01` – `04`):
 
 1. **01 · install — Add the plugin.** From the kodhama family
-   marketplace — or copy the pre-rendered bundle into any harness.
+   marketplace — or, for a harness the plugin does not cover, copy the
+   pre-rendered bundle by hand.
 2. **02 · posture — Pick a posture.** Conductor or author-adapt — seeded
    as explicit rows in your `rules.toml`: how strict, and what's active.
    A refresh reads the rows and asks nothing.
-3. **03 · mode — Alongside or rewrite.** Overlay next to your rules, or
-   — on request — morph them in on a branch.
-4. **04 · verify — You approve.** Augment-never-clobber, checked against
-   a shipped checksum manifest. Trellis proposes; the merge is yours.
+3. **03 · deliver — The rules arrive on their own.** On the plugin path a
+   session hook injects them; on the curl path they are rendered into
+   `.claude/rules/`. Never both — the hook stands down when it finds the
+   rendered file, and says so if it ever sees both.
+4. **04 · verify — You approve.** The curl path checks every byte against
+   a shipped checksum manifest before it writes one. `/trellis:setup`
+   diffs and asks before replacing rows you already have. Trellis
+   proposes; the merge is yours.
 
 **Repo footprint** (rendered as a small code block, not the terminal
 pattern — this is a file-tree illustration, not a shell session):
 
 ```
-CLAUDE.md          # + a small managed block importing the header + your rules.toml
 .trellis/
-  rules.toml       # which rules are active, how strictly — yours to edit
-  internal/        # generated, refreshed verbatim:
-    trellis.md     #   the header your agents read
-    rules.md       #   the rules readout — always loaded; your rules.toml rows say which apply
-    invariants.md  #   the full why + examples — on demand
+  rules.toml       # which rules are active, how strictly — yours to edit.
+                   #   Seeded by the installer, all 14 on (decision-0070)
+.claude/           # curl path only — the plugin path writes neither:
+  rules/
+    trellis.md     #   the rules readout, loaded every session — Trellis owns
+                   #   this file and replaces it wholesale on re-install
+  skills/
+    trellis/       #   the vendored plugin bundle
 ```
 
-Label above it: "What it leaves in your repo — small, single-source, and
-yours to remove:"
+Label above it: "What it leaves in your repo — small, yours to edit
+where it says so, and yours to remove:" *(dropped "single-source": the
+curl path leaves two trees under `.claude/`, so the old label was no
+longer true.)*
 
 ## Section: The core (alt background)
 
 **Eyebrow:** The core
 **Heading:** A small set of invariants, expressed at your strength.
-**Lede:** Not a process — the layer above it. A handful of load-bearing
+**Lede:** Not a process — the layer above it. Fourteen load-bearing
 invariants (directional flow, ratifiable artifacts, gate-at-handover,
 independent judgment, transparency…), each set along two dials: how
-strictly it's enforced, and who gates it. Everything else, Trellis
+strictly it applies, and who gates it. Everything else, Trellis
 respects.
 
 Two cards:
 
 1. **It grounds out in real artifacts** — Trellis never just *describes*
-   process. It produces and enforces concrete, project-specific artifacts
-   — a real instructions file, real gates, a real conformance check. If it
-   can't check it, it doesn't claim it.
+   process. It grounds out in things you can point at — an instructions
+   file your agents actually load, rules you switch on and off by name,
+   and a conformance check it runs on itself. If it can't check it, it
+   doesn't claim it.
 2. **It fits, it doesn't dictate** — Gatekeepers are whatever your project
-   already declares — detected and respected, not imposed. Trellis
-   enforces the invariants and gets out of the way of your methodology.
+   already declares — respected, not imposed. Trellis guides your agents
+   on the invariants and gets out of the way of your methodology.
 
 Secondary CTA below the cards: ghost → `invariants.html` — "See all
 fourteen, with why + examples →"

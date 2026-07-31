@@ -3,7 +3,7 @@
 > A trellis is structure that *enables* growth rather than dictating form.
 
 **Trellis is the governing layer for agentic software development.** It sits *above* whatever
-methodology your project already uses — Spec Kit, BMAD, your own — learns its shape, and enforces a
+methodology your project already uses — Spec Kit, BMAD, your own — learns its shape, and governs a
 small set of **invariants**: the handful of properties that must stay true no matter how fast
 autonomous agents move. It doesn't replace your process; it keeps it honest.
 
@@ -32,19 +32,25 @@ plugin's payload, so there is no copy in your repo to install, refresh or let dr
 bundle and a managed block in your `CLAUDE.md`, and keeps working — the hook detects the overlay
 and steps aside, so the rules still arrive exactly once. `/trellis:setup` offers to migrate it.
 That earlier behaviour — the managed block, the vendored bundle, and an optional **M2 morph**
-rewriting your own
-instructions, on a fresh git branch you review. The plugin lives in
-[`plugins/trellis`](plugins/trellis).
+rewriting your own instructions on a fresh git branch — is retired for new installs; only existing
+consumers still carry it. The plugin lives in [`plugins/trellis`](plugins/trellis).
 
 **Same plugin, without the marketplace — the curl path
 ([#124](https://github.com/kodhama/trellis/issues/124)).** `install.sh` vends the whole
 `plugins/trellis/` tree onto disk as a [skills-directory
 plugin](https://code.claude.com/docs/en/plugins-reference#skills-directory-plugins): any folder
 under a skills directory with its own `.claude-plugin/plugin.json` loads as `trellis@skills-dir` on
-Claude Code's next session, no marketplace and no install step. This script makes exactly **one**
-decision — where to put the plugin — and composes nothing else; every other decision (posture,
-which file to patch, and so on) is still made entirely by `/trellis:setup`, unmodified, once the
-plugin is on disk:
+Claude Code's next session, no marketplace and no install step. On **project scope** it also
+renders one file it wholly owns, `.claude/rules/trellis.md` — the rules themselves, which Claude
+loads at launch with no hook and no *plugin* trust prompt (the workspace-trust dialog on first
+launch in a project still applies — see the project-scope bullet below) — and seeds `.trellis/rules.toml` from the shipped
+preset when none exists, so the project is governed at 14/14 on the adaptive posture the moment the
+script exits (`decision-0070` D2). That is how the rules actually reach a session:
+`decision-0068` measured that the vendored bundle alone delivered **none** (issue #201), which is
+why this paragraph no longer says the script "composes nothing else". It is Claude Code only, and
+`--scope personal` delivers no rules at all; each run prints whichever limit applies to it. `/trellis:setup` is no longer how governance
+starts — it is how you change it, to the firm posture or to turn individual rules off
+(`decision-0070`; retirement tracked in `#219`):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
@@ -76,18 +82,24 @@ curl -fsSLO https://raw.githubusercontent.com/kodhama/trellis/main/install.sh
 less install.sh && sh install.sh --scope personal
 ```
 
-Then run `/trellis:setup` as above — that skill is the one real interactive writer either path
-leads to.
+Neither path needs `/trellis:setup` to become governed — the curl path seeds the rows and a
+project-scoped plugin applies the shipped defaults without any file at all (`decision-0070`). Run
+it when you want the **firm** posture instead of the default adaptive one, or to turn individual
+rules off.
 
 ### Local Codex support — Phase 1
 
-The same plugin supports Codex, and since `decision-0065` both hosts work the same way: a
-`SessionStart(startup)` hook injects the rules from the plugin's own payload, together with the
-project's `.trellis/rules.toml`. Setup installs no receipt and no fallback — it writes the config
+The same plugin supports Codex, and since `decision-0065` both hosts work the same way **on the
+plugin path**: a `SessionStart(startup)` hook injects the rules from the plugin's own payload,
+together with the project's `.trellis/rules.toml`. The **curl** path is Claude-only — it delivers
+through `.claude/rules/`, which is a Claude mechanism (`decision-0068` D7). Setup installs no receipt and no fallback — it writes the config
 file and nothing else.
 
 A project that still carries a vendored `.trellis/internal/` overlay is read from that overlay
-instead, on both hosts, so nothing is delivered twice and no existing consumer breaks. A valid row
+instead, on both hosts, so nothing is delivered twice and no existing consumer breaks. The hook
+stands down the same way for `.claude/rules/trellis.md` when the curl path has already delivered
+the rules — and if it ever finds a project holding **both** static shapes, it says so rather than
+choosing one. A valid row
 edit is seen at the next startup without refresh, and does not change a context already in
 flight.
 
@@ -100,11 +112,18 @@ Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desk
 headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
 host blocks and the shared overlay. Applying a preset **replaces** the consumer's rows, strictness
 and `seeded_from` — `/trellis:setup` diffs first and requires explicit confirmation before
-overwriting an existing file (`decision-0065`). Also excluded are a
-any other host-native transport, and revival of the parked `seed` or
-`custom` presets.
+overwriting an existing file (`decision-0065`). Also excluded are any other host-native
+transport, and revival of the parked `seed` or `custom` presets.
 
-**Any other harness — the manual copy path.** Every bundle file is pre-rendered plain text in
+**Any other harness — the manual copy path.** This is for harnesses the plugin does **not** cover.
+On **Claude Code** it is superseded — use the marketplace or curl paths above
+(`decision-0069`). **On Codex CLI it is not**: there is no way to install Trellis there yet
+(`/plugin` commands are Claude Code's, and the curl path is Claude-only), so the manual copy is
+what Codex has until `#220` gives it a real channel. It is also **mutually exclusive with the curl path**: a repo that already
+carries a hand-built overlay or a managed block makes `install.sh` refuse to render the rules
+file, on purpose, because both would load and deliver the rules twice.
+
+Every bundle file is pre-rendered plain text in
 [`plugins/trellis/reference/`](plugins/trellis/reference) (the payload, `kodhama-0007`: one
 render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) and copy:
 
@@ -155,7 +174,9 @@ change that will pass.
 - **Operating layer** — what Trellis supplies: a gate at every handover, independent
   verification (*the builder does not grade itself*), an auditable archive, bounded context,
   clarify-before-commit.
-- **Two dials** — per gate: *how strict* (documented → default-on → enforced) and *who checks*
+- **Two dials** — per gate: *how strict* (`expressed` → `default-on-but-skippable` → `enforced`,
+  the `dial-enforcement-strength` values from `core/invariants/trellis-invariants-v1.md:234`; an
+  earlier wording here invented "documented → default-on", which matched no surface) and *who checks*
   (an agent, a human, or nobody). The same core serves a weekend hack and a regulated pipeline.
 - **Two floors** — the only settings that never dial to zero: every consequential choice is
   **surfaced**, and the **human intent gate never fully opens**.
@@ -170,8 +191,11 @@ the [project site](https://kodhama.github.io/trellis/invariants.html)). The thes
 
 - **Advisor** *(open, no runtime — shipped)* — Trellis composes onto your project as instructions your
   agents **consult**; nothing of Trellis runs at agent-time. This is what `/trellis:setup` (or the
-  manual copy path) installs today: the M1 overlay, plus the M2 morph on request. Nothing to secure
-  or remove at runtime.
+  manual copy path) installs today. On the plugin and curl paths that is `.trellis/rules.toml` plus
+  plugin- or curl-delivered rules — neither writes an overlay. The **M1 overlay is now written only
+  by the manual copy path**, which `decision-0069` retains for harnesses the plugin does not cover;
+  it is not legacy. The **M2 morph is retired outright** and survives only where it already ran.
+  Nothing to secure or remove at runtime.
 - **Supervisor** *(installed, live — in progress)* — Trellis wired into your pipeline: gates fire on
   commit/PR events via hooks, it stays current through an update channel, and it comes off cleanly.
   The next delivery slice.
@@ -206,7 +230,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043` (#120). |
 | [`plugins/trellis/`](plugins/trellis/) | The **Claude Code and local Codex plugin** — `/trellis:setup`, `/trellis:remove`, host-isolated hooks, and the vendored payload (`reference/`). |
-| [`install.sh`](install.sh) | The **curl path** (`#124`) — vends the whole plugin bundle onto disk as a skills-directory plugin; makes exactly one decision (scope) and composes nothing else. |
+| [`install.sh`](install.sh) | The **curl path** (`#124`) — vends the whole plugin bundle onto disk as a skills-directory plugin, and on project scope renders `.claude/rules/trellis.md`, the file that actually delivers the rules (`decision-0068`). Claude Code only. |
 | [`specs/`](specs/) | The spine (`0001`), the profile / catalog schema (`0002`), the delivery machinery (`0003`). |
 | [`decisions/`](decisions/) | Append-only decision records. |
 | [`research/`](research/) | Framework gate-tests + the genetics / control-theory lenses behind the design. |
