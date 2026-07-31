@@ -364,13 +364,19 @@ try {
   const raw = fs
     .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
     .replace(/^\uFEFF/, "")
-    .split(/^[^\S\r\n]*\[/m)[0];
+    .split(/^[ \t\v\f]*\[/m)[0];
   // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
   // read as an opt-out on both hosts and silently disabled every rule —
   // a typo is supposed to fail loudly as invalid-rules, not govern nothing.
-  if (
-    /^[^\S\r\n\u2028\u2029]*governed[^\S\r\n\u2028\u2029]*=[^\S\r\n\u2028\u2029]*false[^\S\r\n\u2028\u2029]*(#[^\r\n\u2028\u2029]*)?$/m.test(raw)
-  ) {
+  // ASCII horizontal whitespace only, matching the shell's `[[:space:]]` under
+  // the C locale. `\s` and `[^\S...]` accept NBSP; POSIX `[[:space:]]` under
+  // C.UTF-8 does not — so an NBSP-indented opt-out was honoured on Codex and not
+  // on Claude, and the decision claimed both matched the same inputs. That is the
+  // third time these two have diverged (classes, then BOM, now locale), which is
+  // why the class is now written out rather than borrowed from a shorthand.
+  const gov = /^[ \t\v\f\r]*governed[ \t\v\f\r]*=[ \t\v\f\r]*(\S*)[ \t\v\f\r]*(#[^\r\n]*)?$/gm;
+  const values = [...raw.matchAll(gov)].map((m) => m[1]);
+  if (values.length === 1 && values[0] === "false") {
     process.exit(0);
   }
 } catch {
