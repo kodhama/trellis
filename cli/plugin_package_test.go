@@ -217,8 +217,8 @@ func TestPackageValidatorsRejectMalformedMetadata(t *testing.T) {
 
 func TestPluginPackageParity(t *testing.T) {
 	versionBytes := readPluginFile(t, "VERSION")
-	if string(versionBytes) != "0.3.0\n" {
-		t.Fatalf("VERSION must contain exactly 0.3.0 plus LF, got %q", versionBytes)
+	if string(versionBytes) != "0.4.0\n" {
+		t.Fatalf("VERSION must contain exactly 0.4.0 plus LF, got %q", versionBytes)
 	}
 	version := strings.TrimSuffix(string(versionBytes), "\n")
 	if !semverPattern.MatchString(version) {

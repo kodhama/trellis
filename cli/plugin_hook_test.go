@@ -477,11 +477,13 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		}
 	})
 
-	// Placement guard. A project MIGRATING off a vendored overlay can hold both
-	// artifacts at once, and path A's staleness nudge is the only signal it gets.
-	// decision-0035's floor is that drift is made visible, not silent — so path C
-	// must sit AFTER path A, not before it.
-	t.Run("migrating project: a stale overlay still nudges, even with the install artifact", func(t *testing.T) {
+	// AC2c. Both static paths present is LIVE double delivery — the rules are in
+	// context twice before any hook runs — so the coexistence branch sits ahead of
+	// path A and its report supersedes the staleness nudge. The path-A placement
+	// guard it used to serve now lives in its own subtest below, with the overlay
+	// alone. The name and comment previously said the opposite of what the
+	// assertion checked.
+	t.Run("both static paths at once: LOADED_TWICE supersedes the staleness nudge", func(t *testing.T) {
 		proj := t.TempDir()
 		internal := filepath.Join(proj, ".trellis", "internal")
 		if err := os.MkdirAll(internal, 0o755); err != nil {

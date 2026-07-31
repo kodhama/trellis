@@ -29,8 +29,10 @@
 #   C. Curl install (.claude/rules/trellis.md present) — the install path
 #      rendered that file and Claude Code loads it at launch on its own, so this
 #      hook injects nothing and says which artifact it deferred to
-#      (decision-0068 D10). Checked with -s, not -f: a truncated or zero-byte
-#      file must not silence this hook while governing nothing.
+#      (decision-0068 D10). The guard is `-f` plus an ORDERED validation of the
+#      file's generated structure, done inside the branch — not a size check.
+#      Two earlier designs (-f alone, then -s) each let an incomplete file
+#      silence this hook while governing nothing.
 #
 # `.trellis/rules.toml` is the opt-in signal for path B. A project with none of
 # the three gets nothing: this plugin may be installed user-wide, and a project

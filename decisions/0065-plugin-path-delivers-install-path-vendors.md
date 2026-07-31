@@ -4,6 +4,7 @@ type: decision
 status: approved  # maintainer intent act 2026-07-27: "Yes, I approve decision 65 that overrides decision 57. The other was done in a context that is no longer applicable."
 depends_on: [decision-0010, decision-0012, decision-0035, decision-0039, decision-0043, decision-0049, decision-0050, decision-0051, decision-0053, decision-0057, decision-0058]
 informed_by: []  # research-0013 is an unmerged draft; see §Standing on research-0013
+superseded_in_part_by: [decision-0068]  # 2026-07-30 — TWO clauses only: :143-146's "both hooks take the same two paths and use the same discriminator" (the Claude hook gains a third path plus a coexistence branch; the Codex hook keeps two, so the symmetry this clause states is deliberately broken), and :193's "There is no state in which both paths carry the payload — that is tested, not asserted" (a project can hold a vendored overlay AND a rendered file at once; the coexistence branch exists because that sentence became false). Everything else in this record stands — the plugin/install split, setup's one file, and the no-vendoring direction are untouched.
 owner: agent
 date: 2026-07-27
 ---

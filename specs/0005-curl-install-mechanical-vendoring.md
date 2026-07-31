@@ -3,7 +3,7 @@ id: spec-0005
 type: spec
 status: gated
 depends_on: [kodhama/kodhama-0007-one-render-many-copiers, decision-0043]
-superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068, in TWO amendments: (a) AC2's blanket "never … writes any instructions file", narrowed to permit the one rendered rules file; and (b) after review, AC2's blanket "never reads … .trellis/" AND its managed-block-detection prohibition, both narrowed to permit an EXISTENCE-ONLY read of static-delivery state (.trellis/internal/, the legacy flat .trellis/trellis.md, and a PAIRED trellis:begin/end region in CLAUDE.md/AGENTS.md) whose only outcome is render-or-refuse-loudly. What still stands untouched: the "zero decision logic" heading, the posture-prompt and marker-PATCHING prohibitions, and "never WRITES to .trellis/". §Scope and §1's scope note are amended in the same act.
+superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068, in TWO amendments: (a) AC2's blanket "never … writes any instructions file", narrowed to permit the one rendered rules file; and (b) after review, AC2's blanket "never reads … .trellis/" AND its managed-block-detection prohibition, both narrowed to permit an EXISTENCE-ONLY read of static-delivery state (.trellis/internal/, the legacy flat .trellis/trellis.md, and a PAIRED trellis:begin/end region in CLAUDE.md/AGENTS.md) whose only outcome is render-or-refuse-loudly. What still stands untouched: the "zero decision logic" heading, the posture-prompt and marker-PATCHING prohibitions, and "never WRITES to .trellis/". §Scope (both halves), §1's scope note, §4, §Purpose, AC2's prescribed grep check and AC2a's scope qualifier are amended in the same act — the first pass touched only some of them, which is the defect this correction closes.
 owner: agent
 rubric: rubric-artifact-contract
 date: 2026-07-10
@@ -76,13 +76,15 @@ Give every non-Claude-Code-marketplace user (and any Claude Code user who prefer
 `/plugin install`) a `curl | sh` path onto the same governed artifact the plugin marketplace
 installs: the **plugin bundle**, unmodified, placed somewhere Claude Code's skills-directory
 mechanism discovers it. `install.sh` is a **sibling writer under kodhama-0007**, not a rebuild of
-`/trellis:setup` in a second language — it stops the moment the bundle is on disk.
+`/trellis:setup` in a second language — it stops the moment the bundle and the one rendered rules file are on disk.
 
 ## Scope
 
 **In scope:** fetching, pin-verifying, and writing the plugin bundle (`.claude-plugin/plugin.json`,
 `hooks/`, `reference/`, `skills/`) to a Claude-Code-discoverable skills directory; scope (personal
-vs. project) selection; fail-closed integrity verification; post-write guidance text.
+vs. project) selection; fail-closed integrity verification; post-write guidance text; **and, per
+`decision-0068`, rendering exactly one instructions file the script owns — `.claude/rules/trellis.md`
+— in project scope, refusing when the project already delivers the rules statically.**
 
 **Out of scope (stays `/trellis:setup`'s job, run afterward, unmodified by this spec):** posture
 resolution, `.trellis/` bundle composition, managed-block **patching/verification** (detection is
@@ -187,10 +189,13 @@ On success, in order, `install.sh` prints (and performs none of b–e itself):
 otherwise) — the only git invocation permitted anywhere in this script is the read-only
 `git rev-parse --show-toplevel` of §2.
 
-> **Amended by `decision-0068` (2026-07-30), matching AC2.** The one exception is
-> `.claude/rules/trellis.md`, a file the script wholly owns and writes fresh. It edits no file it
-> did not create, and `.trellis/` remains untouched — so item 5's "run `/trellis:setup`" is still
-> the step that activates the rules beyond the two floors.
+> **Amended by `decision-0068` (2026-07-30), matching AC2 — in BOTH acts.** The script writes one
+> instructions file it wholly owns, `.claude/rules/trellis.md`, and edits no file it did not
+> create. **`.trellis/` is no longer untouched**: the second amendment permits existence reads of
+> `.trellis/internal/`, `.trellis/trellis.md` and `.trellis/rules.toml`, and a content read of
+> `CLAUDE.md`/`AGENTS.md` for a paired managed block. It still **writes** nothing under `.trellis/`.
+> An earlier version of this note asserted `.trellis/` remained untouched, which the second
+> amendment made false the moment it landed; §4 was omitted from that act and is corrected here.
 
 Output item 1 ("what was written") names the rendered rules file alongside the bundle. Item 5's
 suggestion gains its reason: **until `/trellis:setup` writes `.trellis/rules.toml`, only
@@ -206,8 +211,16 @@ it, never does it.
 - **AC2 — zero decision logic.** The script contains no posture prompt, no target/style detection
   for any instructions file, no managed-block marker handling, and never reads or writes
   `.trellis/` or any *pre-existing* instructions file (`CLAUDE.md`, `AGENTS.md`, etc.). (Checkable
-  by absence: grep the script source for `trellis:begin`, `expression.md`, `profile-`, `CLAUDE.md`
-  outside of comments/help text — none should drive a write decision.)
+  by absence: grep the script source for `expression.md` and `profile-` outside of comments/help
+  text — none should drive a write decision.)
+
+  > **The check itself was amended, 2026-07-30 — it had become guaranteed to fail.** It previously
+  > also named `trellis:begin` and `CLAUDE.md`, and `decision-0068` D12 makes both *legitimate*
+  > executable inputs: the script greps `CLAUDE.md`/`AGENTS.md` for a paired managed block to decide
+  > whether to refuse. Run literally against this branch the old check returns `install.sh:371` and
+  > `:377`, so a reviewer applying the spec as written must fail a script the spec elsewhere
+  > requires. What the narrowed check still proves is the part that did not change: **no posture is
+  > read and no marker is patched**.
 
   > **Amended by `decision-0068` (2026-07-30) — one clause, narrowly.** The script **does** now
   > write exactly one instructions file it wholly owns: `.claude/rules/trellis.md`, rendered from
@@ -241,12 +254,22 @@ it, never does it.
   > With no `.trellis/rules.toml` present the install is inert but for the two `floor-` rows, which
   > "apply regardless of their row value" — a defined default requiring no seed.
 
-- **AC2a — the rendered rules file, and the import form is the assertion.** A fresh run writes
-  `.claude/rules/trellis.md` containing the posture prose, the rules body, and the exact import
+- **AC2a — the rendered rules file, and the import form is the assertion.** **In PROJECT SCOPE
+  ONLY** (`decision-0068` D1), **and only when the project does not already deliver the rules
+  statically** (D12's refusal), a fresh run writes `.claude/rules/trellis.md` containing the posture prose, the rules body, and the exact import
   line `@../../.trellis/rules.toml`. The test asserts **that** form and asserts the sibling form
   `@rules.toml` is absent. Both were measured: each is correct in one location and **silently loads
   nothing** in the other — no error, no content. A reword that swaps them ships a file that governs
   nothing and passes every other check in this spec.
+
+- **AC2c — both static paths at once is reported, by both sides.** When a project holds a vendored
+  overlay (or a paired managed block) **and** `.claude/rules/trellis.md`, the rules are already in
+  context twice and no hook can undo it. `install.sh` must refuse to render, and — if the rendered
+  file is already present — must say the double delivery is **live and untouched** rather than
+  claiming its refusal prevented it. `hooks/staleness.sh` must detect the same state **before**
+  path A and emit `TRELLIS_RULES_LOADED_TWICE`, injecting nothing. Red-first: a fixture holding both
+  must produce a warning from each side, and must NOT produce the rule bodies. *(Added 2026-07-30:
+  this behaviour shipped covered by no acceptance criterion in either artifact.)*
 
 - **AC2b — the plugin hook stands down when this file exists.** Measured: with the plugin installed
   *and* `.claude/rules/trellis.md` present, the rules arrive **twice** — once in the
@@ -294,7 +317,9 @@ it, never does it.
 | **A vendored `.trellis/internal/` overlay refuses the render** | Nothing is written to `.claude/rules/`; stdout names the overlay as the reason and names the migration route; the bundle still vendors. Both static chains would otherwise load before any hook runs, which no runtime fix can undo | **AC2a** |
 | **The hook stands down exactly once** | With the plugin installed and a complete rendered file present, the emitted context carries the stand-down note naming `.claude/rules/trellis.md` and **not** the rule bodies. Composition, not fixtures: the real installer writes the file, the real hook reads it | **AC2b** |
 | **Incomplete or stale rendered files never silence the hook** | Zero-byte, one-byte, cut-after-sentinel, import-missing and stamp-missing shapes each either deliver the rules or emit `TRELLIS_RULES_NOT_LOADED`; a stale stamp emits a nudge naming both stamps; a current one stands down quietly. Eleven shapes audited | **AC2b** |
-| **Path C sits after path A** | A project holding both a stale overlay and a rendered file still receives the overlay staleness nudge — `decision-0035`'s floor, which path C would otherwise silence for exactly the consumers mid-migration | **AC2b** |
+| **Path C sits after path A** | A project holding a stale overlay **and no rendered file** still receives the overlay staleness nudge — `decision-0035`'s floor, which path C would otherwise silence for exactly the consumers mid-migration | **AC2b** |
+| **Both static paths at once** | A project holding a stale overlay **and** a rendered file receives `TRELLIS_RULES_LOADED_TWICE` from the hook — the coexistence branch supersedes the staleness nudge, because live double delivery is the more urgent report — and the installer refuses to render, naming the pre-existing file as untouched. *(Corrected 2026-07-30: this row previously claimed the staleness nudge for this state, which the coexistence branch replaced.)* | **AC2c** |
+| **Every conflict shape refuses; a mere mention does not** | Each of `.trellis/internal/`, the legacy flat `.trellis/trellis.md`, and a PAIRED `trellis:begin`/`trellis:end` region suppresses the render and names itself as the reason; a file that only MENTIONS the opening marker does not — the render proceeds | **AC2a**, **AC2c** |
 | Project fresh vendor, run from repo root | Full bundle lands at `<repo-root>/.claude/skills/trellis/`; stdout contains, verbatim, the trust-dialog note, the no-walk-up caveat, the commit suggestion (present, and not a command the script itself ran — the target directory's git status shows no staged/committed change from the script), and the next-step pointer to `/trellis:setup` | AC1, AC3, AC4, AC9, AC10 |
 | Project fresh vendor, run from a subdirectory | Git-root resolution, not `$PWD` — byte-identical to the repo-root case | AC3 |
 | Re-run over an already-vendored tree | Idempotency, no duplication/drift | AC8 |

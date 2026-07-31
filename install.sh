@@ -264,14 +264,14 @@ trap 'rm -rf "$stage"' EXIT
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-3855cc8a1fce7c347ea652a71fdaa06ea88b16921d0cb0268759901a3d4f72c1  .claude-plugin/plugin.json
-aed6e801ed1f3523c764e62f3ed702f1fb830626802f9e528c1470216d835076  .codex-plugin/plugin.json
+89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
+600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
 179bbd19ddd6b2220e64894b71c92f9ecdf8fc9b87d84058cde1a6b71446ed60  README.md
-d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0  VERSION
+40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-bee259f2688530a7abd87c8af2a08686c07a73e6692b5cfd23fa7d87ffa29420  hooks/staleness.sh
+d5d15e8751c0a702b9a356261ea501f9bdba431587de8e4880a32054422b4ba8  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -388,9 +388,16 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   # what the HOOK injects — it cannot un-load a file Claude already read. So this
   # is refused at install time, because there is no runtime fix for it.
   #
-  # This is the ONE place this script reads .trellis/, and it reads a directory's
-  # existence, never a file's contents: no posture is inferred and nothing is
-  # written there (spec-0005 AC2's surviving clause).
+  # What this script reads, stated accurately — an earlier version of this comment
+  # claimed "the ONE place this script reads .trellis/", which was false at three
+  # other sites:
+  #   - .trellis/internal/ and .trellis/trellis.md   (existence, above)
+  #   - CLAUDE.md / AGENTS.md                        (CONTENT: a paired marker)
+  #   - .trellis/rules.toml                          (existence, for the
+  #                                                   floors-only guidance line)
+  # None of it selects a posture, patches a marker, or writes anything under
+  # .trellis/. The marker check is a content read and is named as one, because
+  # spec-0005 AC2's second amendment permits exactly that and no more.
   rendered_note="no rules file — $static_conflict present"
   say "NOT rendering .claude/rules/trellis.md: this project already delivers the"
   say "rules statically ($static_conflict). Adding the rendered file would deliver"

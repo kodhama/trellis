@@ -1167,3 +1167,37 @@ func TestVendorRendersDespiteAMereMentionOfTheManagedMarker(t *testing.T) {
 		t.Fatalf("a document that merely NAMES the marker is not a managed block — the render was suppressed for a conflict that does not exist: %v", err)
 	}
 }
+
+// AC2c coverage for the two conflict shapes that had none. `.trellis/internal/`
+// was tested; the legacy flat overlay and the paired managed block were not —
+// only the negative "mere mention" case was.
+func TestVendorRefusesForEveryStaticDeliveryShape(t *testing.T) {
+	for _, tc := range []struct {
+		name, wantReason string
+		setup            func(string)
+	}{
+		{"legacy flat overlay", ".trellis", func(repo string) {
+			writeFileT(t, filepath.Join(repo, ".trellis", "trellis.md"), "legacy vendored prose\n")
+		}},
+		{"paired managed block", "managed block", func(repo string) {
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
+				"# Project\n\n<!-- trellis:begin (managed by trellis) -->\n@.trellis/internal/trellis.md\n<!-- trellis:end -->\n")
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			tc.setup(repo)
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			if res.code != 0 {
+				t.Fatalf("exit %d: %s", res.code, res.stderr)
+			}
+			if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+				t.Fatalf("rendered over a %s — both static chains would load, and no hook can undo it", tc.name)
+			}
+			if !strings.Contains(res.stdout, tc.wantReason) {
+				t.Errorf("the refusal must NAME the shape it found (%q); got:\n%s", tc.wantReason, res.stdout)
+			}
+		})
+	}
+}

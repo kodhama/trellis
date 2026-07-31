@@ -91,7 +91,7 @@ measured unworkable in both readings: `~/.claude/rules/trellis.md` would import
 silent-no-op artifact this record exists to prevent — and it would govern **every
 repo on the machine**, contradicting `decision-0065:112-114` ("a project that
 never adopted Trellis is never governed by surprise"). The git-root reading
-contradicts `install.sh:193`, which forbids any git invocation under explicit
+contradicts `install.shs explicit-personal-scope comment (was :193 on main; this branch moved it)`, which forbids any git invocation under explicit
 personal scope, by design and by its own test.
 
 **The cost is named, not hidden:** personal-scope installs keep delivering no
@@ -170,7 +170,10 @@ where a reader will hit it, instead of being left to look like a contradiction.
 than leaving it inferred.** `decision-0058:123` governs "any Claude hook
 replacement" and requires that the old transport be removed or disabled in the
 same change "so rules still arrive once"; `:195` sets the boundary — "never while
-both paths would inject the full rule payload". D8 is that disablement. An
+both paths would inject the full rule payload". **D10 is that disablement**, and
+D12's coexistence branch is what makes the boundary hold in the state where the
+disablement alone cannot — both chains already loaded. *(An earlier version of
+this clause credited D8, which is the platform boundary.)* An
 earlier draft declared `decision-0058` a dependency and never argued it, which is
 the defect `decision-0065:163-166` records itself having been caught on.
 
@@ -222,7 +225,17 @@ also placed there, which this record no longer does. Path A never fires under
 this design, so the branch is new code, roughly three lines, and explicit.
 
 This widens the change beyond the installer, and that is stated rather than
-discovered at implementation: **`decision-0065`'s hook gains a third path.**
+discovered at implementation: **`decision-0065`'s hook gains a third path**, plus
+a coexistence branch ahead of path A.
+
+**`decision-0065` is superseded in part and owes a forward pointer.** Two of its
+clauses no longer hold: `:143-146` declares both hooks "take the same **two
+paths** and use the same discriminator: the `.trellis/internal/` **directory**",
+and `:193` declares "There is no state in which both paths carry the payload —
+that is tested, not asserted". The coexistence branch exists precisely because
+that second sentence became false. Six smaller amendments in this corpus carry
+`superseded_in_part_by`; this one must too, and the pointer is added on this
+branch rather than left for a reader to infer.
 
 **11. `/trellis:remove` enumerates the rendered file, in this change.**
 *(Maintainer, 2026-07-30.)*
@@ -248,10 +261,27 @@ statically — `.trellis/internal/`, the legacy flat `.trellis/trellis.md`, or a
 static chains are loaded by the host before any hook runs**, so D10's stand-down
 cannot reach them, and rendering blindly ships guaranteed double delivery.
 
-The read is existence-only, on files this script never writes, and selects
-nothing — the only outcome is render or refuse-loudly. No posture, no style, no
-marker patching. But it is state-dependent behaviour in a script whose spec says
-"zero decision logic", so it is an amendment and is recorded as one.
+**What is actually read, corrected 2026-07-30 after review found this clause
+narrower than the code:**
+
+| read | kind | outcome |
+|---|---|---|
+| `.trellis/internal/` | existence | refuse |
+| `.trellis/trellis.md` (legacy flat) | existence | refuse |
+| `CLAUDE.md` / `AGENTS.md` | **CONTENT** — a paired `trellis:begin`/`end` region | refuse |
+| `.trellis/rules.toml` | existence | selects one line of **guidance text** |
+
+An earlier version of this clause said "existence-only … the only outcome is
+render or refuse-loudly". **Both halves were wrong**: the managed-block check
+inspects file contents, and the fourth read gates a printed sentence rather than
+the render. The `install.sh` comment claiming "the ONE place this script reads
+`.trellis/`" was false at three other sites and is corrected too.
+
+What still holds, and is the part the amendment turns on: **no posture is
+selected, no marker is patched, and nothing under `.trellis/` is written.** But
+this is state-dependent behaviour in a script whose spec says "zero decision
+logic", so it is an amendment and is recorded as one — now with an accurate
+inventory rather than an understated summary.
 
 **13. Out of scope, named rather than silently retained: whether the bundle
 vendoring stays.** `install.sh` also vendors the whole `plugins/trellis/` tree so
@@ -296,13 +326,13 @@ is struck. Renumbered and recorded.
 Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
 (`/trellis:remove`). They are struck here rather than deleted.**
 
-1. ~~**Personal scope.**~~ **RULED: project scope only — D1.** `spec-0005:117` and AC4 make `~/.claude/skills/trellis/` a
+1. ~~**Personal scope.**~~ **RULED: project scope only — D1.** `spec-0005 §2's scope table` and AC4 make `~/.claude/skills/trellis/` a
    supported target; this record measured **project scope only**. Neither reading
    works: `~/.claude/rules/trellis.md` would govern **every repo on the machine**
    and import `~/.trellis/rules.toml`, which nothing writes — shipping exactly the
    silent-no-op artifact this record exists to prevent, and contradicting
    `decision-0065:112-114` ("a project that never adopted Trellis is never
-   governed by surprise"). The git-root reading contradicts `install.sh:193`
+   governed by surprise"). The git-root reading contradicts `install.shs explicit-personal-scope comment (was :193 on main; this branch moved it)`
    ("explicit personal scope: no git invocation at all, by design") and its own
    test. **Ruling needed:** project-scope-only, or something else.
 
