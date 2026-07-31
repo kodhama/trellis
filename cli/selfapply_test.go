@@ -115,16 +115,22 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 			t.Errorf("AGENTS.md is missing moved Layer-B/Grove content %q", sharedContent)
 		}
 	}
-	if strings.Count(agents, codexBootstrapBegin) != 1 || strings.Count(agents, codexBootstrapEnd) != 1 {
-		t.Error("AGENTS.md must contain exactly one generated Codex bootstrap marker pair (spec-0007@v1)")
+	// decision-0071: the Codex bootstrap is gone with the overlay it read from.
+	// It is the AGENTS.md counterpart of the CLAUDE.md managed block, and
+	// `block-codex.md:17` falls back to "the three .trellis/internal/ files" —
+	// which this decision deletes. Keeping the block would have made every Codex
+	// session here report "Trellis was not loaded"; removing one transport while
+	// leaving its fallback aimed at deleted inputs is worse than removing neither.
+	//
+	// Asserted as absence, and for the same reason as CLAUDE.md's: its return
+	// would mean this repo had drifted back to overlay delivery.
+	if strings.Count(agents, codexBootstrapBegin) != 0 || strings.Count(agents, codexBootstrapEnd) != 0 {
+		t.Error("AGENTS.md carries a Codex bootstrap block — decision-0071 removed it along with the .trellis/internal/ files it reads, so its return means this repo has drifted back to overlay delivery")
 	}
 	if strings.Contains(agents, "@.trellis/") {
-		t.Error("AGENTS.md Codex bootstrap must contain no Claude @.trellis imports")
+		t.Error("AGENTS.md must contain no Claude @.trellis imports")
 	}
-	if blockStart := strings.Index(agents, codexBootstrapBegin); blockStart < 0 ||
-		agents[blockStart:strings.Index(agents[blockStart:], codexBootstrapEnd)+blockStart+len(codexBootstrapEnd)] != referenceCodexBlock {
-		t.Error("AGENTS.md's Codex bootstrap must be byte-identical to block-codex.md")
-	}
+	_ = referenceCodexBlock
 	if strings.Contains(agents, rulesAuthorityHeader) {
 		t.Error("AGENTS.md must not embed the generated Trellis rule readout")
 	}

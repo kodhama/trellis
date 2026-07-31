@@ -2,9 +2,8 @@
 id: decision-0035
 type: decision
 status: ratified
-superseded_in_part_by: [decision-0043, decision-0057, decision-0065]
+superseded_in_part_by: [decision-0043, decision-0057, decision-0065, decision-0071]  # 2026-07-31 decision-0071 — the REPO-OVERLAY SYNC-GUARD only: this repo no longer carries .trellis/internal/, so TestRepoOverlayIsCurrent has no artifact to compare and is deleted with it. The self-application PRINCIPLE stands and is arguably stronger: the repo consumes the same plugin delivery a consumer does, so drift is structurally impossible rather than tested.
 depends_on: [decision-0005, decision-0010, decision-0028]
-superseded_in_part_by: [decision-0071]  # 2026-07-31 — the REPO-OVERLAY SYNC-GUARD only: this repo no longer carries .trellis/internal/, so TestRepoOverlayIsCurrent has no artifact to compare and is deleted with it. The self-application PRINCIPLE stands and is arguably stronger — the repo now consumes the same plugin delivery a consumer does, so drift is structurally impossible rather than tested.
 owner: gundi
 ratified: 2026-07-06
 ---

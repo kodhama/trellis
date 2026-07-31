@@ -38,9 +38,26 @@ sentence that, traced, retires a ratified guarantee.
 
 ## Decision
 
-**1. This repository stops self-applying through a vendored overlay.**
-`.trellis/internal/` and the `CLAUDE.md` managed block are removed. `.trellis/rules.toml`
-stays: it is the opt-in signal (`decision-0065`) and the rows (`decision-0070`).
+**1. This repository stops self-applying through a vendored overlay, on BOTH
+hosts.** `.trellis/internal/`, the `CLAUDE.md` managed block, **and the
+`AGENTS.md` Codex bootstrap block** are removed. `.trellis/rules.toml` stays: it
+is the opt-in signal (`decision-0065`) and the rows (`decision-0070`).
+
+*(An earlier draft removed only the Claude half. The Codex bootstrap is the
+AGENTS.md counterpart of the same overlay: `block-codex.md:17` says "if valid
+activation TOML is present but the boundary is absent, read only the three
+`.trellis/internal/` files" — so deleting those files while leaving the block
+would have made every Codex session here report "Trellis was not loaded" instead
+of self-applying. Found by the Codex reviewer. Retiring one transport and leaving
+its fallback pointed at the deleted inputs is worse than retiring neither.)*
+
+**What that costs, named rather than discovered:** the bootstrap existed as a
+belt-and-braces fallback for when the native Codex hook does not fire. This repo
+now has none — on Codex it is governed by the hook or not at all. That is the
+same exposure every consumer already has (`decision-0065`: the plugin path is
+the delivery), and accepting it here is the point of self-applying like a
+consumer. It is a real reduction in this repo's own safety net, and `trellis#220`
+is where a proper Codex path returns.
 
 **2. Self-application continues — through the plugin path, which is what
 consumers get.** The claim `decision-0035` protects is that Trellis is subject to
