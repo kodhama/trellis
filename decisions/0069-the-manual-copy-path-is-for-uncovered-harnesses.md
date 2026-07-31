@@ -64,11 +64,22 @@ for exactly the consumers the plugin cannot reach, and inert for everyone else.
 not cover.** It is not legacy, not deprecated, and `staleness.sh`'s path A is not
 cleanup debt — a future prune that deletes either must supersede this record.
 
-**2. On Claude Code and Codex CLI the manual path is superseded, and the README
-must say so at the point of instruction.** Those two hosts are covered by the
-plugin (`decision-0065`), and Claude additionally by the rendered rules file
-(`decision-0068`). A reader on either host who follows the copy recipe lands in
-the state mechanisms 2 and 3 above are built to discourage.
+**2. On Claude Code the manual path is superseded, and the README must say so at
+the point of instruction.** Claude is covered by the plugin (`decision-0065`) and
+by the rendered rules file (`decision-0068`). A reader there who follows the copy
+recipe lands in the state mechanisms 2 and 3 above are built to discourage.
+
+**Codex CLI is deliberately NOT included, and an earlier version of this clause
+was wrong to include it.** For a Codex user neither alternative exists:
+`/plugin marketplace add` is a Claude Code slash command, the curl path is
+Claude-only (`spec-0005` §1 — *"this installer exposes only the Claude host"*),
+and `spec-0007:53` states *"This spec creates no new remote installation or
+release channel."* A repo-wide grep finds no documented Codex install at all. So
+declaring the manual path superseded there removed a Codex user's **only**
+bootstrap and offered two things they cannot run. Found by the Codex reviewer on
+the PR carrying this record. Restoring a real Codex path is `trellis#220`; until
+then the manual copy path is what Codex has, and the landing page stops naming
+Codex as a host rather than naming one a visitor cannot reach.
 
 **3. The curl path and the manual path are mutually exclusive, stated rather than
 discovered.** Running `install.sh` in a repo that already carries a hand-built

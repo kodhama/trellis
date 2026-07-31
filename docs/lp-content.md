@@ -42,15 +42,15 @@ framing, which is why this copy changed):
   ```
   > /plugin marketplace add kodhama/kodhama
   > /plugin install trellis@kodhama
-  > /trellis:setup    # writes .trellis/rules.toml — the one file it writes
+  > /trellis:setup    # optional — changes posture or turns rules off
   ```
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
-  # then run /trellis:setup
+  # that's it — all 14 rules active, adaptive posture
   ```
-- `manual` (harnesses the plugin does not cover — **not** Claude Code or
-  Codex CLI, which the tabs above serve between them; `decision-0069`):
+- `manual` (harnesses the plugin does not cover — **not** Claude Code,
+  which the tabs above serve; `decision-0069`):
   ```
   $ git clone --depth 1 https://github.com/kodhama/trellis
   # then follow the copy recipe in the README — this path is
@@ -60,7 +60,7 @@ framing, which is why this copy changed):
 **Note under the terminal:** The curl path is **Claude Code, project
 scope**: it vends the plugin *and* renders the rules to
 `.claude/rules/`. `--scope personal` vends the plugin but delivers no
-rules, and other hosts get them from the marketplace tab instead. No
+rules. No
 binary, no runtime — the bundle is pre-rendered plain files with a
 checksum manifest, verified before anything is written. Clean exits: `/trellis:remove` clears the rules and config
 from a project — on the curl path the vendored bundle under
@@ -119,10 +119,13 @@ row, a "with" row):
 
 **Eyebrow:** How it works
 **Heading:** One command. It reads your project, you choose the fit.
-**Lede:** Trellis rides your existing harness — Claude Code and Codex
-CLI. The rules land as plain instructions your agents read, and one
-small config file you own says how strictly they apply. No runtime, no
-lock-in.
+**Lede:** Trellis rides your existing harness — Claude Code today. The
+rules land as plain instructions your agents read, and one small config
+file you own says how strictly they apply. No runtime, no lock-in.
+
+*(Codex CLI is deliberately not named. The plugin supports it and the
+hook is real, but there is no way to install it there — `trellis#220`.
+Naming a host a visitor cannot reach is worse than not naming it.)*
 
 Four-step flow (`01` – `04`):
 
@@ -146,8 +149,8 @@ pattern — this is a file-tree illustration, not a shell session):
 
 ```
 .trellis/
-  rules.toml       # which rules are active, how strictly — yours to edit,
-                   #   and the ONLY file /trellis:setup writes
+  rules.toml       # which rules are active, how strictly — yours to edit.
+                   #   Seeded by the installer, all 14 on (decision-0070)
 .claude/           # curl path only — the plugin path writes neither:
   rules/
     trellis.md     #   the rules readout, loaded every session — Trellis owns

@@ -42,11 +42,14 @@ plugin](https://code.claude.com/docs/en/plugins-reference#skills-directory-plugi
 under a skills directory with its own `.claude-plugin/plugin.json` loads as `trellis@skills-dir` on
 Claude Code's next session, no marketplace and no install step. On **project scope** it also
 renders one file it wholly owns, `.claude/rules/trellis.md` — the rules themselves, which Claude
-loads at launch with no hook and no trust dialog. That is how the rules actually reach a session:
+loads at launch with no hook and no trust dialog — and seeds `.trellis/rules.toml` from the shipped
+preset when none exists, so the project is governed at 14/14 on the adaptive posture the moment the
+script exits (`decision-0070` D2). That is how the rules actually reach a session:
 `decision-0068` measured that the vendored bundle alone delivered **none** (issue #201), which is
 why this paragraph no longer says the script "composes nothing else". It is Claude Code only, and
-`--scope personal` delivers no rules at all; each run prints whichever limit applies to it. Posture stays
-entirely `/trellis:setup`'s, unmodified, once the plugin is on disk:
+`--scope personal` delivers no rules at all; each run prints whichever limit applies to it. `/trellis:setup` is no longer how governance
+starts — it is how you change it, to the firm posture or to turn individual rules off
+(`decision-0070`; retirement tracked in `#219`):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
@@ -78,8 +81,10 @@ curl -fsSLO https://raw.githubusercontent.com/kodhama/trellis/main/install.sh
 less install.sh && sh install.sh --scope personal
 ```
 
-Then run `/trellis:setup` as above — that skill is the one real interactive writer either path
-leads to.
+Neither path needs `/trellis:setup` to become governed — the curl path seeds the rows and a
+project-scoped plugin applies the shipped defaults without any file at all (`decision-0070`). Run
+it when you want the **firm** posture instead of the default adaptive one, or to turn individual
+rules off.
 
 ### Local Codex support — Phase 1
 

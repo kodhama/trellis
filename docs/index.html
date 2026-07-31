@@ -322,11 +322,11 @@
         <div class="panel active" data-panel="cc">
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin marketplace add kodhama/kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@kodhama</code></div>
-          <div class="cmd"><code><span class="prompt">&gt; </span>/trellis:setup<span class="cmt">    # writes .trellis/rules.toml — the one file it writes</span></code></div>
+          <div class="cmd"><code><span class="prompt">&gt; </span>/trellis:setup<span class="cmt">    # optional — changes posture or turns rules off</span></code></div>
         </div>
         <div class="panel" data-panel="curl">
           <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
-          <div class="cmd"><code><span class="cmt"># then run /trellis:setup</span></code></div>
+          <div class="cmd"><code><span class="cmt"># that's it — all 14 rules active, adaptive posture</span></code></div>
         </div>
         <div class="panel" data-panel="manual">
           <div class="cmd"><code><span class="prompt">$ </span>git clone --depth 1 https://github.com/kodhama/trellis</code></div>
@@ -334,7 +334,7 @@
           <div class="cmd"><code><span class="cmt"># for harnesses the plugin does not cover.</span></code></div>
         </div>
       </div>
-      <p class="tnote">The curl path is <strong>Claude Code, project scope</strong>: it vends the plugin <em>and</em> renders the rules to <code>.claude/rules/</code>. <code>--scope personal</code> vends the plugin but delivers no rules, and other hosts get them from the marketplace tab instead. No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest, verified before anything is written. Clean exits: <code>/trellis:remove</code> clears the rules and config from a project (on the curl path the vendored bundle is yours to delete — <code>rm -rf .claude/skills/trellis</code>), and a bundled session hook delivers the rules on the plugin path, stands down when the curl path has already delivered them, and warns if it ever finds both.</p>
+      <p class="tnote">The curl path is <strong>Claude Code, project scope</strong>: it vends the plugin <em>and</em> renders the rules to <code>.claude/rules/</code>. <code>--scope personal</code> vends the plugin but delivers no rules. No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest, verified before anything is written. Clean exits: <code>/trellis:remove</code> clears the rules and config from a project (on the curl path the vendored bundle is yours to delete — <code>rm -rf .claude/skills/trellis</code>), and a bundled session hook delivers the rules on the plugin path, stands down when the curl path has already delivered them, and warns if it ever finds both.</p>
 
       <div class="cta">
         <a class="btn btn-primary" href="invariants.html">Explore the invariants →</a>
@@ -429,7 +429,7 @@
       <div class="sec-head">
         <p class="eyebrow">How it works</p>
         <h2>One command. It reads your project, you choose the fit.</h2>
-        <p>Trellis rides your existing harness — Claude Code and Codex CLI. The rules land as plain instructions your agents read, and one small config file you own says how strictly they apply. No runtime, no lock-in.</p>
+        <p>Trellis rides your existing harness — Claude Code today. The rules land as plain instructions your agents read, and one small config file you own says how strictly they apply. No runtime, no lock-in.</p>
       </div>
       <div class="flow">
         <div class="step"><p class="k">01 · install</p><h4>Add the plugin</h4><p>From the kodhama family marketplace — or, for a harness the plugin does not cover, copy the pre-rendered bundle by hand.</p></div>
@@ -441,8 +441,8 @@
       <div class="footprint">
         <p class="fp-label">What it leaves in your repo — small, yours to edit where it says so, and yours to remove:</p>
         <pre class="fp-code"><span class="fp-c">.trellis/</span>
-  <span class="fp-c">rules.toml</span>       <span class="fp-m"># which rules are active, how strictly — yours to edit,</span>
-                   <span class="fp-m">#   and the ONLY file /trellis:setup writes</span>
+  <span class="fp-c">rules.toml</span>       <span class="fp-m"># which rules are active, how strictly — yours to edit.</span>
+                   <span class="fp-m">#   Seeded by the installer, all 14 on (decision-0070)</span>
 <span class="fp-c">.claude/</span>           <span class="fp-m"># curl path only — the plugin path writes neither:</span>
   <span class="fp-c">rules/</span>
     <span class="fp-c">trellis.md</span>     <span class="fp-m">#   the rules readout, loaded every session — Trellis owns</span>
