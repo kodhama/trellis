@@ -45,7 +45,7 @@ renders one file it wholly owns, `.claude/rules/trellis.md` — the rules themse
 loads at launch with no hook and no trust dialog. That is how the rules actually reach a session:
 `decision-0068` measured that the vendored bundle alone delivered **none** (issue #201), which is
 why this paragraph no longer says the script "composes nothing else". It is Claude Code only, and
-`--scope personal` delivers no rules at all; the installer prints both limits. Posture stays
+`--scope personal` delivers no rules at all; each run prints whichever limit applies to it. Posture stays
 entirely `/trellis:setup`'s, unmodified, once the plugin is on disk:
 
 ```sh
@@ -182,8 +182,10 @@ the [project site](https://kodhama.github.io/trellis/invariants.html)). The thes
 - **Advisor** *(open, no runtime — shipped)* — Trellis composes onto your project as instructions your
   agents **consult**; nothing of Trellis runs at agent-time. This is what `/trellis:setup` (or the
   manual copy path) installs today. On the plugin and curl paths that is `.trellis/rules.toml` plus
-  plugin- or curl-delivered rules; the **M1 overlay and the M2 morph are retired for new installs**
-  and survive only in projects that already had them. Nothing to secure or remove at runtime.
+  plugin- or curl-delivered rules — neither writes an overlay. The **M1 overlay is now written only
+  by the manual copy path**, which `decision-0069` retains for harnesses the plugin does not cover;
+  it is not legacy. The **M2 morph is retired outright** and survives only where it already ran.
+  Nothing to secure or remove at runtime.
 - **Supervisor** *(installed, live — in progress)* — Trellis wired into your pipeline: gates fire on
   commit/PR events via hooks, it stays current through an update channel, and it comes off cleanly.
   The next delivery slice.

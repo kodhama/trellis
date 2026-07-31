@@ -50,19 +50,21 @@ framing, which is why this copy changed):
   $ # project scope (default): vends .claude/skills/trellis AND renders
   $ # .claude/rules/trellis.md — the rules themselves. Claude Code only.
   $ # --scope personal vends the plugin but delivers no rules.
-  $ # then run /trellis:setup as above
+  $ # then run /trellis:setup
   ```
 - `manual` (harnesses the plugin does not cover — **not** Claude Code or
-  Codex CLI, which the two tabs above serve; `decision-0069`):
+  Codex CLI, which the tabs above serve between them; `decision-0069`):
   ```
   $ git clone --depth 1 https://github.com/kodhama/trellis
-  $ cp trellis/plugins/trellis/reference/... .trellis/    # copy, paste, shasum -c — see the README
+  $ # then follow the copy recipe in the README — this path is for
+  $ # harnesses the plugin does not cover, not Claude Code or Codex.
   ```
 
 **Note under the terminal:** No binary, no runtime — the bundle is
 pre-rendered plain files with a checksum manifest, verified before
-anything is written. Clean exits, always: `/trellis:remove` clears it
-from a project, and a bundled session hook delivers the rules on the
+anything is written. Clean exits: `/trellis:remove` clears the rules and config
+from a project — on the curl path the vendored bundle under
+`.claude/skills/trellis/` is yours to delete — and a bundled session hook delivers the rules on the
 plugin path, stands down when the curl path has already delivered them,
 and warns if it ever finds both.
 
@@ -117,14 +119,16 @@ row, a "with" row):
 
 **Eyebrow:** How it works
 **Heading:** One command. It reads your project, you choose the fit.
-**Lede:** Trellis rides your existing harness (Claude Code today). It
-verifies every byte before it writes one, asks you which posture fits,
-and leaves one file you own. No runtime, no lock-in.
+**Lede:** Trellis rides your existing harness — Claude Code and Codex
+CLI. The rules land as plain instructions your agents read, and one
+small config file you own says how strictly they apply. No runtime, no
+lock-in.
 
 Four-step flow (`01` – `04`):
 
 1. **01 · install — Add the plugin.** From the kodhama family
-   marketplace — or copy the pre-rendered bundle into any harness.
+   marketplace — or, for a harness the plugin does not cover, copy the
+   pre-rendered bundle by hand.
 2. **02 · posture — Pick a posture.** Conductor or author-adapt — seeded
    as explicit rows in your `rules.toml`: how strict, and what's active.
    A refresh reads the rows and asks nothing.
@@ -132,10 +136,10 @@ Four-step flow (`01` – `04`):
    session hook injects them; on the curl path they are rendered into
    `.claude/rules/`. Never both — the hook stands down when it finds the
    rendered file, and says so if it ever sees both.
-4. **04 · verify — You approve.** Every byte checked against a shipped
-   checksum manifest before anything is written; `/trellis:setup` diffs
-   and asks before replacing rows you already have. Trellis proposes;
-   the merge is yours.
+4. **04 · verify — You approve.** The curl path checks every byte against
+   a shipped checksum manifest before it writes one. `/trellis:setup`
+   diffs and asks before replacing rows you already have. Trellis
+   proposes; the merge is yours.
 
 **Repo footprint** (rendered as a small code block, not the terminal
 pattern — this is a file-tree illustration, not a shell session):
@@ -144,7 +148,7 @@ pattern — this is a file-tree illustration, not a shell session):
 .trellis/
   rules.toml       # which rules are active, how strictly — yours to edit,
                    #   and the ONLY file /trellis:setup writes
-.claude/           # curl path only — the plugin path leaves neither:
+.claude/           # curl path only — the plugin path writes neither:
   rules/
     trellis.md     #   the rules readout, loaded every session — Trellis owns
                    #   this file and replaces it wholesale on re-install
