@@ -275,7 +275,49 @@ fi
 
 # ---------------------------------------------------------------------- path B
 toml="$root/.trellis/rules.toml"
-[ -f "$toml" ] || exit 0                          # not a Trellis project → silent
+
+# decision-0070. Adoption is the consent act, and every path has one; what a
+# missing rules.toml means now depends on WHICH path installed this plugin.
+#
+# D5 first, because an explicit refusal outranks every default below. A file
+# holding `governed = false` is a project saying, in its own diff, that it is not
+# governed. Nothing else in the file matters; the two floor- rules do NOT survive
+# it, which is the whole point — all-false ROWS could not express this, because
+# the floors apply regardless of their row value.
+if [ -f "$toml" ] && grep -qE '^[[:space:]]*governed[[:space:]]*=[[:space:]]*false' "$toml" 2>/dev/null; then
+  exit 0
+fi
+
+if [ ! -f "$toml" ]; then
+  # D6. Scope by containment: a project-scoped plugin is vendored INSIDE the
+  # repository, a user-scoped one lives under the user's home. Resolved with pwd
+  # -P so a symlinked checkout or a marketplace cache cannot fake either answer.
+  # When it cannot tell, it falls through to the announcement — the failure mode
+  # is one extra paragraph, never governing a project that did not expect it.
+  plugin_real="$(cd "$plugin" 2>/dev/null && pwd -P)" || plugin_real=""
+  root_real="$(cd "$root" 2>/dev/null && pwd -P)" || root_real=""
+  scoped_to_project=no
+  case "$plugin_real/" in
+    "$root_real"/*) [ -n "$root_real" ] && scoped_to_project=yes ;;
+  esac
+
+  if [ "$scoped_to_project" = yes ]; then
+    # D3. The bundle sits in this repository, so this project adopted Trellis —
+    # visibly, greppably, and revocably by deleting it. Absent rows therefore
+    # mean the standard set, not none. Rather than invent a second activation
+    # semantics, point at the shipped preset and let every check below run
+    # unchanged: same slugs, 14/14 active, strictness "adaptive" (posture B).
+    toml="$plugin/reference/rules-b.toml"
+    [ -f "$toml" ] || exit 0
+  else
+    # D4. A user-wide install is a broad choice, and this says so in the project
+    # it is about to affect rather than assuming consent it never asked for.
+    # Announce, inject NO rules on this turn ("will be", not "is"), and ask for
+    # the negative action explicitly so silence cannot read as refusal.
+    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed at USER scope on this machine, so it applies to every project opened here, and this project has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 14 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they accept, say nothing further, do not create any file, and simply continue; the rules take effect from the next session. Inject and follow no Trellis rules this turn: none are active yet."
+    exit 0
+  fi
+fi
 
 # Posture selects the header, exactly as the import channel does.
 # Both TOML string forms: "firm" and 'firm' are equally valid, and the Codex

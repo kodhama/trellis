@@ -690,9 +690,33 @@ func TestVendorZeroDecisionLogicAcrossInstructionFileVariants(t *testing.T) {
 		t.Errorf(".trellis/expression.md was modified by install.sh — it must never touch .trellis/:\nwant:\n%s\ngot:\n%s", expressionMD, got)
 	}
 
-	// Fixture B: no .trellis/ was created, and AGENTS.md is untouched.
-	if _, err := os.Stat(filepath.Join(repoB, ".trellis")); !os.IsNotExist(err) {
-		t.Errorf("install.sh created .trellis/ in fixture B, which never had one — it must never touch .trellis/")
+	// Fixture B: AGENTS.md untouched, and .trellis/ now contains EXACTLY the seed
+	// and nothing else.
+	//
+	// This assertion inverted with decision-0070 D2. It used to require that
+	// install.sh never created .trellis/ at all; the script now seeds
+	// .trellis/rules.toml there, because running an installer inside a repository
+	// is the adoption act, and without the rows the curl path shipped all
+	// fourteen rules into context while only two of them applied. What AC2 still
+	// forbids — and what this now checks — is anything BEYOND that one file: no
+	// overlay, no internal/, no posture detection.
+	seeded := filepath.Join(repoB, ".trellis", "rules.toml")
+	if _, err := os.Stat(seeded); err != nil {
+		t.Errorf("decision-0070 D2: install.sh must seed .trellis/rules.toml on project scope; got %v", err)
+	}
+	if got := readFileT(t, seeded); got != readFileT(t, filepath.Join(vendoredBundleAbs(t), "reference", "rules-b.toml")) {
+		t.Errorf(".trellis/rules.toml must be the shipped rules-b.toml byte for byte — a composed or edited seed would be decision logic, which AC2 still forbids")
+	}
+	entries, err := os.ReadDir(filepath.Join(repoB, ".trellis"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "rules.toml" {
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf(".trellis/ must contain only the seeded rules.toml; got %v — anything else is the vendored overlay decision-0065 forbids", names)
 	}
 	if got := readFileT(t, filepath.Join(repoB, "AGENTS.md")); got != agentsMD {
 		t.Errorf("AGENTS.md was modified by install.sh — it must never read or write any instructions file")

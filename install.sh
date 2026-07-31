@@ -295,7 +295,7 @@ bundle_manifest() {
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-281a5063263e195cd5632ac28fd871fd74336f7a433c508c063488c50e4007f3  hooks/staleness.sh
+5ee43bb11691e0a3ada201974ed8b14e1bcef4ebdb27b127ebe5002b7ba9b656  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -612,6 +612,31 @@ elif [ "$scope" = "project" ]; then
     fail "could not move the rendered rules file into place at $rules_dir/trellis.md"
   }
   rendered_note=".claude/rules/trellis.md"
+
+  # decision-0070 D2. Seed the rows, so the path that renders the rules also
+  # makes them apply. Without this the curl path shipped its full context cost —
+  # all fourteen rules, always loaded — while only the two floor- rules turned,
+  # and the rendered file's own @../../.trellis/rules.toml import resolved to
+  # nothing, silently.
+  #
+  # Running an installer INSIDE a repository is the adoption act (D1), which is
+  # what makes writing here legitimate where the plugin path must ask. Never
+  # overwritten: an existing rules.toml is the project's own and outranks a seed.
+  #
+  # This amends decision-0065's "setup writes exactly one file ... ever" — openly,
+  # in decision-0070 D2, not by routing around it. The clause's purpose, that no
+  # path silently vendors an overlay, is untouched: one config file, in the repo
+  # the user pointed this script at.
+  if [ ! -f "$git_root/.trellis/rules.toml" ]; then
+    if mkdir -p "$git_root/.trellis" 2>/dev/null &&
+       cp "$stage/bundle/reference/rules-b.toml" "$git_root/.trellis/rules.toml" 2>/dev/null; then
+      seeded_rows=yes
+    else
+      # Not fatal: the rules file is already in place and governing at the floors.
+      # Say so rather than exit, because the install itself succeeded.
+      seeded_rows=failed
+    fi
+  fi
 fi
 
 # --- 4. Confirm — never a git mutation; the commit is yours -----------------------
@@ -649,15 +674,20 @@ if [ "$scope" = "project" ]; then
   say "at all."
   say ""
 fi
-say "Then run /trellis:setup in the project you want to govern. That skill (the real"
-say "interactive writer — LLM-driven, no decision logic in this script) asks for a"
-say "preset and writes .trellis/rules.toml. It writes nothing else (decision-0065)."
-if [ "$scope" = "project" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
-  # Gated on the file's ABSENCE, not just on scope. Unconditional, this claimed
-  # "that file does not exist yet" while re-running after /trellis:setup, and on
-  # the overlay-refusal path — which by construction HAS rules.toml, so the claim
-  # contradicted the "keeping your .trellis/rules.toml rows" line printed just
-  # above it in the same output.
-  say "Until it does, only floor-transparency and floor-intent-gate apply: every other"
-  say "rule is gated on a row in .trellis/rules.toml, and that file does not exist yet."
-fi
+case "${seeded_rows:-}" in
+  yes)
+    say "This project is governed now: all fourteen rules are active, followed by"
+    say "default with deviations said out loud. .trellis/rules.toml holds the rows —"
+    say "it is yours to edit, and /trellis:setup can swap the posture or turn rules off."
+    ;;
+  failed)
+    say "Could not write .trellis/rules.toml (permissions?). The rules file is in place,"
+    say "but until those rows exist only floor-transparency and floor-intent-gate apply."
+    say "Run /trellis:setup, or create .trellis/rules.toml yourself, to activate the rest."
+    ;;
+  *)
+    say "Run /trellis:setup to change the posture or turn individual rules off. That"
+    say "skill (the real interactive writer — LLM-driven, no decision logic in this"
+    say "script) writes .trellis/rules.toml and nothing else (decision-0065)."
+    ;;
+esac
