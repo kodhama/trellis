@@ -42,7 +42,8 @@ plugin](https://code.claude.com/docs/en/plugins-reference#skills-directory-plugi
 under a skills directory with its own `.claude-plugin/plugin.json` loads as `trellis@skills-dir` on
 Claude Code's next session, no marketplace and no install step. On **project scope** it also
 renders one file it wholly owns, `.claude/rules/trellis.md` — the rules themselves, which Claude
-loads at launch with no hook and no trust dialog — and seeds `.trellis/rules.toml` from the shipped
+loads at launch with no hook and no *plugin* trust prompt (the workspace-trust dialog on first
+launch in a project still applies — see the project-scope bullet below) — and seeds `.trellis/rules.toml` from the shipped
 preset when none exists, so the project is governed at 14/14 on the adaptive posture the moment the
 script exits (`decision-0070` D2). That is how the rules actually reach a session:
 `decision-0068` measured that the vendored bundle alone delivered **none** (issue #201), which is
