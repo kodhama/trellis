@@ -9,6 +9,18 @@ description: Choose a Trellis preset for this project and write it to .trellis/r
 chosen preset when it is absent, and replaces its configuration with the chosen preset when it is
 present. It writes nothing else, anywhere, ever.
 
+**Since `decision-0070`, running this is no longer how a project becomes governed.** `install.sh`
+seeds `rules.toml` on the curl path, and a project-scoped plugin applies the shipped defaults
+without any file at all — both at posture B, every rule active. So the two remaining reasons to run
+this skill are: to choose the **firm** posture instead of the default adaptive one, and to migrate a
+project off a pre-`decision-0065` vendored overlay (§3). Everything else it does, the default
+already does.
+
+Worth knowing before you invoke it: the two presets differ in exactly two string values,
+`strictness` and `seeded_from`. Every rule row is `active = true` in both. A user who wants the firm
+posture, or wants one rule off, can edit that line themselves — this skill is a convenience over a
+one-line change, and `kodhama/trellis#219` tracks whether it should exist at all.
+
 That is the whole job. If you find yourself copying a payload file, patching an instructions file,
 stamping a version, or touching anything under `.trellis/internal/`, you are working from an older
 version of this skill's intent — stop and re-read this file.
