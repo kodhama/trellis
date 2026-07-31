@@ -26,7 +26,7 @@ carry the `.em` accent-ink emphasis)
 
 **Subtitle:** Trellis is a governance layer for agentic software
 development. It fits whatever methodology your project already uses,
-teaches it to your coding agents, and enforces a small set of invariants —
+teaches it to your coding agents, and governs a small set of invariants —
 so a process glitch never has to happen twice.
 
 **Install block** (terminal pattern, three tabs — Claude Code / curl / manual copy;
@@ -165,21 +165,22 @@ longer true.)*
 
 **Eyebrow:** The core
 **Heading:** A small set of invariants, expressed at your strength.
-**Lede:** Not a process — the layer above it. A handful of load-bearing
+**Lede:** Not a process — the layer above it. Fourteen load-bearing
 invariants (directional flow, ratifiable artifacts, gate-at-handover,
 independent judgment, transparency…), each set along two dials: how
-strictly it's enforced, and who gates it. Everything else, Trellis
+strictly it applies, and who gates it. Everything else, Trellis
 respects.
 
 Two cards:
 
 1. **It grounds out in real artifacts** — Trellis never just *describes*
-   process. It produces and enforces concrete, project-specific artifacts
-   — a real instructions file, real gates, a real conformance check. If it
-   can't check it, it doesn't claim it.
+   process. It grounds out in things you can point at — an instructions
+   file your agents actually load, rules you switch on and off by name,
+   and a conformance check it runs on itself. If it can't check it, it
+   doesn't claim it.
 2. **It fits, it doesn't dictate** — Gatekeepers are whatever your project
-   already declares — detected and respected, not imposed. Trellis
-   enforces the invariants and gets out of the way of your methodology.
+   already declares — respected, not imposed. Trellis guides your agents
+   on the invariants and gets out of the way of your methodology.
 
 Secondary CTA below the cards: ghost → `invariants.html` — "See all
 fourteen, with why + examples →"
