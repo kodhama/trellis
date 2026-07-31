@@ -130,7 +130,27 @@ bom="$(printf '\357\273\277')"
 # awk slug check to reject unknown row shapes, which is a larger change than the
 # bug warrants; recorded here so the next person sees it as known rather than
 # discovering it as new.
-if [ -f "$root/.trellis/rules.toml" ] && sed -n '/^[[:space:]]*\[/q;p' "$root/.trellis/rules.toml" 2>/dev/null | grep -qE "^($bom)?[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$" 2>/dev/null; then
+# Normalise ONCE, then ask two questions of the result. Doing it in one pass is
+# the point: each of the previous four rounds fixed a matcher in one place and
+# left the other host, or an earlier stage, unfixed. The BOM strip must precede
+# the table-header scan — a file beginning "<BOM>[rules]" was not recognised as
+# having a header at all, so the whole file was searched and a `governed = false`
+# under [rules] opted the project out, restoring the exact defect the header scan
+# was added to prevent.
+governed_head="$(sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+# Exactly ONE top-level assignment counts. Two — `governed = false` and
+# `governed = true` — is a malformed file, and opting out on whichever came first
+# would honour a config the parser would reject.
+# LC_ALL=C, so [[:space:]] is ASCII and nothing else. Without it the class is
+# locale-dependent AND disagrees with itself across machines: Codex measured the
+# shell REJECTING an NBSP-indented opt-out under C.UTF-8, while on macOS the same
+# expression MATCHES it and silently opts the project out. Either way the two
+# hosts disagreed about whether a project was governed, and which way round
+# depended on where you ran it. Pinning the JS class alone could not fix that;
+# the shell had to stop asking the locale.
+governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*governed[[:space:]]*=' 2>/dev/null || true)"
+if [ -f "$root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
+   printf '%s\n' "$governed_head" | LC_ALL=C grep -qE '^[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$' 2>/dev/null; then
   # One thing the hook cannot do is UN-load. On the curl path the host reads
   # .claude/rules/trellis.md at launch, before any hook runs, so by now those
   # rules are already in context and no amount of silence removes them. Injecting
