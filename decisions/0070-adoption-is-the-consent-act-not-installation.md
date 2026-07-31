@@ -35,7 +35,16 @@ why: *"would govern every repo on the machine."* `decision-0008` makes it a
 floor: *"The non-negotiable is **surfacing**, not enforcing … a conscious,
 visible choice, **never silent**."*
 
-**And the suppression it would remove is measured, not theoretical.**
+**This record does not restore that hazard by the back door.** D4 governs a
+user-scope project only after telling the user, in that project, that it is about
+to — which is what `decision-0008` asks for (*"a conscious, visible choice, never
+silent"*) and what `decision-0065`'s clause, written before any announcement
+existed, could not distinguish from silence. **`decision-0065`'s "a project that
+never adopted Trellis is never governed by surprise" is superseded in part**: such
+a project may now be governed, but never *by surprise* — the announcement is the
+difference, and it is load-bearing rather than decorative.
+
+**And the suppression the naive fix would remove is measured, not theoretical.**
 `eval/experiments/annotation-vs-absence`, 60 runs at `2ec7da8`: with an active
 row the rule fires **19/20 (95%)**; with the rule text present and its row
 inactive, **0/20**. Absence-means-on would convert a measured 0% into ~95% in
@@ -44,15 +53,17 @@ refusal instruction, not advice.
 
 ## Decision
 
-**1. The unit of consent is ADOPTION, not installation.** Installing Trellis says
-"this machine has Trellis". Adopting says "govern this project". Every delivery
-path must have an adoption act, and each already does or can:
+**1. The unit of consent is ADOPTION, not installation — except at user scope,
+where installation IS the adoption and the product says so out loud.** Installing
+Trellis project-locally says "govern this project". Installing it user-wide says
+"govern my work", and D4 makes that explicit per project rather than assumed.
+Every delivery path has an adoption act:
 
 | path | the adoption act | already in the repo? |
 |---|---|---|
 | curl | running `install.sh` **in that repo**, which writes into it | yes |
 | plugin, **project** scope | the bundle vendored at `<repo>/.claude/skills/trellis/` | yes |
-| plugin, **user** scope | **nothing yet** — this is the gap D4 closes | no |
+| plugin, **user** scope | the user-wide install itself, **announced per project** (D4) | the announcement, not a file |
 
 **2. `install.sh` seeds `.trellis/rules.toml` from `reference/rules-b.toml` when
 none exists.** Running an installer inside a repository is an unambiguous
@@ -77,14 +88,28 @@ a `SessionStart` hook that mutates the repository before the user has typed
 anything is a new and surprising behaviour, and it is unnecessary — the default
 can simply be applied.)*
 
-**4. A user-scoped plugin in an unadopted project asks, once.** The hook injects a
-consent request naming the project, and injects **no rules** that turn. The agent
-puts the choice to the human and writes the answer:
+**4. A user-scoped plugin in an unadopted project ANNOUNCES, once, and offers to
+stop.** This is an opt-OUT, chosen deliberately over the opt-in an earlier draft
+carried. A user-scoped install genuinely *is* a broad choice, and a tool that
+pretends otherwise — then asks permission it already assumed — is the less honest
+design. The maintainer's framing, 2026-07-31:
 
-- **yes** → seed `.trellis/rules.toml` from `rules-b.toml` (or run `/trellis:setup`
-  to pick a posture).
-- **no** → write `.trellis/rules.toml` containing `governed = false` and nothing
+> "The plugin is installed user scope so this repo will be governed by trellis.
+> Do you want to disable this?"
+
+The hook injects that announcement naming the project, **and injects no rules on
+that turn** — "will be", not "is". The agent puts it to the human and writes the
+answer:
+
+- **decline** → `.trellis/rules.toml` containing `governed = false` and nothing
   else. The hook honours it and is silent in that project forever after.
+- **accept, or no objection** → seed `.trellis/rules.toml` from `rules-b.toml`.
+  From the next turn the project is governed at 14/14, posture B.
+
+The prompt states the consequence before asking, and asks for the **negative**
+action explicitly, so silence never reads as refusal — a user who ignores it gets
+what the announcement said would happen, which is the only reading under which
+"will be governed" is a true statement rather than a threat.
 
 **The hook never writes.** It has one channel, injected context, and keeps it.
 Writes stay agent-mediated and human-consented, which is what makes this comply
@@ -105,8 +130,10 @@ and asks** — the failure mode is one extra question, never governing by surpri
 
 ## Consequences
 
-- `decision-0065` gains a `superseded_in_part_by` pointer for the
-  one-file clause only.
+- `decision-0065` gains a `superseded_in_part_by` pointer for **two** clauses:
+  "setup writes exactly one file … ever" (D2), and "a project that never adopted
+  Trellis is never governed by surprise" (D4), the second narrowed to preserve
+  *by surprise* while releasing *never governed*.
 - `/trellis:setup` stops being the thing that turns rules **on** and becomes the
   thing that changes **posture** and rows. Its name still fits on the user-scope
   path, where the file genuinely may not exist.
@@ -116,11 +143,15 @@ and asks** — the failure mode is one extra question, never governing by surpri
 
 ## Open questions
 
-1. **The consent request fires in every unadopted repo until answered.** For a
-   user-scoped plugin that is one injected paragraph per project, once. Is that
-   acceptable noise, or should a declined-projects list live under `~/.claude/`
-   so the repo is never written to at all? Recorded because the repo-local answer
-   was chosen for visibility, and visibility and quiet are in tension here.
+1. **The announcement fires in every unadopted repo until answered.** One
+   injected paragraph per project, once. Is that acceptable noise, or should a
+   declined-projects list live under `~/.claude/` so a declined repo is never
+   written to at all? Repo-local was chosen for visibility; visibility and quiet
+   are in tension here.
+
+   Sharper under D4's opt-out than it was under the opt-in: an accepted project
+   gets a file it did not ask for. That is the cost of making the choice
+   inspectable and committable, and it is stated rather than hidden.
 2. **The eval never tested "no rows at all".** `annotation-vs-absence` covers
    `active = false`, not a missing rows file. D3's default rests on a suppression
    mechanism proven for one state and assumed for its neighbour. An arm should be
