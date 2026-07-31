@@ -151,6 +151,28 @@ project-scope: `<repo>/.claude/skills/trellis/`). Symlinks and marketplace cache
 make this imperfect. **When it cannot tell, it treats the project as unadopted
 and asks** — the failure mode is one extra question, never governing by surprise.
 
+**7. D3 and D4 are Claude-path semantics. Codex's adoption model is unchanged,
+and that is a bound, not an oversight.** A reviewer read D1's table as promising
+all of this on both hosts; it does not, and the record said so nowhere.
+
+`codex-context.mjs` finds a project by walking up for `.trellis/rules.toml`
+(`nearestOverlay`) and reports `project-root-not-found` when there is none. So on
+Codex, **the config file remains the adoption signal** — there is no project-scope
+default (D3) and no announcement (D4). That is coherent rather than lazy: D3's
+adoption signal is a bundle vendored at `<repo>/.claude/skills/`, which is a
+Claude skills-directory location that Codex neither reads nor installs into, and
+D4's announcement exists to disclose a *user-wide* install, which is a property of
+Claude Code's plugin scopes.
+
+**What IS implemented on both hosts is D5**, and deliberately: an opt-out that
+one host ignores is not an opt-out. `governed = false` means not governed on
+Claude and on Codex, matched on the same inputs — same BOM handling, same
+whitespace classes, no size gate on either.
+
+The consequence, stated plainly: a Codex-only project still has to have a
+`rules.toml` before it is governed. If that becomes a real gap it needs its own
+decision, with Codex's own scope model measured rather than assumed by analogy.
+
 ## Consequences
 
 - `decision-0065` gains a `superseded_in_part_by` pointer for **two** clauses:
