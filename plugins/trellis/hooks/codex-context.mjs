@@ -321,6 +321,18 @@ if (projectRoot === null) {
 // The rows are read first: they carry the posture that selects which prose
 // variant the plugin payload should supply.
 const configResult = readRequired(projectRoot, PROJECT_CONFIG);
+// decision-0070 D5. A project that declares `governed = false` is not governed —
+// on EITHER host. Checked here, before the rules are parsed or assembled, for the
+// same reason the Claude hook checks it before every delivery path: an opt-out
+// that only one host honours is not an opt-out. Matched on the raw text rather
+// than through the row parser, because the parser deliberately understands only
+// the declared rules schema and would reject an unknown top-level key.
+if (
+  !configResult.error &&
+  /^[ \t]*governed[ \t]*=[ \t]*false/m.test(configResult.value ?? "")
+) {
+  process.exit(0);
+}
 if (configResult.error) {
   fail(configResult.label ?? PROJECT_CONFIG, configResult.error);
   process.exit(0);

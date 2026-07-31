@@ -292,10 +292,10 @@ bundle_manifest() {
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
 57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
-10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
+fcb06d170cfe23054c3248a45a7a2b8ee3230a12eb0485979e672f38c6bb08bb  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-668b9fa6c39cb693cb4ecea654b1b1899a6b2f6909aa13b85d9c65020defee84  hooks/staleness.sh
+515d8660eeb6b05466417c03d3269d505f5934ab0c314e3cb61a187379f5d4ab  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -657,6 +657,13 @@ if [ "$scope" = "project" ]; then
   say "get them on clone — this script never runs git:"
   if [ "$rendered_note" = ".claude/rules/trellis.md" ]; then
     add_paths=".claude/skills/trellis .claude/rules/trellis.md"
+    # The seeded rows too, and only when this run actually wrote them. Without
+    # this a collaborator cloning the repo gets the rules file and the bundle but
+    # NO activation rows — which is the pre-decision-0070 state the seed exists to
+    # end, reintroduced one `git clone` later. Same reason the else-branch omits
+    # the rendered file: naming a path that was not written makes `git add` exit
+    # 128 and the `&&` then swallows the commit.
+    [ "${seeded_rows:-}" = yes ] && add_paths="$add_paths .trellis/rules.toml"
   else
     # On any refusal path the file was not written. Naming it would make the
     # printed command fail with `pathspec ... did not match any files` (exit
