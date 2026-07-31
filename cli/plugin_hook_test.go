@@ -150,13 +150,15 @@ func TestStalenessHook(t *testing.T) {
 		}
 	})
 
-	// D5: an explicit refusal outranks every default — for the twelve configurable
-	// rules. The two floor- rules survive it. They are "the only settings that
-	// never dial to zero" and rules.md says they "apply regardless of their row
-	// value"; a project-level opt-out is still a row-level mechanism and does not
-	// reach below the floor. An earlier version of this branch exited silently
-	// here, letting a config file switch off transparency and the intent gate,
-	// against decision-0008's ratified "the non-negotiable is surfacing".
+	// D5: an explicit refusal outranks every default, and NOT GOVERNED MEANS NOT
+	// GOVERNED — the two floor- rules go too. The floors are a floor on
+	// CONFIGURATION (a row cannot dial a rule to zero while the project is
+	// governed), not a claim on a project that declined to be governed at all.
+	//
+	// This comment previously argued the opposite, and sat directly above the
+	// assertion that refutes it — left behind by a revert. Kept as a note rather
+	// than deleted, because the boundary is genuinely easy to slide off: it was
+	// gotten wrong here in both directions before it was gotten right.
 	t.Run("governed = false injects nothing at all, floors included", func(t *testing.T) {
 		if out := run(t, ".trellis/rules.toml", "governed = false"); out != "" {
 			t.Errorf("not governed means NOT GOVERNED: no rule may be injected, the two floor- rules included; got %q", out)

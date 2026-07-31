@@ -327,11 +327,25 @@ const configResult = readRequired(projectRoot, PROJECT_CONFIG);
 // that only one host honours is not an opt-out. Matched on the raw text rather
 // than through the row parser, because the parser deliberately understands only
 // the declared rules schema and would reject an unknown top-level key.
-if (
-  !configResult.error &&
-  /^[ \t]*governed[ \t]*=[ \t]*false/m.test(configResult.value ?? "")
-) {
-  process.exit(0);
+// Read the file directly rather than reusing configResult: that path is gated on
+// MAX_CONTEXT_BYTES, so an oversized rules.toml made this check unreachable and
+// Codex then told the model to go load the overlay — in a project that had
+// declared itself ungoverned. An opt-out must not have a size limit.
+//
+// The BOM strip and the whitespace class are matched to the shell hook
+// deliberately. They disagreed on four input classes (\v, \f, NBSP, \u2028) and
+// on a leading BOM, and every disagreement meant the two hosts differed about
+// whether a project was governed. A BOM in particular failed toward GOVERNING a
+// project that had refused.
+try {
+  const raw = fs
+    .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
+    .replace(/^\uFEFF/, "");
+  if (/^[^\S\r\n\u2028\u2029]*governed[^\S\r\n\u2028\u2029]*=[^\S\r\n\u2028\u2029]*false/m.test(raw)) {
+    process.exit(0);
+  }
+} catch {
+  // Unreadable here is not decisive; the normal error path below reports it.
 }
 if (configResult.error) {
   fail(configResult.label ?? PROJECT_CONFIG, configResult.error);

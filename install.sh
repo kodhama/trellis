@@ -292,10 +292,10 @@ bundle_manifest() {
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
 57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
-fcb06d170cfe23054c3248a45a7a2b8ee3230a12eb0485979e672f38c6bb08bb  hooks/codex-context.mjs
+64e29b46fa097be30b5ee69047bd384d611730fa689abb24efda1dec895de056  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-515d8660eeb6b05466417c03d3269d505f5934ab0c314e3cb61a187379f5d4ab  hooks/staleness.sh
+4dab06a14d129c24506082a095b3860b961a06f17106c392a4a8593a9df9968d  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -312,7 +312,7 @@ d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trel
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
 f63c4d15f8ce3cf4932ed3412e141e3e47b886daed15223c8402b1c3718049c3  reference/version
 83170b02a34ab55a4daa630e81fd84ec9a1a10ec8e8adc6d0924b6867ed3f1df  skills/remove/SKILL.md
-ede44a010ea096fa714df1122f0ccc14d11ad0811e607579a926bb0e5b0a2799  skills/setup/SKILL.md
+765d6c7b8f041a37bc00739d75d9319dbb0a09467685eb69a4d2a7a08effc684  skills/setup/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -627,7 +627,14 @@ elif [ "$scope" = "project" ]; then
   # in decision-0070 D2, not by routing around it. The clause's purpose, that no
   # path silently vendors an overlay, is untouched: one config file, in the repo
   # the user pointed this script at.
-  if [ ! -f "$git_root/.trellis/rules.toml" ]; then
+  if [ -e "$git_root/.trellis/rules.toml" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
+    # A non-regular target must be refused BEFORE the copy. `cp file dir` copies
+    # INTO the directory and returns 0 — measured, that produced a success banner,
+    # seeded_rows=yes, a stray rules-b.toml buried inside .trellis/rules.toml/,
+    # and an import resolving to nothing. Exactly the defect already guarded on
+    # the rendered file's move; this block reintroduced it.
+    seeded_rows=failed
+  elif [ ! -f "$git_root/.trellis/rules.toml" ]; then
     if mkdir -p "$git_root/.trellis" 2>/dev/null &&
        cp "$stage/bundle/reference/rules-b.toml" "$git_root/.trellis/rules.toml" 2>/dev/null; then
       seeded_rows=yes

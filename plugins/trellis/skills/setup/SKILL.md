@@ -26,9 +26,16 @@ active here — so it is the one thing that lives in the repo.
 
 - **Plugin path (this skill)** — configuration only. No vendoring.
 - **Install-script path (`install.sh`)** — vendoring only, for harnesses with no plugin system. It
-  vendors the plugin *bundle* into `.claude/skills/trellis/` and never touches `.trellis/`.
+  vendors the plugin *bundle* into `.claude/skills/trellis/` and, since `decision-0070` D2, seeds
+  `.trellis/rules.toml` from the shipped preset when none exists — one config file, never
+  overwritten. It configures nothing else.
 
-Do not blur them. This skill never vendors; that script never configures.
+Do not blur them. This skill never vendors.
+
+**If `.trellis/rules.toml` declares `governed = false`, STOP and ask before writing anything.**
+That line is a recorded decision not to be governed in this project (`decision-0070` D5), and
+replacing the file with a preset silently revokes it. Confirm the user wants governance switched
+back on, and tell them that is what you are doing.
 
 ## The presets
 
