@@ -202,33 +202,44 @@ if [ -f "$rendered" ]; then
   # produce a permanent false "not governed" warning on every fresh install,
   # with the suite green. Both were reported by review.
   #
-  # Four landmarks, all owned by install.sh or the payload's own generated
-  # markers, in order — plus one CONTENT assertion, because order alone accepted
-  # a 207-byte file of nothing but landmarks. Trailing CR and whitespace are
+  # FIVE landmarks, all owned by install.sh or the payload's generator, in order
+  # — plus a content assertion that counts DISTINCT rule lines, not presence.
+  #
+  # Both refinements come from review finding the previous versions too weak: a
+  # file with the whole footer deleted between the sentinel and the import passed
+  # (so the footer got its own marker), and a 167-byte file carrying one line of
+  # `inv-x` passed the "at least one slug" test (so the count is five, against a
+  # payload that ships fourteen). A truncation severe enough to matter cannot keep
+  # five distinct rule lines. Trailing CR and whitespace are
   # tolerated: this file is committed, and a collaborator on core.autocrlf=true
   # otherwise gets told a complete file is incomplete.
   incomplete="$(awk '
     { line = $0; sub(/[ \t\r]+$/, "", line) }
     stage == 0 && line == "<!-- trellis:rendered-begin -->"        { stage = 1; next }
     stage == 1 && line == "<!-- trellis:rules-loaded -->"          { stage = 2; next }
-    stage >= 1 && line ~ /`(inv|floor)-[a-z-]+`/                   { body = 1 }
-    stage == 2 && line == "@../../.trellis/rules.toml"             { stage = 3; next }
-    stage == 3 && line ~ /^<!-- trellis:rendered-from payload@[0-9a-f]+ -->$/ { stage = 4; next }
+    stage == 2 && line == "<!-- trellis:rendered-footer -->"       { stage = 3; next }
+    stage == 3 && line == "@../../.trellis/rules.toml"             { stage = 4; next }
+    stage == 4 && line ~ /^<!-- trellis:rendered-from payload@[0-9a-f]+ -->$/ { stage = 5; next }
+    stage >= 1 && line ~ /`(inv|floor)-[a-z-]+`/                   { rules[line] = 1 }
     END {
+      n = 0; for (k in rules) n++
       if (stage == 0) print "opening marker"
       else if (stage == 1) print "rules body (no trellis:rules-loaded sentinel)"
-      else if (body != 1) print "rule text (the markers are present but no rule survived)"
-      else if (stage == 2) print "rule-activation import"
-      else if (stage == 3) print "rendered-from stamp"
+      else if (n < 5) print "rule text (only " n " rule line(s) survived; the payload ships fourteen)"
+      else if (stage == 2) print "fixed footer"
+      else if (stage == 3) print "rule-activation import"
+      else if (stage == 4) print "rendered-from stamp"
     }' "$rendered" 2>/dev/null)"
   if [ -n "$incomplete" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: its $incomplete is missing, so this project is NOT governed by the rules it appears to carry. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to a reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."
     exit 0
   fi
-  # tail -n1, not head: the validator above walks to the LAST stamp line, so a
-  # decoy stamp placed above the real content would otherwise pass validation and
-  # then be reported STALE against the wrong value. The two readers must agree.
-  rendered_stamp="$(sed -n 's/.*<!-- trellis:rendered-from \(payload@[0-9a-f]*\) -->.*/\1/p' "$rendered" 2>/dev/null | tail -n1)"
+  # The awk above stops at the FIRST stamp line that follows the import, so this
+  # must not take the first line in the FILE — a decoy stamp above the real
+  # content would otherwise pass validation and then be reported STALE against
+  # the wrong value. Anchored and hex-required to match the awk's own pattern
+  # rather than being looser on both ends.
+  rendered_stamp="$(sed -n 's/^<!-- trellis:rendered-from \(payload@[0-9a-f][0-9a-f]*\) -->$/\1/p' "$rendered" 2>/dev/null | tail -n1)"
   if [ -z "$rendered_stamp" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: it carries no trellis:rendered-from stamp, which install.sh writes as its last line, so the file was truncated and its rule activation rows are missing. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to the reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work."
     exit 0
@@ -241,9 +252,8 @@ if [ -f "$rendered" ]; then
   exit 0
 fi
 
-# A legacy FLAT overlay with no stamp reaches here — the stamp file is gitignored
-# (decision-0043), so a fresh clone of such a project has the managed block's
-# import chain and nothing for path A to compare. Injecting would deliver the
+# A legacy FLAT overlay reaches here: path A keys on the .trellis/internal/
+# DIRECTORY, which this layout does not have, so nothing above catches it. Injecting would deliver the
 # rules a second time on top of that chain. The installer already refuses this
 # shape; the hook did not know it existed.
 if [ -f "$root/.trellis/trellis.md" ]; then

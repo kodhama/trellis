@@ -151,7 +151,7 @@ It entered the payload through `decision-0034`, not through the experiment. So
 0053's clause never covered it.
 
 Therefore the rendered file emits **`reference/trellis-b.md`'s posture prose as a
-shipped constant, not a choice** — `staleness.sh:141-144` already resolves absent
+shipped constant, not a choice** — `staleness.sh`'s posture selection already resolves absent
 or unreadable strictness to `b`, so the install path inherits a ratified default
 instead of inventing one. The two edits it performs (resolving `@rules.md`, repointing the invariants
 path) are both edits `staleness.sh` already performs under `decision-0065`'s "one
@@ -166,7 +166,7 @@ forbids) the rendered file **states which one is authoritative**: the `strictnes
 key in `.trellis/rules.toml`, not the sentence above it. The mismatch is recorded
 where a reader will hit it, instead of being left to look like a contradiction.
 
-**6. `decision-0058` phase 4 is satisfied by D8, and this record says so rather
+**6. `decision-0058` phase 4 is satisfied by D10, and this record says so rather
 than leaving it inferred.** `decision-0058:123` governs "any Claude hook
 replacement" and requires that the old transport be removed or disabled in the
 same change "so rules still arrive once"; `:195` sets the boundary — "never while
@@ -256,10 +256,13 @@ time. Flagged, not assumed.** *(Added 2026-07-30 after review; NOT covered by th
 D1 ruling.)*
 
 `install.sh` refuses to render when the project already delivers the rules
-statically — `.trellis/internal/`, the legacy flat `.trellis/trellis.md`, or a
-`trellis:begin` block in `CLAUDE.md`/`AGENTS.md`. There is no alternative: **both
-static chains are loaded by the host before any hook runs**, so D10's stand-down
-cannot reach them, and rendering blindly ships guaranteed double delivery.
+statically — `.trellis/internal/`, or the legacy flat `.trellis/trellis.md`.
+There is no alternative: **both static chains are loaded by the host before any
+hook runs**, so D10's stand-down cannot reach them, and rendering blindly ships
+guaranteed double delivery. The third shape a repo could hold, an `@`-import
+managed block in `CLAUDE.md`/`AGENTS.md`, needs no read of its own: the import
+resolves into `.trellis/`, so the tree is present and the first two reads already
+catch it.
 
 **What is actually read, corrected 2026-07-30 after review found this clause
 narrower than the code:**
@@ -268,13 +271,23 @@ narrower than the code:**
 |---|---|---|
 | `.trellis/internal/` | existence | refuse |
 | `.trellis/trellis.md` (legacy flat) | existence | refuse |
-| `CLAUDE.md` / `AGENTS.md` | **CONTENT** — a paired `trellis:begin`/`end` region | refuse |
-| `.trellis/rules.toml` | existence | selects one line of **guidance text** |
+| `.trellis/rules.toml` | existence | selects one line of closing **guidance text** |
+| `.claude/rules/trellis.md` | existence | on the refusal path, upgrades the message to a **live**-double-delivery warning |
+| `.claude/rules/trellis.md` | existence, non-regular | hard refusal before the `mv` |
 
-An earlier version of this clause said "existence-only … the only outcome is
-render or refuse-loudly". **Both halves were wrong**: the managed-block check
-inspects file contents, and the fourth read gates a printed sentence rather than
-the render. The `install.sh` comment claiming "the ONE place this script reads
+Five reads, four paths. **No file's contents are read.** A `CLAUDE.md`/`AGENTS.md` managed-block content
+grep existed for part of this branch's life and was removed: nothing has written
+such a block since `decision-0065`, and the one form that could still appear —
+an `@`-import line — always sits alongside the `.trellis/` tree that the first
+two rows already refuse on.
+
+Two earlier versions of this clause were wrong in opposite directions. The first
+said "existence-only … the only outcome is render or refuse-loudly" while the
+code did grep file contents and a fourth read gated printed guidance. The
+correction then enumerated four reads and was **still short by two**. The reads
+are existence-only again now because the grep was deleted, not because the claim
+was re-argued — and each read's outcome is stated per-row rather than collapsed
+into one. The `install.sh` comment claiming "the ONE place this script reads
 `.trellis/`" was false at three other sites and is corrected too.
 
 What still holds, and is the part the amendment turns on: **no posture is
@@ -376,10 +389,14 @@ Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
    the rendered file instructs the reader to run something absent and the install
    stays permanently at two floors.
 
-6. **Does `VERSION` bump?** `plugin_package_test.go:220` hard-pins `"0.3.0\n"`.
+6. ~~**Does `VERSION` bump?**~~ **CLOSED IN THIS PR — `0.3.0` -> `0.4.0`**, minor
+   per `decision-0059` (backward-compatible capability addition). The pin now
+   reads `0.4.0`; the original question text is left below, struck rather than
+   rewritten, and its line citation is as-written-then.
+   ~~`plugin_package_test.go:220` hard-pins `"0.3.0\n"`.
    This changes plugin behaviour that marketplace consumers only receive by
    re-pulling, and the immediately preceding commit bumped 0.2.0 -> 0.3.0 for
-   exactly that reason. Unstated means the executor decides silently.
+   exactly that reason. Unstated means the executor decides silently.~~
 
 ## Self-check (gate)
 

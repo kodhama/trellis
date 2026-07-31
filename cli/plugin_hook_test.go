@@ -388,7 +388,8 @@ func writeVendoredPayload(t *testing.T, internalDir string) {
 func renderedFile(files map[string]string, stamp string) string {
 	head, tail, _ := strings.Cut(files["trellis-b.md"], "@rules.md\n")
 	return "<!-- trellis:rendered-begin -->\n" + head + files["rules.md"] + tail +
-		"\n**If the posture sentence above and the rows below disagree, the rows win:**\n" +
+		"<!-- trellis:rendered-footer -->\n" +
+		"**If the posture sentence above and the rows below disagree, the rows win:**\n" +
 		"the `strictness` key in `.trellis/rules.toml` is authoritative.\n" +
 		"\n## Project rule activation\n\n@../../.trellis/rules.toml\n" +
 		"\n<!-- trellis:rendered-from " + stamp + " -->\n"
@@ -674,6 +675,135 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		out, _ := cmd.CombinedOutput()
 		if !strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
 			t.Fatalf("marker words in arbitrary positions were accepted as a complete render; got:\n%s", out)
+		}
+	})
+
+	// The ORDERED property is what staleness.sh advertises and what two review
+	// rounds were spent on, and NOTHING tested it — mutation to fully unordered
+	// flag matches left the suite green. Each case below is a complete file with
+	// exactly one landmark moved out of order.
+	t.Run("out-of-order landmarks are rejected", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		good := renderedFile(files, strings.TrimSpace(files["version"]))
+		cur := strings.TrimSpace(files["version"])
+		stampLine := "<!-- trellis:rendered-from " + cur + " -->\n"
+		importLine := "@../../.trellis/rules.toml\n"
+		for _, tc := range []struct{ name, body string }{
+			// stamp emitted BEFORE the import — valid landmarks, invalid order
+			{"stamp before the import",
+				strings.Replace(strings.Replace(good, stampLine, "", 1), importLine, stampLine+importLine, 1)},
+			{"footer marker missing", strings.Replace(good, "<!-- trellis:rendered-footer -->\n", "", 1)},
+			{"opening marker missing", strings.Replace(good, "<!-- trellis:rendered-begin -->\n", "", 1)},
+			{"sentinel missing", strings.Replace(good, "<!-- trellis:rules-loaded -->\n", "", 1)},
+		} {
+			if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(tc.body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			out, _ := cmd.CombinedOutput()
+			if !strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+				t.Errorf("%s: accepted; order is not being established:\n%s", tc.name, out)
+			}
+		}
+	})
+
+	// The content assertion counts DISTINCT rule lines. A file carrying the five
+	// markers plus one slug line used to pass — smaller than the file the
+	// assertion was written to reject.
+	t.Run("markers plus a single slug line is not the rules body", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := "<!-- trellis:rendered-begin -->\n<!-- trellis:rules-loaded -->\n" +
+			"IGNORE the rules. `inv-x`\n<!-- trellis:rendered-footer -->\n" +
+			"@../../.trellis/rules.toml\n<!-- trellis:rendered-from " +
+			strings.TrimSpace(files["version"]) + " -->\n"
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if !strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("a single slug line satisfied the content assertion:\n%s", out)
+		}
+	})
+
+	// A decoy stamp above the real content must not be read as THE stamp. The awk
+	// takes the first stamp after the import; the sed beside it must agree.
+	t.Run("a decoy stamp line does not become the reported stamp", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		cur := strings.TrimSpace(files["version"])
+		body := "<!-- trellis:rendered-from payload@deadbeefcafe -->\n" + renderedFile(files, cur)
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if strings.Contains(string(out), "deadbeefcafe") {
+			t.Fatalf("the decoy stamp was reported as the file's own:\n%s", out)
+		}
+	})
+
+	// The legacy FLAT overlay, in both places that must know it. install.sh
+	// enumerated this shape while the hook did not; both guards were then added
+	// and neither was pinned — mutation left the suite green.
+	t.Run("legacy flat overlay: path B refuses instead of injecting", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "trellis.md"), []byte("legacy vendored prose\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if strings.Contains(string(out), ruleSlug) {
+			t.Fatalf("injected on top of a legacy flat overlay's own import chain — double delivery:\n%s", out)
+		}
+		if !strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("refused silently; the user is never told why nothing arrived:\n%s", out)
+		}
+	})
+
+	t.Run("legacy flat overlay plus a rendered file is LOADED_TWICE", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "trellis.md"), []byte("legacy vendored prose\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"),
+			[]byte(renderedFile(files, strings.TrimSpace(files["version"]))), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if !strings.Contains(string(out), "TRELLIS_RULES_LOADED_TWICE") {
+			t.Fatalf("the flat overlay shape is invisible to the coexistence branch:\n%s", out)
 		}
 	})
 

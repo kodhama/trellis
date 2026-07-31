@@ -1186,10 +1186,6 @@ func TestVendorRefusesForEveryStaticDeliveryShape(t *testing.T) {
 		{"legacy flat overlay", ".trellis", func(repo string) {
 			writeFileT(t, filepath.Join(repo, ".trellis", "trellis.md"), "legacy vendored prose\n")
 		}},
-		{"paired managed block", "managed block", func(repo string) {
-			writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
-				"# Project\n\n<!-- trellis:begin (managed by trellis) -->\n@.trellis/internal/trellis.md\n<!-- trellis:end -->\n")
-		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := t.TempDir()
@@ -1233,11 +1229,31 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		}
 	})
 
-	t.Run("a mere prose mention of BOTH delimiters is not a managed block", func(t *testing.T) {
+	// The import-form block ALWAYS brings .trellis/internal/ with it — it imports
+	// @.trellis/internal/trellis.md — so the existence check catches it and no
+	// content grep is needed. This pins that: a real paired block, and the refusal
+	// still fires, without install.sh reading a single file's contents.
+	t.Run("an import-form block is caught by its overlay, not by grepping prose", func(t *testing.T) {
 		repo := t.TempDir()
 		initGitRepo(t, repo)
-		// Verbatim the shape this plugin's own setup skill uses to describe a
-		// managed region. Requiring both markers anywhere still matched it.
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
+			"# Project\n\n<!-- trellis:begin (managed by trellis) -->\n@.trellis/internal/trellis.md\n<!-- trellis:end -->\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "internal", "version"), "payload@000000000000\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+			t.Fatalf("rendered over an import-form managed block — live double delivery")
+		}
+	})
+
+	// The converse, and the reason the grep is gone: prose that NAMES the
+	// delimiters must never suppress the render. Two review rounds were spent on
+	// grep forms that got this wrong; not grepping cannot.
+	t.Run("prose naming the delimiters never suppresses the render", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
 		writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
 			"# Contributing\n\nA managed region is delimited by `<!-- trellis:begin ... -->`\n"+
 				"and `<!-- trellis:end -->`. Never hand-edit between them.\n")
@@ -1246,7 +1262,71 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 			t.Fatalf("exit %d: %s", res.code, res.stderr)
 		}
 		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
-			t.Fatalf("prose naming both delimiters suppressed the render — issue #201 restored, for a conflict that does not exist: %v", err)
+			t.Fatalf("prose suppressed the render — issue #201 restored for a conflict that does not exist: %v", err)
 		}
 	})
+
+	// install.sh must inspect NO file's contents. That is AC2's surviving clause,
+	// and it is now true again because the grep is gone.
+	t.Run("no file contents are read at all", func(t *testing.T) {
+		src, err := os.ReadFile(installScriptPath(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range strings.Split(string(src), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			if strings.Contains(trimmed, "grep") && strings.Contains(trimmed, "git_root") {
+				t.Errorf("install.sh greps a project file's contents — AC2 forbids it and the existence checks make it unnecessary: %s", trimmed)
+			}
+		}
+	})
+}
+
+// An explicitly-passed but empty --scope used to fall through to the default,
+// silently ignoring a flag the user typed. Unpinned until mutation found it.
+func TestVendorRejectsAnEmptyScopeFlag(t *testing.T) {
+	for _, arg := range [][]string{{"--scope", ""}, {"--scope="}} {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), arg...)
+		if res.code == 0 {
+			t.Errorf("%v was accepted; an explicitly-passed empty scope must not resolve to the default", arg)
+		}
+		if !strings.Contains(res.stdout+res.stderr, "scope must be personal or project") {
+			t.Errorf("%v failed without naming the reason:\n%s", arg, res.stdout+res.stderr)
+		}
+	}
+}
+
+// TestInstallScriptNamesNoProjectFileInExecutableCode (spec-0005 AC2's
+// checkable-by-absence clause). The clause names five strings; before this test
+// nothing enforced it, and the clause had silently gone false once already —
+// an interim revision of this branch grepped CLAUDE.md/AGENTS.md for a managed
+// block while the spec still promised the check passed.
+//
+// This is the WEAK half of AC2 on purpose. It cannot prove the script doesn't
+// branch on instructions-file state under some other name; that is
+// TestVendorZeroDecisionLogicAcrossInstructionFileVariants's job. What it does
+// prove is that the spec's own stated check still holds, so a reviewer running
+// it by hand gets the answer the spec promises.
+func TestInstallScriptNamesNoProjectFileInExecutableCode(t *testing.T) {
+	src := readFileT(t, installScriptPath(t))
+	// `trellis:rendered-begin` is the rendered file's own machine marker and a
+	// legitimate executable string; `trellis:begin` is the retired managed-block
+	// delimiter. Matching the latter must not match the former.
+	terms := []string{"expression.md", "profile-", "trellis:begin", "CLAUDE.md", "AGENTS.md"}
+	for i, line := range strings.Split(src, "\n") {
+		code, _, _ := strings.Cut(line, "#")
+		if strings.TrimSpace(code) == "" {
+			continue // whole-line comment, or blank
+		}
+		for _, term := range terms {
+			if strings.Contains(code, term) {
+				t.Errorf("install.sh:%d names %q in executable code: %s\n\nspec-0005 AC2 promises this grep returns nothing. Either the script regained decision logic over a project file, or AC2's check list needs amending in the same act.", i+1, term, strings.TrimSpace(line))
+			}
+		}
+	}
 }

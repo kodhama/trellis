@@ -168,8 +168,10 @@ done
 requested=""
 requested_origin=""
 if [ "$SCOPE_GIVEN" -eq 1 ]; then
-  # Presence, not emptiness. `--scope ""` used to fall straight through this
-  # branch to the default, silently ignoring a flag the user explicitly passed.
+  # Presence, not emptiness. `--scope ""` used to fall straight through to the
+  # default, silently ignoring a flag the user explicitly passed. The load-bearing
+  # check is the validator below, which also gates on SCOPE_GIVEN — mutation
+  # showed this branch alone is not what enforces it.
   requested="$SCOPE_FLAG"; requested_origin="--scope"
 elif [ -n "${TRELLIS_SKILLS_SCOPE:-}" ]; then
   requested="$TRELLIS_SKILLS_SCOPE"; requested_origin="\$TRELLIS_SKILLS_SCOPE"
@@ -274,7 +276,7 @@ bundle_manifest() {
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-bc04fb35ead8703e17d3ce7ba8b6387794fbed7fdce6a1183f40d5fdf049d114  hooks/staleness.sh
+9c807f3ccd436326a17b90774ce578d553fd568932941d4f23e20a8be88678f4  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -317,8 +319,9 @@ for f in $bundle_files; do fetch "$f"; done
 out="$(manifest_check "$stage/bundle" <"$stage/manifest" 2>&1)" || fail "bundle checksum verify failed — the fetched files do not match this script's baked-in manifest. Nothing was installed. This means either the fetch was corrupted or tampered in transit, or the bundle at $BUNDLE_SOURCE has moved past what this copy of install.sh expects — re-download install.sh from https://raw.githubusercontent.com/kodhama/trellis/main/install.sh and re-run. shasum said:
 $out"
 
-# --- 3. Write — overwrite the plugin's own files; .trellis/ is untouched, always -
-#         (the setup skill owns .trellis/ entirely; this script never looks at it,
+# --- 3. Write — overwrite the plugin's own files; .trellis/ is never WRITTEN ----
+#         (the setup skill owns .trellis/ entirely; this script reads only whether
+#         a few paths EXIST there, never any file's contents,
 #         and this script never runs a git command that mutates anything)
 
 mkdir -p "$target"
@@ -343,7 +346,9 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 # would govern every repo on the machine and import ~/.trellis/rules.toml, which
 # nothing writes.
 #
-# This is still zero decision logic (spec-0005 AC2, unamended on that point): the
+# Still zero decision logic in the sense AC2's heading means — no posture chosen,
+# no marker patched. AC2's "never reads .trellis/" clause WAS amended for this
+# branch (see the spec's frontmatter); the reads are existence-only. The
 # script reads no .trellis/ file and chooses no posture. It emits trellis-b's
 # prose as a CONSTANT — staleness.sh already resolves absent strictness to `b`,
 # so the install path inherits a ratified default rather than inventing one.
@@ -365,28 +370,32 @@ if [ "$scope" = "project" ]; then
   #   - the pre-decision-0051 FLAT layout, whose managed block imports
   #     @.trellis/trellis.md with no internal/ directory at all; and
   #   - the managed block itself, which is the thing that actually does the
-  #     importing. .trellis/version is gitignored (decision-0043), so a fresh
-  #     clone of a legacy project has the import chain and no stamp file — the
-  #     block is the only reliable signal there.
+  #     importing.
+  #
+  #     (An earlier version of this comment justified the flat shape by claiming
+  #     .trellis/version is gitignored, so a fresh clone would carry the import
+  #     chain with no stamp. FALSE, verified: .trellis/internal/version is
+  #     TRACKED in this tree, and decision-0043 scopes that exception to the
+  #     repo's OWN self-hosted overlay. The shape is real; the reason given for
+  #     it was not.)
   [ -d "$git_root/.trellis/internal" ] && static_conflict=".trellis/internal/ overlay"
   [ -z "$static_conflict" ] && [ -f "$git_root/.trellis/trellis.md" ] && static_conflict="legacy flat .trellis/ overlay"
-  if [ -z "$static_conflict" ]; then
-    for f in CLAUDE.md AGENTS.md; do
-      [ -f "$git_root/$f" ] || continue
-      # A PAIRED region, not a mention. An unanchored search for the opening
-      # marker classified contributor guidance that merely documents the literal
-      # `<!-- trellis:begin` string as static delivery — suppressing the render
-      # and reporting a conflict that does not exist. Both markers, or no block.
-      # ANCHORED at column 0. Requiring both markers anywhere still matched prose
-      # that merely NAMES the delimiters — which is verbatim how this plugin's own
-      # setup skill describes a managed region — suppressing the render and
-      # claiming a conflict that does not exist. A real block always starts at
-      # column 0 (reference/block-claude.md:1).
-      grep -q '^<!-- trellis:begin' "$git_root/$f" 2>/dev/null \
-        && grep -q '^<!-- trellis:end -->$' "$git_root/$f" 2>/dev/null \
-        && { static_conflict="managed block in $f"; break; }
-    done
-  fi
+  # NOT detected: a pre-decision-0065 INLINE managed block in a repo with no
+  # .trellis/ at all. Named as an accepted gap rather than half-covered.
+  #
+  # Why the grep that used to be here is gone: nothing writes a managed block any
+  # more (decision-0065 — "setup no longer writes a managed block"), and the
+  # IMPORT-form block cannot exist without .trellis/ because it imports
+  # @.trellis/internal/trellis.md — so the existence checks above already catch
+  # every block a repo can have alongside a .trellis/ tree. Only the inline form
+  # was uniquely caught, and grepping for it cost three review findings: it broke
+  # on CRLF checkouts (core.autocrlf=true is the Git-for-Windows default, so a
+  # REAL block went undetected and the render proceeded into live double
+  # delivery), and twice it matched prose that merely NAMED the delimiters.
+  #
+  # Consequence, stated rather than hidden: this script now reads only whether
+  # files EXIST. It inspects no file's contents, which is what spec-0005 AC2 said
+  # all along and what an earlier version of this branch had to amend away.
 fi
 if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   # A pre-plugin-delivery consumer whose CLAUDE.md managed block imports
@@ -471,7 +480,7 @@ elif [ "$scope" = "project" ]; then
     # install time; the rows below are live and carry their own `strictness`.
     # They can disagree, and the reader is told which wins rather than left to
     # see a contradiction.
-    printf '\n'
+    printf '<!-- trellis:rendered-footer -->\n'
     printf '**If the posture sentence above and the rows below disagree, the rows win:**\n'
     printf 'the `strictness` key in `.trellis/rules.toml` is authoritative. The sentence\n'
     printf 'above was fixed when this file was written; the rows are read fresh every\n'
