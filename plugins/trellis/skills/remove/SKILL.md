@@ -7,7 +7,9 @@ description: Remove Trellis from this project — delete the .trellis/ overlay, 
 
 Cleanly reverse the shared **M1 overlay** from either host. This is a **product-wide** remove, not a
 per-host disable: it handles both the Claude block in `CLAUDE.md` and the Codex receipt/fallback in
-`AGENTS.md`, then removes `.trellis/`. Preserve every surrounding user byte.
+`AGENTS.md`, removes the curl install path's rendered
+`.claude/rules/trellis.md`, and **then** removes `.trellis/`. Preserve every
+surrounding user byte.
 
 ## 1. Preflight every target before any edit
 
@@ -22,8 +24,22 @@ Snapshot the complete project paths this operation may touch. Inspect **every do
 
 Also inspect, without writing:
 
+- `.claude/rules/trellis.md` — rendered by `install.sh` on the curl install path
+  (`decision-0068` D1). It is a Trellis-authored instructions file loaded into
+  every session, and it imports `.trellis/rules.toml`;
 - `.trellis/`, including consumer-owned `rules.toml` and any legacy `expression.md`;
 - every recognized lint/format ignore target that may contain a setup-added `.trellis/` line.
+
+**Order matters between those two.** Remove `.claude/rules/trellis.md` *before*
+`.trellis/`. An interrupted removal must never leave the governing file present
+with its rows already gone: a posture header and a full rules body in
+always-loaded context, importing a file that no longer exists, with nothing left
+to activate any rule. That is a worse state than either end of the operation.
+
+Remove only `.claude/rules/trellis.md`. `.claude/rules/` is a shared directory a
+project may fill with unrelated rules of its own, and the directory itself is not
+Trellis's to delete — the same file-not-directory boundary the hook's path C
+uses.
 
 For each marker family, require either no marker or exactly one nonnested paired region. Duplicate,
 unpaired, nested, overlapping, or otherwise ambiguous markers stop the entire operation **before**
@@ -54,9 +70,28 @@ in step 1; never guess.
 
 Only after every preflight and consent succeeds:
 
-1. write or delete every staged documented instruction-file result;
-2. apply the staged, consented ignore cleanup; and
-3. delete the shared `.trellis/` overlay last.
+1. delete the rendered `.claude/rules/trellis.md` if present;
+2. write or delete every staged documented instruction-file result;
+3. apply the staged, consented ignore cleanup; and
+4. delete the shared `.trellis/` overlay last.
+
+**Why the rendered file goes FIRST, not third.** A project mid-migration can hold
+both delivery paths at once — a managed block plus `.trellis/internal/`, and a
+rendered file. Removing the block (step 2) before the rendered file leaves an
+interruption window in which *neither* path governs: the block is gone, the
+rendered file is gone, and the surviving `.trellis/internal/` makes the plugin
+hook's path A exit without injecting. The session that follows is ungoverned
+while the removal looks half-done in both directions.
+
+Ordering it first inverts that: every interruption window leaves **at least one**
+delivery path intact, and the last thing removed is the overlay, which is what
+the guarantee at the end of this section already promises. An interrupted removal
+may leave the rendered file gone and the block still importing rows — governed,
+if redundantly — which is the safe direction.
+
+Delete only the file. `.claude/rules/` is a shared directory a project may fill
+with unrelated rules of its own, and the directory itself is not Trellis's to
+remove.
 
 Verify surrounding instruction-file and ignore-file bytes against the snapshots. If a preflight
 failed, verify that every block and the overlay remain unchanged.
@@ -64,9 +99,15 @@ failed, verify that every block and the overlay remain unchanged.
 ## 5. Confirm
 
 Report every recognized item as removed, retained, ambiguous, or absent: the Claude block, Codex
-bootstrap, shared overlay, legacy consumer content, and ignore entries. If no managed block or
-overlay was present, make no change and say Trellis is **already absent**. A second remove is this
-same reported no-op.
+bootstrap, shared overlay, the rendered `.claude/rules/trellis.md`, legacy consumer content, and
+ignore entries.
+
+**The no-op predicate counts all three installed shapes, not two.** Say Trellis is
+**already absent** — and make no change — only when there is no managed block, no overlay, **and no
+`.claude/rules/trellis.md`**. A curl install that has not yet run `/trellis:setup` has the rendered
+file and neither of the other two: reporting that project "already absent" would leave an
+always-loaded governing file on disk while telling the user Trellis was gone. A second remove is
+this same reported no-op, once all three are genuinely absent.
 
 ## Reversing an M2 morph
 

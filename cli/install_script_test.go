@@ -305,10 +305,15 @@ func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	}
 
 	lines := strings.Split(strings.TrimRight(res.stdout, "\n"), "\n")
-	const wantLines = 7 // item 1 (scope + vendored-to + files-written = 3 lines) + blank
-	// separator + item 5 (3-line next-step pointer) = 7; items 2-4 never fire for
-	// personal scope. See install.sh's post-write block (guarded by `[ "$scope" =
-	// "project" ]`) for the source of this count.
+	const wantLines = 8 // item 1 (scope + vendored-to + files-written + rules = 4
+	// lines) + blank separator + item 5 (3-line next-step pointer) = 8; items 2-4
+	// never fire for personal scope. See install.sh's post-write block (guarded by
+	// `[ "$scope" = "project" ]`) for the source of this count.
+	//
+	// 7 -> 8 per decision-0068 D1: item 1 now names what was rendered, and on
+	// personal scope that is "no rules file (project scope only)". The line is
+	// deliberate, not incidental — silently delivering nothing is the exact defect
+	// this change fixes, so the path that still delivers nothing has to say so.
 	if len(lines) != wantLines {
 		t.Errorf("personal-scope stdout has %d lines, want exactly %d (spec-0005 AC10 — items 1 and 5 only, nothing more); got:\n%s", len(lines), wantLines, res.stdout)
 	}
@@ -636,7 +641,17 @@ func TestVendorNonInteractiveFlagAppliesDefaultWithoutPrompting(t *testing.T) {
 func TestVendorZeroDecisionLogicAcrossInstructionFileVariants(t *testing.T) {
 	repoA := t.TempDir()
 	initGitRepo(t, repoA)
-	claudeMD := "# Project A\n\n<!-- trellis:begin (managed by trellis) -->\nSome existing overlay content that a decision-logic script might try to detect or patch.\n<!-- trellis:end -->\n"
+	// Fixture A used to carry a `trellis:begin` managed block. That block is now
+	// a STATIC-DELIVERY CONFLICT signal (decision-0068, AC2's amendment): the
+	// installer must refuse to render over it, so stdout legitimately differs.
+	// Keeping it here would make this test assert the opposite of the contract.
+	//
+	// What this test still guards — and what AC2's "zero decision logic" heading
+	// still means — is that the script never branches on POSTURE, STYLE, or
+	// instructions-file CONTENT. Fixture A keeps the posture bait and the
+	// hand-authored prose; only the conflict marker moved out, to
+	// TestVendorRefusesToRenderOverAVendoredOverlay where it is asserted directly.
+	claudeMD := "# Project A\n\nHand-authored prose a decision-logic script might try to detect or patch.\n"
 	writeFileT(t, filepath.Join(repoA, "CLAUDE.md"), claudeMD)
 	expressionMD := "---\nprofile: b\n---\n\nOur hand-authored expression — a decision-logic script might try to read this posture.\n"
 	writeFileT(t, filepath.Join(repoA, ".trellis", "expression.md"), expressionMD)
@@ -864,4 +879,636 @@ func TestVendorNeverInvokesGitBeyondRevParse(t *testing.T) {
 		}
 		assertOnlyRevParseShowToplevel(t, logPath)
 	})
+}
+
+// decision-0068 D1/D4/D5 and spec-0005 AC2a. The rendered rules file is the
+// whole point of the change: before it, a vendored install delivered NO rules at
+// all (measured; issue #201). Everything asserted here is a silent-failure mode
+// — none of it errors when wrong, it just governs nothing.
+func TestVendorRendersClaudeRulesFile(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+	if res.code != 0 {
+		t.Fatalf("exit %d\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
+	}
+	rendered := filepath.Join(repo, ".claude", "rules", "trellis.md")
+	raw, err := os.ReadFile(rendered)
+	if err != nil {
+		t.Fatalf("the rules file is the delivery mechanism; without it the install ships nothing: %v", err)
+	}
+	got := string(raw)
+	lines := strings.Split(got, "\n")
+	hasLine := func(want string) bool {
+		for _, l := range lines {
+			if strings.TrimRight(l, "\r") == want {
+				return true
+			}
+		}
+		return false
+	}
+
+	// --- the import form. Both spellings are legal markdown and each is correct
+	// in exactly one location; in the other it loads NOTHING, with no error and
+	// no content. Measured both ways. This file is real (not a symlink) and sits
+	// at .claude/rules/, so the ../../ form is the correct one.
+	if !hasLine("@../../.trellis/rules.toml") {
+		t.Errorf("missing the import line @../../.trellis/rules.toml — the rows would never load:\n%s", got)
+	}
+	if hasLine("@rules.toml") {
+		t.Errorf("emitted the SIBLING import form @rules.toml — correct only from a symlinked file in .trellis/, silently loads nothing from here")
+	}
+	if hasLine("@.trellis/rules.toml") {
+		t.Errorf("emitted the project-root import form — measured NOT to resolve, silently")
+	}
+	// --- the placeholder the payload header ships must be RESOLVED, not copied.
+	// Left in place it resolves to .claude/rules/rules.md, which does not exist,
+	// and the entire rules body vanishes while every other assertion still passes.
+	if hasLine("@rules.md") {
+		t.Errorf("the @rules.md placeholder survived the render — the rules body would silently drop out")
+	}
+
+	// --- content anchored to shipped payload bytes, not to literals in this test.
+	// This is what makes decision-0053's "the tested wording is the shipped
+	// wording" mechanical instead of reviewed.
+	files := payloadFiles()
+	body := files["rules.md"]
+	if !strings.Contains(got, body) {
+		t.Errorf("the rules body is not byte-identical to the shipped reference/rules.md")
+	}
+	posture := "**How strictly to follow them:** **By default**"
+	if !strings.Contains(got, posture) {
+		t.Errorf("missing trellis-b's posture prose; decision-0068 D5 ships it as a constant")
+	}
+	if strings.Contains(got, "**Firmly** — treat these as hard requirements") {
+		t.Errorf("emitted trellis-a's firm posture; D5 ships the adaptive default, matching staleness.sh's absent-strictness branch")
+	}
+
+	// --- ordering. The authority header states the rows are "loaded below the
+	// rules"; emitting the import above them makes the shipped text lie.
+	iBody := strings.Index(got, "inv-directional-flow")
+	iImport := strings.Index(got, "@../../.trellis/rules.toml")
+	if iBody < 0 || iImport < 0 || iImport < iBody {
+		t.Errorf("the import must come AFTER the rules body (the authority header says rows load below the rules)")
+	}
+
+	// --- D5's one sentence of new prose: which source is authoritative. The
+	// frozen posture sentence and the live rows can disagree, and a reader must
+	// be told which wins rather than left to see a contradiction.
+	if !strings.Contains(got, "strictness") || !strings.Contains(got, "authoritative") {
+		t.Errorf("D5 requires the file to name .trellis/rules.toml's strictness key as authoritative over the frozen sentence above it")
+	}
+
+	// --- the drift surface. Without an embedded stamp the hook can only stand
+	// down blindly, and a file rendered by an older installer would govern
+	// forever with no signal — decision-0035's floor applied to this artifact,
+	// and the gap decision-0068's own Open 4 recorded before Codex found it.
+	// Verified by mutation: before this assertion, removing the stamp entirely
+	// left the suite green.
+	stampRe := regexp.MustCompile(`<!-- trellis:rendered-from payload@[0-9a-f]{12} -->`)
+	if !stampRe.MatchString(got) {
+		t.Errorf("the rendered file carries no payload stamp — the hook cannot tell a stale install from a current one:\n%s", got)
+	}
+	shipped := strings.TrimSpace(files["version"])
+	if !strings.Contains(got, "<!-- trellis:rendered-from "+shipped+" -->") {
+		t.Errorf("the embedded stamp must be the payload actually vendored (%s), or the drift check compares against the wrong thing", shipped)
+	}
+
+	// --- the invariants pointer must name a path this install actually creates.
+	// The shipped header names .trellis/internal/invariants.md, which the install
+	// path never writes (D1: install.sh never touches .trellis/).
+	if strings.Contains(got, ".trellis/internal/invariants.md") {
+		t.Errorf("the rendered file points at .trellis/internal/invariants.md, which this path never creates — a dead reference")
+	}
+	if !strings.Contains(got, ".claude/skills/trellis/reference/invariants.md") {
+		t.Errorf("the invariants pointer must name the vendored copy this install DOES create")
+	}
+	// An absolute path would leak the installing machine's filesystem into a file
+	// §4 actively suggests committing, and would be wrong on a collaborator's box.
+	if strings.Contains(got, repo) {
+		t.Errorf("the rendered file embeds an absolute path from the installing machine")
+	}
+}
+
+// D1 ruled project scope only. A personal install renders nothing and says why:
+// ~/.claude/rules/trellis.md would govern EVERY repo on the machine and import
+// ~/.trellis/rules.toml, which nothing writes — shipping precisely the
+// silent-no-op artifact this change exists to prevent.
+func TestVendorPersonalScopeRendersNoRulesFile(t *testing.T) {
+	home := t.TempDir()
+	work := t.TempDir()
+	res := runVendor(t, work, home, vendoredBundleAbs(t), "--scope", "personal")
+	if res.code != 0 {
+		t.Fatalf("exit %d\nstderr: %s", res.code, res.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude", "rules", "trellis.md")); err == nil {
+		t.Fatalf("personal scope must NOT render a user-wide rules file")
+	}
+	if _, err := os.Stat(filepath.Join(work, ".claude", "rules", "trellis.md")); err == nil {
+		t.Fatalf("personal scope must not render into the working directory either")
+	}
+	if !strings.Contains(res.stdout, "no rules file") {
+		t.Errorf("silently delivering nothing is the defect this change fixes; personal scope must SAY it rendered no rules file:\n%s", res.stdout)
+	}
+}
+
+// HIGH, found by independent code review and reproduced: `{ ...; } > file`
+// swallows a redirect failure. With a read-only .claude/rules/trellis.md the
+// script exited 0, printed "rules: .claude/rules/trellis.md", and left the
+// user's prior bytes untouched — the installer lying about what it did, which is
+// the same silent-delivery class this whole change exists to fix. It is also
+// shell-dependent: bash continues, dash aborts with a bare exit 2.
+func TestVendorRenderFailureIsLoudAndFailsClosed(t *testing.T) {
+	for _, tc := range []struct{ name, kind string }{
+		{"read-only target", "file"},
+		{"directory in the way", "dir"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			dst := filepath.Join(repo, ".claude", "rules", "trellis.md")
+			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			switch tc.kind {
+			case "file":
+				if err := os.WriteFile(dst, []byte("PRIOR USER CONTENT\n"), 0o444); err != nil {
+					t.Fatal(err)
+				}
+			case "dir":
+				if err := os.MkdirAll(dst, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			if tc.kind == "file" {
+				// A read-only regular file is REPLACED, and that is correct: the
+				// install owns this path by name, and re-running must be
+				// idempotent. Render-to-temp-then-mv makes it work where the
+				// direct redirect silently did not.
+				if res.code != 0 {
+					t.Fatalf("a read-only target should be replaced, not fail: exit %d\n%s", res.code, res.stderr)
+				}
+				b, err := os.ReadFile(dst)
+				if err != nil || strings.Contains(string(b), "PRIOR USER CONTENT") {
+					t.Errorf("the read-only file was not replaced; got %q (%v)", string(b), err)
+				}
+				return
+			}
+			// A non-regular target must fail loudly. `mv file dir` moves the file
+			// INTO the directory: measured, exit 0, a success banner, no rules
+			// file, and a stray temp file buried inside it.
+			if res.code == 0 {
+				t.Fatalf("reported SUCCESS with a directory in the way — exit 0 with stdout:\n%s", res.stdout)
+			}
+			if strings.Contains(res.stdout, "rules: .claude/rules/trellis.md") {
+				t.Errorf("claimed it rendered the rules file when it could not")
+			}
+			if !strings.Contains(res.stdout+res.stderr, "trellis: FAIL:") {
+				t.Errorf("failed without the script's own fail() message — a bare shell error is not a diagnosis:\n%s", res.stdout+res.stderr)
+			}
+		})
+	}
+}
+
+// The writer and the reader are only tied together by running both. Every other
+// test uses a literal fixture for one side or the other; verified by mutation,
+// renaming install.sh's output leaves the hook test green.
+func TestInstalledRulesFileSilencesTheHookExactlyOnce(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
+		t.Fatalf("install failed: %s", res.stderr)
+	}
+	if err := os.MkdirAll(filepath.Join(repo, ".trellis"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".trellis", "rules.toml"), []byte(payloadFiles()["rules-b.toml"]), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(hook)
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+repo,
+		"CLAUDE_PLUGIN_ROOT="+filepath.Join(repo, ".claude", "skills", "trellis"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("hook exited non-zero: %v: %s", err, out)
+	}
+	if strings.Contains(string(out), "inv-directional-flow") {
+		t.Fatalf("DOUBLE DELIVERY against the REAL rendered file — the hook injected over it:\n%s", out)
+	}
+	// The stand-down assertion must NOT be a substring both messages share. Both
+	// the quiet stand-down and TRELLIS_RULES_NOT_LOADED name the path, so
+	// asserting the path alone passed on the very failure this test exists to
+	// catch — found by review, not by mutation.
+	if strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+		t.Fatalf("the hook judged the REAL installer's own output incomplete:\n%s", out)
+	}
+	if !strings.Contains(string(out), "already loaded from .claude/rules/trellis.md") {
+		t.Fatalf("expected the quiet stand-down naming the artifact; got:\n%s", out)
+	}
+}
+
+// Codex P1: a pre-plugin-delivery consumer still has `.trellis/internal/` AND a
+// CLAUDE.md managed block importing `@.trellis/internal/trellis.md`. Rendering
+// `.claude/rules/trellis.md` there puts BOTH static chains into context, because
+// Claude loads them itself before any hook runs. The hook's path-A-first ordering
+// suppresses only what the HOOK injects — it cannot un-load a file Claude already
+// read. So this combination has to be refused at install time; there is no
+// runtime fix for it.
+func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	internal := filepath.Join(repo, ".trellis", "internal")
+	if err := os.MkdirAll(internal, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(internal, "version"), []byte("payload@000000000000\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+		t.Fatalf("rendered over a vendored overlay — both static chains would load, and no hook can prevent it")
+	}
+	// The git-add suggestion must not name a file this path never wrote:
+	// `git add` on a missing pathspec exits 128, and the `&&` means the commit
+	// never runs either — so the printed command stages nothing at all.
+	if strings.Contains(res.stdout, "add .claude/skills/trellis .claude/rules/trellis.md") {
+		t.Errorf("the commit suggestion names the rendered file on a path that did not render it — the printed command would fail with exit 128")
+	}
+	combined := res.stdout + res.stderr
+	if !strings.Contains(combined, ".trellis/internal") {
+		t.Errorf("refusing silently is its own defect: the output must name the overlay as the reason; got:\n%s", combined)
+	}
+	if !strings.Contains(combined, "/trellis:setup") && !strings.Contains(combined, "/trellis:remove") {
+		t.Errorf("a refusal with no way forward strands the user; name the migration route; got:\n%s", combined)
+	}
+	// The bundle itself must still vendor — the overlay conflicts with the
+	// rendered file, not with the plugin package.
+	assertBundleVendored(t, filepath.Join(repo, ".claude", "skills", "trellis"))
+}
+
+// Codex P2: an unanchored search for the opening marker classified any file that
+// merely MENTIONS `<!-- trellis:begin` — contributor guidance, a changelog, this
+// project's own docs — as static delivery, suppressing the render and reporting
+// a conflict that does not exist. That leaves the curl path without its only
+// measured delivery mechanism, for a document that delivers nothing.
+func TestVendorRendersDespiteAMereMentionOfTheManagedMarker(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
+		"# Contributing\n\nTrellis writes a managed block delimited by `<!-- trellis:begin` and its\n"+
+			"closing marker. Do not hand-edit inside it.\n")
+
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+	if res.code != 0 {
+		t.Fatalf("exit %d: %s", res.code, res.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+		t.Fatalf("a document that merely NAMES the marker is not a managed block — the render was suppressed for a conflict that does not exist: %v", err)
+	}
+}
+
+// AC2c coverage for the two conflict shapes that had none. `.trellis/internal/`
+// was tested; the legacy flat overlay and the paired managed block were not —
+// only the negative "mere mention" case was.
+func TestVendorRefusesForEveryStaticDeliveryShape(t *testing.T) {
+	for _, tc := range []struct {
+		name, wantReason string
+		setup            func(string)
+	}{
+		{"legacy flat overlay", ".trellis", func(repo string) {
+			writeFileT(t, filepath.Join(repo, ".trellis", "trellis.md"), "legacy vendored prose\n")
+		}},
+		// The INLINE block, reinstated. Deleting this case is what let a
+		// regression through: the inline form embeds the rules body in CLAUDE.md
+		// and needs no .trellis/internal/, so BOTH existence checks miss it and
+		// the render proceeded into live double delivery. Measured against the
+		// shipped block, not a hand-written approximation.
+		{"inline managed block", "managed block in CLAUDE.md", func(repo string) {
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), inlineBlockFixture(t))
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only — the inline form needs nothing else under .trellis/\n")
+		}},
+		// A BOM'd block. Same fail-open direction as the reader-side BOM bug fixed
+		// in the same change: setup wrote the block at line 1 of a fresh CLAUDE.md,
+		// an editor on a Windows-default checkout rewrote the encoding, and a
+		// column-0 grep with no BOM tolerance then missed a REAL block and rendered
+		// into live double delivery. Measured before the fix: rules file PRESENT.
+		{"inline managed block, UTF-8 BOM", "managed block in CLAUDE.md", func(repo string) {
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "\xef\xbb\xbf"+inlineBlockFixture(t))
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		}},
+		// The CRLF variant is the bug that killed the original check: the old
+		// CLOSING grep was $-anchored, so `trellis:end -->\r` never matched and a
+		// REAL block went undetected on the Git-for-Windows default. Dropping the
+		// closing grep removed the only $-anchor. Without this case the fix is
+		// unpinned and the next simplification reintroduces it.
+		{"inline managed block, CRLF checkout", "managed block in CLAUDE.md", func(repo string) {
+			// The shipped block ends `<!-- trellis:end -->` with NO trailing
+			// newline. A naive ReplaceAll over it therefore leaves the CLOSING
+			// marker CR-free, `-->$` still matches, and this case cannot detect
+			// the very regression it exists to pin — measured: with the
+			// $-anchored closing grep reinstated, all four subtests passed. Append
+			// the newline first so the closing line is genuinely CRLF-terminated.
+			crlf := strings.ReplaceAll(inlineBlockFixture(t)+"\n", "\n", "\r\n")
+			if !strings.Contains(crlf, "<!-- trellis:end -->\r\n") {
+				t.Fatalf("this fixture is named CRLF but its closing marker is not CR-terminated — the case would pass against the bug it guards")
+			}
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), crlf)
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			tc.setup(repo)
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			if res.code != 0 {
+				t.Fatalf("exit %d: %s", res.code, res.stderr)
+			}
+			if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+				t.Fatalf("rendered over a %s — both static chains would load, and no hook can undo it", tc.name)
+			}
+			if !strings.Contains(res.stdout, tc.wantReason) {
+				t.Errorf("the refusal must NAME the shape it found (%q); got:\n%s", tc.wantReason, res.stdout)
+			}
+		})
+	}
+}
+
+// Two guards added in response to earlier review findings shipped with NO test —
+// deleting either left the whole suite green. Found by the code reviewer, not by
+// mutation, because nothing existed to mutate.
+func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
+	t.Run("pre-existing rendered file plus an overlay is reported as LIVE", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		// Rendered first, overlay arrives later — a collaborator's commit, or a
+		// reverted migration. Refusing does not help: double delivery is already on.
+		writeFileT(t, filepath.Join(repo, ".claude", "rules", "trellis.md"), "previously rendered\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "internal", "version"), "payload@000000000000\n")
+
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if !strings.Contains(res.stdout, "ALREADY EXISTS") {
+			t.Errorf("saying 'no rules file' here is false at the moment it prints — the file is on disk and delivering; got:\n%s", res.stdout)
+		}
+		if b, err := os.ReadFile(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil || !strings.Contains(string(b), "previously rendered") {
+			t.Errorf("the installer must not silently remove a file it did not create")
+		}
+	})
+
+	// The import-form block brings .trellis/internal/ with it — it imports
+	// @.trellis/internal/trellis.md — so the EXISTENCE check catches this shape
+	// even with the marker grep removed. That is true and worth pinning; what it
+	// is not is a reason to remove the grep, which an earlier revision of this
+	// branch concluded. The inline shape has no such backstop (see the shape
+	// table above), so both mechanisms are load-bearing for different shapes.
+	t.Run("an import-form block is caught by its overlay, not by grepping prose", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
+			"# Project\n\n<!-- trellis:begin (managed by trellis) -->\n@.trellis/internal/trellis.md\n<!-- trellis:end -->\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "internal", "version"), "payload@000000000000\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+			t.Fatalf("rendered over an import-form managed block — live double delivery")
+		}
+	})
+
+	// The converse: prose that NAMES the delimiters must never suppress the
+	// render. Two review rounds were spent on grep forms that got this wrong,
+	// which is why the surviving grep is anchored at column 0 — documentation
+	// writes the marker mid-sentence, a real block writes it at line start.
+	t.Run("prose naming the delimiters never suppresses the render", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"),
+			"# Contributing\n\nA managed region is delimited by `<!-- trellis:begin ... -->`\n"+
+				"and `<!-- trellis:end -->`. Never hand-edit between them.\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+			t.Fatalf("prose suppressed the render — issue #201 restored for a conflict that does not exist: %v", err)
+		}
+	})
+
+	// install.sh reads EXACTLY ONE project file's contents: the managed-block
+	// opening marker. An earlier revision of this subtest asserted zero, which
+	// was achieved by deleting the check and regressed inline consumers into
+	// silent double delivery. Asserting the exact count instead of zero keeps the
+	// widening bounded — a second content read has to come here and argue itself,
+	// and spec-0005 AC2's amendment is scoped to this one.
+	t.Run("exactly one project file content read, and it is the marker check", func(t *testing.T) {
+		// Classify every grep by its OPERAND, not by whether the line happens to
+		// mention `git_root`. That earlier form was bypassed by aliasing:
+		//   claude_md="${git_root}/CLAUDE.md"
+		//   grep -q '^strictness' "$claude_md" && ...
+		// read a declared posture — the exact thing AC2's heading forbids — and
+		// left the whole suite green. Here, an operand counts as safe only if it
+		// is rooted at the staged bundle or at the temp file this script itself
+		// just wrote; every other file operand is a read of pre-existing state.
+		//
+		// Still lexical, so still not proof: a determined rewrite could launder
+		// the path through more indirection. It closes the demonstrated bypass and
+		// raises the cost of the next one; the behavioural fixtures above are what
+		// actually establish the property.
+		// grep's first quoted operand is the PATTERN; every one after it is a
+		// FILE. Classifying by position beats matching the line for `git_root`,
+		// which an alias walks straight past, and beats "operand contains a
+		// slash", which the same alias also defeats.
+		// Every command that can read a file, not just grep. The earlier version
+		// keyed on `grep`, and a reviewer walked past it with
+		//   sed -n '/inv-directional-flow/p' "$git_root/README.md"
+		// which reads project content and left the whole suite green.
+		//
+		// Operands are counted only when they are double-quoted and $-rooted —
+		// that is what a path built from this script's variables looks like, and
+		// it excludes heredoc delimiters and /dev/tty. Command names are matched
+		// at word boundaries, since a substring match makes `chmod` look like
+		// `od`. `scripted` commands take their pattern first and files after.
+		reader := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)\s|<\s*"`)
+		quoted := regexp.MustCompile(`'[^']*'|"[^"]*"`)
+		scripted := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk)\s`)
+		operand := regexp.MustCompile(`"\$\{?[A-Za-z_][A-Za-z0-9_]*[^"]*"`)
+		var reads []string
+		for _, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "#") || strings.Contains(trimmed, "<<") {
+				continue
+			}
+			loc := reader.FindStringIndex(trimmed)
+			if loc == nil {
+				continue
+			}
+			cmd := trimmed[loc[0]:]
+			// Stop at the redirect so a trailing `|| { x="..."; }` clause does not
+			// masquerade as another file operand. Absence of a redirect only ever
+			// ADDS operands, and the assertion is an exact count, so the omission
+			// fails closed rather than opening a hole.
+			if r := strings.Index(cmd, " 2>"); r > 0 {
+				cmd = cmd[:r]
+			}
+			// Two stages. First every quoted token, in order, because for a
+			// scripted command the FIRST is the pattern and must not be mistaken
+			// for a file. Then keep only $-rooted ones: that is what a path built
+			// from this script's variables looks like, and it drops heredoc
+			// delimiters, /dev/tty, and literal patterns.
+			ops := quoted.FindAllString(cmd, -1)
+			if scripted.MatchString(cmd) {
+				if len(ops) == 0 {
+					continue
+				}
+				ops = ops[1:]
+			}
+			for _, f := range ops {
+				if !operand.MatchString(f) {
+					continue // a literal, not a path built from a variable
+				}
+				if strings.HasPrefix(f, `"$stage/`) || f == `"$rendered_tmp"` || strings.HasPrefix(f, `"$target/`) {
+					continue // the staged bundle, the temp file, or the vendor target
+				}
+				reads = append(reads, trimmed)
+				break
+			}
+		}
+		if len(reads) != 1 {
+			t.Fatalf("install.sh makes %d content read(s) of a project file; spec-0005 AC2's amendment permits exactly one (the managed-block marker):\n%s", len(reads), strings.Join(reads, "\n"))
+		}
+		if !strings.Contains(reads[0], `<!-- trellis:begin`) || !strings.Contains(reads[0], `"^\(`) {
+			t.Errorf("the one permitted content read must be the column-0-anchored opening marker (optionally BOM-prefixed); got: %s", reads[0])
+		}
+		if strings.Contains(reads[0], "trellis:end") {
+			t.Errorf("the CLOSING marker grep is $-anchored and broke on CRLF checkouts — it must not come back: %s", reads[0])
+		}
+	})
+}
+
+// The render's failure paths shipped with NO test, and that is exactly how a
+// dead one got through: the diagnostic expanded $bundle_src, a variable that
+// never existed, so under `set -eu` the message was replaced by an expansion
+// error — and because an EXIT trap becomes the shell's last command, bash
+// reported the whole failed install as exit 0. A silent success for an install
+// that refused to complete.
+//
+// This drives the guard for real by removing a render step, rather than
+// asserting the message exists in the source.
+func TestRenderFailureIsLoudAndLeavesNothingBehind(t *testing.T) {
+	script := readFileT(t, installScriptPath(t))
+	broken := strings.Replace(script, "    cat \"$stage/render.body\"\n", "", 1)
+	if broken == script {
+		t.Fatal("could not find the render-body step to remove; this test's premise has drifted")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "install.sh")
+	if err := os.WriteFile(path, []byte(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	cmd := exec.Command("/bin/sh", path, "--non-interactive", "--scope", "project")
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(), "TRELLIS_BUNDLE_SOURCE="+vendoredBundleAbs(t))
+	out, err := cmd.CombinedOutput()
+	code := 0
+	if ee, ok := err.(*exec.ExitError); ok {
+		code = ee.ExitCode()
+	}
+	if code == 0 {
+		t.Errorf("a failed render exited 0 — the installer announced success for an install it refused to complete:\n%s", out)
+	}
+	if !strings.Contains(string(out), "the rendered rules file is incomplete") {
+		t.Errorf("the failure must NAME what was missing; got:\n%s", out)
+	}
+	if strings.Contains(string(out), "unbound variable") || strings.Contains(string(out), "parameter not set") {
+		t.Errorf("the diagnostic expands an undefined variable, so the message never prints:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+		t.Errorf("a failed render left a rules file behind")
+	}
+	if m, _ := filepath.Glob(filepath.Join(repo, ".claude", "rules", ".trellis.md.*")); len(m) > 0 {
+		t.Errorf("a failed render left its temp file behind: %v", m)
+	}
+}
+
+// An explicitly-passed but empty --scope used to fall through to the default,
+// silently ignoring a flag the user typed. Unpinned until mutation found it.
+func TestVendorRejectsAnEmptyScopeFlag(t *testing.T) {
+	for _, arg := range [][]string{{"--scope", ""}, {"--scope="}} {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), arg...)
+		if res.code == 0 {
+			t.Errorf("%v was accepted; an explicitly-passed empty scope must not resolve to the default", arg)
+		}
+		if !strings.Contains(res.stdout+res.stderr, "scope must be personal or project") {
+			t.Errorf("%v failed without naming the reason:\n%s", arg, res.stdout+res.stderr)
+		}
+	}
+}
+
+// TestInstallScriptNamesNoProjectFileInExecutableCode (spec-0005 AC2's
+// checkable-by-absence clause). The clause names five strings; before this test
+// nothing enforced it, and the clause had silently gone false once already —
+// an interim revision of this branch grepped CLAUDE.md/AGENTS.md for a managed
+// block while the spec still promised the check passed.
+//
+// This is the WEAK half of AC2 on purpose. It cannot prove the script doesn't
+// branch on instructions-file state under some other name; that is
+// TestVendorZeroDecisionLogicAcrossInstructionFileVariants's job. What it does
+// prove is that the spec's own stated check still holds, so a reviewer running
+// it by hand gets the answer the spec promises.
+func TestInstallScriptNamesNoProjectFileInExecutableCode(t *testing.T) {
+	// These two terms appear NOWHERE in install.sh — not in code, not in a
+	// comment — so this needs no comment parsing and therefore has no comment-
+	// parsing bypass. An earlier version of this test split each line at the
+	// first `#` and treated the remainder as a comment. Shell disagrees: that
+	// truncated four real code lines in the then-current script (`while [ $# -gt
+	// 0 ]`, `SCOPE_FLAG="${1#--scope=}"`, and a printf whose entire payload sat
+	// after a `##`), and a reviewer demonstrated a genuine content read placed
+	// after a `#` that left the test green. A raw substring match cannot be
+	// bypassed that way.
+	//
+	// `trellis:begin`, `CLAUDE.md` and `AGENTS.md` are deliberately NOT here:
+	// spec-0005 AC2's amendment permits exactly one content read and it names
+	// them. The bounded version of that guard is the exactly-one-read subtest in
+	// TestVendorGuardsAddedByReviewAreActuallyPinned.
+	terms := []string{"expression.md", "profile-"}
+	for i, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
+		for _, term := range terms {
+			if strings.Contains(line, term) {
+				t.Errorf("install.sh:%d names %q: %s\n\nspec-0005 AC2 promises this grep returns nothing — the script must never branch on a declared POSTURE. Either decision logic came back, or AC2's check list needs amending in the same act.", i+1, term, strings.TrimSpace(line))
+			}
+		}
+	}
+}
+
+// inlineBlockFixture returns the INLINE managed block exactly as trellis shipped
+// it, read from the bundle rather than hand-written. A hand-written
+// approximation is what made this shape look coverable by an existence check:
+// the real block embeds the full rules body and imports nothing, so no
+// .trellis/internal/ ever appears beside it.
+func inlineBlockFixture(t *testing.T) string {
+	t.Helper()
+	block := readFileT(t, filepath.Join(vendoredBundleAbs(t), "reference", "block-inline-b.md"))
+	if !strings.HasPrefix(block, "<!-- trellis:begin") {
+		t.Fatalf("the shipped inline block no longer opens with the marker at column 0; this fixture and install.sh's grep both assume it does:\n%.120s", block)
+	}
+	if strings.Contains(block, "\n@") {
+		t.Fatalf("the shipped inline block now carries an @-import; if the inline form gained a .trellis/ dependency, install.sh's existence checks may cover it and this fixture's premise needs re-deriving")
+	}
+	return block
 }

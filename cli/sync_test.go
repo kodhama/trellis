@@ -29,7 +29,7 @@ func TestBundledCatalogInSync(t *testing.T) {
 		t.Fatalf("reading assets/invariants.md: %v", err)
 	}
 	if string(assetsCopy) != string(src) {
-		t.Errorf("assets/invariants.md is out of sync with the catalog. Regenerate it (`go generate ./...` in cli/, "+
+		t.Errorf("assets/invariants.md is out of sync with the catalog. Regenerate it (`go generate ./...` in cli/, " +
 			"or `cp core/catalog/signature-catalog-v1.md` to it). [decision-0028]")
 	}
 
@@ -39,8 +39,8 @@ func TestBundledCatalogInSync(t *testing.T) {
 	}
 	want := extractEntriesSection(string(src))
 	if string(payloadCopy) != want {
-		t.Errorf("plugins/trellis/reference/invariants.md is out of sync with the catalog (entries section only — "+
-			"preamble and tail excluded). Regenerate the payload (`go run . payload --out ../plugins/trellis/reference` "+
+		t.Errorf("plugins/trellis/reference/invariants.md is out of sync with the catalog (entries section only — " +
+			"preamble and tail excluded). Regenerate the payload (`go run . payload --out ../plugins/trellis/reference` " +
 			"in cli/). [decision-0028, decision-0055]")
 	}
 }

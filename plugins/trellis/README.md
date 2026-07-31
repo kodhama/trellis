@@ -35,8 +35,14 @@ plugin's `SessionStart` hooks on both hosts, and measured against a real session
 disabled, `startup` and `resume` fire and the injected rules reach the model, including under
 headless `claude -p`. **Not verified on any surface:** `compact`, `clear`, `fork`, subagent
 boundaries, desktop, IDE, cloud, and CI runners — a bare subagent is not a session, so
-`SessionStart` never fires for one, and `install.sh` registers no hook at all, so a vendored
-install delivers no rules (see issue #201). **Trellis claims no support.** "Known to work" names
+`SessionStart` never fires for one. `install.sh` registers no hook either — instead it renders
+`.claude/rules/trellis.md`, which Claude Code loads at launch with no hook and no trust dialog
+(`decision-0068`; the hook stands down when that file is present, so the rules never arrive
+twice). **That covers Claude Code and project scope only**: a `--scope personal` install
+delivers no rules, and neither does the curl path on **Codex CLI** and other hosts, which
+**get nothing from it** — `.claude/rules/` is a Claude mechanism and the installer registers
+nothing for any other host (`decision-0068` D7). On those hosts the rules arrive through the
+plugin, or not at all. A project-scope run prints both limits. **Trellis claims no support.** "Known to work" names
 a check that ran; support is not claimed for any host, surface, or version, and nothing here
 undertakes to keep any of them working or to repair them if they stop. And **no marketplace
 install has been evidenced**: no recorded check has exercised installing this package from a
