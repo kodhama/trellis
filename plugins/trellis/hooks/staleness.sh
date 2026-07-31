@@ -121,7 +121,7 @@ emit() {
 # nothing when it is set. It never reads the rows; those are live, editable, and
 # read by the model on demand, which is the behaviour this design is for.
 bom="$(printf '\357\273\277')"
-if [ -f "$root/.trellis/rules.toml" ] && grep -qE "^($bom)?[[:space:]]*governed[[:space:]]*=[[:space:]]*false" "$root/.trellis/rules.toml" 2>/dev/null; then
+if [ -f "$root/.trellis/rules.toml" ] && grep -qE "^($bom)?[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$" "$root/.trellis/rules.toml" 2>/dev/null; then
   # One thing the hook cannot do is UN-load. On the curl path the host reads
   # .claude/rules/trellis.md at launch, before any hook runs, so by now those
   # rules are already in context and no amount of silence removes them. Injecting
@@ -343,8 +343,21 @@ if [ ! -f "$toml" ]; then
   # <repo>/.claude/skills/, where install.sh writes it and where a project-scope
   # marketplace install lands. Anything else is not this project's copy, whatever
   # directory it happens to sit beneath.
+  #
+  # And it cannot be the home directory. `install.sh --scope personal` vendors to
+  # $HOME/.claude/skills/trellis, which is byte-identical to the project-scope
+  # location when the project IS $HOME — a dotfiles repo, or simply an unset
+  # CLAUDE_PROJECT_DIR while sitting in $HOME, since root falls back to `.`.
+  # Containment can never separate those two, so the only safe answer is to stop
+  # claiming it can: when the project root is $HOME, treat it as unadopted and
+  # ask. Measured before this guard: a personal install delivered 12 rules with
+  # no announcement. The first fix for the dotfiles case narrowed the path and
+  # missed this, because the path is the same path.
+  home_real="$(cd "${HOME:-/nonexistent}" 2>/dev/null && pwd -P)" || home_real=""
   case "$plugin_real/" in
-    "$root_real"/.claude/skills/*) [ -n "$root_real" ] && scoped_to_project=yes ;;
+    "$root_real"/.claude/skills/*)
+      [ -n "$root_real" ] && [ "$root_real" != "$home_real" ] && scoped_to_project=yes
+      ;;
   esac
 
   if [ "$scoped_to_project" = yes ]; then

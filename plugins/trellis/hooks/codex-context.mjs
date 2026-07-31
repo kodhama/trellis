@@ -252,7 +252,15 @@ function parseRulesToml(source) {
       // rules vs 0. A key one host acts on and the other rejects is worse than a
       // key neither knows.
       if (assignment && assignment[1] === "governed") {
-        continue;
+        // Skipped, but only for the two values it can legally hold. `governed =
+        // falsehood` must reach the reject path below and surface as
+        // invalid-rules — skipping every value would make a typo look like a
+        // deliberate setting, which is exactly how `falsehood` came to silently
+        // disable every rule before the raw-text match was anchored.
+        if (/^(true|false)[ \t]*(#.*)?$/.test(assignment[2].trim())) {
+          continue;
+        }
+        return null;
       }
       if (
         !assignment ||
@@ -351,7 +359,12 @@ try {
   const raw = fs
     .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
     .replace(/^\uFEFF/, "");
-  if (/^[^\S\r\n\u2028\u2029]*governed[^\S\r\n\u2028\u2029]*=[^\S\r\n\u2028\u2029]*false/m.test(raw)) {
+  // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
+  // read as an opt-out on both hosts and silently disabled every rule —
+  // a typo is supposed to fail loudly as invalid-rules, not govern nothing.
+  if (
+    /^[^\S\r\n\u2028\u2029]*governed[^\S\r\n\u2028\u2029]*=[^\S\r\n\u2028\u2029]*false[^\S\r\n\u2028\u2029]*(#[^\r\n\u2028\u2029]*)?$/m.test(raw)
+  ) {
     process.exit(0);
   }
 } catch {

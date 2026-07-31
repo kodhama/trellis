@@ -72,10 +72,16 @@ the curl path deliver 14/14 at posture B immediately, and resolves the
 `@../../.trellis/rules.toml` import that `decision-0068` measured as contributing
 "nothing, silently, no error".
 
-**This amends `decision-0065`'s "setup writes exactly one file … ever"**, which
-`decision-0068` D9 declined to widen. It is amended openly here rather than
-routed around. The clause's purpose — that no path silently vendors an overlay —
-is untouched: one config file, in the project the user ran the installer in.
+**This amends `decision-0065:26-29`, the plugin/install split** — *"`install.sh`
+is vendoring and never configures … and continues to never touch `.trellis/`"*.
+Amended openly rather than routed around; the clause's purpose, that no path
+silently vendors an overlay, is untouched: one config file, in the project the
+user ran the installer in.
+
+*(An earlier version named `:18-19`, "setup writes exactly one file … ever". Wrong
+clause — it binds the SKILL, and D2 does not change what `/trellis:setup` writes.
+`decision-0065`'s forward pointer was corrected first, which left this decision
+and its own pointer contradicting each other about which invariant still stands.)*
 
 **3. A project-scoped plugin install is itself adoption; absent rows then mean
 all-14, posture B.** The bundle lives in the repository, so it is visible,
@@ -144,8 +150,17 @@ already loaded — and names the real fix: delete the file, or `/trellis:remove`
 Second-best and recorded as such. On the plugin path, where nothing has been
 loaded yet, it injects nothing at all.
 
-**6. Scope is detected by containment, and ambiguity resolves to ASKING.** The
-hook tests whether `CLAUDE_PLUGIN_ROOT` resolves inside `CLAUDE_PROJECT_DIR`
+**6. Scope is ONE location, and ambiguity resolves to ASKING.** The hook requires
+`CLAUDE_PLUGIN_ROOT` to resolve inside `<CLAUDE_PROJECT_DIR>/.claude/skills/`
+**and the project root not to be `$HOME`**. Both narrowings were forced by
+measurement, in the same direction: plain containment governed a dotfiles repo at
+`$HOME` silently, since `~/.claude/plugins/cache/` sits inside it; and the
+`.claude/skills/` narrowing alone still governed a `--scope personal` install
+there, because personal vendors to `$HOME/.claude/skills/` — the identical path.
+Containment cannot separate those, so the hook stops claiming it can.
+
+*(An earlier version said simply "resolves inside `CLAUDE_PROJECT_DIR`", which
+predicted project defaults for a plugin sitting anywhere in the repo.)* It tests
 (user-scope example, measured: `~/.claude/plugins/cache/kodhama/trellis/0.2.0`;
 project-scope: `<repo>/.claude/skills/trellis/`). Symlinks and marketplace caches
 make this imperfect. **When it cannot tell, it treats the project as unadopted

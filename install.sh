@@ -46,9 +46,14 @@
 # principle as the rest of this family). On PROJECT scope it additionally renders
 # one file it wholly owns, .claude/rules/trellis.md, from bundle bytes — that is
 # how the rules actually reach a session, since a vendored bundle alone delivers
-# none (decision-0068; issue #201). It still makes no posture choice and reads no
-# project file to decide anything. It NEVER touches a project's .trellis/ —
-# that is /trellis:setup's job entirely, not this script's — and it NEVER runs a git
+# none (decision-0068; issue #201). It touches a project's .trellis/ at exactly ONE
+# point — seeding .trellis/rules.toml from the shipped preset when none exists
+# (decision-0070 D2), never overwriting; otherwise .trellis/ is /trellis:setup's
+# job entirely. It DOES therefore pick a posture, the adaptive one, by copying
+# rules-b.toml: that is a shipped constant, not a decision this script makes, but
+# the header used to claim "no posture choice" full stop and that reads as false
+# next to the seed. It reads no project file to decide anything, and it NEVER runs
+# a git
 # command that mutates anything (no add, no commit): it prints a suggested next
 # command for project scope and leaves the commit to you.
 #
@@ -292,10 +297,10 @@ bundle_manifest() {
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
 57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
-322add07b3a166a52adb3378f50ef31fa9b99c02a8722d6f7d7cc29212c04f3c  hooks/codex-context.mjs
+38852678a953a761826afdd3845e6231b2ecc185246530a32d98b69c64296f9f  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-be1238392a0ac44452225104f659ebc3f29e96e8a91baa39b5e4456404487f5a  hooks/staleness.sh
+1217fd14351003f987ce2200848fceb98e91363222a62d93703efe95f5825788  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
