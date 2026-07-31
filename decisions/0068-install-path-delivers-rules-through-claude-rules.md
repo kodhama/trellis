@@ -1,7 +1,7 @@
 ---
 id: decision-0068
 type: decision
-status: gated  # drafted by agent; awaiting the maintainer's intent act. Three rulings are recorded, in order. (1) 2026-07-30, direction: "let's focus on claude only for the install path, potentially with the symlink alternative if you think it has merit". (2) 2026-07-30, ROUTING — the agent recommended `/trellis:setup` write the rendered file and said it would not proceed until ruled; the maintainer chose `install.sh`, which is D1, and this frontmatter records the ruling that reversed the agent's own recommendation. (3) 2026-07-30, wording — the maintainer accepted new install-path wording as a `decision-0053` exception; §Wording below records that the exception proved UNNECESSARY on measurement, so the ruling is preserved but not exercised. Three questions remain open for ratification (§Open questions 1-3). The measurements are the agent's; the ratification is not.
+status: gated  # drafted by agent; awaiting the maintainer's intent act. Three rulings are recorded, in order. (1) 2026-07-30, direction: "let's focus on claude only for the install path, potentially with the symlink alternative if you think it has merit". (2) 2026-07-30, ROUTING — the agent recommended `/trellis:setup` write the rendered file and said it would not proceed until ruled; the maintainer chose `install.sh`, which is D1, and this frontmatter records the ruling that reversed the agent's own recommendation. (3) 2026-07-30, wording — the maintainer accepted new install-path wording as a `decision-0053` exception; D5 below records that the exception proved UNNECESSARY on measurement, so the ruling is preserved but not exercised. (An earlier version of this line pointed at a "§Wording" section that does not exist.) §Open questions 1-3 carried those three acts and are now struck and folded into D1, D5 and D11; what remains open there is question 6 and below. The measurements are the agent's; the ratification is not.
 depends_on: [decision-0043, decision-0053, decision-0058, decision-0065, decision-0066]
 owner: agent
 date: 2026-07-30
@@ -91,7 +91,7 @@ measured unworkable in both readings: `~/.claude/rules/trellis.md` would import
 silent-no-op artifact this record exists to prevent — and it would govern **every
 repo on the machine**, contradicting `decision-0065:112-114` ("a project that
 never adopted Trellis is never governed by surprise"). The git-root reading
-contradicts `install.shs explicit-personal-scope comment (was :193 on main; this branch moved it)`, which forbids any git invocation under explicit
+contradicts `install.sh`'s explicit-personal-scope comment (`:193` on `main`; this branch moved it), which forbids any git invocation under explicit
 personal scope, by design and by its own test.
 
 **The cost is named, not hidden:** personal-scope installs keep delivering no
@@ -167,7 +167,7 @@ key in `.trellis/rules.toml`, not the sentence above it. The mismatch is recorde
 where a reader will hit it, instead of being left to look like a contradiction.
 
 **6. `decision-0058` phase 4 is satisfied by D10, and this record says so rather
-than leaving it inferred.** `decision-0058:123` governs "any Claude hook
+than leaving it inferred.** `decision-0058:129` governs "any Claude hook
 replacement" and requires that the old transport be removed or disabled in the
 same change "so rules still arrive once"; `:195` sets the boundary — "never while
 both paths would inject the full rule payload". **D10 is that disablement**, and
@@ -231,7 +231,7 @@ a coexistence branch ahead of path A.
 **`decision-0065` is superseded in part and owes a forward pointer.** Two of its
 clauses no longer hold: `:143-146` declares both hooks "take the same **two
 paths** and use the same discriminator: the `.trellis/internal/` **directory**",
-and `:193` declares "There is no state in which both paths carry the payload —
+and `:194-195` declares "There is no state in which both paths carry the payload —
 that is tested, not asserted". The coexistence branch exists precisely because
 that second sentence became false. Six smaller amendments in this corpus carry
 `superseded_in_part_by`; this one must too, and the pointer is added on this
@@ -256,45 +256,70 @@ time. Flagged, not assumed.** *(Added 2026-07-30 after review; NOT covered by th
 D1 ruling.)*
 
 `install.sh` refuses to render when the project already delivers the rules
-statically — `.trellis/internal/`, or the legacy flat `.trellis/trellis.md`.
-There is no alternative: **both static chains are loaded by the host before any
-hook runs**, so D10's stand-down cannot reach them, and rendering blindly ships
-guaranteed double delivery. The third shape a repo could hold, an `@`-import
-managed block in `CLAUDE.md`/`AGENTS.md`, needs no read of its own: the import
-resolves into `.trellis/`, so the tree is present and the first two reads already
-catch it.
+statically. There is no alternative: **both static chains are loaded by the host
+before any hook runs**, so D10's stand-down cannot reach them, and rendering
+blindly ships guaranteed double delivery.
 
-**What is actually read, corrected 2026-07-30 after review found this clause
-narrower than the code:**
+**Three shapes, and they do not all need the same kind of read.** The
+`.trellis/internal/` overlay and the legacy flat `.trellis/trellis.md` are caught
+by testing whether the path exists. The **import-form** managed block is caught
+by those same two tests, because it imports `@.trellis/internal/trellis.md`. The
+**inline** managed block is caught by neither, and that is the whole reason a
+content read survives here: the inline form embeds the entire rules body in
+`CLAUDE.md` and imports nothing, so no `.trellis/internal/` ever appears beside
+it. Its own tail says *"Rule activation follows the rows in `.trellis/rules.toml`
+directly"* — such a project has `rules.toml` and nothing else under `.trellis/`,
+which is indistinguishable on disk from a legitimate fresh install.
+
+*(An interim revision of this branch DELETED the content read, on the argument
+that the existence tests already covered every shape a repo could hold. That
+argument was false — the inline form is a fourth shape it never considered — and
+the deletion was a measured regression against this branch's own parent commit,
+which refused where the deleted version rendered. Restored, with both findings
+that killed the original check fixed structurally rather than patched: the
+`$`-anchored CLOSING grep is gone, so a CRLF checkout can no longer hide a real
+block, and the surviving grep is anchored at column 0, so prose that merely names
+the delimiters cannot suppress a render. All three are pinned by mutation.)*
+
+**What is actually read:**
 
 | read | kind | outcome |
 |---|---|---|
 | `.trellis/internal/` | existence | refuse |
 | `.trellis/trellis.md` (legacy flat) | existence | refuse |
+| `CLAUDE.md` / `AGENTS.md` | **CONTENT** — one column-0-anchored opening marker | refuse |
 | `.trellis/rules.toml` | existence | selects one line of closing **guidance text** |
 | `.claude/rules/trellis.md` | existence | on the refusal path, upgrades the message to a **live**-double-delivery warning |
 | `.claude/rules/trellis.md` | existence, non-regular | hard refusal before the `mv` |
 
-Five reads, four paths. **No file's contents are read.** A `CLAUDE.md`/`AGENTS.md` managed-block content
-grep existed for part of this branch's life and was removed: nothing has written
-such a block since `decision-0065`, and the one form that could still appear —
-an `@`-import line — always sits alongside the `.trellis/` tree that the first
-two rows already refuse on.
+**Six reads, five paths, and exactly one reads a file's contents** — matching a
+single line-anchored string. It selects no posture, patches no marker, and writes
+nothing.
 
-Two earlier versions of this clause were wrong in opposite directions. The first
-said "existence-only … the only outcome is render or refuse-loudly" while the
-code did grep file contents and a fourth read gated printed guidance. The
-correction then enumerated four reads and was **still short by two**. The reads
-are existence-only again now because the grep was deleted, not because the claim
-was re-argued — and each read's outcome is stated per-row rather than collapsed
-into one. The `install.sh` comment claiming "the ONE place this script reads
-`.trellis/`" was false at three other sites and is corrected too.
+This clause has been wrong three times, in both directions, and the history is
+kept because each error is the reason for the next guard. (1) It first claimed
+"existence-only … the only outcome is render or refuse-loudly" while the code
+grepped contents and a fourth read gated printed guidance — **both halves false**.
+(2) The correction enumerated four reads and was **still short by two**. (3) The
+next revision achieved genuine existence-only by deleting the grep, and that
+**regressed inline consumers into silent double delivery**. The count is now
+pinned by a test asserting *exactly one* content read — not zero, not "no grep" —
+so the next simplification has to come here and argue itself. The `install.sh`
+comment claiming "the ONE place this script reads `.trellis/`" was false at three
+other sites and is corrected too.
 
 What still holds, and is the part the amendment turns on: **no posture is
 selected, no marker is patched, and nothing under `.trellis/` is written.** But
 this is state-dependent behaviour in a script whose spec says "zero decision
 logic", so it is an amendment and is recorded as one — now with an accurate
 inventory rather than an understated summary.
+
+**What this widening does NOT cover, stated rather than left to be discovered:**
+a repo carrying an inline block is *refused*, not repaired. `/trellis:remove`
+enumerates all three block shapes and cleans it. `/trellis:setup` does **not** —
+it offers a migration only when `.trellis/internal/` exists, which is precisely
+the condition an inline-block repo fails. An earlier version of this record
+claimed both skills cleaned it; only one does.
 
 **13. Out of scope, named rather than silently retained: whether the bundle
 vendoring stays.** `install.sh` also vendors the whole `plugins/trellis/` tree so
@@ -345,7 +370,7 @@ Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
    and import `~/.trellis/rules.toml`, which nothing writes — shipping exactly the
    silent-no-op artifact this record exists to prevent, and contradicting
    `decision-0065:112-114` ("a project that never adopted Trellis is never
-   governed by surprise"). The git-root reading contradicts `install.shs explicit-personal-scope comment (was :193 on main; this branch moved it)`
+   governed by surprise"). The git-root reading contradicts `install.sh`'s explicit-personal-scope comment (`:193` on `main`; this branch moved it)
    ("explicit personal scope: no git invocation at all, by design") and its own
    test. **Ruling needed:** project-scope-only, or something else.
 
@@ -389,10 +414,29 @@ Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
    the rendered file instructs the reader to run something absent and the install
    stays permanently at two floors.
 
-6. ~~**Does `VERSION` bump?**~~ **CLOSED IN THIS PR — `0.3.0` -> `0.4.0`**, minor
-   per `decision-0059` (backward-compatible capability addition). The pin now
-   reads `0.4.0`; the original question text is left below, struck rather than
+6. ~~**Does `VERSION` bump?**~~ **CLOSED IN THIS PR — `0.3.0` -> `0.4.0`.** The pin
+   now reads `0.4.0`; the original question text is left below, struck rather than
    rewritten, and its line citation is as-written-then.
+
+   **The justification had to be redone.** An earlier closure said "minor per
+   `decision-0059` (backward-compatible capability addition)". `decision-0059` is
+   `status: superseded` by `decision-0060`, which states in terms that *"no
+   partial requirement from `decision-0059` … remains current merely because it
+   was described there"* and that a future version choice *"requires a new
+   project-local decision on its own evidence"* (`decision-0060:76-79`). Citing
+   0059 was closing a question on retired ground. The live authority,
+   `decision-0061` §1, deliberately carries **no** bump policy — `:211` lists
+   "synchronized version or bump policy" among what does not return.
+
+   **So the bump is argued here on its own evidence, not inherited.** The plugin's
+   payload changed in a way consumers only receive by re-pulling: the hook gained
+   a path and a coexistence branch, and the rendered-file contract is new. A
+   consumer holding `0.3.0` and a project installed from this branch would pair a
+   hook that does not know about `.claude/rules/trellis.md` with a file that
+   exists — the double-delivery state D10 exists to prevent. The version is the
+   only signal distinguishing them. This is a decision for this package at this
+   moment, which is exactly the shape `decision-0060` asks for; it establishes no
+   policy and binds no future bump.
    ~~`plugin_package_test.go:220` hard-pins `"0.3.0\n"`.
    This changes plugin behaviour that marketplace consumers only receive by
    re-pulling, and the immediately preceding commit bumped 0.2.0 -> 0.3.0 for

@@ -186,6 +186,14 @@ func TestPluginReadmeInstallPathClaimIsCurrent(t *testing.T) {
 	if !strings.Contains(body, "personal") {
 		t.Errorf("the corrected claim must still name the scope that delivers no rules, or it over-claims")
 	}
+	// decision-0068 D7 is titled "Claude only, deliberately, and STATED rather
+	// than implied". The paragraph opens by naming Codex CLI as a known-working
+	// host and then describes a Claude-only delivery mechanism; hedging the scope
+	// but not the host is exactly the implication D7 forbids, on the one surface
+	// a consumer actually reads.
+	if !strings.Contains(body, "Codex") {
+		t.Errorf("the install-path paragraph names Codex as a known-working host but never says the curl path delivers nothing to it — decision-0068 D7 requires that stated, not implied")
+	}
 }
 
 // Codex P1 on #212. After a project-scope install and BEFORE /trellis:setup runs,

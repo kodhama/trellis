@@ -263,7 +263,12 @@ manifest_check() {
 BUNDLE_SOURCE="${TRELLIS_BUNDLE_SOURCE:-https://raw.githubusercontent.com/kodhama/trellis/main/plugins/trellis}"
 
 stage="$(mktemp -d "${TMPDIR:-/tmp}/trellis-vendor.XXXXXX")"
-trap 'rm -rf "$stage"' EXIT
+# $rendered_tmp joins the trap once it exists. Reproduced: SIGINT during the
+# render left a partial .claude/rules/.trellis.md.<pid> behind AND the stage dir,
+# so EXIT alone did not cover signals either. It accumulates one file per
+# interrupt and rides along on `git add .claude/rules`.
+rendered_tmp=""
+trap 'rm -rf "$stage"; [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp"' EXIT INT HUP TERM
 
 # The bundle manifest — baked in, covers the whole plugins/trellis/ tree. Advance-
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
@@ -271,12 +276,12 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-179bbd19ddd6b2220e64894b71c92f9ecdf8fc9b87d84058cde1a6b71446ed60  README.md
+f5bbe74cffac8c20480e63e4d301d9054d2780d4cf7932333842d180f34a22e3  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-9c807f3ccd436326a17b90774ce578d553fd568932941d4f23e20a8be88678f4  hooks/staleness.sh
+281a5063263e195cd5632ac28fd871fd74336f7a433c508c063488c50e4007f3  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -347,9 +352,10 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 # nothing writes.
 #
 # Still zero decision logic in the sense AC2's heading means — no posture chosen,
-# no marker patched. AC2's "never reads .trellis/" clause WAS amended for this
-# branch (see the spec's frontmatter); the reads are existence-only. The
-# script reads no .trellis/ file and chooses no posture. It emits trellis-b's
+# no marker patched. AC2's "never reads" clause WAS amended for this branch (see
+# the spec's frontmatter and AC2d): six reads over five paths, of which exactly
+# ONE reads a file's contents — the managed-block opening marker. No .trellis/
+# file's CONTENTS are read and no posture is chosen. It emits trellis-b's
 # prose as a CONSTANT — staleness.sh already resolves absent strictness to `b`,
 # so the install path inherits a ratified default rather than inventing one.
 #
@@ -380,22 +386,38 @@ if [ "$scope" = "project" ]; then
   #     it was not.)
   [ -d "$git_root/.trellis/internal" ] && static_conflict=".trellis/internal/ overlay"
   [ -z "$static_conflict" ] && [ -f "$git_root/.trellis/trellis.md" ] && static_conflict="legacy flat .trellis/ overlay"
-  # NOT detected: a pre-decision-0065 INLINE managed block in a repo with no
-  # .trellis/ at all. Named as an accepted gap rather than half-covered.
+  # The INLINE managed block needs its own check, and this is the ONE content
+  # read in the script. The existence tests above cannot reach it: the inline
+  # form embeds the whole rules body in CLAUDE.md and needs no .trellis/internal/
+  # at all — its own tail says "Rule activation follows the rows in
+  # .trellis/rules.toml directly", so such a project has rules.toml and nothing
+  # else under .trellis/. Both tests miss it and the render proceeds into live
+  # double delivery. Measured, not reasoned: a consumer built from the shipped
+  # block-inline-b.md got `inv-directional-flow` in CLAUDE.md AND in the rendered
+  # file, with the hook emitting its quiet stand-down — both components
+  # affirmatively misreporting.
   #
-  # Why the grep that used to be here is gone: nothing writes a managed block any
-  # more (decision-0065 — "setup no longer writes a managed block"), and the
-  # IMPORT-form block cannot exist without .trellis/ because it imports
-  # @.trellis/internal/trellis.md — so the existence checks above already catch
-  # every block a repo can have alongside a .trellis/ tree. Only the inline form
-  # was uniquely caught, and grepping for it cost three review findings: it broke
-  # on CRLF checkouts (core.autocrlf=true is the Git-for-Windows default, so a
-  # REAL block went undetected and the render proceeded into live double
-  # delivery), and twice it matched prose that merely NAMED the delimiters.
+  # This check was deleted earlier in this branch on the claim that the existence
+  # tests already covered every shape. That claim was false; the inline form is a
+  # fourth shape, and deleting the check was a REGRESSION against this script's
+  # own parent commit, which refused. Restored.
   #
-  # Consequence, stated rather than hidden: this script now reads only whether
-  # files EXIST. It inspects no file's contents, which is what spec-0005 AC2 said
-  # all along and what an earlier version of this branch had to amend away.
+  # Two prior findings killed the old version, and the fix for each is structural
+  # rather than a patch:
+  #   - CRLF (core.autocrlf=true is the Git-for-Windows default) broke the old
+  #     CLOSING grep, which was $-anchored: `trellis:end -->\r` never matched
+  #     `-->$`, so a REAL block went undetected. Dropping the closing grep
+  #     removes the only $-anchor, so CR at end of line cannot matter.
+  #   - Prose that merely NAMED the delimiters matched twice. Column-0 anchoring
+  #     fixes that: documentation writes the marker mid-sentence.
+  # Opening marker only, anchored at column 0. Verified against all three:
+  # LF inline -> refuses; CRLF inline -> refuses; prose-only -> renders.
+  if [ -z "$static_conflict" ]; then
+    for f in CLAUDE.md AGENTS.md; do
+      grep -q '^<!-- trellis:begin' "$git_root/$f" 2>/dev/null \
+        && { static_conflict="managed block in $f"; break; }
+    done
+  fi
 fi
 if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   # A pre-plugin-delivery consumer whose CLAUDE.md managed block imports
@@ -405,16 +427,21 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   # what the HOOK injects — it cannot un-load a file Claude already read. So this
   # is refused at install time, because there is no runtime fix for it.
   #
-  # What this script reads, stated accurately — an earlier version of this comment
-  # claimed "the ONE place this script reads .trellis/", which was false at three
-  # other sites:
+  # Every read this script makes of pre-existing project state — six sites, five
+  # paths. An earlier version of this comment claimed "the ONE place this script
+  # reads .trellis/", which was false; a later one claimed no contents are read
+  # anywhere, which is false while the marker check exists. Both are corrected:
   #   - .trellis/internal/ and .trellis/trellis.md   (existence, above)
-  #   - CLAUDE.md / AGENTS.md                        (CONTENT: a paired marker)
+  #   - CLAUDE.md / AGENTS.md                        (CONTENT: opening marker)
+  #   - .claude/rules/trellis.md                     (existence x2: the live
+  #                                                   double-delivery warning
+  #                                                   below, and the non-regular
+  #                                                   refusal before the mv)
   #   - .trellis/rules.toml                          (existence, for the
   #                                                   floors-only guidance line)
-  # None of it selects a posture, patches a marker, or writes anything under
-  # .trellis/. The marker check is a content read and is named as one, because
-  # spec-0005 AC2's second amendment permits exactly that and no more.
+  # Exactly ONE is a content read, and it reads one line-anchored string. None
+  # selects a posture, patches a marker, or writes anything under .trellis/.
+  # spec-0005 AC2's second amendment permits exactly this and no more.
   rendered_note="no rules file — $static_conflict present"
   say "NOT rendering .claude/rules/trellis.md: this project already delivers the"
   say "rules statically ($static_conflict). Adding the rendered file would deliver"
@@ -460,6 +487,26 @@ elif [ "$scope" = "project" ]; then
     fail "$rules_dir/trellis.md exists and is not a regular file; refusing to render over it. The bundle is already vendored; clear that path and re-run."
   fi
   rendered_tmp="$rules_dir/.trellis.md.$$"
+  # The three payload-derived parts are rendered SEPARATELY and each checked,
+  # because neither `set -eu` nor the group's `|| {...}` can see them fail.
+  # A `{ ...; } > f || {...}` group exits with its LAST command's status, and it
+  # is the left operand of `||` so `set -e` is suppressed inside it; measured in
+  # both dash and bash, a failing command mid-group yields group exit 0 and a
+  # truncated file. Worse, these are PIPELINES, whose status is the last stage's:
+  # `sed ... | sed '$d'` reports success when the first sed dies, and POSIX sh
+  # has no pipefail. So the only reliable signal is the artifact itself.
+  #
+  # Deliberately NOT a prose check. Probing for the posture sentence or the
+  # invariants pointer would re-create the exact defect this branch fixed — a
+  # legitimate payload reword breaking every install. `-s` asks only "did this
+  # step produce anything", which no reword can falsify.
+  sed -n '1,/^@rules\.md[[:space:]]*$/p' "$stage/bundle/reference/trellis-b.md" | sed '$d' > "$stage/render.head"
+  [ -s "$stage/render.head" ] || fail "rendering the posture prose produced nothing; the bundle's reference/trellis-b.md is damaged or has no @rules.md placeholder. Nothing was written."
+  cat "$stage/bundle/reference/rules.md" > "$stage/render.body"
+  [ -s "$stage/render.body" ] || fail "rendering the rules body produced nothing; the bundle's reference/rules.md is missing or empty. Nothing was written."
+  sed -n '/^@rules\.md[[:space:]]*$/,$p' "$stage/bundle/reference/trellis-b.md" | sed '1d' \
+    | sed 's|`\.trellis/internal/invariants\.md`|`.claude/skills/trellis/reference/invariants.md`|' > "$stage/render.tail"
+  [ -s "$stage/render.tail" ] || fail "rendering the header tail produced nothing; the bundle's reference/trellis-b.md is damaged. Nothing was written."
   {
     # A MACHINE-OWNED opening marker. The hook used to validate this file by
     # matching prose landmarks — the invariants sentence, the posture note, the
@@ -468,14 +515,9 @@ elif [ "$scope" = "project" ]; then
     # false "not governed" warning while the whole suite stayed green. Markers
     # this script owns cannot drift out from under the reader.
     printf '<!-- trellis:rendered-begin -->\n'
-    # Posture prose, up to but excluding the placeholder line.
-    sed -n '1,/^@rules\.md[[:space:]]*$/p' "$stage/bundle/reference/trellis-b.md" | sed '$d'
-    # The rules body, byte-for-byte as shipped.
-    cat "$stage/bundle/reference/rules.md"
-    # The rest of the header, with the invariants pointer repointed at the copy
-    # this install actually writes.
-    sed -n '/^@rules\.md[[:space:]]*$/,$p' "$stage/bundle/reference/trellis-b.md" | sed '1d' \
-      | sed 's|`\.trellis/internal/invariants\.md`|`.claude/skills/trellis/reference/invariants.md`|'
+    cat "$stage/render.head"
+    cat "$stage/render.body"
+    cat "$stage/render.tail"
     # D5's single sentence of new prose. The posture sentence above is frozen at
     # install time; the rows below are live and carry their own `strictness`.
     # They can disagree, and the reader is told which wins rather than left to
@@ -497,9 +539,32 @@ elif [ "$scope" = "project" ]; then
     rm -f "$rendered_tmp"
     fail "could not write $rendered_tmp — the rules file was not rendered and nothing was replaced. The bundle is already vendored; fix the permission and re-run."
   }
-  [ -s "$rendered_tmp" ] || {
+  # `{ ...; } > file || {...}` catches REDIRECT failure only: the group's own
+  # exit status is the LAST command's, and `set -eu` does not fire inside the
+  # left operand of `||`. Measured in both dash and bash: a failing `cat` mid-
+  # group yields group exit 0 and a truncated file. Two of the writes above are
+  # sed pipelines whose failure leaves every marker and every rule line intact —
+  # install.sh would report success, the hook would stand down quietly, and the
+  # file could silently lose the activation sentence, which INVERTS the rule
+  # semantics (every rule applies regardless of its row).
+  #
+  # So validate the artifact, not the exit status. This is the writer-side mirror
+  # of the hook's reader-side check: same markers, same order, same rule-line
+  # floor. A render that would not satisfy the hook never reaches the mv.
+  render_defect=""
+  for probe in \
+    '<!-- trellis:rendered-begin -->' \
+    '<!-- trellis:rules-loaded -->' \
+    '<!-- trellis:rendered-footer -->' \
+    '@../../.trellis/rules.toml' \
+    'the `strictness` key in `.trellis/rules.toml` is authoritative'
+  do
+    grep -qF "$probe" "$rendered_tmp" 2>/dev/null || { render_defect="$probe"; break; }
+  done
+  [ -n "$render_defect" ] || [ "$(grep -cE '`(inv|floor)-[a-z-]+`' "$rendered_tmp" 2>/dev/null)" -ge 5 ] || render_defect="the rule body (fewer than 5 rule lines survived)"
+  [ -z "$render_defect" ] || {
     rm -f "$rendered_tmp"
-    fail "the rendered rules file came out empty; refusing to install a file that would silence the plugin hook while governing nothing"
+    fail "the rendered rules file is incomplete — missing: $render_defect. Nothing was replaced. This means a step of the render failed without reporting it; re-run, and if it repeats the bundle at $bundle_src is damaged."
   }
   mv -f "$rendered_tmp" "$rules_dir/trellis.md" || {
     rm -f "$rendered_tmp"

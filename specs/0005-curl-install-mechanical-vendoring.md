@@ -3,7 +3,7 @@ id: spec-0005
 type: spec
 status: gated
 depends_on: [kodhama/kodhama-0007-one-render-many-copiers, decision-0043]
-superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068, in TWO amendments: (a) AC2's blanket "never … writes any instructions file", narrowed to permit the one rendered rules file; and (b) after review, AC2's blanket "never reads … .trellis/" narrowed to permit EXISTENCE-ONLY reads of pre-existing delivery state — five reads over four paths (.trellis/internal/, the legacy flat .trellis/trellis.md, .claude/rules/trellis.md twice, .trellis/rules.toml) — no file's CONTENTS being read at any of them. AC2's prescribed managed-block grep is DELETED rather than narrowed: an interim revision permitted a CLAUDE.md/AGENTS.md content grep, and that permission is withdrawn. What still stands untouched: the "zero decision logic" heading, the posture-prompt and marker-PATCHING prohibitions, and "never WRITES to .trellis/". §Scope (both halves), §1's scope note, §4, §Purpose and AC2a's scope qualifier are amended in the same act — the first pass touched only some of them, which is the defect this correction closes.
+superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068, in TWO amendments: (a) AC2's blanket "never … writes any instructions file", narrowed to permit the one rendered rules file; and (b) after review, AC2's blanket "never reads … .trellis/ or any pre-existing instructions file" narrowed to permit SIX reads over FIVE paths (.trellis/internal/, the legacy flat .trellis/trellis.md, CLAUDE.md/AGENTS.md, .claude/rules/trellis.md twice, .trellis/rules.toml), of which EXACTLY ONE reads a file's contents — a single column-0-anchored opening marker, per the new AC2d. That count is a normative bound, not a description: a second content read requires a further amendment. An interim revision of this branch deleted the content read entirely and claimed existence-only; that shipped a regression (inline consumers silently double-delivered) and is reverted. What still stands untouched: the "zero decision logic" heading, the posture-prompt and marker-PATCHING prohibitions, and "never WRITES to .trellis/". §Scope (both halves), §1's scope note, §4, §Purpose, AC2's absence list and AC2a's scope qualifier are amended in the same act — the first pass touched only some of them, which is the defect this correction closes.
 owner: agent
 rubric: rubric-artifact-contract
 date: 2026-07-10
@@ -194,8 +194,10 @@ otherwise) — the only git invocation permitted anywhere in this script is the 
 > **Amended by `decision-0068` (2026-07-30), matching AC2 — in BOTH acts.** The script writes one
 > instructions file it wholly owns, `.claude/rules/trellis.md`, and edits no file it did not
 > create. **`.trellis/` is no longer untouched**: the second amendment permits existence reads of
-> `.trellis/internal/`, `.trellis/trellis.md` and `.trellis/rules.toml`, and a content read of
-> `CLAUDE.md`/`AGENTS.md` for a paired managed block. It still **writes** nothing under `.trellis/`.
+> `.trellis/internal/`, `.trellis/trellis.md` and `.trellis/rules.toml`, plus ONE content read of
+> `CLAUDE.md`/`AGENTS.md` matching a single column-0-anchored opening marker — narrowed from the
+> "paired managed block" this note first described, because the closing grep was `$`-anchored and
+> broke on CRLF checkouts. It still **writes** nothing under `.trellis/`.
 > An earlier version of this note asserted `.trellis/` remained untouched, which the second
 > amendment made false the moment it landed; §4 was omitted from that act and is corrected here.
 
@@ -212,22 +214,25 @@ it, never does it.
   to the source `plugins/trellis/` tree at the pinned commit.
 - **AC2 — zero decision logic.** The script contains no posture prompt, no target/style detection
   for any instructions file, no managed-block marker handling, and never reads or writes
-  the CONTENTS of `.trellis/` or of any *pre-existing* instructions file (`CLAUDE.md`, `AGENTS.md`,
-  etc.), and never writes to either. (Checkable by absence: grep the script source for
-  `expression.md`, `profile-`, `trellis:begin`, `CLAUDE.md` and `AGENTS.md` outside of
-  comments/help text — all five return nothing. Note `trellis:rendered-begin`, the rendered file's
-  own machine marker, is a distinct string and is not a hit. The absence grep is the weak check;
-  the strong one is behavioural — two fixture repos differing only in which instructions file they
-  carry must produce byte-identical output, per the coverage table below.)
+the CONTENTS of `.trellis/`, never writes to `.trellis/` or to any *pre-existing* instructions
+  file, and reads the contents of a pre-existing instructions file at **exactly one** place, for
+  **exactly one** purpose: AC2d's managed-block refusal. (Checkable by absence: grep the script
+  source for `expression.md` and `profile-` — both return nothing anywhere, in code or comment, so
+  no comment-stripping is needed and none is done. `trellis:begin`, `CLAUDE.md` and `AGENTS.md` are
+  deliberately NOT on that list; they are AC2d's, and the guard for them is a COUNT, not an
+  absence — exactly one content read, asserted structurally. Both checks are weak; the strong one
+  is behavioural — two fixture repos differing only in which instructions file they carry must
+  produce byte-identical output, per the coverage table below.)
 
-  > **The check was amended, 2026-07-30, then partly restored.** It previously also named
-  > `trellis:begin` and `CLAUDE.md`, and an interim revision of this branch did grep
-  > `CLAUDE.md`/`AGENTS.md` for a paired managed block — which made the check as written
-  > guaranteed to fail against the script the spec elsewhere requires. **That grep has since
-  > been deleted**, so the marker and instructions-file halves of the check hold again and
-  > are restored above. `.trellis/` is what stays narrowed, per `decision-0068` D12: the
-  > script tests whether four paths *exist*. What the check still proves either way is the
-  > part that never changed: **no posture is read and no marker is patched**.
+  > **Amended twice, 2026-07-30, and the second amendment reversed the first.** The check
+  > originally named five strings. An interim revision deleted the managed-block grep and
+  > restored all five — which was briefly true and shipped a REGRESSION, because deleting the
+  > grep reopened live double delivery for inline consumers (see AC2d). The grep is back, so
+  > `trellis:begin`/`CLAUDE.md`/`AGENTS.md` are permanently off the absence list and are
+  > governed by a count instead. `expression.md` and `profile-` stay, and are absolute — zero
+  > occurrences anywhere in the file, which is what makes them immune to the comment-parsing
+  > bypass an earlier version of the enforcing test had. What the check proves through every
+  > revision is the part that never changed: **no posture is read and no marker is patched**.
 
   > **Amended by `decision-0068` (2026-07-30) — one clause, narrowly.** The script **does** now
   > write exactly one instructions file it wholly owns: `.claude/rules/trellis.md`, rendered from
@@ -244,20 +249,21 @@ it, never does it.
   >
   > **Second amendment, 2026-07-30, after an independent reviewer refused the first as
   > insufficient.** The script now **reads** whether the project already delivers the rules
-  > statically — `.trellis/internal/` or the legacy flat `.trellis/trellis.md` — and refuses to
-  > render when either is present. (An interim revision also grepped `CLAUDE.md`/`AGENTS.md` for a
-  > managed block; that grep is deleted. The import form of such a block resolves into `.trellis/`,
-  > so the two path tests already cover it.)
+  > statically — `.trellis/internal/`, the legacy flat `.trellis/trellis.md`, or a managed block in
+  > `CLAUDE.md`/`AGENTS.md` — and refuses to render when any is present. (An interim revision
+  > deleted the block grep, on the argument that the import form resolves into `.trellis/` so the
+  > path tests already covered it. True of the import form, false of the INLINE form, which imports
+  > nothing — the deletion was a measured regression and is reverted. See AC2d.)
   >
   > This is a genuine widening and is recorded as one rather than smuggled in a test. The reviewer's
   > words: *"either obtain the intent-level amendment or preserve the mechanical, state-independent
   > installer contract."* The contract cannot be preserved: **both static chains are loaded by the
   > host before any hook runs**, so there is no runtime fix, and rendering blindly would ship
-  > guaranteed double delivery. The reads are **existence-only** — no file's contents are
-  > inspected, at any of them. Five reads over four paths: two gate the render, two concern
-  > `.claude/rules/trellis.md` itself (a live-double-delivery warning, and a refusal to `mv` over a
-  > non-regular path), and one, `.trellis/rules.toml`, gates a single line of printed guidance.
-  > None selects a posture or patches a marker.
+  > guaranteed double delivery. **Six reads over five paths, exactly one of which reads a file's
+  > contents**: three gate the render (two by path existence, one by matching a single
+  > column-0-anchored marker), two concern `.claude/rules/trellis.md` itself (a live-double-delivery
+  > warning, and a refusal to `mv` over a non-regular path), and one, `.trellis/rules.toml`, gates a
+  > single line of printed guidance. None selects a posture or patches a marker.
   >
   > **This widening postdates what the maintainer was shown when D1 was ruled** and is flagged for
   > the same intent act rather than assumed under it.
@@ -283,11 +289,35 @@ it, never does it.
   must produce a warning from each side, and must NOT produce the rule bodies. *(Added 2026-07-30:
   this behaviour shipped covered by no acceptance criterion in either artifact.)*
 
-  > **Accepted gap, named rather than half-covered.** A pre-`decision-0065` **inline** managed block
-  > in a project with **no `.trellis/` at all** is detected by neither side. Its only signature is
-  > file contents, and the grep that briefly looked for it broke on CRLF checkouts and twice matched
-  > prose that merely named the delimiters. Nothing has produced that shape since `decision-0065`,
-  > and `/trellis:remove` and `/trellis:setup` still clean it. Recorded as uncovered, not claimed.
+  > **This gap was declared "accepted" and is now CLOSED — the acceptance reasoned from a false
+  > premise.** The text here said a pre-`decision-0065` **inline** managed block was detected by
+  > neither side, scoped that to a project with "no `.trellis/` at all", and rested on two
+  > mitigations. Each part was wrong. The gap is not narrow: the inline form's NORMAL configuration
+  > is a block plus `.trellis/rules.toml` and nothing else, which both existence tests miss. The two
+  > grep findings were not equally live — the prose false-positive was already fixed by column-0
+  > anchoring, and only the CRLF break survived, on the `$`-anchored CLOSING grep alone, so dropping
+  > that one grep closes it. And `/trellis:setup` does **not** clean the shape: it offers a
+  > migration only when `.trellis/internal/` exists, the one condition an inline-block repo fails.
+  > `/trellis:remove` does. The check is restored (AC2d) and the state is refused, not recorded.
+
+- **AC2d — the managed-block refusal, restored after a measured regression.** The script must
+  refuse to render when `CLAUDE.md` or `AGENTS.md` carries a managed block. This is its ONE read of
+  a pre-existing instructions file's contents, and it is bounded to a single string matched at
+  **column 0** — the opening delimiter only. The closing delimiter must **not** be grepped: it was
+  `$`-anchored, and a CRLF checkout (the Git-for-Windows default) therefore hid real blocks while
+  the suite stayed green. Column-0 anchoring is what separates a block from prose that merely names
+  the delimiters.
+
+  Red-first, and all four cases are required because each one is a defect that shipped: an inline
+  block built from the **shipped** `reference/block-inline-b.md` refuses; the same block with CRLF
+  line endings refuses; an import-form block refuses; and a `CLAUDE.md` naming the delimiters
+  mid-sentence renders. A fixture hand-written to approximate the block is not acceptable — the
+  approximation is what made this shape look coverable by a path-existence test.
+
+  *(Why this is an acceptance criterion rather than a comment: the check was deleted once on a
+  plausible-sounding argument, with the whole suite green, and the regression was found only by
+  running the parent commit against the same consumer. The criterion is the thing that makes the
+  next deletion fail loudly.)*
 
 - **AC2b — the plugin hook stands down when this file exists.** Measured: with the plugin installed
   *and* `.claude/rules/trellis.md` present, the rules arrive **twice** — once in the
@@ -337,13 +367,13 @@ it, never does it.
 | **Incomplete or stale rendered files never silence the hook** | Zero-byte, one-byte, cut-after-sentinel, import-missing and stamp-missing shapes each either deliver the rules or emit `TRELLIS_RULES_NOT_LOADED`; a stale stamp emits a nudge naming both stamps; a current one stands down quietly. Eleven shapes audited | **AC2b** |
 | **Path C sits after path A** | A project holding a stale overlay **and no rendered file** still receives the overlay staleness nudge — `decision-0035`'s floor, which path C would otherwise silence for exactly the consumers mid-migration | **AC2b** |
 | **Both static paths at once** | A project holding a stale overlay **and** a rendered file receives `TRELLIS_RULES_LOADED_TWICE` from the hook — the coexistence branch supersedes the staleness nudge, because live double delivery is the more urgent report — and the installer refuses to render, naming the pre-existing file as untouched. *(Corrected 2026-07-30: this row previously claimed the staleness nudge for this state, which the coexistence branch replaced.)* | **AC2c** |
-| **Every conflict shape refuses; prose about them does not** | Each of `.trellis/internal/` and the legacy flat `.trellis/trellis.md` suppresses the render and names itself as the reason. A `CLAUDE.md` that merely *names* the `trellis:begin` delimiters, with no `.trellis/` tree, does **not** suppress it — the render proceeds. That shape is covered by the two path tests rather than by a grep, since the import resolves into `.trellis/`; the residual gap is stated in the AC2c note | **AC2a**, **AC2c** |
+| **Every conflict shape refuses; prose about them does not** | Each of `.trellis/internal/`, the legacy flat `.trellis/trellis.md`, an IMPORT-form managed block, and an INLINE managed block — the last read from the shipped `reference/block-inline-b.md`, not hand-written — suppresses the render and names itself as the reason. The inline case runs twice, LF and **CRLF**, since a `$`-anchored closing grep silently missed the CRLF form on the Git-for-Windows default. A `CLAUDE.md` that merely *names* the delimiters mid-sentence does **not** suppress it — the render proceeds | **AC2a**, **AC2c**, **AC2d** |
 | Project fresh vendor, run from repo root | Full bundle lands at `<repo-root>/.claude/skills/trellis/`; stdout contains, verbatim, the trust-dialog note, the no-walk-up caveat, the commit suggestion (present, and not a command the script itself ran — the target directory's git status shows no staged/committed change from the script), and the next-step pointer to `/trellis:setup` | AC1, AC3, AC4, AC9, AC10 |
 | Project fresh vendor, run from a subdirectory | Git-root resolution, not `$PWD` — byte-identical to the repo-root case | AC3 |
 | Re-run over an already-vendored tree | Idempotency, no duplication/drift | AC8 |
 | Tampered fetch (corrupted file or mismatched manifest hash) | Fails closed: non-zero exit, named check, empty/untouched target directory | AC6, AC7 |
 | No controlling tty, scope ambiguous (no git repo, no flag/env) | Exits non-zero with an actionable message; never hangs | AC5 |
-| Two otherwise-identical fixture repos, vendored to the same scope: one carrying a pre-existing `CLAUDE.md` with hand-authored prose plus a `.trellis/expression.md` declaring a posture (the managed-block markers moved to the refusal scenario, since `decision-0068`'s second amendment makes a PAIRED block a legitimate branch input — leaving them here would assert the opposite of the contract); the other carrying an `AGENTS.md` instead and no `.trellis/` at all | The vendored bundle tree and stdout are byte-identical between the two runs (only the absolute target path differs — a scope-resolution input, not a decision-logic one); the first fixture repo's `CLAUDE.md` and `.trellis/expression.md` are byte-identical before and after the run (untouched — not read-and-rewritten, not read-and-left-alone-by-luck). A script that branched on target-file presence, content, or posture — under any name — fails at least one of these assertions | AC2 |
+| Two otherwise-identical fixture repos, vendored to the same scope: one carrying a pre-existing `CLAUDE.md` with hand-authored prose plus a `.trellis/expression.md` declaring a posture (the managed-block markers moved to the refusal scenario, since `decision-0068` D12 makes a block a legitimate branch input — leaving them here would assert the opposite of the contract); the other carrying an `AGENTS.md` instead and no `.trellis/` at all | The vendored bundle tree and stdout are byte-identical between the two runs (only the absolute target path differs — a scope-resolution input, not a decision-logic one); the first fixture repo's `CLAUDE.md` and `.trellis/expression.md` are byte-identical before and after the run (untouched — not read-and-rewritten, not read-and-left-alone-by-luck). A script that branched on target-file presence, content, or posture — under any name — fails at least one of these assertions | AC2 |
 | Every scope/error path from the rows above (personal, project-from-root, project-from-subdirectory, ambiguous-no-tty fail-closed, tampered-fetch fail-closed) plus an invalid-`--scope`-value run and a re-run, each executed with a logging `git` shim shadowing `PATH` | The shim's invocation log, read back across every path, contains only `rev-parse --show-toplevel` calls — zero `add`/`commit`/or-any-other-subcommand invocations anywhere, on the success paths or the failure paths alike | AC9 |
 
 **Existence-proof cross-check against PR #129 (informational, not authoritative — the rows above

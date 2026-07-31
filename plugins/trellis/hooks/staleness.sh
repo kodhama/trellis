@@ -213,8 +213,20 @@ if [ -f "$rendered" ]; then
   # five distinct rule lines. Trailing CR and whitespace are
   # tolerated: this file is committed, and a collaborator on core.autocrlf=true
   # otherwise gets told a complete file is incomplete.
-  incomplete="$(awk '
+  incomplete="$(awk -v bom="$(printf '\357\273\277')" '
     { line = $0; sub(/[ \t\r]+$/, "", line) }
+    # A UTF-8 BOM on line 1 made the opening marker compare unequal, and the hook
+    # then told a fully-governed project it was NOT governed. Same harm, and the
+    # same population, as the trailing-CR tolerance directly above: an editor on
+    # a Windows-default checkout rewrites the encoding, and nothing in the
+    # trellis delivery chain ever writes a BOM. The host loads it either way.
+    #
+    # The bytes arrive via -v rather than as a regex escape. Written as
+    # /^\357\273\277/ the first attempt was INERT -- octal escapes in a regex
+    # literal are not portable across awks, and it silently matched nothing while
+    # looking correct. substr is exact and needs no escape rules.
+    # (No apostrophes in here: this whole awk program is single-quoted.)
+    NR == 1 && substr(line, 1, length(bom)) == bom { line = substr(line, length(bom) + 1) }
     stage == 0 && line == "<!-- trellis:rendered-begin -->"        { stage = 1; next }
     stage == 1 && line == "<!-- trellis:rules-loaded -->"          { stage = 2; next }
     stage == 2 && line == "<!-- trellis:rendered-footer -->"       { stage = 3; next }

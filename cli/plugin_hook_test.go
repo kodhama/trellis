@@ -581,6 +581,36 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		}
 	})
 
+	// A BOM makes the opening marker compare unequal, and the hook then reports a
+	// fully-governed project as NOT governed — the host loads the file regardless.
+	// Same population as the trailing-CR tolerance beside it: an editor on a
+	// Windows-default checkout rewrites the encoding; trellis never writes a BOM.
+	//
+	// This test exists because the FIRST fix was inert. Written as a regex escape,
+	// /^\357\273\277/ matched nothing (octal escapes in a regex literal are not
+	// portable across awks) while reading as correct, and the suite stayed green
+	// either way. Mutation is what caught it, so the property is pinned here.
+	t.Run("a leading UTF-8 BOM does not make a governed file look ungoverned", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := "\xef\xbb\xbf" + renderedFile(files, strings.TrimSpace(files["version"]))
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		if strings.Contains(string(out), "TRELLIS_RULES_NOT_LOADED") {
+			t.Errorf("a BOM'd but otherwise complete file was reported as not governed — it IS governed, the host loaded it:\n%s", out)
+		}
+		if !strings.Contains(string(out), "already loaded from .claude/rules/trellis.md") {
+			t.Errorf("the hook must stand down for a BOM'd complete file, not deliver on top of it:\n%s", out)
+		}
+	})
+
 	// Codex P1: a file cut immediately AFTER the rules-body sentinel passed the
 	// old guard while having lost the import line and the stamp — so the hook
 	// stood down and NO activation rows were ever delivered. The boundary is the

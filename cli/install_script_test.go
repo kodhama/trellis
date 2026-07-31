@@ -1186,6 +1186,24 @@ func TestVendorRefusesForEveryStaticDeliveryShape(t *testing.T) {
 		{"legacy flat overlay", ".trellis", func(repo string) {
 			writeFileT(t, filepath.Join(repo, ".trellis", "trellis.md"), "legacy vendored prose\n")
 		}},
+		// The INLINE block, reinstated. Deleting this case is what let a
+		// regression through: the inline form embeds the rules body in CLAUDE.md
+		// and needs no .trellis/internal/, so BOTH existence checks miss it and
+		// the render proceeded into live double delivery. Measured against the
+		// shipped block, not a hand-written approximation.
+		{"inline managed block", "managed block in CLAUDE.md", func(repo string) {
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), inlineBlockFixture(t))
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only — the inline form needs nothing else under .trellis/\n")
+		}},
+		// The CRLF variant is the bug that killed the original check: the old
+		// CLOSING grep was $-anchored, so `trellis:end -->\r` never matched and a
+		// REAL block went undetected on the Git-for-Windows default. Dropping the
+		// closing grep removed the only $-anchor. Without this case the fix is
+		// unpinned and the next simplification reintroduces it.
+		{"inline managed block, CRLF checkout", "managed block in CLAUDE.md", func(repo string) {
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), strings.ReplaceAll(inlineBlockFixture(t), "\n", "\r\n"))
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := t.TempDir()
@@ -1229,10 +1247,12 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		}
 	})
 
-	// The import-form block ALWAYS brings .trellis/internal/ with it — it imports
-	// @.trellis/internal/trellis.md — so the existence check catches it and no
-	// content grep is needed. This pins that: a real paired block, and the refusal
-	// still fires, without install.sh reading a single file's contents.
+	// The import-form block brings .trellis/internal/ with it — it imports
+	// @.trellis/internal/trellis.md — so the EXISTENCE check catches this shape
+	// even with the marker grep removed. That is true and worth pinning; what it
+	// is not is a reason to remove the grep, which an earlier revision of this
+	// branch concluded. The inline shape has no such backstop (see the shape
+	// table above), so both mechanisms are load-bearing for different shapes.
 	t.Run("an import-form block is caught by its overlay, not by grepping prose", func(t *testing.T) {
 		repo := t.TempDir()
 		initGitRepo(t, repo)
@@ -1248,9 +1268,10 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		}
 	})
 
-	// The converse, and the reason the grep is gone: prose that NAMES the
-	// delimiters must never suppress the render. Two review rounds were spent on
-	// grep forms that got this wrong; not grepping cannot.
+	// The converse: prose that NAMES the delimiters must never suppress the
+	// render. Two review rounds were spent on grep forms that got this wrong,
+	// which is why the surviving grep is anchored at column 0 — documentation
+	// writes the marker mid-sentence, a real block writes it at line start.
 	t.Run("prose naming the delimiters never suppresses the render", func(t *testing.T) {
 		repo := t.TempDir()
 		initGitRepo(t, repo)
@@ -1266,21 +1287,31 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		}
 	})
 
-	// install.sh must inspect NO file's contents. That is AC2's surviving clause,
-	// and it is now true again because the grep is gone.
-	t.Run("no file contents are read at all", func(t *testing.T) {
-		src, err := os.ReadFile(installScriptPath(t))
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, line := range strings.Split(string(src), "\n") {
+	// install.sh reads EXACTLY ONE project file's contents: the managed-block
+	// opening marker. An earlier revision of this subtest asserted zero, which
+	// was achieved by deleting the check and regressed inline consumers into
+	// silent double delivery. Asserting the exact count instead of zero keeps the
+	// widening bounded — a second content read has to come here and argue itself,
+	// and spec-0005 AC2's amendment is scoped to this one.
+	t.Run("exactly one project file content read, and it is the marker check", func(t *testing.T) {
+		var reads []string
+		for _, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
 			trimmed := strings.TrimSpace(line)
 			if strings.HasPrefix(trimmed, "#") {
 				continue
 			}
 			if strings.Contains(trimmed, "grep") && strings.Contains(trimmed, "git_root") {
-				t.Errorf("install.sh greps a project file's contents — AC2 forbids it and the existence checks make it unnecessary: %s", trimmed)
+				reads = append(reads, trimmed)
 			}
+		}
+		if len(reads) != 1 {
+			t.Fatalf("install.sh makes %d content read(s) of a project file; spec-0005 AC2's amendment permits exactly one (the managed-block marker):\n%s", len(reads), strings.Join(reads, "\n"))
+		}
+		if !strings.Contains(reads[0], "'^<!-- trellis:begin'") {
+			t.Errorf("the one permitted content read must be the column-0-anchored opening marker; got: %s", reads[0])
+		}
+		if strings.Contains(reads[0], "trellis:end") {
+			t.Errorf("the CLOSING marker grep is $-anchored and broke on CRLF checkouts — it must not come back: %s", reads[0])
 		}
 	})
 }
@@ -1313,20 +1344,43 @@ func TestVendorRejectsAnEmptyScopeFlag(t *testing.T) {
 // prove is that the spec's own stated check still holds, so a reviewer running
 // it by hand gets the answer the spec promises.
 func TestInstallScriptNamesNoProjectFileInExecutableCode(t *testing.T) {
-	src := readFileT(t, installScriptPath(t))
-	// `trellis:rendered-begin` is the rendered file's own machine marker and a
-	// legitimate executable string; `trellis:begin` is the retired managed-block
-	// delimiter. Matching the latter must not match the former.
-	terms := []string{"expression.md", "profile-", "trellis:begin", "CLAUDE.md", "AGENTS.md"}
-	for i, line := range strings.Split(src, "\n") {
-		code, _, _ := strings.Cut(line, "#")
-		if strings.TrimSpace(code) == "" {
-			continue // whole-line comment, or blank
-		}
+	// These two terms appear NOWHERE in install.sh — not in code, not in a
+	// comment — so this needs no comment parsing and therefore has no comment-
+	// parsing bypass. An earlier version of this test split each line at the
+	// first `#` and treated the remainder as a comment. Shell disagrees: that
+	// truncated four real code lines in the then-current script (`while [ $# -gt
+	// 0 ]`, `SCOPE_FLAG="${1#--scope=}"`, and a printf whose entire payload sat
+	// after a `##`), and a reviewer demonstrated a genuine content read placed
+	// after a `#` that left the test green. A raw substring match cannot be
+	// bypassed that way.
+	//
+	// `trellis:begin`, `CLAUDE.md` and `AGENTS.md` are deliberately NOT here:
+	// spec-0005 AC2's amendment permits exactly one content read and it names
+	// them. The bounded version of that guard is the exactly-one-read subtest in
+	// TestVendorGuardsAddedByReviewAreActuallyPinned.
+	terms := []string{"expression.md", "profile-"}
+	for i, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
 		for _, term := range terms {
-			if strings.Contains(code, term) {
-				t.Errorf("install.sh:%d names %q in executable code: %s\n\nspec-0005 AC2 promises this grep returns nothing. Either the script regained decision logic over a project file, or AC2's check list needs amending in the same act.", i+1, term, strings.TrimSpace(line))
+			if strings.Contains(line, term) {
+				t.Errorf("install.sh:%d names %q: %s\n\nspec-0005 AC2 promises this grep returns nothing — the script must never branch on a declared POSTURE. Either decision logic came back, or AC2's check list needs amending in the same act.", i+1, term, strings.TrimSpace(line))
 			}
 		}
 	}
+}
+
+// inlineBlockFixture returns the INLINE managed block exactly as trellis shipped
+// it, read from the bundle rather than hand-written. A hand-written
+// approximation is what made this shape look coverable by an existence check:
+// the real block embeds the full rules body and imports nothing, so no
+// .trellis/internal/ ever appears beside it.
+func inlineBlockFixture(t *testing.T) string {
+	t.Helper()
+	block := readFileT(t, filepath.Join(vendoredBundleAbs(t), "reference", "block-inline-b.md"))
+	if !strings.HasPrefix(block, "<!-- trellis:begin") {
+		t.Fatalf("the shipped inline block no longer opens with the marker at column 0; this fixture and install.sh's grep both assume it does:\n%.120s", block)
+	}
+	if strings.Contains(block, "\n@") {
+		t.Fatalf("the shipped inline block now carries an @-import; if the inline form gained a .trellis/ dependency, install.sh's existence checks may cover it and this fixture's premise needs re-deriving")
+	}
+	return block
 }
