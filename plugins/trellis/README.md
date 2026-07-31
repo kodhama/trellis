@@ -39,10 +39,10 @@ boundaries, desktop, IDE, cloud, and CI runners — a bare subagent is not a ses
 `.claude/rules/trellis.md`, which Claude Code loads at launch with no hook and no trust dialog
 (`decision-0068`; the hook stands down when that file is present, so the rules never arrive
 twice). **That covers Claude Code and project scope only**: a `--scope personal` install
-delivers no rules, and neither does the curl path on **Codex CLI** — `.claude/rules/` is a
-Claude mechanism, and the installer registers nothing for any other host (`decision-0068` D7).
-Codex gets its rules from the plugin path or not at all. The installer says both out loud when
-it runs. **Trellis claims no support.** "Known to work" names
+delivers no rules, and neither does the curl path on **Codex CLI** and other hosts, which
+**get nothing from it** — `.claude/rules/` is a Claude mechanism and the installer registers
+nothing for any other host (`decision-0068` D7). On those hosts the rules arrive through the
+plugin, or not at all. A project-scope run prints both limits. **Trellis claims no support.** "Known to work" names
 a check that ran; support is not claimed for any host, surface, or version, and nothing here
 undertakes to keep any of them working or to repair them if they stop. And **no marketplace
 install has been evidenced**: no recorded check has exercised installing this package from a

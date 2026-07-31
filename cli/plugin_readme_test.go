@@ -191,8 +191,18 @@ func TestPluginReadmeInstallPathClaimIsCurrent(t *testing.T) {
 	// host and then describes a Claude-only delivery mechanism; hedging the scope
 	// but not the host is exactly the implication D7 forbids, on the one surface
 	// a consumer actually reads.
-	if !strings.Contains(body, "Codex") {
-		t.Errorf("the install-path paragraph names Codex as a known-working host but never says the curl path delivers nothing to it — decision-0068 D7 requires that stated, not implied")
+	// Scoped to the SENTENCE, not the file. `Contains(body, "Codex")` was inert:
+	// the README mentions Codex eight times starting with its title, so deleting
+	// the entire host hedge left this green — the same "passes either way" defect
+	// the BOM regex had.
+	if !strings.Contains(body, "get nothing from it") {
+		t.Errorf("the install-path paragraph must say the curl path delivers nothing to non-Claude hosts — decision-0068 D7 requires that stated, not implied")
+	}
+	// And the paragraph claims the installer says so at run time. Assert the
+	// installer actually does, rather than trusting the README about itself.
+	script := readFileT(t, filepath.Join("..", "install.sh"))
+	if !strings.Contains(script, "get nothing from it") {
+		t.Errorf("the README claims the installer says the host limit out loud; install.sh prints no such line")
 	}
 }
 

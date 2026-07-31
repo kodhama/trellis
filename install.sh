@@ -263,12 +263,26 @@ manifest_check() {
 BUNDLE_SOURCE="${TRELLIS_BUNDLE_SOURCE:-https://raw.githubusercontent.com/kodhama/trellis/main/plugins/trellis}"
 
 stage="$(mktemp -d "${TMPDIR:-/tmp}/trellis-vendor.XXXXXX")"
-# $rendered_tmp joins the trap once it exists. Reproduced: SIGINT during the
+# $rendered_tmp joins the cleanup once it exists. Reproduced: SIGINT during the
 # render left a partial .claude/rules/.trellis.md.<pid> behind AND the stage dir,
-# so EXIT alone did not cover signals either. It accumulates one file per
-# interrupt and rides along on `git add .claude/rules`.
+# so EXIT alone did not cover signals either.
+#
+# Two things this must get right, both measured the hard way:
+#
+#   1. A signal handler that only CLEANS UP does not stop the script. POSIX
+#      resumes execution after the handler returns, so a `trap ... INT` that
+#      omits `exit` left the script cat-ing files it had just deleted. Each
+#      signal handler exits with the conventional 128+signo.
+#   2. An EXIT trap becomes the shell's last command, and bash then reports ITS
+#      status. That turned a fatal expansion error into `exit 0` — the installer
+#      announcing success for an install it had refused. $rc is captured first
+#      and re-raised, so the trap can no longer launder a failure into a pass.
 rendered_tmp=""
-trap 'rm -rf "$stage"; [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp"' EXIT INT HUP TERM
+cleanup() { rm -rf "$stage"; [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp"; }
+trap 'rc=$?; cleanup; exit $rc' EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 129' HUP
+trap 'cleanup; exit 143' TERM
 
 # The bundle manifest — baked in, covers the whole plugins/trellis/ tree. Advance-
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
@@ -276,7 +290,7 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-f5bbe74cffac8c20480e63e4d301d9054d2780d4cf7932333842d180f34a22e3  README.md
+57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
@@ -410,11 +424,34 @@ if [ "$scope" = "project" ]; then
   #     removes the only $-anchor, so CR at end of line cannot matter.
   #   - Prose that merely NAMED the delimiters matched twice. Column-0 anchoring
   #     fixes that: documentation writes the marker mid-sentence.
-  # Opening marker only, anchored at column 0. Verified against all three:
-  # LF inline -> refuses; CRLF inline -> refuses; prose-only -> renders.
+  # Opening marker only, anchored at column 0, with an optional leading UTF-8
+  # BOM. The BOM matters for the same reason it does in staleness.sh: setup wrote
+  # the block at line 1 of a fresh CLAUDE.md, and an editor on a Windows-default
+  # checkout rewrites the encoding. Without it a real block escapes the check and
+  # renders into live double delivery -- the same fail-open direction, on the
+  # writer side, as the reader-side bug fixed in the same change. Leaving one
+  # half fixed would have been the worse outcome of the two.
+  #
+  # Only CLAUDE.md and AGENTS.md are checked, while /trellis:remove recognises
+  # blocks in five instruction files. That is deliberate, not an oversight: the
+  # other three (GEMINI.md, .github/copilot-instructions.md, .clinerules) are not
+  # loaded by Claude Code, so a block in one of them cannot double-deliver
+  # alongside .claude/rules/. Stated because D7 asks for stated, not implied.
+  #
+  # Verified: LF inline -> refuses; CRLF inline -> refuses; BOM'd inline ->
+  # refuses; prose naming the marker mid-sentence -> renders.
+  #
+  # Known false positive, accepted deliberately: a CLAUDE.md that DOCUMENTS the
+  # marker inside a fenced code block puts it at column 0, so this refuses and
+  # tells the author their project already delivers the rules statically, which
+  # is false. It fails CLOSED — nothing is written and the message names the file
+  # — and the alternative is parsing markdown in POSIX sh to find fences. The
+  # author can move the example or indent it. Chosen over the fail-OPEN
+  # alternative of dropping the anchor, which reopens the prose case.
   if [ -z "$static_conflict" ]; then
+    bom="$(printf '\357\273\277')"
     for f in CLAUDE.md AGENTS.md; do
-      grep -q '^<!-- trellis:begin' "$git_root/$f" 2>/dev/null \
+      grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$git_root/$f" 2>/dev/null \
         && { static_conflict="managed block in $f"; break; }
     done
   fi
@@ -548,9 +585,13 @@ elif [ "$scope" = "project" ]; then
   # file could silently lose the activation sentence, which INVERTS the rule
   # semantics (every rule applies regardless of its row).
   #
-  # So validate the artifact, not the exit status. This is the writer-side mirror
-  # of the hook's reader-side check: same markers, same order, same rule-line
-  # floor. A render that would not satisfy the hook never reaches the mv.
+  # So validate the artifact, not the exit status. This is WEAKER than the hook's
+  # reader-side check and is not a mirror of it: the probes are matched
+  # independently (no ordering), and `grep -c` counts matching LINES where the
+  # hook counts DISTINCT ones. Three of the five probes also check strings this
+  # script itself printf's, so they cannot catch a payload-derived step failing —
+  # that is the -s checks' job, above. What it does guarantee is that a render
+  # which would not satisfy the hook never reaches the mv.
   render_defect=""
   for probe in \
     '<!-- trellis:rendered-begin -->' \
@@ -564,7 +605,7 @@ elif [ "$scope" = "project" ]; then
   [ -n "$render_defect" ] || [ "$(grep -cE '`(inv|floor)-[a-z-]+`' "$rendered_tmp" 2>/dev/null)" -ge 5 ] || render_defect="the rule body (fewer than 5 rule lines survived)"
   [ -z "$render_defect" ] || {
     rm -f "$rendered_tmp"
-    fail "the rendered rules file is incomplete — missing: $render_defect. Nothing was replaced. This means a step of the render failed without reporting it; re-run, and if it repeats the bundle at $bundle_src is damaged."
+    fail "the rendered rules file is incomplete — missing: $render_defect. Nothing was replaced. This means a step of the render failed without reporting it; re-run, and if it repeats the bundle at $BUNDLE_SOURCE is damaged."
   }
   mv -f "$rendered_tmp" "$rules_dir/trellis.md" || {
     rm -f "$rendered_tmp"
@@ -600,6 +641,14 @@ if [ "$scope" = "project" ]; then
   say "  git -C \"$git_root\" add $add_paths && git -C \"$git_root\" commit -m 'chore: vendor the Trellis plugin'"
 fi
 say ""
+if [ "$scope" = "project" ]; then
+  # Gated on project scope: personal scope renders no rules file at all and
+  # already says so, and spec-0005 AC10 caps its output at items 1 and 5.
+  say "The rendered rules file is a Claude Code mechanism: Codex CLI and other hosts"
+  say "get nothing from it. On those hosts the rules arrive through the plugin, or not"
+  say "at all."
+  say ""
+fi
 say "Then run /trellis:setup in the project you want to govern. That skill (the real"
 say "interactive writer — LLM-driven, no decision logic in this script) asks for a"
 say "preset and writes .trellis/rules.toml. It writes nothing else (decision-0065)."

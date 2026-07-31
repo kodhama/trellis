@@ -1195,13 +1195,32 @@ func TestVendorRefusesForEveryStaticDeliveryShape(t *testing.T) {
 			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), inlineBlockFixture(t))
 			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only — the inline form needs nothing else under .trellis/\n")
 		}},
+		// A BOM'd block. Same fail-open direction as the reader-side BOM bug fixed
+		// in the same change: setup wrote the block at line 1 of a fresh CLAUDE.md,
+		// an editor on a Windows-default checkout rewrote the encoding, and a
+		// column-0 grep with no BOM tolerance then missed a REAL block and rendered
+		// into live double delivery. Measured before the fix: rules file PRESENT.
+		{"inline managed block, UTF-8 BOM", "managed block in CLAUDE.md", func(repo string) {
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "\xef\xbb\xbf"+inlineBlockFixture(t))
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		}},
 		// The CRLF variant is the bug that killed the original check: the old
 		// CLOSING grep was $-anchored, so `trellis:end -->\r` never matched and a
 		// REAL block went undetected on the Git-for-Windows default. Dropping the
 		// closing grep removed the only $-anchor. Without this case the fix is
 		// unpinned and the next simplification reintroduces it.
 		{"inline managed block, CRLF checkout", "managed block in CLAUDE.md", func(repo string) {
-			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), strings.ReplaceAll(inlineBlockFixture(t), "\n", "\r\n"))
+			// The shipped block ends `<!-- trellis:end -->` with NO trailing
+			// newline. A naive ReplaceAll over it therefore leaves the CLOSING
+			// marker CR-free, `-->$` still matches, and this case cannot detect
+			// the very regression it exists to pin — measured: with the
+			// $-anchored closing grep reinstated, all four subtests passed. Append
+			// the newline first so the closing line is genuinely CRLF-terminated.
+			crlf := strings.ReplaceAll(inlineBlockFixture(t)+"\n", "\n", "\r\n")
+			if !strings.Contains(crlf, "<!-- trellis:end -->\r\n") {
+				t.Fatalf("this fixture is named CRLF but its closing marker is not CR-terminated — the case would pass against the bug it guards")
+			}
+			writeFileT(t, filepath.Join(repo, "CLAUDE.md"), crlf)
 			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
 		}},
 	} {
@@ -1294,26 +1313,135 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 	// widening bounded — a second content read has to come here and argue itself,
 	// and spec-0005 AC2's amendment is scoped to this one.
 	t.Run("exactly one project file content read, and it is the marker check", func(t *testing.T) {
+		// Classify every grep by its OPERAND, not by whether the line happens to
+		// mention `git_root`. That earlier form was bypassed by aliasing:
+		//   claude_md="${git_root}/CLAUDE.md"
+		//   grep -q '^strictness' "$claude_md" && ...
+		// read a declared posture — the exact thing AC2's heading forbids — and
+		// left the whole suite green. Here, an operand counts as safe only if it
+		// is rooted at the staged bundle or at the temp file this script itself
+		// just wrote; every other file operand is a read of pre-existing state.
+		//
+		// Still lexical, so still not proof: a determined rewrite could launder
+		// the path through more indirection. It closes the demonstrated bypass and
+		// raises the cost of the next one; the behavioural fixtures above are what
+		// actually establish the property.
+		// grep's first quoted operand is the PATTERN; every one after it is a
+		// FILE. Classifying by position beats matching the line for `git_root`,
+		// which an alias walks straight past, and beats "operand contains a
+		// slash", which the same alias also defeats.
+		// Every command that can read a file, not just grep. The earlier version
+		// keyed on `grep`, and a reviewer walked past it with
+		//   sed -n '/inv-directional-flow/p' "$git_root/README.md"
+		// which reads project content and left the whole suite green.
+		//
+		// Operands are counted only when they are double-quoted and $-rooted —
+		// that is what a path built from this script's variables looks like, and
+		// it excludes heredoc delimiters and /dev/tty. Command names are matched
+		// at word boundaries, since a substring match makes `chmod` look like
+		// `od`. `scripted` commands take their pattern first and files after.
+		reader := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)\s|<\s*"`)
+		quoted := regexp.MustCompile(`'[^']*'|"[^"]*"`)
+		scripted := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk)\s`)
+		operand := regexp.MustCompile(`"\$\{?[A-Za-z_][A-Za-z0-9_]*[^"]*"`)
 		var reads []string
 		for _, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
 			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "#") {
+			if strings.HasPrefix(trimmed, "#") || strings.Contains(trimmed, "<<") {
 				continue
 			}
-			if strings.Contains(trimmed, "grep") && strings.Contains(trimmed, "git_root") {
+			loc := reader.FindStringIndex(trimmed)
+			if loc == nil {
+				continue
+			}
+			cmd := trimmed[loc[0]:]
+			// Stop at the redirect so a trailing `|| { x="..."; }` clause does not
+			// masquerade as another file operand. Absence of a redirect only ever
+			// ADDS operands, and the assertion is an exact count, so the omission
+			// fails closed rather than opening a hole.
+			if r := strings.Index(cmd, " 2>"); r > 0 {
+				cmd = cmd[:r]
+			}
+			// Two stages. First every quoted token, in order, because for a
+			// scripted command the FIRST is the pattern and must not be mistaken
+			// for a file. Then keep only $-rooted ones: that is what a path built
+			// from this script's variables looks like, and it drops heredoc
+			// delimiters, /dev/tty, and literal patterns.
+			ops := quoted.FindAllString(cmd, -1)
+			if scripted.MatchString(cmd) {
+				if len(ops) == 0 {
+					continue
+				}
+				ops = ops[1:]
+			}
+			for _, f := range ops {
+				if !operand.MatchString(f) {
+					continue // a literal, not a path built from a variable
+				}
+				if strings.HasPrefix(f, `"$stage/`) || f == `"$rendered_tmp"` || strings.HasPrefix(f, `"$target/`) {
+					continue // the staged bundle, the temp file, or the vendor target
+				}
 				reads = append(reads, trimmed)
+				break
 			}
 		}
 		if len(reads) != 1 {
 			t.Fatalf("install.sh makes %d content read(s) of a project file; spec-0005 AC2's amendment permits exactly one (the managed-block marker):\n%s", len(reads), strings.Join(reads, "\n"))
 		}
-		if !strings.Contains(reads[0], "'^<!-- trellis:begin'") {
-			t.Errorf("the one permitted content read must be the column-0-anchored opening marker; got: %s", reads[0])
+		if !strings.Contains(reads[0], `<!-- trellis:begin`) || !strings.Contains(reads[0], `"^\(`) {
+			t.Errorf("the one permitted content read must be the column-0-anchored opening marker (optionally BOM-prefixed); got: %s", reads[0])
 		}
 		if strings.Contains(reads[0], "trellis:end") {
 			t.Errorf("the CLOSING marker grep is $-anchored and broke on CRLF checkouts — it must not come back: %s", reads[0])
 		}
 	})
+}
+
+// The render's failure paths shipped with NO test, and that is exactly how a
+// dead one got through: the diagnostic expanded $bundle_src, a variable that
+// never existed, so under `set -eu` the message was replaced by an expansion
+// error — and because an EXIT trap becomes the shell's last command, bash
+// reported the whole failed install as exit 0. A silent success for an install
+// that refused to complete.
+//
+// This drives the guard for real by removing a render step, rather than
+// asserting the message exists in the source.
+func TestRenderFailureIsLoudAndLeavesNothingBehind(t *testing.T) {
+	script := readFileT(t, installScriptPath(t))
+	broken := strings.Replace(script, "    cat \"$stage/render.body\"\n", "", 1)
+	if broken == script {
+		t.Fatal("could not find the render-body step to remove; this test's premise has drifted")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "install.sh")
+	if err := os.WriteFile(path, []byte(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	cmd := exec.Command("/bin/sh", path, "--non-interactive", "--scope", "project")
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(), "TRELLIS_BUNDLE_SOURCE="+vendoredBundleAbs(t))
+	out, err := cmd.CombinedOutput()
+	code := 0
+	if ee, ok := err.(*exec.ExitError); ok {
+		code = ee.ExitCode()
+	}
+	if code == 0 {
+		t.Errorf("a failed render exited 0 — the installer announced success for an install it refused to complete:\n%s", out)
+	}
+	if !strings.Contains(string(out), "the rendered rules file is incomplete") {
+		t.Errorf("the failure must NAME what was missing; got:\n%s", out)
+	}
+	if strings.Contains(string(out), "unbound variable") || strings.Contains(string(out), "parameter not set") {
+		t.Errorf("the diagnostic expands an undefined variable, so the message never prints:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err == nil {
+		t.Errorf("a failed render left a rules file behind")
+	}
+	if m, _ := filepath.Glob(filepath.Join(repo, ".claude", "rules", ".trellis.md.*")); len(m) > 0 {
+		t.Errorf("a failed render left its temp file behind: %v", m)
+	}
 }
 
 // An explicitly-passed but empty --scope used to fall through to the default,

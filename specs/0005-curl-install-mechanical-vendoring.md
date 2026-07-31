@@ -87,11 +87,13 @@ vs. project) selection; fail-closed integrity verification; post-write guidance 
 — in project scope, refusing when the project already delivers the rules statically.**
 
 **Out of scope (stays `/trellis:setup`'s job, run afterward, unmodified by this spec):** posture
-resolution, `.trellis/` bundle composition, managed-block **patching/verification** (detection is
-**out of scope again** — a content grep for the markers was added under
-`decision-0068`'s second amendment and then removed: nothing has written a managed block since
-`decision-0065`, and the import form always carries `.trellis/internal/`, which the existence checks
-already catch. The script inspects no file's contents), the
+resolution, `.trellis/` bundle composition, managed-block **patching/verification** — but NOT
+managed-block *detection*, which is in scope under **AC2d**. *(This clause said the opposite as
+recently as 2026-07-30, on the argument that "the import form always carries `.trellis/internal/`,
+which the existence checks already catch. The script inspects no file's contents." Both sentences
+were false: the INLINE form imports nothing, and removing the grep on that argument shipped a
+measured regression. The claim is struck rather than softened, and §Scope was the fourth site still
+carrying it after three others were corrected.)* Also out of scope: the
 `#112` hand-authored-content backstop, and anything else SKILL.md (`plugins/trellis/skills/setup/SKILL.md`)
 already owns. **Also out of scope:** any git mutation (`add`/`commit`); any GitHub release
 mechanism (retired, `decision-0043` §4) — the fetch source is a pinned commit's raw content, not a
@@ -213,7 +215,8 @@ it, never does it.
   the resolved target and nothing outside it; the vendored tree is byte-identical, file-for-file,
   to the source `plugins/trellis/` tree at the pinned commit.
 - **AC2 — zero decision logic.** The script contains no posture prompt, no target/style detection
-  for any instructions file, no managed-block marker handling, and never reads or writes
+  for any instructions file, no managed-block *patching* (detection is AC2d's, and is the one
+  permitted content read), and never reads or writes
 the CONTENTS of `.trellis/`, never writes to `.trellis/` or to any *pre-existing* instructions
   file, and reads the contents of a pre-existing instructions file at **exactly one** place, for
   **exactly one** purpose: AC2d's managed-block refusal. (Checkable by absence: grep the script
