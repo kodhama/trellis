@@ -281,10 +281,25 @@ toml="$root/.trellis/rules.toml"
 #
 # D5 first, because an explicit refusal outranks every default below. A file
 # holding `governed = false` is a project saying, in its own diff, that it is not
-# governed. Nothing else in the file matters; the two floor- rules do NOT survive
-# it, which is the whole point — all-false ROWS could not express this, because
-# the floors apply regardless of their row value.
+# governed by the twelve configurable rules.
+#
+# The two floor- rules SURVIVE it. They are, in this product's own words, "the
+# only settings that never dial to zero", and `rules.md` states they "apply
+# regardless of their row value" — a project-level opt-out is still a row-level
+# mechanism, and it does not get to reach below the floor. An earlier version of
+# this branch exited silently here, which let a config file switch off
+# transparency and the intent gate; that contradicted `decision-0008`'s ratified
+# "the non-negotiable is surfacing" and is fixed.
+#
+# So this delivers the floors and nothing else: no posture header, no twelve, no
+# rows. That is also why it does not simply reuse the payload path below — an
+# opted-out project should not carry 5.4KB of rules it has declined.
 if [ -f "$toml" ] && grep -qE '^[[:space:]]*governed[[:space:]]*=[[:space:]]*false' "$toml" 2>/dev/null; then
+  floors="$(grep -E '`floor-[a-z-]+`' "$plugin/reference/rules.md" 2>/dev/null)"
+  if [ -n "$floors" ]; then
+    emit "This project has opted out of Trellis governance (.trellis/rules.toml declares governed = false), so none of the twelve configurable rules apply here. These two are floors — they never dial to zero, and an opt-out does not reach them:
+$floors"
+  fi
   exit 0
 fi
 

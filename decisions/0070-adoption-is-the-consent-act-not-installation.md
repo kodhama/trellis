@@ -102,7 +102,8 @@ that turn** — "will be", not "is". The agent puts it to the human and writes t
 answer:
 
 - **decline** → `.trellis/rules.toml` containing `governed = false` and nothing
-  else. The hook honours it and is silent in that project forever after.
+  else. The hook honours it: none of the twelve configurable rules apply, and it
+  says so once rather than vanishing.
 - **accept, or no objection** → seed `.trellis/rules.toml` from `rules-b.toml`.
   From the next turn the project is governed at 14/14, posture B.
 
@@ -115,11 +116,23 @@ what the announcement said would happen, which is the only reading under which
 Writes stay agent-mediated and human-consented, which is what makes this comply
 with `decision-0008` rather than merely resemble compliance.
 
-**5. `governed = false` is a new top-level key, because all-false rows cannot
-express it.** `reference/rules.md:1` states that *"the two `floor-` rows apply
-regardless of their row value"*, so a `rules.toml` with every row `active = false`
-still governs by two rules. A user who answered "no" would still be governed.
-The opt-out therefore needs its own key, checked before any row.
+**5. `governed = false` is a new top-level key, and it stops the twelve — not the
+two floors.** All-false rows cannot express a project-level opt-out at all:
+`reference/rules.md:1` says *"the two `floor-` rows apply regardless of their row
+value"*, so every row set to false is indistinguishable from a project that
+simply turned everything off. Hence its own key, checked before any row.
+
+**The floors survive it, deliberately.** They are *"the only settings that never
+dial to zero"* (`README.md:160`), and `decision-0008` makes the reason ratified:
+*"the non-negotiable is **surfacing**, not enforcing."* A project may decline
+Trellis's opinions about how work is done; it does not thereby acquire an agent
+that hides consequential choices or ships without approval. A project-level
+opt-out is still a row-level mechanism and does not reach below the floor.
+
+*(An earlier draft of this clause had `governed = false` silence everything,
+floors included, and argued that was "the whole point". That was wrong on the
+product's own terms — it let a config file switch off transparency and the intent
+gate. Corrected on the maintainer's 2026-07-31 ruling.)*
 
 **6. Scope is detected by containment, and ambiguity resolves to ASKING.** The
 hook tests whether `CLAUDE_PLUGIN_ROOT` resolves inside `CLAUDE_PROJECT_DIR`

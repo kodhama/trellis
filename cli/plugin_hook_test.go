@@ -150,11 +150,22 @@ func TestStalenessHook(t *testing.T) {
 		}
 	})
 
-	// D5: an explicit refusal outranks every default, and unlike all-false rows it
-	// also stops the two floor- rules, which apply regardless of their row value.
-	t.Run("governed = false silences everything, floors included", func(t *testing.T) {
-		if out := run(t, ".trellis/rules.toml", "governed = false"); out != "" {
-			t.Errorf("a project that recorded governed = false must be silent; got %q", out)
+	// D5: an explicit refusal outranks every default — for the twelve configurable
+	// rules. The two floor- rules survive it. They are "the only settings that
+	// never dial to zero" and rules.md says they "apply regardless of their row
+	// value"; a project-level opt-out is still a row-level mechanism and does not
+	// reach below the floor. An earlier version of this branch exited silently
+	// here, letting a config file switch off transparency and the intent gate,
+	// against decision-0008's ratified "the non-negotiable is surfacing".
+	t.Run("governed = false keeps the floors and drops the rest", func(t *testing.T) {
+		out := run(t, ".trellis/rules.toml", "governed = false")
+		for _, floor := range []string{"floor-transparency", "floor-intent-gate"} {
+			if !strings.Contains(out, floor) {
+				t.Errorf("%s must survive an opt-out — it never dials to zero; got %q", floor, out)
+			}
+		}
+		if strings.Contains(out, "inv-") {
+			t.Errorf("no configurable rule may survive governed = false; got %q", out)
 		}
 	})
 	t.Run("current stamp at internal/version is silent", func(t *testing.T) {
