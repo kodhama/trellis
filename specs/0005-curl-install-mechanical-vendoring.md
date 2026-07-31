@@ -1,7 +1,7 @@
 ---
 id: spec-0005
 type: spec
-status: gated
+status: approved  # ratified alongside decision-0068 by the same 2026-07-31 intent act ("flip them to approved"); what that act covers here is the pair of amendments recorded in superseded_in_part_by below
 depends_on: [kodhama/kodhama-0007-one-render-many-copiers, decision-0043]
 superseded_in_part_by: [decision-0066, decision-0068]  # 2026-07-29 decision-0066 — §1's bundle table at two sites: the surfaces.json row, and the version-parity clause in the VERSION row. 2026-07-30 decision-0068, in TWO amendments: (a) AC2's blanket "never … writes any instructions file", narrowed to permit the one rendered rules file; and (b) after review, AC2's blanket "never reads … .trellis/ or any pre-existing instructions file" narrowed to permit SIX reads over FIVE paths (.trellis/internal/, the legacy flat .trellis/trellis.md, CLAUDE.md/AGENTS.md, .claude/rules/trellis.md twice, .trellis/rules.toml), of which EXACTLY ONE reads a file's contents — a single column-0-anchored opening marker, per the new AC2d. That count is a normative bound, not a description: a second content read requires a further amendment. An interim revision of this branch deleted the content read entirely and claimed existence-only; that shipped a regression (inline consumers silently double-delivered) and is reverted. What still stands untouched: the "zero decision logic" heading, the posture-prompt and marker-PATCHING prohibitions, and "never WRITES to .trellis/". §Scope (both halves), §1's scope note, §4, §Purpose, AC2's absence list and AC2a's scope qualifier are amended in the same act — the first pass touched only some of them, which is the defect this correction closes.
 owner: agent
@@ -442,7 +442,7 @@ gate, per that agent's own §Method item 4).
 | Check | Result | Note |
 |---|---|---|
 | 1. Frontmatter present & required fields valid | PASS | `id/type/status/depends_on/owner` all present and well-typed; `depends_on` is a list. |
-| 2. `type` declared; `status` in the declared lifecycle | PASS | `type: spec`; `status: gated` — the family enum (`decision-0042`), applicable since this is a forward artifact authored after that decision. |
+| 2. `type` declared; `status` in the declared lifecycle | PASS | `type: spec`; `status: approved` since 2026-07-31 (`gated` when this row was written) — the family enum (`decision-0042`), applicable since this is a forward artifact authored after that decision. |
 | 3. `id` unique across the corpus | PASS (assumed against the read corpus) | `spec-0005` — no existing spec above `0004` was found in the read tree; this run could not run a live corpus-wide `grep` against the actual current `kodhama/trellis` main (no fetch tool), so this is asserted from the most current local mirror available, not a fresh remote check. |
 | 4. `depends_on` resolves | PASS | `kodhama-0007-one-render-many-copiers` — read directly, `status: approved`. `decision-0043` — read directly, `status: gated` (a `gated`/agent-consumable upstream is a legitimate dependency for a spec that is itself not yet `approved`; both this spec and `decision-0043` await human merge together, consistent with `decision-0042`'s mechanic). |
 | 5. Directional flow — no `gated`/`approved` artifact depends on a `draft` | PASS | Both dependencies are `gated` or `approved`, never `draft`; this spec is itself `gated`, not `approved`, so it does not violate the rule in the other direction either. |
@@ -482,6 +482,10 @@ ref, and it did not flag that the reference was unqualified (missing the `kodham
 the time, which is the actual defect `kodhama/trellis#138` filed. The re-check above applies
 the declared allowlist mechanism instead of the referent's live status.
 
-**Promotion: `draft → gated`.** `approved` happens only by human PR merge (`decision-0042`) —
-not set here. This retrofit does not change that: no frontmatter field other than the
-`depends_on` entry's qualification was touched, and the fix is corrective, not a new promotion.
+**Promotion: `draft → gated`, then `gated → approved` on 2026-07-31.** The earlier wording here
+said "`approved` happens only by human PR merge (`decision-0042`)", citing the half of 0042 that
+`decision-0046` superseded. The live rule is 0046's: *"an agent writing `approved` with no human
+act is forbidden — this, not in-PR vs post-merge, is the real line `floor-intent-gate` draws"*, and
+in-PR flips are legitimate **when they record a human act**. The act is recorded in the frontmatter
+above. The retrofit noted below changed no frontmatter field other than the `depends_on` entry's
+qualification, and was corrective rather than a promotion.
