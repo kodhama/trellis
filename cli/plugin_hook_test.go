@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -44,6 +46,23 @@ func TestStalenessHook(t *testing.T) {
 	}
 	if err := os.WriteFile(filepath.Join(pluginRoot, "reference", "version"), []byte(shipped), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	// The rest of the payload, copied from the real bundle rather than stubbed.
+	// This fixture used to carry `version` alone, which silently disarmed every
+	// assertion downstream of a payload read: the hook would bail with
+	// TRELLIS_RULES_NOT_LOADED before it could inject anything, so a test
+	// asserting "no rules were injected" passed for the wrong reason. Mutation
+	// found it — making the announcing turn inject the full rule set left this
+	// file green while a hand-run of the same mutation leaked twelve slugs.
+	for _, f := range []string{"rules.md", "trellis-a.md", "trellis-b.md", "rules-b.toml", "invariants.md"} {
+		src := filepath.Join(vendoredBundleAbs(t), "reference", f)
+		b, err := os.ReadFile(src)
+		if err != nil {
+			t.Fatalf("reading %s from the shipped bundle: %v", f, err)
+		}
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", f), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// run executes the hook in a fresh project dir; stampRel names where the stamp
@@ -113,9 +132,36 @@ func TestStalenessHook(t *testing.T) {
 		return v.HookSpecificOutput.AdditionalContext
 	}
 
-	t.Run("no overlay is silent", func(t *testing.T) {
-		if out := run(t, "", ""); out != "" {
-			t.Errorf("want silent, got %q", out)
+	// decision-0070 D4 replaced silence here with an announcement. A user-scoped
+	// plugin in a project with no rules.toml used to say nothing at all, which
+	// meant the developer never learned Trellis was about to govern the repo. It
+	// now says so and offers the way out — and injects NO rules on that turn, so
+	// "will be governed" stays a true statement rather than a fait accompli.
+	t.Run("an unadopted project is told, and governed by nothing yet", func(t *testing.T) {
+		out := run(t, "", "")
+		if !strings.Contains(out, "TRELLIS_NOT_YET_GOVERNING") {
+			t.Fatalf("decision-0070 D4: an unadopted project must be TOLD, not silently skipped; got %q", out)
+		}
+		if !strings.Contains(out, "governed = false") {
+			t.Errorf("the announcement must name the exact way out, or declining is guesswork: %q", out)
+		}
+		if strings.Contains(out, "inv-directional-flow") {
+			t.Errorf("no rule may be injected on the announcing turn — the message promises \"will be governed\", so governing already would make it false: %q", out)
+		}
+	})
+
+	// D5: an explicit refusal outranks every default, and NOT GOVERNED MEANS NOT
+	// GOVERNED — the two floor- rules go too. The floors are a floor on
+	// CONFIGURATION (a row cannot dial a rule to zero while the project is
+	// governed), not a claim on a project that declined to be governed at all.
+	//
+	// This comment previously argued the opposite, and sat directly above the
+	// assertion that refutes it — left behind by a revert. Kept as a note rather
+	// than deleted, because the boundary is genuinely easy to slide off: it was
+	// gotten wrong here in both directions before it was gotten right.
+	t.Run("governed = false injects nothing at all, floors included", func(t *testing.T) {
+		if out := run(t, ".trellis/rules.toml", "governed = false"); out != "" {
+			t.Errorf("not governed means NOT GOVERNED: no rule may be injected, the two floor- rules included; got %q", out)
 		}
 	})
 	t.Run("current stamp at internal/version is silent", func(t *testing.T) {
@@ -908,4 +954,61 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 			t.Fatalf("the discriminator is the FILE, not the directory — an unrelated .claude/rules/ must not silence Trellis; got:\n%s", out)
 		}
 	})
+}
+
+// decision-0070 D3. A PROJECT-scoped plugin is vendored inside the repository, so
+// the bundle's own presence is the adoption act — visible, greppable, revocable by
+// deleting it. Absent rows therefore mean the standard set, not none.
+//
+// Nothing exercised this shape before: every other fixture points CLAUDE_PLUGIN_ROOT
+// at a path outside the project, which is only the user-scoped case. Mutation
+// confirmed the gap — forcing the scope test to `false` left the whole suite green.
+func TestProjectScopedPluginGovernsWithoutRulesToml(t *testing.T) {
+	proj := t.TempDir()
+	vendored := filepath.Join(proj, ".claude", "skills", "trellis")
+	if err := os.MkdirAll(filepath.Dir(vendored), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("cp", "-R", vendoredBundleAbs(t), vendored).CombinedOutput(); err != nil {
+		t.Fatalf("vendoring the bundle into the project: %v: %s", err, out)
+	}
+	if _, err := os.Stat(filepath.Join(proj, ".trellis", "rules.toml")); !os.IsNotExist(err) {
+		t.Fatal("this fixture must have NO rules.toml — that is the state under test")
+	}
+
+	cmd := exec.Command(filepath.Join(vendored, "hooks", "staleness.sh"))
+	cmd.Dir = proj
+	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+vendored)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
+	}
+	got := string(out)
+
+	if strings.Contains(got, "TRELLIS_NOT_YET_GOVERNING") {
+		t.Fatalf("a project-scoped install IS the adoption act; it must not be asked to consent again:\n%s", got)
+	}
+	slugs := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(inv|floor)-[a-z-]+`).FindAllString(got, -1) {
+		slugs[m] = true
+	}
+	if len(slugs) < 14 {
+		t.Errorf("decision-0070 D3: want all 14 rules delivered with no rules.toml, got %d (%v)", len(slugs), keysOfBool(slugs))
+	}
+	// Posture B — the lenient one, and the same default install.sh renders.
+	if !strings.Contains(got, "By default") {
+		t.Errorf("the default posture must be B (author-adapt, \"By default\"), not the firm one:\n%s", got)
+	}
+	if strings.Contains(got, "Firmly") {
+		t.Errorf("posture A leaked into the no-rules.toml default:\n%s", got)
+	}
+}
+
+func keysOfBool(m map[string]bool) []string {
+	var out []string
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

@@ -34,10 +34,14 @@
 #      Two earlier designs (-f alone, then -s) each let an incomplete file
 #      silence this hook while governing nothing.
 #
-# `.trellis/rules.toml` is the opt-in signal for path B. A project with none of
-# the three gets nothing: this plugin may be installed user-wide, and a project
-# that never adopted Trellis must not be governed by surprise. Path C is the one
-# exception — it fires on its own artifact, with or without rules.toml, because
+# `.trellis/rules.toml` was the opt-in signal for path B, and a project with none
+# of the three used to get NOTHING. decision-0070 changed that, and this comment
+# said the opposite until it was corrected. What such a project gets now depends
+# on where the plugin lives: vendored under <repo>/.claude/skills/ means this
+# project adopted Trellis, so the shipped defaults apply; anywhere else means the
+# project is told once and governed by nothing until it answers. The
+# never-BY-SURPRISE half stands; the never-governed half does not. Path C is
+# still the one exception — it fires on its own artifact, with or without rules.toml, because
 # that file is itself proof the project adopted Trellis.
 #
 # The paths are mutually exclusive, and where they cannot be — a project holding
@@ -65,6 +69,7 @@
 
 root="${CLAUDE_PROJECT_DIR:-.}"
 plugin="${CLAUDE_PLUGIN_ROOT:-/nonexistent}"
+
 ref="$plugin/reference/version"
 current="$(head -n1 "$ref" 2>/dev/null | tr -d '[:space:]')"
 
@@ -97,6 +102,54 @@ emit() {
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
     "$(printf '%s' "$1" | json_escape)"
 }
+
+# decision-0070 D5, and it runs BEFORE every delivery path — but AFTER emit() is
+# defined, since a shell function called above its definition simply is not there.
+#
+# An explicit refusal outranks every default AND every other branch. A file
+# holding `governed = false` is a project saying, in its own diff, that Trellis
+# does not govern here.
+#
+# NOT GOVERNED MEANS NOT GOVERNED — the two floor- rules go too. The floors are a
+# floor on CONFIGURATION, not on adoption: they stop a row dialling a rule to
+# zero while the project is governed. They are not a claim on a project that
+# declined. An intermediate version of this branch delivered the floors anyway,
+# reasoning from "the only settings that never dial to zero"; that read a
+# within-governance guarantee as a without-governance one.
+#
+# So the hook reads this file for exactly one thing — this key — and injects
+# nothing when it is set. It never reads the rows; those are live, editable, and
+# read by the model on demand, which is the behaviour this design is for.
+bom="$(printf '\357\273\277')"
+# KNOWN, NARROWED DIVERGENCE. A misplaced `governed = false` UNDER `[rules]` is
+# not a top-level key, so neither host opts out — but they then differ: this hook
+# ignores the stray line and governs normally (14 rules), while codex-context.mjs
+# rejects the file as invalid-rules, because its parser validates every row shape
+# and this one does not. Both fail SAFE — neither silently disables anything,
+# which was the defect — but Codex is louder. Aligning them means teaching this
+# awk slug check to reject unknown row shapes, which is a larger change than the
+# bug warrants; recorded here so the next person sees it as known rather than
+# discovering it as new.
+if [ -f "$root/.trellis/rules.toml" ] && sed -n '/^[[:space:]]*\[/q;p' "$root/.trellis/rules.toml" 2>/dev/null | grep -qE "^($bom)?[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$" 2>/dev/null; then
+  # One thing the hook cannot do is UN-load. On the curl path the host reads
+  # .claude/rules/trellis.md at launch, before any hook runs, so by now those
+  # rules are already in context and no amount of silence removes them. Injecting
+  # nothing would leave the project governed by a file it has declined.
+  #
+  # The only lever left is to override what was already read. This is second-best
+  # and says so: deleting the file (or /trellis:remove) is the real fix, and the
+  # message names it.
+  # Every shape the host may ALREADY have loaded, not just the rendered file. A
+  # vendored overlay reaches context through the managed block's imports exactly
+  # as .claude/rules/trellis.md reaches it through the rules loader, and this
+  # branch used to check only the latter — so a declining project carrying an
+  # overlay got total silence while its rules were live. Same defect, other
+  # transport.
+  if [ -f "$root/.claude/rules/trellis.md" ] || [ -d "$root/.trellis/internal" ] || [ -f "$root/.trellis/trellis.md" ]; then
+    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. To stop them being loaded at all, run /trellis:remove."
+  fi
+  exit 0
+fi
 
 # ---------------------------------------------------------------------- path A
 # The `.trellis/internal/` DIRECTORY decides the mode, not the stamp inside it.
@@ -275,7 +328,65 @@ fi
 
 # ---------------------------------------------------------------------- path B
 toml="$root/.trellis/rules.toml"
-[ -f "$toml" ] || exit 0                          # not a Trellis project → silent
+
+# decision-0070. Adoption is the consent act, and every path has one; what a
+# missing rules.toml means now depends on WHICH path installed this plugin.
+#
+if [ ! -f "$toml" ]; then
+  # D6. Scope by containment: a project-scoped plugin is vendored INSIDE the
+  # repository, a user-scoped one lives under the user's home. Resolved with pwd
+  # -P so a symlinked checkout or a marketplace cache cannot fake either answer.
+  # When it cannot tell, it falls through to the announcement — the failure mode
+  # is one extra paragraph, never governing a project that did not expect it.
+  plugin_real="$(cd "$plugin" 2>/dev/null && pwd -P)" || plugin_real=""
+  root_real="$(cd "$root" 2>/dev/null && pwd -P)" || root_real=""
+  scoped_to_project=no
+  # NOT merely "inside the project" — that was wrong, and wrong in the direction
+  # that governs. A dotfiles repo rooted at $HOME contains
+  # ~/.claude/plugins/cache/..., the USER-scope location, so containment alone
+  # reported project scope and delivered all fourteen rules with no announcement.
+  # Measured before this fix: 12 slugs, zero announcements — exactly the shape
+  # decision-0070 D6 promises never happens.
+  #
+  # Project scope has ONE location: the vendored bundle under
+  # <repo>/.claude/skills/, where install.sh writes it and where a project-scope
+  # marketplace install lands. Anything else is not this project's copy, whatever
+  # directory it happens to sit beneath.
+  #
+  # And it cannot be the home directory. `install.sh --scope personal` vendors to
+  # $HOME/.claude/skills/trellis, which is byte-identical to the project-scope
+  # location when the project IS $HOME — a dotfiles repo, or simply an unset
+  # CLAUDE_PROJECT_DIR while sitting in $HOME, since root falls back to `.`.
+  # Containment can never separate those two, so the only safe answer is to stop
+  # claiming it can: when the project root is $HOME, treat it as unadopted and
+  # ask. Measured before this guard: a personal install delivered 12 rules with
+  # no announcement. The first fix for the dotfiles case narrowed the path and
+  # missed this, because the path is the same path.
+  home_real="$(cd "${HOME:-/nonexistent}" 2>/dev/null && pwd -P)" || home_real=""
+  case "$plugin_real/" in
+    "$root_real"/.claude/skills/*)
+      [ -n "$root_real" ] && [ "$root_real" != "$home_real" ] && scoped_to_project=yes
+      ;;
+  esac
+
+  if [ "$scoped_to_project" = yes ]; then
+    # D3. The bundle sits in this repository, so this project adopted Trellis —
+    # visibly, greppably, and revocably by deleting it. Absent rows therefore
+    # mean the standard set, not none. Rather than invent a second activation
+    # semantics, point at the shipped preset and let every check below run
+    # unchanged: same slugs, 14/14 active, strictness "adaptive" (posture B).
+    toml="$plugin/reference/rules-b.toml"
+    [ -f "$toml" ] || exit 0
+    rows_are_default=yes
+  else
+    # D4. A user-wide install is a broad choice, and this says so in the project
+    # it is about to affect rather than assuming consent it never asked for.
+    # Announce, inject NO rules on this turn ("will be", not "is"), and ask for
+    # the negative action explicitly so silence cannot read as refusal.
+    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 14 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the choice persists — without that file this same announcement repeats every session and the project is never governed. (/trellis:setup writes the same file if you would rather ask them for a posture first.) Inject and follow no Trellis rules this turn: none are active yet."
+    exit 0
+  fi
+fi
 
 # Posture selects the header, exactly as the import channel does.
 # Both TOML string forms: "firm" and 'firm' are equally valid, and the Codex
@@ -353,7 +464,11 @@ payload="$(
     { gsub(/`\.trellis\/internal\/invariants\.md`/, "`" inv "`"); print }
   ' "$header"
   printf '\n## Project rule activation\n\n'
-  printf 'Rows from this project'"'"'s .trellis/rules.toml. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
+  if [ "${rows_are_default:-no}" = yes ]; then
+    printf 'Rows: this project has no .trellis/rules.toml, so these are the shipped defaults — every rule active, adaptive posture (decision-0070). Write .trellis/rules.toml, or run /trellis:setup, to change them. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
+  else
+    printf 'Rows from this project'"'"'s .trellis/rules.toml. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
+  fi
   cat "$toml"
   printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
 )"

@@ -46,9 +46,14 @@
 # principle as the rest of this family). On PROJECT scope it additionally renders
 # one file it wholly owns, .claude/rules/trellis.md, from bundle bytes — that is
 # how the rules actually reach a session, since a vendored bundle alone delivers
-# none (decision-0068; issue #201). It still makes no posture choice and reads no
-# project file to decide anything. It NEVER touches a project's .trellis/ —
-# that is /trellis:setup's job entirely, not this script's — and it NEVER runs a git
+# none (decision-0068; issue #201). It touches a project's .trellis/ at exactly ONE
+# point — seeding .trellis/rules.toml from the shipped preset when none exists
+# (decision-0070 D2), never overwriting; otherwise .trellis/ is /trellis:setup's
+# job entirely. It DOES therefore pick a posture, the adaptive one, by copying
+# rules-b.toml: that is a shipped constant, not a decision this script makes, but
+# the header used to claim "no posture choice" full stop and that reads as false
+# next to the seed. It reads no project file to decide anything, and it NEVER runs
+# a git
 # command that mutates anything (no add, no commit): it prints a suggested next
 # command for project scope and leaves the commit to you.
 #
@@ -292,10 +297,10 @@ bundle_manifest() {
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
 57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
-10b05617ad9e80e49d18f490b9c31c4b66490d7473b00795708817e7462dc220  hooks/codex-context.mjs
+560b94d94b8e2b3a690253629b72ec9131dcfed878154b9d567497198e87fca0  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-281a5063263e195cd5632ac28fd871fd74336f7a433c508c063488c50e4007f3  hooks/staleness.sh
+6cdaf0c984a67ec145715919ca341d934028e64d48351a670a53b29fecd34a10  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -312,7 +317,7 @@ d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trel
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
 f63c4d15f8ce3cf4932ed3412e141e3e47b886daed15223c8402b1c3718049c3  reference/version
 83170b02a34ab55a4daa630e81fd84ec9a1a10ec8e8adc6d0924b6867ed3f1df  skills/remove/SKILL.md
-ede44a010ea096fa714df1122f0ccc14d11ad0811e607579a926bb0e5b0a2799  skills/setup/SKILL.md
+a2b7cf9eb8617fd92e99d89fae9a4eadbf5d3ea0bdc16686b16a7087336eb524  skills/setup/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -612,6 +617,38 @@ elif [ "$scope" = "project" ]; then
     fail "could not move the rendered rules file into place at $rules_dir/trellis.md"
   }
   rendered_note=".claude/rules/trellis.md"
+
+  # decision-0070 D2. Seed the rows, so the path that renders the rules also
+  # makes them apply. Without this the curl path shipped its full context cost —
+  # all fourteen rules, always loaded — while only the two floor- rules turned,
+  # and the rendered file's own @../../.trellis/rules.toml import resolved to
+  # nothing, silently.
+  #
+  # Running an installer INSIDE a repository is the adoption act (D1), which is
+  # what makes writing here legitimate where the plugin path must ask. Never
+  # overwritten: an existing rules.toml is the project's own and outranks a seed.
+  #
+  # This amends decision-0065's "setup writes exactly one file ... ever" — openly,
+  # in decision-0070 D2, not by routing around it. The clause's purpose, that no
+  # path silently vendors an overlay, is untouched: one config file, in the repo
+  # the user pointed this script at.
+  if [ -e "$git_root/.trellis/rules.toml" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
+    # A non-regular target must be refused BEFORE the copy. `cp file dir` copies
+    # INTO the directory and returns 0 — measured, that produced a success banner,
+    # seeded_rows=yes, a stray rules-b.toml buried inside .trellis/rules.toml/,
+    # and an import resolving to nothing. Exactly the defect already guarded on
+    # the rendered file's move; this block reintroduced it.
+    seeded_rows=failed
+  elif [ ! -f "$git_root/.trellis/rules.toml" ]; then
+    if mkdir -p "$git_root/.trellis" 2>/dev/null &&
+       cp "$stage/bundle/reference/rules-b.toml" "$git_root/.trellis/rules.toml" 2>/dev/null; then
+      seeded_rows=yes
+    else
+      # Not fatal: the rules file is already in place and governing at the floors.
+      # Say so rather than exit, because the install itself succeeded.
+      seeded_rows=failed
+    fi
+  fi
 fi
 
 # --- 4. Confirm — never a git mutation; the commit is yours -----------------------
@@ -632,6 +669,13 @@ if [ "$scope" = "project" ]; then
   say "get them on clone — this script never runs git:"
   if [ "$rendered_note" = ".claude/rules/trellis.md" ]; then
     add_paths=".claude/skills/trellis .claude/rules/trellis.md"
+    # The seeded rows too, and only when this run actually wrote them. Without
+    # this a collaborator cloning the repo gets the rules file and the bundle but
+    # NO activation rows — which is the pre-decision-0070 state the seed exists to
+    # end, reintroduced one `git clone` later. Same reason the else-branch omits
+    # the rendered file: naming a path that was not written makes `git add` exit
+    # 128 and the `&&` then swallows the commit.
+    [ "${seeded_rows:-}" = yes ] && add_paths="$add_paths .trellis/rules.toml"
   else
     # On any refusal path the file was not written. Naming it would make the
     # printed command fail with `pathspec ... did not match any files` (exit
@@ -649,15 +693,33 @@ if [ "$scope" = "project" ]; then
   say "at all."
   say ""
 fi
-say "Then run /trellis:setup in the project you want to govern. That skill (the real"
-say "interactive writer — LLM-driven, no decision logic in this script) asks for a"
-say "preset and writes .trellis/rules.toml. It writes nothing else (decision-0065)."
-if [ "$scope" = "project" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
-  # Gated on the file's ABSENCE, not just on scope. Unconditional, this claimed
-  # "that file does not exist yet" while re-running after /trellis:setup, and on
-  # the overlay-refusal path — which by construction HAS rules.toml, so the claim
-  # contradicted the "keeping your .trellis/rules.toml rows" line printed just
-  # above it in the same output.
-  say "Until it does, only floor-transparency and floor-intent-gate apply: every other"
-  say "rule is gated on a row in .trellis/rules.toml, and that file does not exist yet."
-fi
+case "${seeded_rows:-}" in
+  yes)
+    say "This project is governed now: all fourteen rules are active, followed by"
+    say "default with deviations said out loud. .trellis/rules.toml holds the rows —"
+    say "it is yours to edit, and /trellis:setup can swap the posture or turn rules off."
+    ;;
+  failed)
+    say "Could not write .trellis/rules.toml (permissions?). The rules file is in place,"
+    say "but until those rows exist only floor-transparency and floor-intent-gate apply."
+    say "Run /trellis:setup, or create .trellis/rules.toml yourself, to activate the rest."
+    ;;
+  *)
+    # Nothing was seeded on this run — either the rows already existed, or the
+    # render was refused (a static-delivery conflict), or this is personal scope.
+    # Those are NOT the same state, and the old code only ever printed one line
+    # for all of them. `seeded_rows` is unset here, so ask the disk instead.
+    if [ "$scope" = "project" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
+      # The floors-only warning, restored. Dropping it was a regression: a
+      # static-conflict repo with no rows is running on two rules out of fourteen
+      # and was no longer told so.
+      say "This project has no .trellis/rules.toml, so only floor-transparency and"
+      say "floor-intent-gate apply — every other rule is gated on a row in that file."
+      say "Run /trellis:setup, or write it yourself, to activate the rest."
+    else
+      say "Run /trellis:setup to change the posture or turn individual rules off. That"
+      say "skill (the real interactive writer — LLM-driven, no decision logic in this"
+      say "script) writes .trellis/rules.toml and nothing else (decision-0065)."
+    fi
+    ;;
+esac

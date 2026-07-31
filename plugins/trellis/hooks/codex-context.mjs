@@ -244,6 +244,24 @@ function parseRulesToml(source) {
 
     if (!inRules) {
       const assignment = line.match(/^([A-Za-z_][A-Za-z0-9_-]*)[ \t]*=[ \t]*(.*)$/u);
+      // `governed` is skipped, not parsed. decision-0070 D5 gave it meaning, and
+      // the opt-out is handled far earlier by a raw-text match that never reaches
+      // this parser. But leaving it OFF the accepted set made `governed = true` —
+      // the natural way to reverse an opt-out without deleting the line — a fatal
+      // `invalid-rules` on Codex while Claude governed normally: measured, 12
+      // rules vs 0. A key one host acts on and the other rejects is worse than a
+      // key neither knows.
+      if (assignment && assignment[1] === "governed") {
+        // Skipped, but only for the two values it can legally hold. `governed =
+        // falsehood` must reach the reject path below and surface as
+        // invalid-rules — skipping every value would make a typo look like a
+        // deliberate setting, which is exactly how `falsehood` came to silently
+        // disable every rule before the raw-text match was anchored.
+        if (/^(true|false)[ \t]*(#.*)?$/.test(assignment[2].trim())) {
+          continue;
+        }
+        return null;
+      }
       if (
         !assignment ||
         (assignment[1] !== "seeded_from" && assignment[1] !== "strictness") ||
@@ -321,6 +339,43 @@ if (projectRoot === null) {
 // The rows are read first: they carry the posture that selects which prose
 // variant the plugin payload should supply.
 const configResult = readRequired(projectRoot, PROJECT_CONFIG);
+// decision-0070 D5. A project that declares `governed = false` is not governed —
+// on EITHER host. Checked here, before the rules are parsed or assembled, for the
+// same reason the Claude hook checks it before every delivery path: an opt-out
+// that only one host honours is not an opt-out. Matched on the raw text rather
+// than through the row parser, because the parser deliberately understands only
+// the declared rules schema and would reject an unknown top-level key.
+// Read the file directly rather than reusing configResult: that path is gated on
+// MAX_CONTEXT_BYTES, so an oversized rules.toml made this check unreachable and
+// Codex then told the model to go load the overlay — in a project that had
+// declared itself ungoverned. An opt-out must not have a size limit.
+//
+// The BOM strip and the whitespace class are matched to the shell hook
+// deliberately. They disagreed on four input classes (\v, \f, NBSP, \u2028) and
+// on a leading BOM, and every disagreement meant the two hosts differed about
+// whether a project was governed. A BOM in particular failed toward GOVERNING a
+// project that had refused.
+try {
+  // Only the region BEFORE the first table header. `governed = false` appended
+  // under `[rules]` is not a top-level key and must not opt out — D5 defines it
+  // as top-level, and a raw multiline match honoured it anywhere in the file, so
+  // a misplaced line silently disabled all fourteen rules instead of reaching
+  // parseRulesToml and surfacing as invalid-rules.
+  const raw = fs
+    .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
+    .replace(/^\uFEFF/, "")
+    .split(/^[^\S\r\n]*\[/m)[0];
+  // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
+  // read as an opt-out on both hosts and silently disabled every rule —
+  // a typo is supposed to fail loudly as invalid-rules, not govern nothing.
+  if (
+    /^[^\S\r\n\u2028\u2029]*governed[^\S\r\n\u2028\u2029]*=[^\S\r\n\u2028\u2029]*false[^\S\r\n\u2028\u2029]*(#[^\r\n\u2028\u2029]*)?$/m.test(raw)
+  ) {
+    process.exit(0);
+  }
+} catch {
+  // Unreadable here is not decisive; the normal error path below reports it.
+}
 if (configResult.error) {
   fail(configResult.label ?? PROJECT_CONFIG, configResult.error);
   process.exit(0);

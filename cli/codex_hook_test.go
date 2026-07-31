@@ -572,3 +572,43 @@ func TestCliCIProvidesNode20BeforeGoTests(t *testing.T) {
 		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node@v5 before Go tests execute the Codex hook")
 	}
 }
+
+// decision-0070 D5, Codex half. `governed = false` must mean not governed on
+// BOTH hosts — an opt-out one host ignores is not an opt-out.
+//
+// This existed unguarded: deleting the whole check from codex-context.mjs and
+// refreshing the pinned manifest sha (which is what CI does) left `go test ./...`
+// green. The only thing that noticed was the checksum, which fires for any byte
+// change and says nothing about behaviour.
+func TestCodexHookHonoursGovernedFalse(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node not available")
+	}
+	bundle := vendoredBundleAbs(t)
+	hook := filepath.Join(bundle, "hooks", "codex-context.mjs")
+
+	run := func(t *testing.T, config string) string {
+		t.Helper()
+		proj := t.TempDir()
+		initGitRepo(t, proj)
+		writeFileT(t, filepath.Join(proj, ".trellis", "rules.toml"), config)
+		cmd := exec.Command("node", hook)
+		cmd.Dir = proj
+		cmd.Stdin = strings.NewReader(`{"hook_event_name":"SessionStart","source":"startup","cwd":"` + proj + `"}`)
+		cmd.Env = append(os.Environ(), "PLUGIN_ROOT="+bundle)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("codex hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
+		}
+		return string(out)
+	}
+
+	// Control: without the key the hook governs, so a silent result below cannot
+	// be mistaken for the hook simply not working in this fixture.
+	if got := run(t, readFileT(t, filepath.Join(bundle, "reference", "rules-b.toml"))); !strings.Contains(got, "inv-directional-flow") {
+		t.Fatalf("control failed — the Codex hook delivered no rules for a normal project, so this test cannot detect the opt-out:\n%s", got)
+	}
+	if got := run(t, "governed = false\n"); strings.TrimSpace(got) != "" {
+		t.Errorf("decision-0070 D5: a project declaring governed = false must get nothing on Codex either; got:\n%s", got)
+	}
+}

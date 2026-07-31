@@ -9,6 +9,18 @@ description: Choose a Trellis preset for this project and write it to .trellis/r
 chosen preset when it is absent, and replaces its configuration with the chosen preset when it is
 present. It writes nothing else, anywhere, ever.
 
+**Since `decision-0070`, running this is no longer how a project becomes governed.** `install.sh`
+seeds `rules.toml` on the curl path, and a project-scoped plugin applies the shipped defaults
+without any file at all — both at posture B, every rule active. So the two remaining reasons to run
+this skill are: to choose the **firm** posture instead of the default adaptive one, and to migrate a
+project off a pre-`decision-0065` vendored overlay (§3). Everything else it does, the default
+already does.
+
+Worth knowing before you invoke it: the two presets differ in exactly two string values,
+`strictness` and `seeded_from`. Every rule row is `active = true` in both. A user who wants the firm
+posture, or wants one rule off, can edit that line themselves — this skill is a convenience over a
+one-line change, and `kodhama/trellis#219` tracks whether it should exist at all.
+
 That is the whole job. If you find yourself copying a payload file, patching an instructions file,
 stamping a version, or touching anything under `.trellis/internal/`, you are working from an older
 version of this skill's intent — stop and re-read this file.
@@ -26,9 +38,16 @@ active here — so it is the one thing that lives in the repo.
 
 - **Plugin path (this skill)** — configuration only. No vendoring.
 - **Install-script path (`install.sh`)** — vendoring only, for harnesses with no plugin system. It
-  vendors the plugin *bundle* into `.claude/skills/trellis/` and never touches `.trellis/`.
+  vendors the plugin *bundle* into `.claude/skills/trellis/` and, since `decision-0070` D2, seeds
+  `.trellis/rules.toml` from the shipped preset when none exists — one config file, never
+  overwritten. It configures nothing else.
 
-Do not blur them. This skill never vendors; that script never configures.
+Do not blur them. This skill never vendors.
+
+**If `.trellis/rules.toml` declares `governed = false`, STOP and ask before writing anything.**
+That line is a recorded decision not to be governed in this project (`decision-0070` D5), and
+replacing the file with a preset silently revokes it. Confirm the user wants governance switched
+back on, and tell them that is what you are doing.
 
 ## The presets
 
