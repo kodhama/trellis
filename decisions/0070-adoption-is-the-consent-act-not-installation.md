@@ -116,23 +116,33 @@ what the announcement said would happen, which is the only reading under which
 Writes stay agent-mediated and human-consented, which is what makes this comply
 with `decision-0008` rather than merely resemble compliance.
 
-**5. `governed = false` is a new top-level key, and it stops the twelve — not the
-two floors.** All-false rows cannot express a project-level opt-out at all:
-`reference/rules.md:1` says *"the two `floor-` rows apply regardless of their row
-value"*, so every row set to false is indistinguishable from a project that
-simply turned everything off. Hence its own key, checked before any row.
+**5. `governed = false` is a new top-level key, and NOT GOVERNED MEANS NOT
+GOVERNED — the two floors go too.** All-false rows cannot express a project-level
+opt-out at all: `reference/rules.md:1` says *"the two `floor-` rows apply
+regardless of their row value"*, so every row set to false still leaves two rules
+standing. Hence its own key, checked before any row and before every path.
 
-**The floors survive it, deliberately.** They are *"the only settings that never
-dial to zero"* (`README.md:160`), and `decision-0008` makes the reason ratified:
-*"the non-negotiable is **surfacing**, not enforcing."* A project may decline
-Trellis's opinions about how work is done; it does not thereby acquire an agent
-that hides consequential choices or ships without approval. A project-level
-opt-out is still a row-level mechanism and does not reach below the floor.
+**The floors are a floor on CONFIGURATION, not on adoption.** They exist so a row
+cannot dial a rule to zero *while the project is governed*. They are not a claim
+on a project that declined to be governed at all. Maintainer, 2026-07-31: *"the
+floors are more about when it's governed by configuration, there are things that
+we cannot activate — but that's when it IS governed. When it is not governed, no
+rule, and that includes the floors, should be applied."*
 
-*(An earlier draft of this clause had `governed = false` silence everything,
-floors included, and argued that was "the whole point". That was wrong on the
-product's own terms — it let a config file switch off transparency and the intent
-gate. Corrected on the maintainer's 2026-07-31 ruling.)*
+*(This clause was wrong twice, in opposite directions, and both are kept because
+the boundary is genuinely easy to miss. It first read the floors as suppressible
+noise. The correction then read "the only settings that never dial to zero" as a
+guarantee that survives opting out — turning a within-governance floor into a
+without-governance obligation. Neither is right: the floor binds configuration,
+and `governed = false` is not a configuration.)*
+
+**One thing the hook cannot do is UN-load.** On the curl path the host reads
+`.claude/rules/trellis.md` at launch, before any hook runs, so a declining
+project already has the rules in context and silence does not remove them. Where
+that file exists, the hook therefore emits a single override — disregard what was
+already loaded — and names the real fix: delete the file, or `/trellis:remove`.
+Second-best and recorded as such. On the plugin path, where nothing has been
+loaded yet, it injects nothing at all.
 
 **6. Scope is detected by containment, and ambiguity resolves to ASKING.** The
 hook tests whether `CLAUDE_PLUGIN_ROOT` resolves inside `CLAUDE_PROJECT_DIR`

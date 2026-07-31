@@ -157,15 +157,9 @@ func TestStalenessHook(t *testing.T) {
 	// reach below the floor. An earlier version of this branch exited silently
 	// here, letting a config file switch off transparency and the intent gate,
 	// against decision-0008's ratified "the non-negotiable is surfacing".
-	t.Run("governed = false keeps the floors and drops the rest", func(t *testing.T) {
-		out := run(t, ".trellis/rules.toml", "governed = false")
-		for _, floor := range []string{"floor-transparency", "floor-intent-gate"} {
-			if !strings.Contains(out, floor) {
-				t.Errorf("%s must survive an opt-out — it never dials to zero; got %q", floor, out)
-			}
-		}
-		if strings.Contains(out, "inv-") {
-			t.Errorf("no configurable rule may survive governed = false; got %q", out)
+	t.Run("governed = false injects nothing at all, floors included", func(t *testing.T) {
+		if out := run(t, ".trellis/rules.toml", "governed = false"); out != "" {
+			t.Errorf("not governed means NOT GOVERNED: no rule may be injected, the two floor- rules included; got %q", out)
 		}
 	})
 	t.Run("current stamp at internal/version is silent", func(t *testing.T) {

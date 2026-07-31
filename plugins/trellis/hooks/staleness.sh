@@ -65,6 +65,7 @@
 
 root="${CLAUDE_PROJECT_DIR:-.}"
 plugin="${CLAUDE_PLUGIN_ROOT:-/nonexistent}"
+
 ref="$plugin/reference/version"
 current="$(head -n1 "$ref" 2>/dev/null | tr -d '[:space:]')"
 
@@ -97,6 +98,38 @@ emit() {
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
     "$(printf '%s' "$1" | json_escape)"
 }
+
+# decision-0070 D5, and it runs BEFORE every delivery path — but AFTER emit() is
+# defined, since a shell function called above its definition simply is not there.
+#
+# An explicit refusal outranks every default AND every other branch. A file
+# holding `governed = false` is a project saying, in its own diff, that Trellis
+# does not govern here.
+#
+# NOT GOVERNED MEANS NOT GOVERNED — the two floor- rules go too. The floors are a
+# floor on CONFIGURATION, not on adoption: they stop a row dialling a rule to
+# zero while the project is governed. They are not a claim on a project that
+# declined. An intermediate version of this branch delivered the floors anyway,
+# reasoning from "the only settings that never dial to zero"; that read a
+# within-governance guarantee as a without-governance one.
+#
+# So the hook reads this file for exactly one thing — this key — and injects
+# nothing when it is set. It never reads the rows; those are live, editable, and
+# read by the model on demand, which is the behaviour this design is for.
+if [ -f "$root/.trellis/rules.toml" ] && grep -qE '^[[:space:]]*governed[[:space:]]*=[[:space:]]*false' "$root/.trellis/rules.toml" 2>/dev/null; then
+  # One thing the hook cannot do is UN-load. On the curl path the host reads
+  # .claude/rules/trellis.md at launch, before any hook runs, so by now those
+  # rules are already in context and no amount of silence removes them. Injecting
+  # nothing would leave the project governed by a file it has declined.
+  #
+  # The only lever left is to override what was already read. This is second-best
+  # and says so: deleting the file (or /trellis:remove) is the real fix, and the
+  # message names it.
+  if [ -f "$root/.claude/rules/trellis.md" ]; then
+    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD the Trellis rules already loaded from .claude/rules/trellis.md this session — that file is read by the host at launch, before any hook runs, so it could not be withheld. To stop it being loaded at all, delete .claude/rules/trellis.md or run /trellis:remove."
+  fi
+  exit 0
+fi
 
 # ---------------------------------------------------------------------- path A
 # The `.trellis/internal/` DIRECTORY decides the mode, not the stamp inside it.
@@ -279,30 +312,6 @@ toml="$root/.trellis/rules.toml"
 # decision-0070. Adoption is the consent act, and every path has one; what a
 # missing rules.toml means now depends on WHICH path installed this plugin.
 #
-# D5 first, because an explicit refusal outranks every default below. A file
-# holding `governed = false` is a project saying, in its own diff, that it is not
-# governed by the twelve configurable rules.
-#
-# The two floor- rules SURVIVE it. They are, in this product's own words, "the
-# only settings that never dial to zero", and `rules.md` states they "apply
-# regardless of their row value" — a project-level opt-out is still a row-level
-# mechanism, and it does not get to reach below the floor. An earlier version of
-# this branch exited silently here, which let a config file switch off
-# transparency and the intent gate; that contradicted `decision-0008`'s ratified
-# "the non-negotiable is surfacing" and is fixed.
-#
-# So this delivers the floors and nothing else: no posture header, no twelve, no
-# rows. That is also why it does not simply reuse the payload path below — an
-# opted-out project should not carry 5.4KB of rules it has declined.
-if [ -f "$toml" ] && grep -qE '^[[:space:]]*governed[[:space:]]*=[[:space:]]*false' "$toml" 2>/dev/null; then
-  floors="$(grep -E '`floor-[a-z-]+`' "$plugin/reference/rules.md" 2>/dev/null)"
-  if [ -n "$floors" ]; then
-    emit "This project has opted out of Trellis governance (.trellis/rules.toml declares governed = false), so none of the twelve configurable rules apply here. These two are floors — they never dial to zero, and an opt-out does not reach them:
-$floors"
-  fi
-  exit 0
-fi
-
 if [ ! -f "$toml" ]; then
   # D6. Scope by containment: a project-scoped plugin is vendored INSIDE the
   # repository, a user-scoped one lives under the user's home. Resolved with pwd
