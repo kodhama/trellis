@@ -115,8 +115,10 @@ overwriting an existing file (`decision-0065`). Also excluded are any other host
 transport, and revival of the parked `seed` or `custom` presets.
 
 **Any other harness — the manual copy path.** This is for harnesses the plugin does **not** cover.
-On Claude Code and Codex CLI it is superseded — use the marketplace or curl paths above
-(`decision-0069`). It is also **mutually exclusive with the curl path**: a repo that already
+On **Claude Code** it is superseded — use the marketplace or curl paths above
+(`decision-0069`). **On Codex CLI it is not**: there is no way to install Trellis there yet
+(`/plugin` commands are Claude Code's, and the curl path is Claude-only), so the manual copy is
+what Codex has until `#220` gives it a real channel. It is also **mutually exclusive with the curl path**: a repo that already
 carries a hand-built overlay or a managed block makes `install.sh` refuse to render the rules
 file, on purpose, because both would load and deliver the rules twice.
 
