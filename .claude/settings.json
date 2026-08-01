@@ -1,6 +1,7 @@
 {
   "enabledPlugins": {
-    "grove@kodhama": true
+    "grove@kodhama": true,
+    "kodhama@kodhama": true
   },
   "extraKnownMarketplaces": {
     "kodhama": {
