@@ -4,7 +4,8 @@ name: cli-ci
 # decision-0043 / #120). This is the verification the maintainer's environment relies
 # on — the code is authored where `go` isn't installed, so a green run here is what
 # proves it builds and its tests pass. These tests are also the payload guards:
-# regenerate-and-diff on the vendored payload, the repo's own overlay sync-guard,
+# regenerate-and-diff on the vendored payload (the repo's own overlay sync-guard
+# retired with the overlay itself, decision-0071),
 # the docs-consistency check, and the staleness-hook contract.
 
 # Paths include the doc surfaces (docs/, README, install.sh, plugins/) so the

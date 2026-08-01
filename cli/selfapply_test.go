@@ -124,6 +124,14 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	//
 	// Asserted as absence, and for the same reason as CLAUDE.md's: its return
 	// would mean this repo had drifted back to overlay delivery.
+	// The overlay DIRECTORY is what both hooks use to select vendored mode. If it
+	// returns — a branch checkout, a stray copy, a later commit — the Claude hook
+	// takes path A and exits without injecting, and with the managed block now
+	// forbidden the session is ungoverned with nothing failing. decision-0071
+	// calls that drift "structurally impossible"; this is what makes it so.
+	if _, err := os.Stat(filepath.Join("..", ".trellis", "internal")); !os.IsNotExist(err) {
+		t.Error(".trellis/internal/ exists — decision-0071 removed it, and its return silently switches both hooks to vendored mode while the managed block that mode needs is gone, leaving sessions ungoverned")
+	}
 	if strings.Count(agents, codexBootstrapBegin) != 0 || strings.Count(agents, codexBootstrapEnd) != 0 {
 		t.Error("AGENTS.md carries a Codex bootstrap block — decision-0071 removed it along with the .trellis/internal/ files it reads, so its return means this repo has drifted back to overlay delivery")
 	}

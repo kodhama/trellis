@@ -243,10 +243,16 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 Trellis — the invariants, catalog, payload generator, and plugin, in `core/` — **and it is itself a
 Trellis-governed project**, installing Trellis through the official path (the same mechanical copy of
 the pre-rendered payload any consumer gets) to govern its own work. So the invariants land in
-`.trellis/` via the same overlay any user gets (not hand-composed), `CLAUDE.md` retains the Claude
-import adapter, and `AGENTS.md` holds the project's own *method* (the how). That's self-application,
-not self-reference — a compiler built, then run on itself. A CI guard keeps the committed overlay
-identical to what the product produces, so it can't drift.
+`.trellis/rules.toml` and are delivered by the plugin's `SessionStart` hook — the same way any
+consumer receives them (`decision-0071`). `CLAUDE.md` is the Claude import adapter and `AGENTS.md`
+holds the project's own *method* (the how). That's self-application, not self-reference — a compiler
+built, then run on itself.
+
+This repo used to carry a committed `.trellis/internal/` overlay with a CI guard keeping it
+byte-identical to the payload. Both are gone: the overlay was the delivery mode `decision-0065`
+retired for consumers, and with no second copy there is nothing left to drift. What that costs is
+recorded in `decision-0071` — a marketplace plugin is the last released version, so this repo now
+dogfoods shipped Trellis rather than the working tree.
 
 Every non-code artifact carries frontmatter and a lifecycle (`draft → ratified`); decisions are
 append-only; **intent is human-gated and execution is independently verified** (the builder never grades

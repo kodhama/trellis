@@ -60,7 +60,27 @@ consumer. It is a real reduction in this repo's own safety net, and `trellis#220
 is where a proper Codex path returns.
 
 **2. Self-application continues — through the plugin path, which is what
-consumers get.** The claim `decision-0035` protects is that Trellis is subject to
+consumers get — and this repo now DECLARES that dependency.** `trellis@kodhama`
+joins `grove@kodhama` in `.claude/settings.json`, at project scope, for the same
+reason grove is there: so every clone, contributor and CI agent gets it rather
+than relying on whatever happens to be installed on one machine.
+
+*(A reviewer read the absence of that entry as proof the repo consumed nothing,
+and I briefly agreed — wrongly. `trellis@kodhama` is enabled at USER scope in
+`~/.claude/settings.json`, so the plugin does reach this repo, and with
+`.trellis/rules.toml` present `decision-0070`'s path B delivers with no scope
+check at all. The finding was right about the DECLARATION and wrong about the
+delivery: undeclared, self-application worked here and would not survive a fresh
+clone.)*
+
+**What this does not give: dogfooding HEAD.** A marketplace-installed plugin is
+the last published release, not the working tree — so this repo now runs the
+shipped Trellis rather than the one in `plugins/trellis/`. The overlay's one real
+advantage was that `TestRepoOverlayIsCurrent` forced them to be identical.
+Recorded as a known reduction, not a discovery; pointing a local session at the
+worktree is a development-time concern, not a property this record should assert.
+
+**The consumer path, restated:** The claim `decision-0035` protects is that Trellis is subject to
 its own rules and cannot drift from its shipped payload. That claim survives, and
 gets *stronger*: the repo now consumes the same `SessionStart` delivery every
 consumer does, rather than a copy that had to be proved identical by test.
