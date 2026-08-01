@@ -129,9 +129,16 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	// takes path A and exits without injecting, and with the managed block now
 	// forbidden the session is ungoverned with nothing failing. decision-0071
 	// calls that drift "structurally impossible"; this is what makes it so.
+	// Every artifact that makes a hook stand down before plugin-native path B.
+	// This list has been wrong twice: first it named only .trellis/internal/, then
+	// only that plus the flat overlay. `.trellis/version` — the pre-decision-0051
+	// stamp path — exits just as early. Derived from the hook's own early-exit
+	// branches rather than from memory, which is what the two previous versions
+	// were.
 	for _, shape := range []string{
 		filepath.Join("..", ".trellis", "internal"),
 		filepath.Join("..", ".trellis", "trellis.md"), // the legacy FLAT overlay
+		filepath.Join("..", ".trellis", "version"),    // the pre-0051 legacy stamp
 	} {
 		if _, err := os.Stat(shape); !os.IsNotExist(err) {
 			t.Errorf("%s exists — decision-0071 removed the overlay, and either shape silently switches the Claude hook to vendored mode while the managed block that mode needs is gone, leaving sessions ungoverned with a green suite", shape)

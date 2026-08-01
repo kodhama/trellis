@@ -244,7 +244,10 @@ Trellis — the invariants, catalog, payload generator, and plugin, in `core/` �
 Trellis-governed project**, installing Trellis through the official path (the same mechanical copy of
 the pre-rendered payload any consumer gets) to govern its own work. So the invariants land in
 `.trellis/rules.toml` and are delivered by the plugin's `SessionStart` hook — the same way any
-consumer receives them (`decision-0071`). `CLAUDE.md` is the Claude import adapter and `AGENTS.md`
+consumer receives them (`decision-0071`). **On Claude Code.** This repo is *not* governed on Codex
+CLI: Codex has no plugin installation channel yet (see above), and `decision-0071` D5 removed the
+`AGENTS.md` bootstrap along with the overlay it read from. That gap is accepted and tracked in
+`#220`. `CLAUDE.md` is the Claude import adapter and `AGENTS.md`
 holds the project's own *method* (the how). That's self-application, not self-reference — a compiler
 built, then run on itself.
 
