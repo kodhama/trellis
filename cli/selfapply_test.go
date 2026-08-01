@@ -8,86 +8,21 @@ import (
 	"testing"
 )
 
-// TestRepoOverlayIsCurrent is the self-application sync-guard (decision-0035),
-// reworked by #117 (kodhama-0007 slice 1) and again by decision-0051 (the authority
-// split): the repo's committed .trellis/ overlay is diffed against the payload file
-// set — a fresh in-process render (payloadFiles()), the same render
-// TestVendoredPayloadIsCurrent pins the vendored plugins/trellis/reference/ copy to.
-// The two guards together give generator == vendored payload == repo overlay: drift
-// stays impossible, and the repo's own overlay is exactly a mechanical copy of the
-// shipped artifact (kodhama-0007 rule 2). The repo's posture is a/conductor (all
-// rows active, so internal/rules.md is the shipped all-active assembly); the
-// installed `version` stamp is tracked too: the self checkout is a real supported
-// Codex startup fixture, so its four authoritative inputs must all exist.
+// TestRepoOverlayIsCurrent was DELETED by decision-0071, not disabled.
 //
-// Regenerate on failure — the manual copy path, applied to ourselves (from the repo
-// root, after `go run . payload --out ../plugins/trellis/reference` in cli/):
+// It compared this repo's committed .trellis/internal/ overlay against a fresh
+// payload render, giving "generator == vendored payload == repo overlay". The
+// repo no longer holds an overlay: it consumes the plugin's payload at session
+// start like any other project, so the drift that guard prevented is now
+// structurally impossible rather than tested — there is no second copy to drift.
 //
-//	mkdir -p .trellis/internal
-//	cp plugins/trellis/reference/trellis-a.md  .trellis/internal/trellis.md
-//	cp plugins/trellis/reference/rules.md      .trellis/internal/rules.md
-//	cp plugins/trellis/reference/invariants.md .trellis/internal/invariants.md
-//	cp plugins/trellis/reference/version       .trellis/internal/version
-func TestRepoOverlayIsCurrent(t *testing.T) {
-	repoTrellis := filepath.Join("..", ".trellis")
-	if _, err := os.Stat(repoTrellis); err != nil {
-		t.Skip("no repo .trellis/ overlay yet — nothing to guard")
-	}
-
-	payload := payloadFiles()
-	gitignore, err := os.ReadFile(filepath.Join("..", ".gitignore"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(gitignore), ".trellis/internal/version") {
-		t.Error("repo .gitignore must not exclude the installed version input required by the self Codex startup fixture")
-	}
-	for overlayName, payloadName := range map[string]string{
-		"internal/trellis.md":    "trellis-a.md", // conductor — the repo holds all invariants firmly
-		"internal/rules.md":      "rules.md",     // all rows active — the shipped all-active assembly
-		"internal/invariants.md": "invariants.md",
-		"internal/version":       "version", // diagnostic provenance required by spec-0007
-	} {
-		got, err := os.ReadFile(filepath.Join(repoTrellis, overlayName))
-		if err != nil {
-			t.Fatalf("repo overlay missing .trellis/%s — copy it from the payload (see this test's doc comment): %v", overlayName, err)
-		}
-		if string(got) != payload[payloadName] {
-			t.Errorf(".trellis/%s is stale vs the payload's %s — re-copy it from the payload (see this test's doc comment)", overlayName, payloadName)
-		}
-	}
-
-	// The flat pre-decision-0051 layout is migrated, not left beside the new one:
-	// the old generated paths must be gone (their content lives under internal/).
-	for _, legacy := range []string{"trellis.md", "profile.md", "invariants.md", "version"} {
-		if _, err := os.Stat(filepath.Join(repoTrellis, legacy)); !os.IsNotExist(err) {
-			t.Errorf(".trellis/%s still exists — the flat layout retired with decision-0051; delete the old-path copy", legacy)
-		}
-	}
-
-	// The managed block in the repo's CLAUDE.md is the payload's block-claude.md,
-	// verbatim — the copier contract, applied to ourselves.
-	c, err := os.ReadFile(filepath.Join("..", "CLAUDE.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	i := strings.Index(string(c), trellisBegin)
-	j := strings.Index(string(c), trellisEnd)
-	if i < 0 || j <= i {
-		t.Fatal("repo CLAUDE.md has no trellis:begin/end block — paste the payload's block-claude.md")
-	}
-	if block := string(c)[i : j+len(trellisEnd)]; block != payload["block-claude.md"] {
-		t.Error("repo CLAUDE.md's managed block is stale vs the payload's block-claude.md — re-paste it between the markers")
-	}
-}
-
-// TestRepoDeclaresRulesConfig: decision-0051 rules 1+2 — the repo's own overlay
-// carries the consumer-authoritative config file, .trellis/rules.toml, seeded from
-// the conductor posture (the posture TestRepoOverlayIsCurrent's trellis-a.md mapping
-// pins) with every assessable row active (which is what pins internal/rules.md to
-// the all-active assembly). Rows are the machine-read truth, so the machine-read
-// keys are asserted; nothing else in .trellis/ root is pinned (it is
-// consumer-authoritative).
+// The other two links in that chain are untouched and still enforced:
+// TestVendoredPayloadIsCurrent pins plugins/trellis/reference/ to the generator,
+// and install.sh's baked manifest pins what a consumer receives. Only the
+// overlay-to-payload comparison is gone, with its subject.
+//
+// decision-0035's self-application PRINCIPLE stands; its overlay sync-guard is
+// superseded in part.
 func TestRepoDeclaresRulesConfig(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join("..", ".trellis", "rules.toml"))
 	if err != nil {
@@ -140,16 +75,19 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	referenceCodexBlock := readRepoFile("plugins/trellis/reference/block-codex.md")
 	normalizedAgents := strings.Join(strings.Fields(agents), " ")
 
-	wantClaude := "@AGENTS.md\n\n" + referenceBlock + "\n"
-	if claude != wantClaude {
-		t.Errorf("CLAUDE.md must be exactly @AGENTS.md, one blank separator, the byte-identical block-claude.md payload, and one final newline")
+	// decision-0071: this repo self-applies through the PLUGIN, so CLAUDE.md no
+	// longer carries a managed block. What still holds is the adapter shape — one
+	// @AGENTS.md and nothing duplicated from Layer B — and, newly asserted, that
+	// no block came back. A managed block here would mean the repo had silently
+	// returned to the overlay mode decision-0065 retired for everyone else, and
+	// would make install.sh refuse to render (decision-0068 D12).
+	if strings.TrimSpace(claude) != "@AGENTS.md" {
+		t.Errorf("CLAUDE.md must be exactly the @AGENTS.md adapter since decision-0071; got:\n%s", claude)
 	}
-	if strings.Count(claude, "@AGENTS.md") != 1 {
-		t.Errorf("CLAUDE.md must contain exactly one @AGENTS.md adapter, got %d", strings.Count(claude, "@AGENTS.md"))
+	if strings.Count(claude, trellisBegin) != 0 || strings.Count(claude, trellisEnd) != 0 {
+		t.Errorf("CLAUDE.md carries a Trellis managed block — decision-0071 removed it, and its return means this repo has drifted back to the overlay delivery it retired for consumers")
 	}
-	if strings.Count(claude, trellisBegin) != 1 || strings.Count(claude, trellisEnd) != 1 {
-		t.Errorf("CLAUDE.md must contain exactly one matched Trellis managed block")
-	}
+	_ = referenceBlock
 	for _, duplicate := range []string{"# Trellis — operating method", "<!-- grove:begin", "## Operating method"} {
 		if strings.Contains(claude, duplicate) {
 			t.Errorf("CLAUDE.md duplicates shared Layer-B/Grove prose %q; it must remain an adapter only", duplicate)
@@ -177,16 +115,42 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 			t.Errorf("AGENTS.md is missing moved Layer-B/Grove content %q", sharedContent)
 		}
 	}
-	if strings.Count(agents, codexBootstrapBegin) != 1 || strings.Count(agents, codexBootstrapEnd) != 1 {
-		t.Error("AGENTS.md must contain exactly one generated Codex bootstrap marker pair (spec-0007@v1)")
+	// decision-0071: the Codex bootstrap is gone with the overlay it read from.
+	// It is the AGENTS.md counterpart of the CLAUDE.md managed block, and
+	// `block-codex.md:17` falls back to "the three .trellis/internal/ files" —
+	// which this decision deletes. Keeping the block would have made every Codex
+	// session here report "Trellis was not loaded"; removing one transport while
+	// leaving its fallback aimed at deleted inputs is worse than removing neither.
+	//
+	// Asserted as absence, and for the same reason as CLAUDE.md's: its return
+	// would mean this repo had drifted back to overlay delivery.
+	// The overlay DIRECTORY is what both hooks use to select vendored mode. If it
+	// returns — a branch checkout, a stray copy, a later commit — the Claude hook
+	// takes path A and exits without injecting, and with the managed block now
+	// forbidden the session is ungoverned with nothing failing. decision-0071
+	// calls that drift "structurally impossible"; this is what makes it so.
+	// Every artifact that makes a hook stand down before plugin-native path B.
+	// This list has been wrong twice: first it named only .trellis/internal/, then
+	// only that plus the flat overlay. `.trellis/version` — the pre-decision-0051
+	// stamp path — exits just as early. Derived from the hook's own early-exit
+	// branches rather than from memory, which is what the two previous versions
+	// were.
+	for _, shape := range []string{
+		filepath.Join("..", ".trellis", "internal"),
+		filepath.Join("..", ".trellis", "trellis.md"), // the legacy FLAT overlay
+		filepath.Join("..", ".trellis", "version"),    // the pre-0051 legacy stamp
+	} {
+		if _, err := os.Stat(shape); !os.IsNotExist(err) {
+			t.Errorf("%s exists — decision-0071 removed the overlay, and either shape silently switches the Claude hook to vendored mode while the managed block that mode needs is gone, leaving sessions ungoverned with a green suite", shape)
+		}
+	}
+	if strings.Count(agents, codexBootstrapBegin) != 0 || strings.Count(agents, codexBootstrapEnd) != 0 {
+		t.Error("AGENTS.md carries a Codex bootstrap block — decision-0071 removed it along with the .trellis/internal/ files it reads, so its return means this repo has drifted back to overlay delivery")
 	}
 	if strings.Contains(agents, "@.trellis/") {
-		t.Error("AGENTS.md Codex bootstrap must contain no Claude @.trellis imports")
+		t.Error("AGENTS.md must contain no Claude @.trellis imports")
 	}
-	if blockStart := strings.Index(agents, codexBootstrapBegin); blockStart < 0 ||
-		agents[blockStart:strings.Index(agents[blockStart:], codexBootstrapEnd)+blockStart+len(codexBootstrapEnd)] != referenceCodexBlock {
-		t.Error("AGENTS.md's Codex bootstrap must be byte-identical to block-codex.md")
-	}
+	_ = referenceCodexBlock
 	if strings.Contains(agents, rulesAuthorityHeader) {
 		t.Error("AGENTS.md must not embed the generated Trellis rule readout")
 	}

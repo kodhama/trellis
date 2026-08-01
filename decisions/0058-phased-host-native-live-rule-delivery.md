@@ -5,7 +5,7 @@ status: approved  # maintainer intent act 2026-07-24: document the rollout phase
 depends_on: [decision-0039, decision-0043, decision-0051, decision-0053, decision-0057]
 owner: agent
 date: 2026-07-24
-superseded_in_part_by: [decision-0065]
+superseded_in_part_by: [decision-0065, decision-0071]  # 2026-08-01 decision-0071 — POINT 4's Codex receipt/fallback, for the trellis repo ONLY: its AGENTS.md bootstrap read .trellis/internal/, which 0071 deletes, so the fallback goes with its inputs. The phased-expansion principle stands; the fallback lapses here while Codex has no install channel (#220).
 ---
 
 # 0058 — phase host-native live-rule delivery; keep the installed overlay as the common truth

@@ -38,7 +38,7 @@ The tests in this package are the sync-guards that make drift impossible rather 
 visible (`decision-0035`, mechanism per `kodhama-0007` rule 3):
 
 - `TestVendoredPayloadIsCurrent` — the vendored payload is byte-identical to a fresh render.
-- `TestRepoOverlayIsCurrent` — this repo's own committed `.trellis/` overlay matches the payload
+- ~~`TestRepoOverlayIsCurrent`~~ — **removed by `decision-0071`**, with the overlay it compared. This repo self-applies through the plugin, so there is no second copy to drift. `TestVendoredPayloadIsCurrent` still pins the payload to the generator, and `TestSharedProjectInstructionEntrypoints` now asserts the overlay has *not* come back
   (self-application through the install boundary).
 - `TestVendoredPayloadManifestVerifies` — `shasum -c` in Go: the manifest verifies the files as
   they sit on disk.
