@@ -104,6 +104,26 @@ the plugin's payload directly instead of holding a copy.
 becomes `@AGENTS.md` alone. The spec is `gated` and its entrypoint contract was
 written for the managed-block era.
 
+**5. This repository is NOT governed on Codex until `#220`, and that is accepted
+here rather than left to be found.** `.claude/settings.json` is Claude-specific,
+so declaring the plugin at project scope installs nothing for Codex; `README.md`
+says plainly that Codex has no plugin installation channel; and D1 removes the
+`AGENTS.md` bootstrap that was its only other route. A fresh clone opened with
+Codex therefore has neither the hook nor a readable payload.
+
+That is a real reduction, not a technicality. It is accepted because the
+alternative is worse: keeping the bootstrap means keeping `.trellis/internal/`
+for it to read, which is the overlay this decision exists to retire, and
+retaining a whole delivery mode for one repository's second host inverts the
+"self-apply like a consumer" principle the record is built on. A Codex consumer
+today has no install path either — that is `#220`, the same gap, not a special
+one this repo should paper over for itself.
+
+**This supersedes `decision-0058` point 4 in part** — its requirement that the
+Codex receipt/fallback be retained — for this repository only. The phased
+host-expansion principle stands; what lapses is the fallback's existence here,
+and only while Codex has no channel.
+
 ## Consequences
 
 - `decision-0035` gains a `superseded_in_part_by` pointer scoped to the
