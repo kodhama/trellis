@@ -1,7 +1,7 @@
 ---
 id: decision-0070
 type: decision
-status: gated  # drafted by agent; awaiting the maintainer's intent act. Design supplied by the maintainer in session 2026-07-31 ("bring the user the choice"); this record works it through and flags the two places it had to change to survive contact with the code.
+status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age. Design supplied by the maintainer in session 2026-07-31 ("bring the user the choice"); this record works it through and flags the two places it had to change to survive contact with the code.
 depends_on: [decision-0008, decision-0053, decision-0065, decision-0068]
 owner: agent
 date: 2026-07-31

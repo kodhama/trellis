@@ -1,7 +1,7 @@
 ---
 id: spec-0007
 type: spec
-status: gated
+status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age.
 depends_on: [decision-0058, spec-0004, spec-0006]
 implements: decision-0058
 owner: agent
@@ -726,7 +726,7 @@ Self-checked against `core/rubrics/artifact-contract.md`:
 | Check | Result | Evidence |
 |---|---|---|
 | 1. Required frontmatter present and typed | PASS | `id`, `type`, `status`, `depends_on`, and `owner` are present; lists and strings are well-typed. |
-| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` is in this repo's declared lifecycle. |
+| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` **at the time of this check** (2026-07-24) is in this repo's declared lifecycle. The record is `approved` as of 2026-08-02 — see the note below the rubric. |
 | 3. Unique id | PASS | Repository scan finds no other `spec-0007`. |
 | 4. Dependencies resolve | PASS | `decision-0058`, `spec-0004`, and `spec-0006` resolve locally. The specs predate version materialization and carry no version to pin; the append-only decision must not be version-pinned. |
 | 5. Directional flow | PASS | Dependencies are approved/ratified/gated, never draft. |
@@ -738,3 +738,8 @@ Self-checked against `core/rubrics/artifact-contract.md`:
 
 The check passes, so the spec is promoted `draft → gated`. `approved` remains
 a human intent act. Independent spec-adversary review is still required.
+
+**Approved 2026-08-02** by the maintainer's in-session intent act ("I would say
+approve them"), which drained a family-wide backlog of merged-but-`gated`
+records. The spec-adversary round named above was NOT run; the approval covers
+the record as it stands, adversary review outstanding.

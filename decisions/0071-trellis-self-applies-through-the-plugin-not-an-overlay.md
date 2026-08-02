@@ -1,7 +1,7 @@
 ---
 id: decision-0071
 type: decision
-status: gated  # drafted by agent; awaiting the maintainer's intent act. Requested in session 2026-07-31 ("yes, retire it") after tracing #219's step 1 and finding it retires a ratified property rather than performing a cleanup.
+status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age. Requested in session 2026-07-31 ("yes, retire it") after tracing #219's step 1 and finding it retires a ratified property rather than performing a cleanup.
 depends_on: [decision-0035, decision-0043, decision-0051, decision-0065, decision-0070, kodhama/kodhama-0007-one-render-many-copiers]
 owner: agent
 date: 2026-07-31
@@ -27,7 +27,7 @@ ratified property:
 
 `TestSharedProjectInstructionEntrypoints` additionally requires `CLAUDE.md` to be
 *exactly* `@AGENTS.md`, a blank line, and the byte-identical `block-claude.md`
-payload — `spec-0006`, still `gated`.
+payload — `spec-0006`, which the same 2026-08-02 act ratifies alongside this record.
 
 **Why this surfaced now.** `#219` proposes retiring `/trellis:setup`, whose only
 non-trivial remaining job is the overlay→plugin migration (§3). That migration
@@ -101,8 +101,9 @@ prevented is now structurally impossible rather than tested, since the repo read
 the plugin's payload directly instead of holding a copy.
 
 **4. `spec-0006`'s `CLAUDE.md` shape is superseded for this repo.** `CLAUDE.md`
-becomes `@AGENTS.md` alone. The spec is `gated` and its entrypoint contract was
-written for the managed-block era.
+becomes `@AGENTS.md` alone. The spec's entrypoint contract was written for the
+managed-block era; approving it on 2026-08-02 approves that contract, not the
+managed-block shape this ruling retires for this repo.
 
 **5. This repository is NOT governed on Codex until `#220`, and that is accepted
 here rather than left to be found.** `.claude/settings.json` is Claude-specific,
