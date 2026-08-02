@@ -1200,6 +1200,87 @@ func TestInstalledRulesFileSilencesTheHookExactlyOnce(t *testing.T) {
 // suppresses only what the HOOK injects — it cannot un-load a file Claude already
 // read. So this combination has to be refused at install time; there is no
 // runtime fix for it.
+// TestVendorRefusalRemedyNamesTheShapeItFound: a Claude review finding on #227,
+// and the SECOND appearance of one defect class. staleness.sh had a remedy
+// hard-coded to .trellis/internal/ while its branch fired for two overlay shapes;
+// that was fixed earlier in this branch. install.sh had the same bug and was not
+// looked at — its $static_conflict takes THREE values, one of which
+// ("managed block in <file>") involves no overlay directory at all.
+//
+// Following a remedy that names the wrong shape deletes nothing, so the refusal
+// fires again on every subsequent run: a permanent false-positive refusal that
+// the consumer cannot clear by doing what they were told.
+func TestVendorRefusalRemedyNamesTheShapeItFound(t *testing.T) {
+	cases := []struct {
+		name    string
+		build   func(t *testing.T, repo string)
+		wants   []string
+		forbids []string
+	}{
+		{
+			name: "internal overlay",
+			build: func(t *testing.T, repo string) {
+				mustMkdirAll(t, filepath.Join(repo, ".trellis", "internal"))
+				mustWrite(t, filepath.Join(repo, ".trellis", "internal", "version"), "payload@000000000000\n")
+			},
+			wants: []string{".trellis/internal/"},
+		},
+		{
+			name: "legacy flat overlay",
+			build: func(t *testing.T, repo string) {
+				mustMkdirAll(t, filepath.Join(repo, ".trellis"))
+				mustWrite(t, filepath.Join(repo, ".trellis", "trellis.md"), "legacy vendored prose\n")
+			},
+			wants:   []string{".trellis/trellis.md"},
+			forbids: []string{"delete .trellis/internal/"},
+		},
+		{
+			name: "inline managed block, no overlay directory",
+			build: func(t *testing.T, repo string) {
+				mustWrite(t, filepath.Join(repo, "CLAUDE.md"), "<!-- trellis:begin -->\nrules\n<!-- trellis:end -->\n")
+			},
+			wants:   []string{"managed block in CLAUDE.md"},
+			forbids: []string{".trellis/internal/", ".trellis/trellis.md"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			tc.build(t, repo)
+
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			combined := res.stdout + res.stderr
+
+			for _, want := range tc.wants {
+				if !strings.Contains(combined, want) {
+					t.Errorf("the remedy must name %q — the shape actually present; got:\n%s", want, combined)
+				}
+			}
+			for _, forbid := range tc.forbids {
+				if strings.Contains(combined, forbid) {
+					t.Errorf("the remedy names %q, which this project does not have — following it "+
+						"deletes nothing and the refusal fires forever; got:\n%s", forbid, combined)
+				}
+			}
+		})
+	}
+}
+
+func mustMkdirAll(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustWrite(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)
@@ -1230,7 +1311,7 @@ func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
 	// wrong after decision-0072: the first names a retired skill, and the second is
 	// a REMOVAL route, not a migration route — it satisfied the assertion alone,
 	// so deleting every line of migration guidance left the test green.
-	if !strings.Contains(combined, "delete the vendored overlay") || !strings.Contains(combined, ".trellis/rules.toml") {
+	if !strings.Contains(combined, ".trellis/internal/") || !strings.Contains(combined, ".trellis/rules.toml") {
 		t.Errorf("a refusal with no way forward strands the user; name the migration route and what survives it; got:\n%s", combined)
 	}
 	if strings.Contains(combined, "/trellis:setup") {

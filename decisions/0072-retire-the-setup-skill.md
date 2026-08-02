@@ -97,7 +97,27 @@ Every message that named the skill as the remedy for a stale overlay now carries
 the manual steps instead: delete the overlay, keep `.trellis/rules.toml`. A nudge
 that reports a problem without a way out of it is worse than the skill it lost.
 
-**The first version of that rewrite was wrong, and a cold review caught it.** The
+**Two rounds of review found the same defect class three times, in three
+places.** A remedy is only useful if it names the shape the reader actually has,
+and every rewritten message here was first written against one shape:
+
+| where | wrong for | found by |
+|---|---|---|
+| `staleness.sh` coexistence nudge | flat overlays (no `internal/`) | cold review |
+| `install.sh` refusal | flat overlays **and** the inline managed-block shape (no overlay directory at all) | Claude, on the PR |
+| `staleness.sh` row mismatch | firm-posture projects and any hand-disabled row | Claude, on the PR |
+
+The third is the worst of them and is not a wording problem. The rewrite told
+the agent to *"copy `rules-b.toml` over `.trellis/rules.toml`"* — the adaptive
+preset, every row active. That silently converts a firm project and re-enables
+every rule the consumer turned off, with no diff and no confirmation, on a
+branch that fires whenever the shipped catalog gains a rule. The retired skill
+diff-and-confirmed before a write of that kind, per `floor-intent-gate`.
+**Retiring a confirm-gated writer is this decision; replacing its remedy with an
+unconditional clobber was not.** The remedy now repairs rows in place and gates
+any reseed behind an explicit confirmation, naming `rules-a.toml` for firm.
+
+**The first version of the coexistence rewrite was wrong too.** The
 coexistence nudge hard-coded `.trellis/internal/` as the thing to delete, while
 the branch it sits in fires for two shapes — a flat pre-`decision-0051` overlay
 has no `internal/` directory. A flat-layout project was told to delete something

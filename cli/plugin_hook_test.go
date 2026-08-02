@@ -449,6 +449,76 @@ func renderedFile(files map[string]string, stamp string) string {
 		"\n<!-- trellis:rendered-from " + stamp + " -->\n"
 }
 
+// TestRowMismatchRemedyIsNotDestructive: a Claude review finding on #227. The
+// row-mismatch branch used to name /trellis:setup as the remedy, and the
+// retirement rewrote that to "copy reference/rules-b.toml over
+// .trellis/rules.toml".
+//
+// rules-b.toml is the ADAPTIVE preset with every row active, and `strictness`
+// selects which header the hook injects. So that instruction silently flips a
+// firm-posture project back to adaptive and turns every hand-disabled rule back
+// on — no diff, no confirmation. The skill it replaced diffed and asked, per
+// floor-intent-gate. And this branch fires on the ordinary upgrade path: any
+// time the shipped catalog gains a rule, every existing rules.toml mismatches.
+//
+// Retiring a confirm-gated writer is fine. Replacing its remedy with an
+// unconditional clobber is not, and it is the kind of loss that shows up as a
+// consumer's governance quietly resetting rather than as a failure.
+func TestRowMismatchRemedyIsNotDestructive(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	proj := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A firm-posture project carrying a slug the shipped catalog does not know —
+	// the same state an upgrade produces from the other direction.
+	rows := "seeded_from = \"conductor\"\nstrictness  = \"firm\"\ninv-not-a-real-rule = true\n"
+	if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(hook)
+	cmd.Dir = proj
+	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+	out, _ := cmd.CombinedOutput()
+	ctx := string(out)
+
+	if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+		t.Fatalf("an unknown slug must be reported, not delivered over; got:\n%s", ctx)
+	}
+	// The remedy must preserve what the consumer chose.
+	for _, want := range []string{"strictness", "active"} {
+		if !strings.Contains(ctx, want) {
+			t.Errorf("the remedy must tell the agent to preserve %q rather than reseed blindly; got:\n%s", want, ctx)
+		}
+	}
+	// If a reseed IS offered, it must be gated and must name the firm preset.
+	if strings.Contains(ctx, "rules-b.toml") {
+		if !strings.Contains(ctx, "confirmation") {
+			t.Errorf("a reseed resets every row the consumer chose; it must require explicit "+
+				"confirmation first (floor-intent-gate); got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "rules-a.toml") {
+			t.Errorf("offering only the adaptive preset silently converts a firm project; got:\n%s", ctx)
+		}
+	}
+}
+
 func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {

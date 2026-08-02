@@ -314,7 +314,7 @@ e1d6f9afa94e9782755783c63808cefd9fda321b53faea7697ad8a8cca9ec51e  README.md
 3da7f2cf8765fe95d1936a36d3341736f16b438353f2130368af58897dad20c4  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-0c1cab3fe18db24b4090184362022364403a54d7094a2732bf6a52072f885bd3  hooks/staleness.sh
+54693f3045cee096853f9d030fe8f5b75dd219e2513939134cacaf67e35975be  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -438,8 +438,16 @@ if [ "$scope" = "project" ]; then
   #     TRACKED in this tree, and decision-0043 scopes that exception to the
   #     repo's OWN self-hosted overlay. The shape is real; the reason given for
   #     it was not.)
-  [ -d "$git_root/.trellis/internal" ] && static_conflict=".trellis/internal/ overlay"
-  [ -z "$static_conflict" ] && [ -f "$git_root/.trellis/trellis.md" ] && static_conflict="legacy flat .trellis/ overlay"
+  # $conflict_paths is what the remedy below tells the user to DELETE, and it has
+  # to name the shape actually found. The remedy used to be hard-coded to
+  # .trellis/internal/ while this variable took three values — so a flat-overlay
+  # or managed-block project was told to delete something it does not have,
+  # deleted nothing, and hit this same refusal on every subsequent run. The
+  # sibling defect in staleness.sh was fixed earlier in this branch; this is the
+  # same class in the other script, and it was missed there first.
+  conflict_paths=""
+  [ -d "$git_root/.trellis/internal" ] && { static_conflict=".trellis/internal/ overlay"; conflict_paths=".trellis/internal/ and the managed block in your instructions file"; }
+  [ -z "$static_conflict" ] && [ -f "$git_root/.trellis/trellis.md" ] && { static_conflict="legacy flat .trellis/ overlay"; conflict_paths=".trellis/trellis.md, .trellis/version if present, and the managed block in your instructions file"; }
   # The INLINE managed block needs its own check, and this is the ONE content
   # read in the script. The existence tests above cannot reach it: the inline
   # form embeds the whole rules body in CLAUDE.md and needs no .trellis/internal/
@@ -492,7 +500,7 @@ if [ "$scope" = "project" ]; then
     bom="$(printf '\357\273\277')"
     for f in CLAUDE.md AGENTS.md; do
       grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$git_root/$f" 2>/dev/null \
-        && { static_conflict="managed block in $f"; break; }
+        && { static_conflict="managed block in $f"; conflict_paths="the managed block in $f, from its trellis:begin marker to its trellis:end marker (there is no overlay directory in this shape)"; break; }
     done
   fi
 fi
@@ -535,10 +543,9 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
     say "create it and has not removed it. Delete that file, or migrate off the"
     say "static overlay, before relying on either."
   fi
-  say "Migrate first: delete the vendored overlay (.trellis/internal/ and the"
-  say "managed block in your instructions file), keeping your .trellis/rules.toml"
-  say "rows — or /trellis:remove to take Trellis out entirely. Then re-run this"
-  say "installer."
+  say "Migrate first: delete $conflict_paths,"
+  say "keeping your .trellis/rules.toml rows — or /trellis:remove to take Trellis"
+  say "out entirely. Then re-run this installer."
 elif [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
   mkdir -p "$rules_dir" || fail "could not create $rules_dir (is .claude/rules present as a file?). The bundle is already vendored; re-run once the path is clear."
