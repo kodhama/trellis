@@ -1,8 +1,8 @@
 ---
 id: spec-0006
 type: spec
-status: gated
-superseded_in_part_by: [decision-0058, decision-0071]  # 2026-08-01 decision-0071 — AC3/AC4s byte-identical managed block in CLAUDE.md, and the Codex bootstrap block in AGENTS.md, both retired for THIS repo: it self-applies through the plugin now, so CLAUDE.md is the @AGENTS.md adapter alone. The entrypoint-adapter principle stands; the managed-block SHAPE does not. This spec is gated, so a reader starting from it would otherwise implement a shape the repo now rejects.
+status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age.
+superseded_in_part_by: [decision-0058, decision-0071]  # 2026-08-01 decision-0071 — AC3/AC4s byte-identical managed block in CLAUDE.md, and the Codex bootstrap block in AGENTS.md, both retired for THIS repo: it self-applies through the plugin now, so CLAUDE.md is the @AGENTS.md adapter alone. The entrypoint-adapter principle stands; the managed-block SHAPE does not. A reader starting from this spec would otherwise implement a shape the repo now rejects.
 depends_on: [decision-0057]
 implements: decision-0057
 owner: agent

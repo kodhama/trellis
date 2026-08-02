@@ -1,7 +1,7 @@
 ---
 id: spec-0007
 type: spec
-status: gated
+status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age.
 depends_on: [decision-0058, spec-0004, spec-0006]
 implements: decision-0058
 owner: agent
@@ -738,3 +738,8 @@ Self-checked against `core/rubrics/artifact-contract.md`:
 
 The check passes, so the spec is promoted `draft → gated`. `approved` remains
 a human intent act. Independent spec-adversary review is still required.
+
+**Approved 2026-08-02** by the maintainer's in-session intent act ("I would say
+approve them"), which drained a family-wide backlog of merged-but-`gated`
+records. The spec-adversary round named above was NOT run; the approval covers
+the record as it stands, adversary review outstanding.

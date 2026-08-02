@@ -1,7 +1,7 @@
 ---
 id: decision-0069
 type: decision
-status: gated  # drafted by agent; awaiting the maintainer's intent act. Scope ruling requested in session 2026-07-31 after the LP audit found the README instructing users into a state the product nudges them out of.
+status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age. Scope ruling requested in session 2026-07-31 after the LP audit found the README instructing users into a state the product nudges them out of.
 depends_on: [decision-0035, decision-0043, decision-0065, decision-0068, kodhama/kodhama-0007-one-render-many-copiers]  # 0053 was declared in an earlier draft and never argued in the body — the defect decision-0068's self-check row 7 records being caught on — so it is dropped rather than left decorative. decision-0035, decision-0043 (Open question 1) and kodhama-0007 ARE argued below; the first and last were missing.
 owner: agent
 date: 2026-07-31
