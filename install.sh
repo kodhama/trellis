@@ -284,7 +284,20 @@ stage="$(mktemp -d "${TMPDIR:-/tmp}/trellis-vendor.XXXXXX")"
 #      announcing success for an install it had refused. $rc is captured first
 #      and re-raised, so the trap can no longer launder a failure into a pass.
 rendered_tmp=""
-cleanup() { rm -rf "$stage"; [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp"; }
+target_new=""
+target_old=""
+cleanup() {
+  rm -rf "$stage"
+  [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp"
+  # A swap that died between the two moves leaves the target missing and the
+  # previous install parked at $target_old. Put it back rather than leaving the
+  # consumer with no plugin at all.
+  [ -n "$target_new" ] && rm -rf "$target_new"
+  if [ -n "$target_old" ] && [ -d "$target_old" ]; then
+    [ -d "$target" ] || mv "$target_old" "$target" 2>/dev/null || true
+    rm -rf "$target_old"
+  fi
+}
 trap 'rc=$?; cleanup; exit $rc' EXIT
 trap 'cleanup; exit 130' INT
 trap 'cleanup; exit 129' HUP
@@ -296,7 +309,7 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-be1d9ec9ca3722e7a5b96a9889614014490d90c218409b4c04064ebf27c6b558  README.md
+bf64f56522b2c9c378738c6983df8511cea0dcba97a58741b2a33726cb872d00  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 3da7f2cf8765fe95d1936a36d3341736f16b438353f2130368af58897dad20c4  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
@@ -348,12 +361,34 @@ $out"
 #         a few paths EXIST there, never any file's contents,
 #         and this script never runs a git command that mutates anything)
 
-mkdir -p "$target"
+# The bundle REPLACES the target rather than being copied over it. Copying in
+# place only ever creates and overwrites, so a file that LEAVES the bundle
+# survives every future upgrade: when decision-0072 retired skills/setup/, an
+# existing curl install kept the directory on disk and Claude Code kept
+# discovering the retired setup skill from it — the retirement reached new
+# installs and missed exactly the consumers who could not be told. That is a
+# class, not one skill, so the fix is the swap and not a delete-list.
+target_new="$target.new.$$"
+target_old="$target.old.$$"
+rm -rf "$target_new"
+mkdir -p "$target_new" || fail "could not create $target_new (permissions?). Nothing was changed."
 for f in $bundle_files; do
-  mkdir -p "$target/$(dirname "$f")"
-  cp "$stage/bundle/$f" "$target/$f"
+  mkdir -p "$target_new/$(dirname "$f")"
+  cp "$stage/bundle/$f" "$target_new/$f"
 done
-chmod +x "$target/hooks/staleness.sh"
+chmod +x "$target_new/hooks/staleness.sh"
+if [ -e "$target" ]; then
+  mv "$target" "$target_old" || fail "could not move the existing install aside ($target). Nothing was changed."
+fi
+if mv "$target_new" "$target"; then
+  target_new=""
+  rm -rf "$target_old"
+  target_old=""
+else
+  [ -d "$target_old" ] && mv "$target_old" "$target" 2>/dev/null
+  target_old=""
+  fail "could not put the new bundle in place at $target. The previous install was restored."
+fi
 
 stamp="$(head -n1 "$stage/bundle/reference/version" 2>/dev/null | tr -d '[:space:]')"
 nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"

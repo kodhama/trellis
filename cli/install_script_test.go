@@ -531,6 +531,53 @@ func TestVendorInvalidScopeFails(t *testing.T) {
 
 // TestVendorReRunIsIdempotent (#124: a deterministic artifact is safe to re-vend —
 // every byte on disk after a second run must equal the first).
+// TestVendorUpgradeRemovesFilesThatLeftTheBundle: a Codex P1 on #227. The write
+// phase used to copy the manifest's files over the existing target, which only
+// ever creates and overwrites — so a file that LEFT the bundle survived every
+// upgrade. Concretely: decision-0072 deleted skills/setup/, but an existing curl
+// install kept the directory, and Claude Code discovers skills from the
+// directory, so /trellis:setup stayed live for exactly the consumers who could
+// not be told it was retired. The bundle is now swapped in whole.
+//
+// The stale path here is a REAL retired one, not an invented marker: it is the
+// file this PR deletes, so this test fails against the shipped-before state for
+// the same reason a consumer would have hit it.
+func TestVendorUpgradeRemovesFilesThatLeftTheBundle(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+
+	if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
+		t.Fatalf("first run failed: %s", res.stderr)
+	}
+	target := filepath.Join(repo, ".claude", "skills", "trellis")
+
+	// Simulate an install made before the retirement: the skill directory is on
+	// disk and is not in the current manifest.
+	stale := filepath.Join(target, "skills", "setup")
+	if err := os.MkdirAll(stale, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stale, "SKILL.md"), []byte("---"+"\n"+"name: setup"+"\n"+"---"+"\n"+"retired"+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
+		t.Fatalf("upgrade run failed: %s", res.stderr)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Errorf("skills/setup survived the upgrade (err=%v) — a retired skill stays discoverable "+
+			"as /trellis:setup for every consumer who installed before it was removed", err)
+	}
+	// The swap must not cost the files that ARE in the bundle.
+	assertBundleVendored(t, target)
+	for _, leftover := range []string{target + ".new", target + ".old"} {
+		matches, _ := filepath.Glob(leftover + "*")
+		if len(matches) != 0 {
+			t.Errorf("the swap left scratch directories behind: %v", matches)
+		}
+	}
+}
+
 func TestVendorReRunIsIdempotent(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)

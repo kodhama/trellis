@@ -24,8 +24,8 @@ the hooks detect it, read from it, and inject nothing, so the rules arrive exact
 projects the plugin's `reference/` files stay setup sources rather than runtime substitutes, which
 is what the previous contract said of every project.
 
-Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
-bootstrap-only degradation and leaves the installed-file fallback usable. Trellis requires no
+Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
+see below. Trellis requires no
 project runtime, daemon, or network service. Row edits take effect at the next supported host
 context-loading boundary without refresh, never in a context already in flight.
 
@@ -69,15 +69,15 @@ That is the whole install **on Claude Code**, where installing at project scope 
 act — the shipped defaults apply immediately, all fourteen rules at the adaptive posture, with no
 further command and no file required (`decision-0070` D3).
 
-**On Codex the config file is still the adoption signal** (`decision-0070` D7): `codex-context.mjs`
-walks up for `.trellis/rules.toml` and reports `project-root-not-found` when there is none, so
-there is no project-scope default. Adopt by copying the shipped preset:
+**Codex is not supported.** The machinery is here — `hooks/codex-context.mjs`, a
+`.codex-plugin/` manifest, a catalog entry — and none of it is claimed as a supported path
+(`kodhama-0021` §2). It is carried, not maintained: Codex behaviour is not kept in step with
+the Claude path, and a difference between them is expected rather than a defect. `#220` holds
+what a supported Codex distribution would require. Its adoption signal also differs —
+`codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
+when there is none, so the project-scope default above is Claude-only (`decision-0070` D7).
 
-```
-cp "$PLUGIN_ROOT/reference/rules-b.toml" .trellis/rules.toml
-```
-
-On either host that file is then yours to edit: `strictness = "firm"` for the by-the-book
+On Claude that file is then yours to edit: `strictness = "firm"` for the by-the-book
 posture, `active = false` on a row to turn that rule off. Older projects still carry an
 **overlay**, split by who owns what (`decision-0051`):
 
