@@ -15,8 +15,8 @@
 #      layouts, and before them the plugin@<sha> / bare-semver stamps of pre-#120
 #      installs) always draws the nudge: the layout itself is stale, and
 #      the nudge carries the manual migration steps (decision-0072 retired
-#      the setup skill, which used to be the vehicle). With `trellis status`
-#      retired, this hook is the only drift surface (decision-0035: drift is made
+#      the setup skill, which used to be the vehicle). With the status command
+#      retired (decision-0043), this hook is the only drift surface (decision-0035: drift is made
 #      visible, not silent).
 #
 #   B. Config only (.trellis/rules.toml present, no .trellis/internal/ directory) —
@@ -187,10 +187,16 @@ ver="$internal/version"
 # session receives the rules twice in silence, while the installer warns loudly
 # about the very same state. Checked before path A for that reason.
 static_overlay=""
-[ -d "$internal" ] && static_overlay=".trellis/internal/ overlay"
-[ -z "$static_overlay" ] && [ -f "$root/.trellis/trellis.md" ] && static_overlay="legacy flat .trellis/ overlay"
+overlay_paths=""
+[ -d "$internal" ] && { static_overlay=".trellis/internal/ overlay"; overlay_paths=".trellis/internal/"; }
+# The remedy must name the shape that is actually present. It used to be
+# hard-coded to .trellis/internal/, so a flat-layout project was told to delete
+# a directory it does not have — the alarm then fired every session forever,
+# because this branch keys on file existence and following the advice removed
+# nothing.
+[ -z "$static_overlay" ] && [ -f "$root/.trellis/trellis.md" ] && { static_overlay="legacy flat .trellis/ overlay"; overlay_paths=".trellis/trellis.md (and .trellis/version if present)"; }
 if [ -n "$static_overlay" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
-  emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored $static_overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml to keep the rendered file. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored $static_overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or delete $overlay_paths and the managed block from this project's instructions file, keeping .trellis/rules.toml, to keep the rendered file. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -223,7 +229,7 @@ if [ -f "$legacy" ]; then
   overlay="$(head -n1 "$legacy" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
-  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows."
+  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml."
   exit 0
 fi
 

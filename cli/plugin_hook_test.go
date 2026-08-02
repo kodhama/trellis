@@ -889,6 +889,18 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		if !strings.Contains(string(out), "TRELLIS_RULES_LOADED_TWICE") {
 			t.Fatalf("the flat overlay shape is invisible to the coexistence branch:\n%s", out)
 		}
+		// The remedy must name the shape that is PRESENT. It was hard-coded to
+		// .trellis/internal/, so a flat-layout project was told to delete a
+		// directory it does not have; following that literally removed nothing and
+		// the same alarm fired every session. The generic "delete + rules.toml"
+		// check in the nudge helper cannot catch this — both substrings are
+		// satisfied by the wrong message.
+		if !strings.Contains(string(out), ".trellis/trellis.md") {
+			t.Errorf("the flat-shape remedy must name .trellis/trellis.md:\n%s", out)
+		}
+		if strings.Contains(string(out), "delete .trellis/internal/") {
+			t.Errorf("a flat-layout project has no .trellis/internal/ to delete:\n%s", out)
+		}
 	})
 
 	t.Run("a zero-byte rendered file is not delivery: the hook still delivers", func(t *testing.T) {

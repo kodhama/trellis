@@ -15,8 +15,9 @@ keeps its separate content identity in
 ## Phase 1 host support
 
 Since `decision-0065` both hosts deliver the same way: a `SessionStart` hook injects the rules
-from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. Setup writes only
-that config file — no `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
+from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. On the plugin
+path nothing writes that config file — the hook reads it, and applies the shipped defaults when it
+is absent (`decision-0070` D3). No `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
 
 **Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
 the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
@@ -50,7 +51,7 @@ marketplace listing, on either host, so a catalog entry means Trellis is listed 
 listed install path has been shown to work.
 
 Applying a preset **replaces** rows, strictness and `seeded_from`, so replacing a file you
-already have is a git diff you review like any other edit. There is no per-host disable: `/trellis:remove` removes both
+already have shows up as a git diff — provided the file is committed, which nothing does for you. There is no per-host disable: `/trellis:remove` removes both
 host blocks and the shared overlay. The parked `seed` and `custom` presets stay parked.
 
 ## Install
@@ -64,13 +65,21 @@ resolved):
 /plugin install trellis@kodhama
 ```
 
-That is the whole install. Installing at **project scope is the adoption act** — the shipped
-defaults apply immediately, all fourteen rules at the adaptive posture, with no further
-command and no file required (`decision-0070`).
+That is the whole install **on Claude Code**, where installing at project scope is the adoption
+act — the shipped defaults apply immediately, all fourteen rules at the adaptive posture, with no
+further command and no file required (`decision-0070` D3).
 
-To change the posture, write `.trellis/rules.toml` yourself: `strictness = "firm"` for the
-by-the-book posture, `active = false` on a row to turn that rule off. Older projects still
-carry an **overlay**, split by who owns what (`decision-0051`):
+**On Codex the config file is still the adoption signal** (`decision-0070` D7): `codex-context.mjs`
+walks up for `.trellis/rules.toml` and reports `project-root-not-found` when there is none, so
+there is no project-scope default. Adopt by copying the shipped preset:
+
+```
+cp "$PLUGIN_ROOT/reference/rules-b.toml" .trellis/rules.toml
+```
+
+On either host that file is then yours to edit: `strictness = "firm"` for the by-the-book
+posture, `active = false` on a row to turn that rule off. Older projects still carry an
+**overlay**, split by who owns what (`decision-0051`):
 
 - **`.trellis/` root — yours.** `rules.toml` alone (the machine-read config: one row per rule,
   `active = true|false`, plus a `strictness` key), seeded once from the payload and **never
@@ -78,16 +87,16 @@ carry an **overlay**, split by who owns what (`decision-0051`):
   the readout ships complete with an authority header, and your rows govern which rules apply at
   read time (`decision-0053`); each rule in the readout ends with its row's slug, so the two are
   matchable. The two floors (`floor-transparency`, `floor-intent-gate`) have rows too, but the
-  floor rules apply regardless of their value — setup says so out loud if you try to turn one
-  off, never silently honoring the row. (There is no `expression.md`: it retired with the
+  floor rules apply regardless of their value, and the injected readout says so rather than
+  silently honoring a row set false. (There is no `expression.md`: it retired with the
   `decision-0051` amendment — your governance prose belongs in your own instructions file, which
   every harness already loads.)
 - **`.trellis/internal/` — trellis's.** The generated files (`trellis.md`, `rules.md` — the
   complete rules readout, `invariants.md`, the `version` stamp), rewritten verbatim on every
   refresh and verified byte-for-byte against the shipped checksum manifest.
 
-All content is pre-rendered at release (`kodhama-0007`: the skill copies and verifies, it never
-composes). One managed block in your `CLAUDE.md` imports `.trellis/internal/trellis.md` **and**
+All content is pre-rendered at release (`kodhama-0007`: writers copy and verify, they never
+compose). One managed block in your `CLAUDE.md` imports `.trellis/internal/trellis.md` **and**
 `.trellis/rules.toml`, so the rules and your rows stay always-loaded and a row edit governs the
 very next session. Augment-never-clobber; nothing else is touched, and it's idempotent.
 
@@ -96,16 +105,16 @@ very next session. Augment-never-clobber; nothing else is touched, and it's idem
 Migration is a manual edit since `decision-0072` retired the setup skill. Delete
 `.trellis/internal/` (or the pre-`decision-0051` flat files directly in `.trellis/`) and the
 managed block from your instructions file, keeping `.trellis/rules.toml`. The plugin then
-delivers the rules and the hook stops nudging. What the old refresh handled, and what you
-now handle yourself:
+delivers the rules and the hook stops nudging. Three cases the retired refresh used to handle,
+and what to do about each yourself:
 
 - **Flat-layout overlays** (generated files directly in `.trellis/`, from before `decision-0051`):
-  a refresh writes the new layout, deletes the old-path copies, and seeds `rules.toml` from the
-  legacy `profile:` frontmatter key in `expression.md`.
-- **A leftover `expression.md`** (seeded before the amendment retired it): **never silently
-  deleted** — a refresh preserves any hand-written body and *offers* to move it into your own
-  instructions file (outside the managed block), or to leave the file in place; a pure seed stub
-  may be offered for deletion.
+  delete the old-path copies. If there is no `.trellis/rules.toml`, copy the shipped preset
+  (`reference/rules-b.toml`) rather than recovering rows from the legacy `profile:` key in
+  `expression.md` — the preset is the current row set.
+- **A leftover `expression.md`** (seeded before the amendment retired it): move any hand-written
+  body into your own instructions file, outside the managed block, then delete the file. Nothing
+  reads it any more, so leaving it in place is harmless but inert.
 - **Hand-authored content in the generated readout** (the clobber target of
   [#112](https://github.com/kodhama/trellis/issues/112)): moot on the plugin path since
   `decision-0065` — setup no longer writes generated files, so there is nothing to rewrite whole.

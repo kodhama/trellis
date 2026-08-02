@@ -131,9 +131,11 @@ Four-step flow (`01` – `04`):
 1. **01 · install — Add the plugin.** From the kodhama family
    marketplace — or, for a harness the plugin does not cover, copy the
    pre-rendered bundle by hand.
-2. **02 · posture — Pick a posture.** Conductor or author-adapt — seeded
-   as explicit rows in your `rules.toml`: how strict, and what's active.
-   A refresh reads the rows and asks nothing.
+2. **02 · posture — A posture you can change.** Every rule active,
+   adaptive posture — the shipped default, seeded as explicit rows in
+   your `rules.toml`. Edit a row to turn a rule off, or set
+   `strictness = "firm"` for the by-the-book posture. Rows govern at
+   read time.
 3. **03 · deliver — The rules arrive on their own.** On the plugin path a
    session hook injects them; on the curl path they are rendered into
    `.claude/rules/`. Never both — the hook stands down when it finds the

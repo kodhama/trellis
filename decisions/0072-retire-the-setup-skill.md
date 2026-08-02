@@ -47,7 +47,7 @@ turn a rule off. That file is the consumer's, it is already the authority
 
 | lost | mitigation |
 |---|---|
-| diff-and-confirm before replacing existing rows | git is the guard; the file is committed |
+| diff-and-confirm before replacing existing rows | git is the guard **if the file is committed** — the installer suggests the `git add`, it never runs one |
 | slug validation against the shipped payload | **already duplicated** — the hook fails loudly on a mismatch and is not going away |
 | a discoverable entry point for a newcomer | real, and weighed below |
 
@@ -85,14 +85,28 @@ the guard whose entire job is to stop the docs advertising a skill the plugin
 lacks: `plugins/trellis/README.md` (5 references), `skills/remove/SKILL.md` (2),
 and `cli/README.md` (1). Fixing only the four covered files would have turned the
 guard green with three user-facing surfaces still teaching `/trellis:setup`.
-`docSurfaces` is extended here. This is the second time that list has been found
-short — the note above `docs/lp-content.md` records the first, on 2026-07-31 —
-so the failure mode is the list itself, not either omission.
+This is the second time that list has been found short — the note above
+`docs/lp-content.md` records the first, on 2026-07-31 — so **the failure mode is
+the list, not either omission**, and `docSurfaces` becomes a walk of the tree
+rather than a third hand-written extension. The walk immediately covered a
+surface no version of the list ever had: `hooks/staleness.sh`, which emits slash
+commands straight into the consumer's session and is the one surface a user
+cannot skim past.
 
 Every message that named the skill as the remedy for a stale overlay now carries
-the manual steps instead: delete `.trellis/internal/` and the managed block,
-keep `.trellis/rules.toml`. A nudge that reports a problem without a way out of
-it is worse than the skill it lost.
+the manual steps instead: delete the overlay, keep `.trellis/rules.toml`. A nudge
+that reports a problem without a way out of it is worse than the skill it lost.
+
+**The first version of that rewrite was wrong, and a cold review caught it.** The
+coexistence nudge hard-coded `.trellis/internal/` as the thing to delete, while
+the branch it sits in fires for two shapes — a flat pre-`decision-0051` overlay
+has no `internal/` directory. A flat-layout project was told to delete something
+it does not have; following the advice removed nothing, and because the branch
+keys on file existence, the same alarm would fire every session forever. The
+remedy is now built from the shape that is present. The generic "names a
+deletion and names `rules.toml`" assertion could not catch this — both substrings
+were satisfied by the wrong message — so the flat-shape subtest asserts the
+specific path instead.
 
 ## Open questions
 

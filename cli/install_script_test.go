@@ -272,7 +272,8 @@ func TestInstallScriptBundleManifestIsCurrent(t *testing.T) {
 // TestVendorPersonalScopeFreshInstall (#124: personal scope needs no git repo and
 // writes to $HOME/.claude/skills/trellis). Extended per spec-0005's test-coverage
 // table (personal fresh-vendor row, AC1/AC4/AC10): stdout must carry the next-step
-// pointer to /trellis:setup and must NOT carry the project-only trust-dialog note.
+// pointer to .trellis/rules.toml (it named /trellis:setup until decision-0072 retired
+// the skill) and must NOT carry the project-only trust-dialog note.
 //
 // The trailing line-count check (kodhama/trellis#132) closes a real gap: AC10 requires
 // "exactly the five §4 items… and nothing more", but for personal scope only items 1 and
@@ -1178,8 +1179,15 @@ func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
 	if !strings.Contains(combined, ".trellis/internal") {
 		t.Errorf("refusing silently is its own defect: the output must name the overlay as the reason; got:\n%s", combined)
 	}
-	if !strings.Contains(combined, "/trellis:setup") && !strings.Contains(combined, "/trellis:remove") {
-		t.Errorf("a refusal with no way forward strands the user; name the migration route; got:\n%s", combined)
+	// This used to accept `/trellis:setup` OR `/trellis:remove`. Both halves were
+	// wrong after decision-0072: the first names a retired skill, and the second is
+	// a REMOVAL route, not a migration route — it satisfied the assertion alone,
+	// so deleting every line of migration guidance left the test green.
+	if !strings.Contains(combined, "delete the vendored overlay") || !strings.Contains(combined, ".trellis/rules.toml") {
+		t.Errorf("a refusal with no way forward strands the user; name the migration route and what survives it; got:\n%s", combined)
+	}
+	if strings.Contains(combined, "/trellis:setup") {
+		t.Errorf("refusal still points at the setup skill, retired by decision-0072; got:\n%s", combined)
 	}
 	// The bundle itself must still vendor — the overlay conflicts with the
 	// rendered file, not with the plugin package.

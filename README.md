@@ -13,8 +13,8 @@ things non-negotiable — and surfaces every time something bends — without di
 
 ## Get started
 
-**Claude Code (the primary path)** — install the plugin from the kodhama family marketplace, then
-run the setup skill in any project:
+**Claude Code (the primary path)** — install the plugin from the kodhama family marketplace.
+That is the whole install:
 
 ```
 /plugin marketplace add kodhama/kodhama
@@ -112,8 +112,8 @@ than deterministic.
 Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desktop, IDE,
 headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
 host blocks and the shared overlay. Applying a preset **replaces** the consumer's rows, strictness
-and `seeded_from`, so replacing a file you already have is a git diff you review like any other
-edit (`decision-0072` §3). Also excluded are any other host-native
+and `seeded_from`, so replacing a file you already have shows up as a git diff — provided the file
+is committed, which the installer suggests but never does for you (`decision-0072` §3). Also excluded are any other host-native
 transport, and revival of the parked `seed` or `custom` presets.
 
 **Any other harness — the manual copy path.** This is for harnesses the plugin does **not** cover.
