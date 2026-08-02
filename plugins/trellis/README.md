@@ -78,8 +78,11 @@ what a supported Codex distribution would require. Its adoption signal also diff
 `codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
 when there is none, so the project-scope default above is Claude-only (`decision-0070` D7).
 
-On Claude that file is then yours to edit: `strictness = "firm"` for the by-the-book
-posture, `active = false` on a row to turn that rule off. Older projects still carry an
+On Claude, change the posture by copying a **complete** preset and editing it —
+`reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — to `.trellis/rules.toml`,
+then `active = false` on any row you want off. The hook validates the row set against what the
+plugin ships and injects **nothing** when a slug is missing, so a hand-written partial file
+leaves the project ungoverned rather than firm. Older projects still carry an
 **overlay**, split by who owns what (`decision-0051`):
 
 - **`.trellis/` root — yours.** `rules.toml` alone (the machine-read config: one row per rule,

@@ -16,8 +16,8 @@ date: 2026-08-02
 plugin applies the shipped defaults with no file at all. Both land at 14/14 on
 the adaptive posture.
 
-**What is left is a one-line edit.** The two presets differ in exactly two string
-values:
+**What is left is a file copy and a one-line edit.** The two presets differ in
+exactly two string values:
 
 ```
 - seeded_from = "conductor"          + seeded_from = "author-adapt"
@@ -25,7 +25,8 @@ values:
 ```
 
 Every rule row is `active = true` in both. So §1, §2 and §5 — most of a 193-line
-skill — exist to change `strictness` in a file the user owns and can edit.
+skill — exist to copy one of two shipped files and change `strictness` in it. The
+copy is not optional (see D2); what is optional is the 193 lines around it.
 
 **The one non-trivial part lost its population.** §3 migrated a vendored overlay,
 and `/trellis:remove` could not substitute because it *"deletes the whole of
@@ -38,10 +39,22 @@ so §3 now serves nobody.
 **1. `/trellis:setup` is retired.** `plugins/trellis/skills/setup/` is deleted,
 with its manifest entry and registrations.
 
-**2. The replacement is documented in one sentence: edit `.trellis/rules.toml`.**
-`strictness = "firm"` for the by-the-book posture; `active = false` on a row to
-turn a rule off. That file is the consumer's, it is already the authority
-(`decision-0053`), and every surface that pointed at the skill now points at it.
+**2. The replacement is two steps: copy a complete preset, then edit it.**
+`reference/rules-a.toml` for the firm posture, `rules-b.toml` for adaptive, to
+`.trellis/rules.toml`; then `active = false` on any row to turn a rule off. That
+file is the consumer's and is already the authority (`decision-0053`), and every
+surface that pointed at the skill now points at this recipe.
+
+**The copy step is mandatory, and an earlier draft of this record got it wrong.**
+It said the replacement was *"one sentence: edit `.trellis/rules.toml`"*, which
+is true of the presets and false as an instruction. The hook validates the row
+set against what the plugin ships and injects **nothing** when a slug is missing,
+so a project-scope install that is governed 14/14 becomes **ungoverned** the
+moment someone hand-writes a file containing `strictness = "firm"` and nothing
+else. Measured against the hook, not reasoned: every one of the fourteen slugs
+came back as `missing:` and no rule was injected. The retired skill's §1 did not
+merely set `strictness`; it copied a whole preset first, and that is the part of
+it that had to survive.
 
 **3. What is genuinely lost, named rather than discovered later.**
 

@@ -133,9 +133,10 @@ Four-step flow (`01` – `04`):
    pre-rendered bundle by hand.
 2. **02 · posture — A posture you can change.** Every rule active,
    adaptive posture — the shipped default, seeded as explicit rows in
-   your `rules.toml`. Edit a row to turn a rule off, or set
-   `strictness = "firm"` for the by-the-book posture. Rows govern at
-   read time.
+   your `rules.toml`. To change it, copy a complete preset —
+   `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — and
+   edit rows from there. Rows govern at read time; the set has to stay
+   whole.
 3. **03 · deliver — The rules arrive on their own.** On the plugin path a
    session hook injects them; on the curl path they are rendered into
    `.claude/rules/`. Never both — the hook stands down when it finds the

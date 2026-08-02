@@ -464,6 +464,101 @@ func renderedFile(files map[string]string, stamp string) string {
 // Retiring a confirm-gated writer is fine. Replacing its remedy with an
 // unconditional clobber is not, and it is the kind of loss that shows up as a
 // consumer's governance quietly resetting rather than as a failure.
+// TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
+// sharpest finding on it — the documented replacement for the retired skill
+// BROKE governance if followed literally.
+//
+// decision-0072's first draft said the replacement was "one sentence: edit
+// .trellis/rules.toml — strictness = \"firm\"". But the hook validates the row
+// set against the shipped catalog and injects NOTHING when a slug is missing, so
+// a project-scope install sitting at a governed 14/14 goes to ZERO the moment
+// someone hand-writes a file containing strictness alone. The retired skill's §1
+// copied a whole preset first; that step was the part that had to survive, and
+// the record had described it away.
+//
+// This test pins the recipe end to end, in both directions: the partial file
+// must fail loudly, and the documented copy-then-edit must deliver all fourteen
+// rules at the requested posture.
+func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	run := func(t *testing.T, rows string) string {
+		t.Helper()
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		return string(out)
+	}
+
+	t.Run("hand-written partial file governs nothing", func(t *testing.T) {
+		out := run(t, "strictness  = \"firm\"\n")
+		if !strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("a partial row set must fail loudly, not govern partially; got:\n%s", out)
+		}
+		// The hazard this whole test exists for: it is not a warning ON TOP of
+		// delivery, it is delivery replaced by a warning. Asserting on a slug would
+		// be useless here — the error message ENUMERATES every missing slug — so the
+		// discriminator is the readout body, which only a delivery carries.
+		if strings.Contains(out, "The rules — do these") {
+			t.Errorf("rules were injected over an invalid row set; got:\n%s", out)
+		}
+	})
+
+	t.Run("copy the firm preset, then edit: fourteen rules at the firm posture", func(t *testing.T) {
+		out := run(t, files["rules-a.toml"])
+		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("the DOCUMENTED recipe must produce a governed project; got:\n%s", out)
+		}
+		slugs := map[string]bool{}
+		for _, m := range regexp.MustCompile(`(?:inv|floor)-[a-z-]+`).FindAllString(out, -1) {
+			slugs[m] = true
+		}
+		if len(slugs) < 14 {
+			t.Errorf("want all 14 rules delivered from the copied preset, got %d (%v)", len(slugs), keysOfBool(slugs))
+		}
+	})
+
+	t.Run("copy the adaptive preset: same, at the default posture", func(t *testing.T) {
+		out := run(t, files["rules-b.toml"])
+		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("the DOCUMENTED recipe must produce a governed project; got:\n%s", out)
+		}
+	})
+
+	t.Run("copy a preset then disable one row: the other thirteen still arrive", func(t *testing.T) {
+		edited := strings.Replace(files["rules-b.toml"], "inv-minimal-first         = { active = true }", "inv-minimal-first         = { active = false }", 1)
+		if edited == files["rules-b.toml"] {
+			t.Fatal("fixture did not contain the row it claims to edit — the case would prove nothing")
+		}
+		out := run(t, edited)
+		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("turning a row off is the documented edit and must stay valid; got:\n%s", out)
+		}
+	})
+}
+
 func TestRowMismatchRemedyIsNotDestructive(t *testing.T) {
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
