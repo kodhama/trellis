@@ -14,7 +14,8 @@
 #      found only at the legacy flat path (.trellis/version — pre-decision-0051
 #      layouts, and before them the plugin@<sha> / bare-semver stamps of pre-#120
 #      installs) always draws the nudge: the layout itself is stale, and
-#      /trellis:setup's refresh is the migration vehicle. With `trellis status`
+#      the nudge carries the manual migration steps (decision-0072 retired
+#      the setup skill, which used to be the vehicle). With `trellis status`
 #      retired, this hook is the only drift surface (decision-0035: drift is made
 #      visible, not silent).
 #
@@ -189,13 +190,13 @@ static_overlay=""
 [ -d "$internal" ] && static_overlay=".trellis/internal/ overlay"
 [ -z "$static_overlay" ] && [ -f "$root/.trellis/trellis.md" ] && static_overlay="legacy flat .trellis/ overlay"
 if [ -n "$static_overlay" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
-  emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored $static_overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or run /trellis:setup and accept the migration to keep the rendered file. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored $static_overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml to keep the rendered file. Tell the user before doing substantive work."
   exit 0
 fi
 
 if [ -d "$internal" ]; then
   if [ ! -f "$ver" ]; then
-    emit "TRELLIS_RULES_NOT_LOADED — this project has a .trellis/internal/ directory but no version stamp, so its vendored overlay is incomplete. The hook will not inject rules over a broken overlay, and cannot tell which rules the surviving files represent. Tell the user before doing substantive work; /trellis:setup can migrate this project onto plugin-delivered rules."
+    emit "TRELLIS_RULES_NOT_LOADED — this project has a .trellis/internal/ directory but no version stamp, so its vendored overlay is incomplete. The hook will not inject rules over a broken overlay, and cannot tell which rules the surviving files represent. Tell the user before doing substantive work. To migrate this project onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml."
     exit 0
   fi
   # A current stamp is not proof the overlay can still load. If a payload file
@@ -203,7 +204,7 @@ if [ -d "$internal" ]; then
   # about it — checking the stamp alone left that project silently ungoverned.
   for f in trellis.md rules.md; do
     if [ ! -s "$internal/$f" ]; then
-      emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f is missing or empty, so the managed block's imports cannot load the rules. The stamp is intact, which is why nothing else flagged this. Run /trellis:setup to migrate onto plugin-delivered rules, and tell the user before doing substantive work."
+      emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f is missing or empty, so the managed block's imports cannot load the rules. The stamp is intact, which is why nothing else flagged this. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Tell the user before doing substantive work."
       exit 0
     fi
   done
@@ -212,7 +213,7 @@ if [ -d "$internal" ]; then
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
   if [ "$overlay" != "$current" ]; then
-    emit "Trellis overlay may be stale: this project's .trellis/internal/version stamp is $overlay, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, run /trellis:setup and accept the migration — it removes .trellis/internal/ and the managed block and keeps your .trellis/rules.toml rows. Until then this session is governed by the vendored copy."
+    emit "Trellis overlay may be stale: this project's .trellis/internal/version stamp is $overlay, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Until then this session is governed by the vendored copy."
   fi
   exit 0
 fi
@@ -222,7 +223,7 @@ if [ -f "$legacy" ]; then
   overlay="$(head -n1 "$legacy" 2>/dev/null | tr -d '[:space:]')"
   [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
   [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
-  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships $current). Run /trellis:setup and accept the migration — it removes the legacy overlay and keeps your .trellis/rules.toml rows."
+  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows."
   exit 0
 fi
 
@@ -258,7 +259,7 @@ rendered="$root/.claude/rules/trellis.md"
 # The FILE'S EXISTENCE claims this path — validation happens inside, never as
 # part of the condition. An earlier version made completeness part of the guard,
 # so an incomplete file fell through to path B: with no rules.toml path B exited
-# SILENTLY, and once /trellis:setup later wrote one, path B injected the full
+# SILENTLY, and once a .trellis/rules.toml later appeared, path B injected the full
 # payload on top of the body the host had already loaded. Falling through was the
 # double delivery this path exists to prevent, arriving one step later.
 if [ -f "$rendered" ]; then
@@ -342,7 +343,7 @@ fi
 # rules a second time on top of that chain. The installer already refuses this
 # shape; the hook did not know it existed.
 if [ -f "$root/.trellis/trellis.md" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — this project carries a legacy flat .trellis/trellis.md overlay, which its managed block imports directly. This hook injected nothing: doing so would deliver the same rules twice. Run /trellis:setup and accept the migration to move onto plugin-delivered rules. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — this project carries a legacy flat .trellis/trellis.md overlay, which its managed block imports directly. This hook injected nothing: doing so would deliver the same rules twice. To move onto plugin-delivered rules, delete .trellis/trellis.md and the managed block from this project's instructions file, keeping .trellis/rules.toml. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -403,7 +404,7 @@ if [ ! -f "$toml" ]; then
     # it is about to affect rather than assuming consent it never asked for.
     # Announce, inject NO rules on this turn ("will be", not "is"), and ask for
     # the negative action explicitly so silence cannot read as refusal.
-    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 14 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the choice persists — without that file this same announcement repeats every session and the project is never governed. (/trellis:setup writes the same file if you would rather ask them for a posture first.) Inject and follow no Trellis rules this turn: none are active yet."
+    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 14 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the choice persists — without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: strictness = \"firm\" for the by-the-book posture, active = false on a row to turn a rule off.) Inject and follow no Trellis rules this turn: none are active yet."
     exit 0
   fi
 fi
@@ -465,7 +466,7 @@ slug_report="$(
   ' "$rules" "$toml"
 )"
 if [ "$slug_report" != "ok" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Run /trellis:setup to reapply a preset, and tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Copy $plugin/reference/rules-b.toml over .trellis/rules.toml to reapply the shipped rows, and tell the user before doing substantive work."
   exit 0
 fi
 
@@ -485,7 +486,7 @@ payload="$(
   ' "$header"
   printf '\n## Project rule activation\n\n'
   if [ "${rows_are_default:-no}" = yes ]; then
-    printf 'Rows: this project has no .trellis/rules.toml, so these are the shipped defaults — every rule active, adaptive posture (decision-0070). Write .trellis/rules.toml, or run /trellis:setup, to change them. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
+    printf 'Rows: this project has no .trellis/rules.toml, so these are the shipped defaults — every rule active, adaptive posture (decision-0070). Write .trellis/rules.toml to change them. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
   else
     printf 'Rows from this project'"'"'s .trellis/rules.toml. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
   fi

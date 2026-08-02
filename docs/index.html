@@ -322,7 +322,6 @@
         <div class="panel active" data-panel="cc">
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin marketplace add kodhama/kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@kodhama</code></div>
-          <div class="cmd"><code><span class="prompt">&gt; </span>/trellis:setup<span class="cmt">    # optional — changes posture or turns rules off</span></code></div>
         </div>
         <div class="panel" data-panel="curl">
           <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
@@ -435,7 +434,7 @@
         <div class="step"><p class="k">01 · install</p><h4>Add the plugin</h4><p>From the kodhama family marketplace — or, for a harness the plugin does not cover, copy the pre-rendered bundle by hand.</p></div>
         <div class="step"><p class="k">02 · posture</p><h4>Pick a posture</h4><p>Conductor or author-adapt — seeded as explicit rows in your <code>rules.toml</code>: how strict, and what's active. A refresh reads the rows and asks nothing.</p></div>
         <div class="step"><p class="k">03 · deliver</p><h4>The rules arrive on their own</h4><p>On the plugin path a session hook injects them; on the curl path they are rendered into <code>.claude/rules/</code>. Never both — the hook stands down when it finds the rendered file, and says so if it ever sees both.</p></div>
-        <div class="step"><p class="k">04 · verify</p><h4>You approve</h4><p>The curl path checks every byte against a shipped checksum manifest before it writes one. <code>/trellis:setup</code> diffs and asks before replacing rows you already have. Trellis proposes; the merge is yours.</p></div>
+        <div class="step"><p class="k">04 · verify</p><h4>You approve</h4><p>The curl path checks every byte against a shipped checksum manifest before it writes one, and never overwrites rows you already have — <code>.trellis/rules.toml</code> is seeded only when it is absent. Trellis proposes; the merge is yours.</p></div>
       </div>
 
       <div class="footprint">
@@ -515,7 +514,7 @@
     });
 
     var commands = {
-      cc: "/plugin marketplace add kodhama/kodhama\n/plugin install trellis@kodhama\n/trellis:setup",
+      cc: "/plugin marketplace add kodhama/kodhama\n/plugin install trellis@kodhama",
       curl: "curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh",
       manual: "git clone --depth 1 https://github.com/kodhama/trellis"
     };

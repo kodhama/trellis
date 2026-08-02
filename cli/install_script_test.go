@@ -294,8 +294,12 @@ func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	if !strings.Contains(res.stdout, "scope: personal") {
 		t.Errorf("stdout should say which scope was chosen; got:\n%s", res.stdout)
 	}
-	if !strings.Contains(res.stdout, "/trellis:setup") {
-		t.Errorf("stdout should carry the next-step pointer to /trellis:setup; got:\n%s", res.stdout)
+	// decision-0072 retired /trellis:setup; the next step is the file itself.
+	if !strings.Contains(res.stdout, ".trellis/rules.toml") {
+		t.Errorf("stdout should carry the next-step pointer to .trellis/rules.toml; got:\n%s", res.stdout)
+	}
+	if strings.Contains(res.stdout, "/trellis:setup") {
+		t.Errorf("stdout still points at the setup skill, retired by decision-0072; got:\n%s", res.stdout)
 	}
 	if strings.Contains(res.stdout, "trust-dialog") || strings.Contains(res.stdout, "workspace-trust dialog") {
 		t.Errorf("personal scope must NOT print the project-only trust-dialog note; got:\n%s", res.stdout)
@@ -375,9 +379,13 @@ func TestVendorProjectScopeFreshInstallFromRoot(t *testing.T) {
 	if strings.Contains(status, "A  ") {
 		t.Errorf("item 4 (no mutation): nothing should be staged — install.sh must never run git add; status:\n%s", status)
 	}
-	// item 5: the next-step pointer to /trellis:setup.
-	if !strings.Contains(res.stdout, "/trellis:setup") {
-		t.Errorf("item 5 (next step): stdout missing the /trellis:setup pointer; got:\n%s", res.stdout)
+	// item 5: the next-step pointer. decision-0072 retired /trellis:setup, so the
+	// pointer is now the file the consumer edits.
+	if !strings.Contains(res.stdout, ".trellis/rules.toml") {
+		t.Errorf("item 5 (next step): stdout missing the .trellis/rules.toml pointer; got:\n%s", res.stdout)
+	}
+	if strings.Contains(res.stdout, "/trellis:setup") {
+		t.Errorf("item 5: stdout still points at the setup skill, retired by decision-0072; got:\n%s", res.stdout)
 	}
 }
 

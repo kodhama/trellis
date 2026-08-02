@@ -104,14 +104,14 @@ ignore entries.
 
 **The no-op predicate counts all three installed shapes, not two.** Say Trellis is
 **already absent** — and make no change — only when there is no managed block, no overlay, **and no
-`.claude/rules/trellis.md`**. A curl install that has not yet run `/trellis:setup` has the rendered
+`.claude/rules/trellis.md`**. A curl install has the rendered
 file and neither of the other two: reporting that project "already absent" would leave an
 always-loaded governing file on disk while telling the user Trellis was gone. A second remove is
 this same reported no-op, once all three are genuinely absent.
 
 ## Reversing an M2 morph
 
-If this project was changed by the **M2 morph** (`/trellis:setup`'s model-driven rewrite of the
+If this project was changed by the **M2 morph** (the retired setup skill's model-driven rewrite of the
 project's own files, on the `trellis/morph` branch), there is no overlay to strip — the reversal is
 **git's**, using the rollback point the morph recorded: the `trellis-pre-morph` tag, or the SHA in
 `.trellis/rollback`. Show the user the options (`git reset --hard trellis-pre-morph`, `git revert`,

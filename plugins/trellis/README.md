@@ -49,8 +49,8 @@ install has been evidenced**: no recorded check has exercised installing this pa
 marketplace listing, on either host, so a catalog entry means Trellis is listed — not that the
 listed install path has been shown to work.
 
-Applying a preset **replaces** rows, strictness and `seeded_from`; `/trellis:setup` diffs first
-and requires explicit confirmation. There is no per-host disable: `/trellis:remove` removes both
+Applying a preset **replaces** rows, strictness and `seeded_from`, so replacing a file you
+already have is a git diff you review like any other edit. There is no per-host disable: `/trellis:remove` removes both
 host blocks and the shared overlay. The parked `seed` and `custom` presets stay parked.
 
 ## Install
@@ -64,15 +64,13 @@ resolved):
 /plugin install trellis@kodhama
 ```
 
-Then run the setup skill in any project:
+That is the whole install. Installing at **project scope is the adoption act** — the shipped
+defaults apply immediately, all fourteen rules at the adaptive posture, with no further
+command and no file required (`decision-0070`).
 
-```
-/trellis:setup
-```
-
-It asks for a **posture** (conductor / author-adapt — or reads the config from
-`.trellis/rules.toml` if the project already carries one, asking nothing) and copies Trellis onto
-your project as an **overlay**, split by who owns what (`decision-0051`):
+To change the posture, write `.trellis/rules.toml` yourself: `strictness = "firm"` for the
+by-the-book posture, `active = false` on a row to turn that rule off. Older projects still
+carry an **overlay**, split by who owns what (`decision-0051`):
 
 - **`.trellis/` root — yours.** `rules.toml` alone (the machine-read config: one row per rule,
   `active = true|false`, plus a `strictness` key), seeded once from the payload and **never
@@ -95,7 +93,11 @@ very next session. Augment-never-clobber; nothing else is touched, and it's idem
 
 ## Migrating an older install
 
-`/trellis:setup`'s refresh **is** the migration vehicle — no flag-day:
+Migration is a manual edit since `decision-0072` retired the setup skill. Delete
+`.trellis/internal/` (or the pre-`decision-0051` flat files directly in `.trellis/`) and the
+managed block from your instructions file, keeping `.trellis/rules.toml`. The plugin then
+delivers the rules and the hook stops nudging. What the old refresh handled, and what you
+now handle yourself:
 
 - **Flat-layout overlays** (generated files directly in `.trellis/`, from before `decision-0051`):
   a refresh writes the new layout, deletes the old-path copies, and seeds `rules.toml` from the
@@ -111,21 +113,17 @@ very next session. Augment-never-clobber; nothing else is touched, and it's idem
 
 ## What it bundles
 
-- **`skills/setup`** — `/trellis:setup`: install or refresh the overlay (done natively, no binary),
-  and — only on explicit request — the **M2 morph**: a model-driven rewrite of the project's own
-  instructions on a `trellis/morph` git branch, with a recorded rollback point, for the human to
-  review (`kodhama-0007` rule 5 moved M2 hosting here from the retired binary).
 - **`skills/remove`** — `/trellis:remove`: cleanly reverse the overlay (strip the Claude and Codex
   blocks, then delete `.trellis/`, touching nothing else), and point a morphed project at its git
   rollback.
 - **`reference/`** — the pre-rendered payload (`kodhama-0007`): `invariants.md` (the full signature
   catalog: every invariant with its *why* and a with/without example), the complete rules readout
   (`rules.md`, opened by the live-rows authority header), the `rules-<p>.toml` posture seeds,
-  every posture variant of the header and managed blocks, and the checksum manifest the setup
-  skill verifies against.
+  every posture variant of the header and managed blocks, and the checksum manifest
+  `install.sh` verifies against.
 - **`hooks/`** — host-isolated hooks: Claude's `SessionStart` staleness hook stays quiet until the installed plugin's payload differs
   from the overlay in your project (`decision-0039` rule 1, mechanics per `decision-0043`), then
-  nudges you once: *"the overlay may be stale — run `/trellis:setup`."* Binary-free and network-free:
+  nudges you once, with the manual migration steps. Binary-free and network-free:
   it compares your project's `.trellis/internal/version` stamp to the installed plugin's
   `reference/version` — file to file — so it can tell you the overlay is *behind the installed
   plugin*, not how far behind the marketplace. (A stamp still at the legacy flat path

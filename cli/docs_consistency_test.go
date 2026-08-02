@@ -25,6 +25,13 @@ var docSurfaces = []string{
 	// consumer reads. Leaving the source out meant the one file most likely to
 	// be edited was the one file nothing verified.
 	"../docs/lp-content.md",
+	// Added 2026-08-02 while retiring /trellis:setup (decision-0072). These three
+	// are user-facing surfaces that advertised the skill and were NOT checked here,
+	// so the guard would have gone green with three files still teaching a command
+	// the plugin no longer has — the same gap the lp-content.md note above records.
+	"../plugins/trellis/README.md",
+	"../plugins/trellis/skills/remove/SKILL.md",
+	"README.md",
 }
 
 // proseAfterTrellis are lowercase words that legitimately follow "trellis" in prose

@@ -48,8 +48,9 @@
 # how the rules actually reach a session, since a vendored bundle alone delivers
 # none (decision-0068; issue #201). It touches a project's .trellis/ at exactly ONE
 # point — seeding .trellis/rules.toml from the shipped preset when none exists
-# (decision-0070 D2), never overwriting; otherwise .trellis/ is /trellis:setup's
-# job entirely. It DOES therefore pick a posture, the adaptive one, by copying
+# (decision-0070 D2), never overwriting; otherwise .trellis/ is the consumer's
+# to edit (decision-0072 retired the setup skill). It DOES therefore pick a
+# posture, the adaptive one, by copying
 # rules-b.toml: that is a shipped constant, not a decision this script makes, but
 # the header used to claim "no posture choice" full stop and that reads as false
 # next to the seed. It reads no project file to decide anything, and it NEVER runs
@@ -116,9 +117,9 @@ install.sh — vendor the Trellis Claude Code plugin onto disk (skills-directory
   curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
   sh install.sh [--scope personal|project] [--non-interactive]
 
-This is the ONLY decision this script makes. Everything else — posture, which
-instructions file to patch, and so on — is asked by /trellis:setup once the plugin
-is on disk; see the "next steps" this script prints when it finishes.
+This is the ONLY decision this script makes. The posture ships as a constant
+(the adaptive preset) and is yours to change afterwards by editing
+.trellis/rules.toml; see the "next steps" this script prints when it finishes.
 
 Flags:
   --scope personal|project   where to vendor the plugin. Also settable via
@@ -295,12 +296,12 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
+f102f73148ffda902fd6a345b976e340eabe7b56c4dbd580c6d15c545eec55e7  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 3da7f2cf8765fe95d1936a36d3341736f16b438353f2130368af58897dad20c4  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-fdfba6c271dc49d4bf8adede80bc4e1e4cfd5f275c7a863d6a11a7b7d07b72e9  hooks/staleness.sh
+4283c3ea0790a1cdbe7c780cb02c19dbd20dbcf6243f471f3016aa4979a9264a  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -316,8 +317,7 @@ a675233ee08c0c41b5c0490a163f4d6ff4e95c6bbf9964eac59e4772f6597454  reference/rule
 d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trellis-a.md
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
 f63c4d15f8ce3cf4932ed3412e141e3e47b886daed15223c8402b1c3718049c3  reference/version
-83170b02a34ab55a4daa630e81fd84ec9a1a10ec8e8adc6d0924b6867ed3f1df  skills/remove/SKILL.md
-a2b7cf9eb8617fd92e99d89fae9a4eadbf5d3ea0bdc16686b16a7087336eb524  skills/setup/SKILL.md
+dc981bb8def6820bc8ff4c6b82785569d50016fd41e52adf1dc209a561234a44  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -500,9 +500,10 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
     say "create it and has not removed it. Delete that file, or migrate off the"
     say "static overlay, before relying on either."
   fi
-  say "Migrate first: run /trellis:setup and accept the migration (it removes the"
-  say "overlay and the managed block, keeping your .trellis/rules.toml rows), or"
-  say "/trellis:remove to take Trellis out entirely. Then re-run this installer."
+  say "Migrate first: delete the vendored overlay (.trellis/internal/ and the"
+  say "managed block in your instructions file), keeping your .trellis/rules.toml"
+  say "rows — or /trellis:remove to take Trellis out entirely. Then re-run this"
+  say "installer."
 elif [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
   mkdir -p "$rules_dir" || fail "could not create $rules_dir (is .claude/rules present as a file?). The bundle is already vendored; re-run once the path is clear."
@@ -568,7 +569,7 @@ elif [ "$scope" = "project" ]; then
     printf '**If the posture sentence above and the rows below disagree, the rows win:**\n'
     printf 'the `strictness` key in `.trellis/rules.toml` is authoritative. The sentence\n'
     printf 'above was fixed when this file was written; the rows are read fresh every\n'
-    printf 'session. Run `/trellis:setup` to change the posture.\n'
+    printf 'session. Edit `strictness` in `.trellis/rules.toml` to change the posture.\n'
     printf '\n'
     printf '## Project rule activation\n'
     printf '\n'
@@ -701,12 +702,14 @@ case "${seeded_rows:-}" in
   yes)
     say "This project is governed now: all fourteen rules are active, followed by"
     say "default with deviations said out loud. .trellis/rules.toml holds the rows —"
-    say "it is yours to edit, and /trellis:setup can swap the posture or turn rules off."
+    say "it is yours to edit: strictness = \"firm\" for the by-the-book posture,"
+    say "active = false on a row to turn that rule off."
     ;;
   failed)
     say "Could not write .trellis/rules.toml (permissions?). The rules file is in place,"
     say "but until those rows exist only floor-transparency and floor-intent-gate apply."
-    say "Run /trellis:setup, or create .trellis/rules.toml yourself, to activate the rest."
+    say "Create .trellis/rules.toml yourself to activate the rest — copy the preset"
+    say "from the installed plugin's reference/rules-b.toml."
     ;;
   *)
     # Nothing was seeded on this run — either the rows already existed, or the
@@ -719,11 +722,12 @@ case "${seeded_rows:-}" in
       # and was no longer told so.
       say "This project has no .trellis/rules.toml, so only floor-transparency and"
       say "floor-intent-gate apply — every other rule is gated on a row in that file."
-      say "Run /trellis:setup, or write it yourself, to activate the rest."
+      say "Write it yourself to activate the rest — copy the preset from the"
+      say "installed plugin's reference/rules-b.toml."
     else
-      say "Run /trellis:setup to change the posture or turn individual rules off. That"
-      say "skill (the real interactive writer — LLM-driven, no decision logic in this"
-      say "script) writes .trellis/rules.toml and nothing else (decision-0065)."
+      say "Edit .trellis/rules.toml to change the posture or turn individual rules"
+      say "off: strictness = \"firm\" for by-the-book, active = false on a row. That"
+      say "file is yours and is the authority (decision-0053)."
     fi
     ;;
 esac

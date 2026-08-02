@@ -42,7 +42,6 @@ framing, which is why this copy changed):
   ```
   > /plugin marketplace add kodhama/kodhama
   > /plugin install trellis@kodhama
-  > /trellis:setup    # optional — changes posture or turns rules off
   ```
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
@@ -140,9 +139,9 @@ Four-step flow (`01` – `04`):
    `.claude/rules/`. Never both — the hook stands down when it finds the
    rendered file, and says so if it ever sees both.
 4. **04 · verify — You approve.** The curl path checks every byte against
-   a shipped checksum manifest before it writes one. `/trellis:setup`
-   diffs and asks before replacing rows you already have. Trellis
-   proposes; the merge is yours.
+   a shipped checksum manifest before it writes one, and never
+   overwrites rows you already have — `.trellis/rules.toml` is seeded
+   only when it is absent. Trellis proposes; the merge is yours.
 
 **Repo footprint** (rendered as a small code block, not the terminal
 pattern — this is a file-tree illustration, not a shell session):

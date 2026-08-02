@@ -126,8 +126,16 @@ func TestStalenessHook(t *testing.T) {
 		if v.HookSpecificOutput.HookEventName != "SessionStart" {
 			t.Errorf("want nested SessionStart envelope, got %q", out)
 		}
-		if !strings.Contains(v.HookSpecificOutput.AdditionalContext, "/trellis:setup") {
-			t.Errorf("message should point at /trellis:setup: %q", v.HookSpecificOutput.AdditionalContext)
+		// decision-0072 retired /trellis:setup, which every nudge used to name as
+		// the remedy. The property this assertion actually guards is that a nudge
+		// is ACTIONABLE — it must still say what to remove and what survives, or
+		// it is a notification with no way out of the state it reports.
+		ctx := v.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "delete") || !strings.Contains(ctx, ".trellis/rules.toml") {
+			t.Errorf("a nudge must name the manual migration — what to delete, and that rules.toml is kept: %q", ctx)
+		}
+		if strings.Contains(ctx, "/trellis:setup") {
+			t.Errorf("nudge still points at the setup skill, retired by decision-0072: %q", ctx)
 		}
 		return v.HookSpecificOutput.AdditionalContext
 	}
