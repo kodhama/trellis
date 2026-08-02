@@ -726,7 +726,7 @@ Self-checked against `core/rubrics/artifact-contract.md`:
 | Check | Result | Evidence |
 |---|---|---|
 | 1. Required frontmatter present and typed | PASS | `id`, `type`, `status`, `depends_on`, and `owner` are present; lists and strings are well-typed. |
-| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` is in this repo's declared lifecycle. |
+| 2. Type and lifecycle | PASS | `type: spec`; `status: gated` **at the time of this check** (2026-07-24) is in this repo's declared lifecycle. The record is `approved` as of 2026-08-02 — see the note below the rubric. |
 | 3. Unique id | PASS | Repository scan finds no other `spec-0007`. |
 | 4. Dependencies resolve | PASS | `decision-0058`, `spec-0004`, and `spec-0006` resolve locally. The specs predate version materialization and carry no version to pin; the append-only decision must not be version-pinned. |
 | 5. Directional flow | PASS | Dependencies are approved/ratified/gated, never draft. |
