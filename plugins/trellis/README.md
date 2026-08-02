@@ -69,10 +69,11 @@ That is the whole install **on Claude Code**, where installing at project scope 
 act — the shipped defaults apply immediately, all fourteen rules at the adaptive posture, with no
 further command and no file required (`decision-0070` D3).
 
-**Codex is not supported.** The machinery is here — `hooks/codex-context.mjs`, a
-`.codex-plugin/` manifest, a catalog entry — and none of it is claimed as a supported path
-(`kodhama-0021` §2). It is carried, not maintained: Codex behaviour is not kept in step with
-the Claude path, and a difference between them is expected rather than a defect. `#220` holds
+**Codex is not supported yet.** It remains a delivery target (`kodhama-0013`) with **no date
+attached**. The machinery is already here — `hooks/codex-context.mjs`, a `.codex-plugin/`
+manifest, a catalog entry — and none of it is claimed as a supported path (`kodhama-0021` §2).
+Until it is, Codex is carried rather than maintained: its behaviour is not kept in step with the
+Claude path, and a difference between them is expected rather than a defect to file. `#220` holds
 what a supported Codex distribution would require. Its adoption signal also differs —
 `codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
 when there is none, so the project-scope default above is Claude-only (`decision-0070` D7).
