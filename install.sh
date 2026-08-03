@@ -6,7 +6,7 @@
 # there): it downloads no binary and, more importantly, makes exactly ONE decision
 # (where to put the plugin) and composes NOTHING else. Every other decision —
 # posture, which instructions file to patch, block style, hand-authored-content
-# guarding — stays entirely inside plugins/trellis/skills/setup/SKILL.md, unmodified
+# guarding — stayed entirely inside the retired setup skill's SKILL.md, unmodified
 # and identical whether the plugin arrived via marketplace, a pre-committed
 # skills-dir vendor (this script), or the manual copy path. A second independent
 # writer of that skill's *decision logic* is exactly the drift-risk class
@@ -48,8 +48,9 @@
 # how the rules actually reach a session, since a vendored bundle alone delivers
 # none (decision-0068; issue #201). It touches a project's .trellis/ at exactly ONE
 # point — seeding .trellis/rules.toml from the shipped preset when none exists
-# (decision-0070 D2), never overwriting; otherwise .trellis/ is /trellis:setup's
-# job entirely. It DOES therefore pick a posture, the adaptive one, by copying
+# (decision-0070 D2), never overwriting; otherwise .trellis/ is the consumer's
+# to edit (decision-0072 retired the setup skill). It DOES therefore pick a
+# posture, the adaptive one, by copying
 # rules-b.toml: that is a shipped constant, not a decision this script makes, but
 # the header used to claim "no posture choice" full stop and that reads as false
 # next to the seed. It reads no project file to decide anything, and it NEVER runs
@@ -116,9 +117,9 @@ install.sh — vendor the Trellis Claude Code plugin onto disk (skills-directory
   curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
   sh install.sh [--scope personal|project] [--non-interactive]
 
-This is the ONLY decision this script makes. Everything else — posture, which
-instructions file to patch, and so on — is asked by /trellis:setup once the plugin
-is on disk; see the "next steps" this script prints when it finishes.
+This is the ONLY decision this script makes. The posture ships as a constant
+(the adaptive preset) and is yours to change afterwards by editing
+.trellis/rules.toml; see the "next steps" this script prints when it finishes.
 
 Flags:
   --scope personal|project   where to vendor the plugin. Also settable via
@@ -283,7 +284,20 @@ stage="$(mktemp -d "${TMPDIR:-/tmp}/trellis-vendor.XXXXXX")"
 #      announcing success for an install it had refused. $rc is captured first
 #      and re-raised, so the trap can no longer launder a failure into a pass.
 rendered_tmp=""
-cleanup() { rm -rf "$stage"; [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp"; }
+target_new=""
+target_old=""
+cleanup() {
+  rm -rf "$stage"
+  [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp"
+  # A swap that died between the two moves leaves the target missing and the
+  # previous install parked at $target_old. Put it back rather than leaving the
+  # consumer with no plugin at all.
+  [ -n "$target_new" ] && rm -rf "$target_new"
+  if [ -n "$target_old" ] && [ -d "$target_old" ]; then
+    [ -d "$target" ] || mv "$target_old" "$target" 2>/dev/null || true
+    rm -rf "$target_old"
+  fi
+}
 trap 'rc=$?; cleanup; exit $rc' EXIT
 trap 'cleanup; exit 130' INT
 trap 'cleanup; exit 129' HUP
@@ -295,29 +309,28 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-57fa1bcd8c250d33013a750974c5bd49fe6a44882cee878dbc90b9b737d64f0e  README.md
+363f3f36f36748355d4a07c2b1b6d1009f4da3b1c78c4258cd41976286d48bdf  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 3da7f2cf8765fe95d1936a36d3341736f16b438353f2130368af58897dad20c4  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-fdfba6c271dc49d4bf8adede80bc4e1e4cfd5f275c7a863d6a11a7b7d07b72e9  hooks/staleness.sh
+8016f6cc9402ae84365c60538323f66428ba61287d6513bd5e7c435883fa51e3  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
-3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
+3a2e43eeff953642a19946e8a1671487137f832b0e4aa1e62d2639998a8a4bfe  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
 f15315d1df95ca5df6bc59901e65691ffb77187e45f4df0a5438365e80149342  reference/block-inline-a.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-b-head.md
 f8efb5a0cd6f636164d8283c738a264b775671b10cb1e984613bb96f9ddef933  reference/block-inline-b.md
 a33f9904a063986caab0ccc156a229b959c232829c1f1b90c252377d3c028795  reference/block-inline-tail.md
-4318ba1db3eb5f270415e1288bfb179acc6229c27a276611ddd4e0fc9d76b214  reference/checksums
+32d89c062c7a19fdb9ec3cd75f531a6e3db7a7e80014b0598a2e06227596800d  reference/checksums
 68b803d9f4a45fc1af07c327a35c4a4b58aac878b233a4196079dac419bd28b3  reference/invariants.md
 a675233ee08c0c41b5c0490a163f4d6ff4e95c6bbf9964eac59e4772f6597454  reference/rules-a.toml
 534c9178b4c5173f6dd51f382a48b970cc263a83d410c0e9fff6c41a7c937386  reference/rules-b.toml
 238fca2fb2c9e91af22764fc403da9b0dc8625291ef8fc4530d52c1a2618df0e  reference/rules.md
 d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trellis-a.md
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
-f63c4d15f8ce3cf4932ed3412e141e3e47b886daed15223c8402b1c3718049c3  reference/version
-83170b02a34ab55a4daa630e81fd84ec9a1a10ec8e8adc6d0924b6867ed3f1df  skills/remove/SKILL.md
-a2b7cf9eb8617fd92e99d89fae9a4eadbf5d3ea0bdc16686b16a7087336eb524  skills/setup/SKILL.md
+51ab18b3eafb46df2a5d085eac0b66b7175e07972193185870cd943e277c1896  reference/version
+13d071ae21e31b4421791e1d347d03265558cdd3c85b4124e9497ad06ad89016  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -348,12 +361,34 @@ $out"
 #         a few paths EXIST there, never any file's contents,
 #         and this script never runs a git command that mutates anything)
 
-mkdir -p "$target"
+# The bundle REPLACES the target rather than being copied over it. Copying in
+# place only ever creates and overwrites, so a file that LEAVES the bundle
+# survives every future upgrade: when decision-0072 retired the setup skill, an
+# existing curl install kept the directory on disk and Claude Code kept
+# discovering the retired setup skill from it — the retirement reached new
+# installs and missed exactly the consumers who could not be told. That is a
+# class, not one skill, so the fix is the swap and not a delete-list.
+target_new="$target.new.$$"
+target_old="$target.old.$$"
+rm -rf "$target_new"
+mkdir -p "$target_new" || fail "could not create $target_new (permissions?). Nothing was changed."
 for f in $bundle_files; do
-  mkdir -p "$target/$(dirname "$f")"
-  cp "$stage/bundle/$f" "$target/$f"
+  mkdir -p "$target_new/$(dirname "$f")"
+  cp "$stage/bundle/$f" "$target_new/$f"
 done
-chmod +x "$target/hooks/staleness.sh"
+chmod +x "$target_new/hooks/staleness.sh"
+if [ -e "$target" ]; then
+  mv "$target" "$target_old" || fail "could not move the existing install aside ($target). Nothing was changed."
+fi
+if mv "$target_new" "$target"; then
+  target_new=""
+  rm -rf "$target_old"
+  target_old=""
+else
+  [ -d "$target_old" ] && mv "$target_old" "$target" 2>/dev/null
+  target_old=""
+  fail "could not put the new bundle in place at $target. The previous install was restored."
+fi
 
 stamp="$(head -n1 "$stage/bundle/reference/version" 2>/dev/null | tr -d '[:space:]')"
 nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
@@ -403,8 +438,16 @@ if [ "$scope" = "project" ]; then
   #     TRACKED in this tree, and decision-0043 scopes that exception to the
   #     repo's OWN self-hosted overlay. The shape is real; the reason given for
   #     it was not.)
-  [ -d "$git_root/.trellis/internal" ] && static_conflict=".trellis/internal/ overlay"
-  [ -z "$static_conflict" ] && [ -f "$git_root/.trellis/trellis.md" ] && static_conflict="legacy flat .trellis/ overlay"
+  # $conflict_paths is what the remedy below tells the user to DELETE, and it has
+  # to name the shape actually found. The remedy used to be hard-coded to
+  # .trellis/internal/ while this variable took three values — so a flat-overlay
+  # or managed-block project was told to delete something it does not have,
+  # deleted nothing, and hit this same refusal on every subsequent run. The
+  # sibling defect in staleness.sh was fixed earlier in this branch; this is the
+  # same class in the other script, and it was missed there first.
+  conflict_paths=""
+  [ -d "$git_root/.trellis/internal" ] && { static_conflict=".trellis/internal/ overlay"; conflict_paths=".trellis/internal/ and the managed block in your instructions file"; }
+  [ -z "$static_conflict" ] && [ -f "$git_root/.trellis/trellis.md" ] && { static_conflict="legacy flat .trellis/ overlay"; conflict_paths=".trellis/trellis.md, .trellis/version if present, and the managed block in your instructions file"; }
   # The INLINE managed block needs its own check, and this is the ONE content
   # read in the script. The existence tests above cannot reach it: the inline
   # form embeds the whole rules body in CLAUDE.md and needs no .trellis/internal/
@@ -430,7 +473,7 @@ if [ "$scope" = "project" ]; then
   #   - Prose that merely NAMED the delimiters matched twice. Column-0 anchoring
   #     fixes that: documentation writes the marker mid-sentence.
   # Opening marker only, anchored at column 0, with an optional leading UTF-8
-  # BOM. The BOM matters for the same reason it does in staleness.sh: setup wrote
+  # BOM. The BOM matters for the same reason it does in staleness.sh: a past setup wrote
   # the block at line 1 of a fresh CLAUDE.md, and an editor on a Windows-default
   # checkout rewrites the encoding. Without it a real block escapes the check and
   # renders into live double delivery -- the same fail-open direction, on the
@@ -457,7 +500,7 @@ if [ "$scope" = "project" ]; then
     bom="$(printf '\357\273\277')"
     for f in CLAUDE.md AGENTS.md; do
       grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$git_root/$f" 2>/dev/null \
-        && { static_conflict="managed block in $f"; break; }
+        && { static_conflict="managed block in $f"; conflict_paths="the managed block in $f, from its trellis:begin marker to its trellis:end marker (there is no overlay directory in this shape)"; break; }
     done
   fi
 fi
@@ -500,9 +543,9 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
     say "create it and has not removed it. Delete that file, or migrate off the"
     say "static overlay, before relying on either."
   fi
-  say "Migrate first: run /trellis:setup and accept the migration (it removes the"
-  say "overlay and the managed block, keeping your .trellis/rules.toml rows), or"
-  say "/trellis:remove to take Trellis out entirely. Then re-run this installer."
+  say "Migrate first: delete $conflict_paths,"
+  say "keeping your .trellis/rules.toml rows — or /trellis:remove to take Trellis"
+  say "out entirely. Then re-run this installer."
 elif [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
   mkdir -p "$rules_dir" || fail "could not create $rules_dir (is .claude/rules present as a file?). The bundle is already vendored; re-run once the path is clear."
@@ -568,7 +611,7 @@ elif [ "$scope" = "project" ]; then
     printf '**If the posture sentence above and the rows below disagree, the rows win:**\n'
     printf 'the `strictness` key in `.trellis/rules.toml` is authoritative. The sentence\n'
     printf 'above was fixed when this file was written; the rows are read fresh every\n'
-    printf 'session. Run `/trellis:setup` to change the posture.\n'
+    printf 'session. Edit `strictness` in `.trellis/rules.toml` to change the posture.\n'
     printf '\n'
     printf '## Project rule activation\n'
     printf '\n'
@@ -630,7 +673,7 @@ elif [ "$scope" = "project" ]; then
   #
   # This amends decision-0065:26-29, the plugin/install split ("install.sh is
   # vendoring and never configures ... and continues to never touch .trellis/") —
-  # NOT :18-19's "setup writes exactly one file", which binds the skill and is
+  # NOT :18-19's "the setup skill writes exactly one file", which bound it and is
   # untouched. That clause was named here, and in three other places, before the
   # boundary was got right. Openly,
   # in decision-0070 D2, not by routing around it. The clause's purpose, that no
@@ -701,12 +744,14 @@ case "${seeded_rows:-}" in
   yes)
     say "This project is governed now: all fourteen rules are active, followed by"
     say "default with deviations said out loud. .trellis/rules.toml holds the rows —"
-    say "it is yours to edit, and /trellis:setup can swap the posture or turn rules off."
+    say "it is yours to edit: strictness = \"firm\" for the by-the-book posture,"
+    say "active = false on a row to turn that rule off."
     ;;
   failed)
     say "Could not write .trellis/rules.toml (permissions?). The rules file is in place,"
     say "but until those rows exist only floor-transparency and floor-intent-gate apply."
-    say "Run /trellis:setup, or create .trellis/rules.toml yourself, to activate the rest."
+    say "Create .trellis/rules.toml yourself to activate the rest — copy the preset"
+    say "from the installed plugin's reference/rules-b.toml."
     ;;
   *)
     # Nothing was seeded on this run — either the rows already existed, or the
@@ -719,11 +764,12 @@ case "${seeded_rows:-}" in
       # and was no longer told so.
       say "This project has no .trellis/rules.toml, so only floor-transparency and"
       say "floor-intent-gate apply — every other rule is gated on a row in that file."
-      say "Run /trellis:setup, or write it yourself, to activate the rest."
+      say "Write it yourself to activate the rest — copy the preset from the"
+      say "installed plugin's reference/rules-b.toml."
     else
-      say "Run /trellis:setup to change the posture or turn individual rules off. That"
-      say "skill (the real interactive writer — LLM-driven, no decision logic in this"
-      say "script) writes .trellis/rules.toml and nothing else (decision-0065)."
+      say "Edit .trellis/rules.toml to change the posture or turn individual rules"
+      say "off: strictness = \"firm\" for by-the-book, active = false on a row. That"
+      say "file is yours and is the authority (decision-0053)."
     fi
     ;;
 esac

@@ -13,24 +13,42 @@ things non-negotiable — and surfaces every time something bends — without di
 
 ## Get started
 
-**Claude Code (the primary path)** — install the plugin from the kodhama family marketplace, then
-run the setup skill in any project:
+**Claude Code (the primary path)** — install the plugin from the kodhama family marketplace.
+That is the whole install:
 
 ```
 /plugin marketplace add kodhama/kodhama
 /plugin install trellis@kodhama
-/trellis:setup
 ```
 
-`/trellis:setup` asks one thing — a **posture** (`conductor` / `author-adapt`) — or reads the
-config from `.trellis/rules.toml` if the project already carries one, then copies Trellis onto
-your project by writing **one file**: `.trellis/rules.toml`, seeded from the preset you pick
-(which rules apply — edit a row, done: rows govern at read time, `decision-0053`). It vendors
+Installing the plugin at **project scope is the adoption act** — no further command, no file
+required (`decision-0070`). The shipped defaults apply: all fourteen rules, adaptive posture.
+To change that, the recipe depends on whether you already have a `.trellis/rules.toml`:
+
+- **No file yet** — copy a complete preset from the installed plugin: `reference/rules-a.toml`
+  for the firm posture, `rules-b.toml` for adaptive. Then set `active = false` on any row you
+  want off (rows govern at read time, `decision-0053`). **Copy the whole file, never hand-write
+  a partial one:** the hook validates your rows against the shipped set and injects nothing if
+  any slug is missing, so a file containing `strictness` alone leaves the project ungoverned.
+- **File already there** — edit it **in place**: change `strictness` (and `seeded_from` to
+  match), flip individual rows. **Do not copy a preset over it** — both presets set every row
+  active, so a posture-only change made by copying silently re-enables every rule you turned
+  off.
+- **The file is the one-line `governed = false` opt-out** — Trellis is switched off for this
+  project (`decision-0070` D5). Re-enabling is a **replace, not an edit**: editing `strictness`
+  beside the opt-out leaves it in force and the hook stays silent, and deleting the line alone
+  leaves the partial file described above. Confirm that turning governance back on is what you
+  want, then write a complete preset over it. The plugin vendors
 nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
 plugin's payload, so there is no copy in your repo to install, refresh or let drift
 (`decision-0065`). A project set up before that change still carries a vendored `.trellis/`
 bundle and a managed block in your `CLAUDE.md`, and keeps working — the hook detects the overlay
-and steps aside, so the rules still arrive exactly once. `/trellis:setup` offers to migrate it.
+and steps aside, so the rules still arrive exactly once. To migrate it, delete the overlay and the
+managed block, keeping `.trellis/rules.toml` — **and the overlay's path depends on its age**:
+`.trellis/internal/` for a `decision-0051` layout, `.trellis/trellis.md` plus `.trellis/version`
+for a flat one from before it. Deleting only `internal/` on a flat-layout project removes the
+managed block and leaves the legacy stamp, which the hook then detects — still ungoverned, one
+repair later.
 That earlier behaviour — the managed block, the vendored bundle, and an optional **M2 morph**
 rewriting your own instructions on a fresh git branch — is retired for new installs; only existing
 consumers still carry it. The plugin lives in [`plugins/trellis`](plugins/trellis).
@@ -48,9 +66,9 @@ preset when none exists, so the project is governed at 14/14 on the adaptive pos
 script exits (`decision-0070` D2). That is how the rules actually reach a session:
 `decision-0068` measured that the vendored bundle alone delivered **none** (issue #201), which is
 why this paragraph no longer says the script "composes nothing else". It is Claude Code only, and
-`--scope personal` delivers no rules at all; each run prints whichever limit applies to it. `/trellis:setup` is no longer how governance
-starts — it is how you change it, to the firm posture or to turn individual rules off
-(`decision-0070`; retirement tracked in `#219`):
+`--scope personal` delivers no rules at all; each run prints whichever limit applies to it.
+Governance starts with adoption, not with a command — editing `.trellis/rules.toml` is how you
+change it afterwards (`decision-0070`; the setup skill retired by `decision-0072`, `#219`):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
@@ -82,18 +100,26 @@ curl -fsSLO https://raw.githubusercontent.com/kodhama/trellis/main/install.sh
 less install.sh && sh install.sh --scope personal
 ```
 
-Neither path needs `/trellis:setup` to become governed — the curl path seeds the rows and a
-project-scoped plugin applies the shipped defaults without any file at all (`decision-0070`). Run
-it when you want the **firm** posture instead of the default adaptive one, or to turn individual
-rules off.
+Neither path needs a command to become governed — the curl path seeds the rows and a
+project-scoped plugin applies the shipped defaults without any file at all (`decision-0070`).
+When you want the **firm** posture instead of the default adaptive one, or to turn individual
+rules off: copy the matching preset (`reference/rules-a.toml` / `rules-b.toml`) if you have no
+`.trellis/rules.toml` yet, otherwise edit the one you have in place. The row set must stay
+complete, and copying over an existing file discards every row you disabled.
 
-### Local Codex support — Phase 1
+### Local Codex — carried, not supported
 
-The same plugin supports Codex, and since `decision-0065` both hosts work the same way **on the
-plugin path**: a `SessionStart(startup)` hook injects the rules from the plugin's own payload,
-together with the project's `.trellis/rules.toml`. The **curl** path is Claude-only — it delivers
-through `.claude/rules/`, which is a Claude mechanism (`decision-0068` D7). Setup installs no receipt and no fallback — it writes the config
-file and nothing else.
+**Codex is not supported yet.** It remains a delivery target (`kodhama-0013`) with **no date
+attached**, and until it is claimed, nothing here is kept in step with the Claude path
+(`kodhama-0028`; `kodhama-0021` §2). `#220` holds what a supported Codex distribution would
+require.
+
+What exists: since `decision-0065` the plugin path works the same shape on both hosts — a
+`SessionStart(startup)` hook injects the rules from the plugin's own payload together with the
+project's `.trellis/rules.toml`. The **curl** path is Claude-only, delivering through
+`.claude/rules/`, which is a Claude mechanism (`decision-0068` D7). Adoption also differs: on
+Codex the config file is the adoption signal, so there is no project-scope default
+(`decision-0070` D7).
 
 A project that still carries a vendored `.trellis/internal/` overlay is read from that overlay
 instead, on both hosts, so nothing is delivered twice and no existing consumer breaks. The hook
@@ -103,16 +129,16 @@ choosing one. A valid row
 edit is seen at the next startup without refresh, and does not change a context already in
 flight.
 
-Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
-bootstrap-only degradation; Trellis adds no project runtime, daemon, or network service. Native
-hook success is stronger than the fallback: fallback execution remains model-directed rather
-than deterministic.
+Native Codex delivery requires local **Node.js 20** or newer; without it the hook cannot run and
+nothing reports that, which is one of the things `#220` covers. Trellis adds no project runtime,
+daemon, or network service. Native hook success is stronger than the fallback: fallback execution
+remains model-directed rather than deterministic.
 
 Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desktop, IDE,
 headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
 host blocks and the shared overlay. Applying a preset **replaces** the consumer's rows, strictness
-and `seeded_from` — `/trellis:setup` diffs first and requires explicit confirmation before
-overwriting an existing file (`decision-0065`). Also excluded are any other host-native
+and `seeded_from`, so replacing a file you already have shows up as a git diff — provided the file
+is committed, which the installer suggests but never does for you (`decision-0072` §3). Also excluded are any other host-native
 transport, and revival of the parked `seed` or `custom` presets.
 
 **Any other harness — the manual copy path.** This is for harnesses the plugin does **not** cover.
@@ -190,7 +216,7 @@ the [project site](https://kodhama.github.io/trellis/invariants.html)). The thes
 ## Two ways to run it
 
 - **Advisor** *(open, no runtime — shipped)* — Trellis composes onto your project as instructions your
-  agents **consult**; nothing of Trellis runs at agent-time. This is what `/trellis:setup` (or the
+  agents **consult**; nothing of Trellis runs at agent-time. This is what the plugin (or the
   manual copy path) installs today. On the plugin and curl paths that is `.trellis/rules.toml` plus
   plugin- or curl-delivered rules — neither writes an overlay. The **M1 overlay is now written only
   by the manual copy path**, which `decision-0069` retains for harnesses the plugin does not cover;
@@ -208,14 +234,13 @@ These are the two ends of the delivery relationship; the cross-lens vocabulary l
 Built in the open, dogfooded on itself from commit one. The honest state:
 
 - **Ratified** — the invariant set (`invariants-v1`), 40+ decisions, 8+ research notes.
-- **Shipped** — the **Claude Code plugin** (marketplace install, `/trellis:setup` /
-  `/trellis:remove`, a bundled staleness hook) riding a **pre-rendered, checksum-manifested
+- **Shipped** — the **Claude Code plugin** (marketplace install, `/trellis:remove`, a bundled
+  staleness hook) riding a **pre-rendered, checksum-manifested
   payload** (`kodhama-0007`: render once at release, writers only copy and verify), plus the
   documented **manual copy path** for any other harness. It stands on the *spine* + an
   **independent conformance check** (`spec-0001`, running on this repo), the expression-profile +
   catalog **schema** (`spec-0002`), the machinery design (`spec-0003`), the populated catalog and
-  the first per-project **profile** (instance #1), and the cross-lens **lexicon**. The v0 **setup
-  CLI** shipped first (`v0.1.0`–`v0.2.29`) and its end-user channel retired in favor of the above
+  the first per-project **profile** (instance #1), and the cross-lens **lexicon**. The v0 setup **CLI** (the retired binary, unrelated to the retired setup skill) shipped first (`v0.1.0`–`v0.2.29`) and its end-user channel retired in favor of the above
   (`kodhama-0007` rule 5, `decision-0043`); the Go code survives as the release-time payload
   generator.
 - **In progress** — **supervisor mode** (installed live gates).
@@ -229,7 +254,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md) | The full thesis (start at §10 verdict, §11 start-here, §12 operating method). |
 | [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043` (#120). |
-| [`plugins/trellis/`](plugins/trellis/) | The **Claude Code and local Codex plugin** — `/trellis:setup`, `/trellis:remove`, host-isolated hooks, and the vendored payload (`reference/`). |
+| [`plugins/trellis/`](plugins/trellis/) | The **Claude Code and local Codex plugin** — `/trellis:remove`, host-isolated hooks, and the vendored payload (`reference/`). |
 | [`install.sh`](install.sh) | The **curl path** (`#124`) — vends the whole plugin bundle onto disk as a skills-directory plugin, and on project scope renders `.claude/rules/trellis.md`, the file that actually delivers the rules (`decision-0068`). Claude Code only. |
 | [`specs/`](specs/) | The spine (`0001`), the profile / catalog schema (`0002`), the delivery machinery (`0003`). |
 | [`decisions/`](decisions/) | Append-only decision records. |

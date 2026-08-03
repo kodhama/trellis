@@ -126,8 +126,16 @@ func TestStalenessHook(t *testing.T) {
 		if v.HookSpecificOutput.HookEventName != "SessionStart" {
 			t.Errorf("want nested SessionStart envelope, got %q", out)
 		}
-		if !strings.Contains(v.HookSpecificOutput.AdditionalContext, "/trellis:setup") {
-			t.Errorf("message should point at /trellis:setup: %q", v.HookSpecificOutput.AdditionalContext)
+		// decision-0072 retired /trellis:setup, which every nudge used to name as
+		// the remedy. The property this assertion actually guards is that a nudge
+		// is ACTIONABLE — it must still say what to remove and what survives, or
+		// it is a notification with no way out of the state it reports.
+		ctx := v.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "delete") || !strings.Contains(ctx, ".trellis/rules.toml") {
+			t.Errorf("a nudge must name the manual migration — what to delete, and that rules.toml is kept: %q", ctx)
+		}
+		if strings.Contains(ctx, "/trellis:setup") {
+			t.Errorf("nudge still points at the setup skill, retired by decision-0072: %q", ctx)
 		}
 		return v.HookSpecificOutput.AdditionalContext
 	}
@@ -439,6 +447,407 @@ func renderedFile(files map[string]string, stamp string) string {
 		"the `strictness` key in `.trellis/rules.toml` is authoritative.\n" +
 		"\n## Project rule activation\n\n@../../.trellis/rules.toml\n" +
 		"\n<!-- trellis:rendered-from " + stamp + " -->\n"
+}
+
+// TestRowMismatchRemedyIsNotDestructive: a Claude review finding on #227. The
+// row-mismatch branch used to name /trellis:setup as the remedy, and the
+// retirement rewrote that to "copy reference/rules-b.toml over
+// .trellis/rules.toml".
+//
+// rules-b.toml is the ADAPTIVE preset with every row active, and `strictness`
+// selects which header the hook injects. So that instruction silently flips a
+// firm-posture project back to adaptive and turns every hand-disabled rule back
+// on — no diff, no confirmation. The skill it replaced diffed and asked, per
+// floor-intent-gate. And this branch fires on the ordinary upgrade path: any
+// time the shipped catalog gains a rule, every existing rules.toml mismatches.
+//
+// Retiring a confirm-gated writer is fine. Replacing its remedy with an
+// unconditional clobber is not, and it is the kind of loss that shows up as a
+// consumer's governance quietly resetting rather than as a failure.
+// TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
+// sharpest finding on it — the documented replacement for the retired skill
+// BROKE governance if followed literally.
+//
+// decision-0072's first draft said the replacement was "one sentence: edit
+// .trellis/rules.toml — strictness = \"firm\"". But the hook validates the row
+// set against the shipped catalog and injects NOTHING when a slug is missing, so
+// a project-scope install sitting at a governed 14/14 goes to ZERO the moment
+// someone hand-writes a file containing strictness alone. The retired skill's §1
+// copied a whole preset first; that step was the part that had to survive, and
+// the record had described it away.
+//
+// This test pins the recipe end to end, in both directions: the partial file
+// must fail loudly, and the documented copy-then-edit must deliver all fourteen
+// rules at the requested posture.
+// TestEveryDestructiveInstructionIsGated: a Codex P2 on #227, and then a Codex
+// P2 on the GUARD ITSELF, which is the more useful of the two.
+//
+// staleness.sh's emit strings are injected straight into the agent's context, so
+// "delete .trellis/internal/ and the managed block" is an instruction an
+// autonomous agent can act on immediately, against tracked files. The retired
+// /trellis:setup offered exactly this migration behind a confirmation
+// (floor-intent-gate). Retiring the skill silently retired the gate with it.
+//
+// The first version of this guard matched the literal word "delete" — and a
+// remedy saying "drop the unknown ones" slipped past it, instructing the removal
+// of a consumer-owned row with no confirmation, while the reseed remedy two
+// clauses later WAS gated for exactly that risk. A guard that recognises one
+// verb is a guard against one verb.
+//
+// So the verb list below is the weak point, and is written to fail loudly rather
+// than quietly: if it ever matches fewer messages than it does today, the
+// filter has broken and the test says so instead of passing on an empty set.
+var slashCommandRe = regexp.MustCompile(`/trellis:[a-z-]+`)
+
+var destructiveVerbs = []string{
+	"delete", "drop", "remove", "overwrite", "replace", "reset", "discard", "rm ",
+}
+
+func TestEveryDestructiveInstructionIsGated(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	emits := regexp.MustCompile(`(?m)^\s*emit "((?:[^"\\]|\\.)*)"`).FindAllStringSubmatch(string(body), -1)
+	if len(emits) < 8 {
+		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
+	}
+	gated := 0
+	for _, m := range emits {
+		msg := m[1]
+		// Pointing at a slash command is not instructing a mutation: /trellis:remove
+		// is a skill that runs its own confirmation. Scanning the raw text matched
+		// its NAME and demanded a gate on a message that only names it, which would
+		// have taught the next reader that the guard cries wolf.
+		scan := strings.ToLower(slashCommandRe.ReplaceAllString(msg, " "))
+		hit := ""
+		for _, v := range destructiveVerbs {
+			if strings.Contains(scan, v) {
+				hit = v
+				break
+			}
+		}
+		if hit == "" {
+			continue
+		}
+		gated++
+		if !strings.Contains(msg, "explicit confirmation") {
+			t.Errorf("this message instructs a mutation (%q) with no confirmation gate — an autonomous "+
+				"agent can act on it against files the consumer owns (floor-intent-gate):\n%s", hit, msg)
+		}
+	}
+	// A floor, not a ceiling: the count only ever grows as remedies are added, so
+	// a drop means the regex or the verb list stopped matching, not that the
+	// script got safer.
+	const known = 11
+	if gated < known {
+		t.Fatalf("matched %d destructive messages, expected at least %d — the filter broke; "+
+			"a guard that matches nothing passes silently", gated, known)
+	}
+	t.Logf("checked %d destructive messages of %d emits", gated, len(emits))
+}
+
+// TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
+// sharpest finding on it — the documented replacement for the retired skill
+// BROKE governance if followed literally.
+//
+// decision-0072's first draft said the replacement was "one sentence: edit
+// .trellis/rules.toml — strictness = \"firm\"". But the hook validates the row
+// set against the shipped catalog and injects NOTHING when a slug is missing, so
+// a project-scope install sitting at a governed 14/14 goes to ZERO the moment
+// someone hand-writes a file containing strictness alone. The retired skill's §1
+// copied a whole preset first; that step was the part that had to survive, and
+// the record had described it away.
+//
+// This test pins the recipe end to end, in both directions: the partial file
+// must fail loudly, and the documented copy-then-edit must deliver all fourteen
+// rules at the requested posture.
+// TestEveryDeletionInstructionIsGated: a Codex P2 on #227, and the SIXTH
+// appearance of one class on this PR — every finding here has been a remedy that
+// told an agent to do something destructive or shape-wrong without a gate.
+//
+// staleness.sh's emit strings are injected straight into the agent's context, so
+// "delete .trellis/internal/ and the managed block" is an instruction an
+// autonomous agent can act on immediately, against TRACKED files. The retired
+// /trellis:setup offered exactly this migration and required confirmation
+// (floor-intent-gate). Retiring the skill silently retired the gate with it.
+//
+// This is a source-level check on purpose. A per-branch behavioural test would
+// pin the six remedies that exist today; the defect is that a SEVENTH can be
+// added without a gate, so the guard reads every emit string in the script.
+func TestEveryDeletionInstructionIsGated(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Each emit "..." payload, which is what reaches the agent.
+	emits := regexp.MustCompile(`(?m)^\s*emit "((?:[^"\\]|\\.)*)"`).FindAllStringSubmatch(string(body), -1)
+	if len(emits) < 8 {
+		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
+	}
+	gated := 0
+	for _, m := range emits {
+		msg := m[1]
+		if !strings.Contains(msg, "delete") {
+			continue
+		}
+		gated++
+		if !strings.Contains(msg, "explicit confirmation") {
+			t.Errorf("this message instructs a deletion with no confirmation gate — an autonomous "+
+				"agent can act on it against tracked files (floor-intent-gate):\n%s", msg)
+		}
+	}
+	if gated == 0 {
+		t.Fatal("no deletion-instructing message was found at all — the filter is wrong, not the script")
+	}
+	t.Logf("checked %d deletion-instructing messages of %d emits", gated, len(emits))
+}
+
+// TestRepairRemedyCoversEveryMismatchKind and the opt-out shape: two Codex P2s
+// on #227, both the same class as the five before them — a remedy that does not
+// cover the state the reader is actually in.
+//
+// $slug_report emits THREE kinds (missing:, unknown:, duplicate:) and the repair
+// remedy explained two. Following it on a duplicate leaves the hook injecting
+// nothing, so the advertised minimal repair was a dead end for that third of the
+// cases.
+//
+// The opt-out is the same shape of gap in the docs: `governed = false` is a
+// legal, supported one-line file, and the documented "edit strictness in place"
+// branch is WRONG for it — the opt-out wins and the hook goes silent, so the
+// consumer who asked for the firm posture gets no rules and no message either.
+func TestRepairRemedyCoversEveryMismatchKind(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(t *testing.T, rows string) string {
+		t.Helper()
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		return string(out)
+	}
+
+	t.Run("a renamed slug reports BOTH categories, not the first", func(t *testing.T) {
+		// A plugin update that renames a slug leaves the config simultaneously
+		// missing the new row and carrying the old one as unknown. The report was
+		// an else-if chain, so it named only `missing:` — the agent added the new
+		// row, and validation failed again next session on the unknown row it was
+		// never told about. Each repair round looked like progress and delivered
+		// none.
+		renamed := strings.Replace(files["rules-b.toml"],
+			"inv-minimal-first         = { active = true }",
+			"inv-renamed-first         = { active = true }", 1)
+		if renamed == files["rules-b.toml"] {
+			t.Fatal("fixture did not rename anything — the case would prove nothing")
+		}
+		out := run(t, renamed)
+		// Scope the assertion to the REPORT — the parenthesised list after "ships".
+		// The remedy text that follows it explains what to do "for missing:", "for
+		// unknown:" and "for duplicate:", so a whole-output Contains check is
+		// satisfied by the ADVICE and passes against a report that names one
+		// category. That is exactly how this assertion first shipped, and the
+		// mutation caught it.
+		report := reportSection(t, out)
+		if !strings.Contains(report, "missing:") || !strings.Contains(report, "unknown:") {
+			t.Errorf("a renamed slug is BOTH missing and unknown; reporting one sends the agent "+
+				"back for another round that also fails. report was %q, full output:\n%s", report, out)
+		}
+	})
+
+	t.Run("a duplicated slug is reported AND its repair is explained", func(t *testing.T) {
+		dup := files["rules-b.toml"] + "inv-minimal-first         = { active = true }\n"
+		out := run(t, dup)
+		if !strings.Contains(reportSection(t, out), "duplicate:") {
+			t.Fatalf("fixture did not produce the condition it names — the case would prove nothing:\n%s", out)
+		}
+		if !strings.Contains(out, "duplicate:, delete the extra occurrences") {
+			t.Errorf("the remedy explains missing and unknown but not duplicate, so following it on this "+
+				"report leaves the project ungoverned; got:\n%s", out)
+		}
+	})
+
+	t.Run("the governed = false opt-out is silent, so 'edit in place' cannot re-enable", func(t *testing.T) {
+		// This pins the hazard the docs now describe as a third shape. It is NOT a
+		// defect in the hook — decision-0070 D5 makes the opt-out absolute — it is
+		// the reason "edit strictness in place" is wrong advice for this file.
+		out := run(t, "strictness  = \"firm\"\ngoverned = false\n")
+		if strings.TrimSpace(out) != "" {
+			t.Fatalf("the opt-out must stay absolute: no rules, no nudge; got:\n%s", out)
+		}
+	})
+}
+
+// TestDocsNameTheOptOutShape: the counterpart to the case above. The recipe is
+// only safe if the docs warn that the opt-out is a REPLACE, not an edit — a
+// behavioural test can prove the hook is silent, but only the prose can stop a
+// reader walking into it.
+func TestDocsNameTheOptOutShape(t *testing.T) {
+	for _, f := range []string{"../README.md", "../plugins/trellis/README.md"} {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := string(b)
+		if !strings.Contains(s, "governed = false") {
+			t.Errorf("%s documents editing rules.toml in place without naming the governed = false "+
+				"opt-out, for which that advice yields no rules and no message", f)
+		}
+	}
+}
+
+func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	run := func(t *testing.T, rows string) string {
+		t.Helper()
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		return string(out)
+	}
+
+	t.Run("hand-written partial file governs nothing", func(t *testing.T) {
+		out := run(t, "strictness  = \"firm\"\n")
+		if !strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("a partial row set must fail loudly, not govern partially; got:\n%s", out)
+		}
+		// The hazard this whole test exists for: it is not a warning ON TOP of
+		// delivery, it is delivery replaced by a warning. Asserting on a slug would
+		// be useless here — the error message ENUMERATES every missing slug — so the
+		// discriminator is the readout body, which only a delivery carries.
+		if strings.Contains(out, "The rules — do these") {
+			t.Errorf("rules were injected over an invalid row set; got:\n%s", out)
+		}
+	})
+
+	t.Run("copy the firm preset, then edit: fourteen rules at the firm posture", func(t *testing.T) {
+		out := run(t, files["rules-a.toml"])
+		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("the DOCUMENTED recipe must produce a governed project; got:\n%s", out)
+		}
+		slugs := map[string]bool{}
+		for _, m := range regexp.MustCompile(`(?:inv|floor)-[a-z-]+`).FindAllString(out, -1) {
+			slugs[m] = true
+		}
+		if len(slugs) < 14 {
+			t.Errorf("want all 14 rules delivered from the copied preset, got %d (%v)", len(slugs), keysOfBool(slugs))
+		}
+	})
+
+	t.Run("copy the adaptive preset: same, at the default posture", func(t *testing.T) {
+		out := run(t, files["rules-b.toml"])
+		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("the DOCUMENTED recipe must produce a governed project; got:\n%s", out)
+		}
+	})
+
+	t.Run("copy a preset then disable one row: the other thirteen still arrive", func(t *testing.T) {
+		edited := strings.Replace(files["rules-b.toml"], "inv-minimal-first         = { active = true }", "inv-minimal-first         = { active = false }", 1)
+		if edited == files["rules-b.toml"] {
+			t.Fatal("fixture did not contain the row it claims to edit — the case would prove nothing")
+		}
+		out := run(t, edited)
+		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("turning a row off is the documented edit and must stay valid; got:\n%s", out)
+		}
+	})
+}
+
+func TestRowMismatchRemedyIsNotDestructive(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	proj := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A firm-posture project carrying a slug the shipped catalog does not know —
+	// the same state an upgrade produces from the other direction.
+	rows := "seeded_from = \"conductor\"\nstrictness  = \"firm\"\ninv-not-a-real-rule = true\n"
+	if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(hook)
+	cmd.Dir = proj
+	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+	out, _ := cmd.CombinedOutput()
+	ctx := string(out)
+
+	if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+		t.Fatalf("an unknown slug must be reported, not delivered over; got:\n%s", ctx)
+	}
+	// The remedy must preserve what the consumer chose.
+	for _, want := range []string{"strictness", "active"} {
+		if !strings.Contains(ctx, want) {
+			t.Errorf("the remedy must tell the agent to preserve %q rather than reseed blindly; got:\n%s", want, ctx)
+		}
+	}
+	// If a reseed IS offered, it must be gated and must name the firm preset.
+	if strings.Contains(ctx, "rules-b.toml") {
+		if !strings.Contains(ctx, "confirmation") {
+			t.Errorf("a reseed resets every row the consumer chose; it must require explicit "+
+				"confirmation first (floor-intent-gate); got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "rules-a.toml") {
+			t.Errorf("offering only the adaptive preset silently converts a firm project; got:\n%s", ctx)
+		}
+	}
 }
 
 func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
@@ -881,6 +1290,18 @@ func TestStalenessHookStandsDownForInstallPath(t *testing.T) {
 		if !strings.Contains(string(out), "TRELLIS_RULES_LOADED_TWICE") {
 			t.Fatalf("the flat overlay shape is invisible to the coexistence branch:\n%s", out)
 		}
+		// The remedy must name the shape that is PRESENT. It was hard-coded to
+		// .trellis/internal/, so a flat-layout project was told to delete a
+		// directory it does not have; following that literally removed nothing and
+		// the same alarm fired every session. The generic "delete + rules.toml"
+		// check in the nudge helper cannot catch this — both substrings are
+		// satisfied by the wrong message.
+		if !strings.Contains(string(out), ".trellis/trellis.md") {
+			t.Errorf("the flat-shape remedy must name .trellis/trellis.md:\n%s", out)
+		}
+		if strings.Contains(string(out), "delete .trellis/internal/") {
+			t.Errorf("a flat-layout project has no .trellis/internal/ to delete:\n%s", out)
+		}
 	})
 
 	t.Run("a zero-byte rendered file is not delivery: the hook still delivers", func(t *testing.T) {
@@ -1011,4 +1432,17 @@ func keysOfBool(m map[string]bool) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// reportSection returns just the "(...)" defect report the hook prints after
+// "the rules the installed plugin ships", excluding the remedy prose that
+// follows. The remedy names every category by name, so assertions against the
+// whole message cannot tell a one-category report from a three-category one.
+func reportSection(t *testing.T, out string) string {
+	t.Helper()
+	m := regexp.MustCompile(`installed plugin ships \(([^)]*)\)`).FindStringSubmatch(out)
+	if m == nil {
+		t.Fatalf("no defect report found in the hook output:\n%s", out)
+	}
+	return m[1]
 }

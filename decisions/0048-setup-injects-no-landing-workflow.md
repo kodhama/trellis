@@ -4,6 +4,7 @@ type: decision
 status: approved  # maintainer's intent act 2026-07-18 ("ratify decision-0048 and merge #159", in-session) — in-PR flip recording the act (decision-0046); independent conformance check (corpus-reviewer) passed before the gate
 depends_on: [invariants-v1, signature-catalog-v1]
 informed_by: [spec-0005, decision-0043]
+superseded_in_part_by: [decision-0072]  # 2026-08-02 decision-0072 retired /trellis:setup; every clause of this record that constrains that skill is now VACUOUS rather than false — there is no skill left to constrain. The reasoning stands as history and the record is not edited.
 owner: agent
 date: 2026-07-18
 ---

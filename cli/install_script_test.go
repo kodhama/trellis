@@ -272,7 +272,8 @@ func TestInstallScriptBundleManifestIsCurrent(t *testing.T) {
 // TestVendorPersonalScopeFreshInstall (#124: personal scope needs no git repo and
 // writes to $HOME/.claude/skills/trellis). Extended per spec-0005's test-coverage
 // table (personal fresh-vendor row, AC1/AC4/AC10): stdout must carry the next-step
-// pointer to /trellis:setup and must NOT carry the project-only trust-dialog note.
+// pointer to .trellis/rules.toml (it named /trellis:setup until decision-0072 retired
+// the skill) and must NOT carry the project-only trust-dialog note.
 //
 // The trailing line-count check (kodhama/trellis#132) closes a real gap: AC10 requires
 // "exactly the five §4 items… and nothing more", but for personal scope only items 1 and
@@ -294,8 +295,12 @@ func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 	if !strings.Contains(res.stdout, "scope: personal") {
 		t.Errorf("stdout should say which scope was chosen; got:\n%s", res.stdout)
 	}
-	if !strings.Contains(res.stdout, "/trellis:setup") {
-		t.Errorf("stdout should carry the next-step pointer to /trellis:setup; got:\n%s", res.stdout)
+	// decision-0072 retired /trellis:setup; the next step is the file itself.
+	if !strings.Contains(res.stdout, ".trellis/rules.toml") {
+		t.Errorf("stdout should carry the next-step pointer to .trellis/rules.toml; got:\n%s", res.stdout)
+	}
+	if strings.Contains(res.stdout, "/trellis:setup") {
+		t.Errorf("stdout still points at the setup skill, retired by decision-0072; got:\n%s", res.stdout)
 	}
 	if strings.Contains(res.stdout, "trust-dialog") || strings.Contains(res.stdout, "workspace-trust dialog") {
 		t.Errorf("personal scope must NOT print the project-only trust-dialog note; got:\n%s", res.stdout)
@@ -375,9 +380,13 @@ func TestVendorProjectScopeFreshInstallFromRoot(t *testing.T) {
 	if strings.Contains(status, "A  ") {
 		t.Errorf("item 4 (no mutation): nothing should be staged — install.sh must never run git add; status:\n%s", status)
 	}
-	// item 5: the next-step pointer to /trellis:setup.
-	if !strings.Contains(res.stdout, "/trellis:setup") {
-		t.Errorf("item 5 (next step): stdout missing the /trellis:setup pointer; got:\n%s", res.stdout)
+	// item 5: the next-step pointer. decision-0072 retired /trellis:setup, so the
+	// pointer is now the file the consumer edits.
+	if !strings.Contains(res.stdout, ".trellis/rules.toml") {
+		t.Errorf("item 5 (next step): stdout missing the .trellis/rules.toml pointer; got:\n%s", res.stdout)
+	}
+	if strings.Contains(res.stdout, "/trellis:setup") {
+		t.Errorf("item 5: stdout still points at the setup skill, retired by decision-0072; got:\n%s", res.stdout)
 	}
 }
 
@@ -522,6 +531,53 @@ func TestVendorInvalidScopeFails(t *testing.T) {
 
 // TestVendorReRunIsIdempotent (#124: a deterministic artifact is safe to re-vend —
 // every byte on disk after a second run must equal the first).
+// TestVendorUpgradeRemovesFilesThatLeftTheBundle: a Codex P1 on #227. The write
+// phase used to copy the manifest's files over the existing target, which only
+// ever creates and overwrites — so a file that LEFT the bundle survived every
+// upgrade. Concretely: decision-0072 deleted skills/setup/, but an existing curl
+// install kept the directory, and Claude Code discovers skills from the
+// directory, so /trellis:setup stayed live for exactly the consumers who could
+// not be told it was retired. The bundle is now swapped in whole.
+//
+// The stale path here is a REAL retired one, not an invented marker: it is the
+// file this PR deletes, so this test fails against the shipped-before state for
+// the same reason a consumer would have hit it.
+func TestVendorUpgradeRemovesFilesThatLeftTheBundle(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+
+	if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
+		t.Fatalf("first run failed: %s", res.stderr)
+	}
+	target := filepath.Join(repo, ".claude", "skills", "trellis")
+
+	// Simulate an install made before the retirement: the skill directory is on
+	// disk and is not in the current manifest.
+	stale := filepath.Join(target, "skills", "setup")
+	if err := os.MkdirAll(stale, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stale, "SKILL.md"), []byte("---"+"\n"+"name: setup"+"\n"+"---"+"\n"+"retired"+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
+		t.Fatalf("upgrade run failed: %s", res.stderr)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Errorf("skills/setup survived the upgrade (err=%v) — a retired skill stays discoverable "+
+			"as /trellis:setup for every consumer who installed before it was removed", err)
+	}
+	// The swap must not cost the files that ARE in the bundle.
+	assertBundleVendored(t, target)
+	for _, leftover := range []string{target + ".new", target + ".old"} {
+		matches, _ := filepath.Glob(leftover + "*")
+		if len(matches) != 0 {
+			t.Errorf("the swap left scratch directories behind: %v", matches)
+		}
+	}
+}
+
 func TestVendorReRunIsIdempotent(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)
@@ -1144,6 +1200,87 @@ func TestInstalledRulesFileSilencesTheHookExactlyOnce(t *testing.T) {
 // suppresses only what the HOOK injects — it cannot un-load a file Claude already
 // read. So this combination has to be refused at install time; there is no
 // runtime fix for it.
+// TestVendorRefusalRemedyNamesTheShapeItFound: a Claude review finding on #227,
+// and the SECOND appearance of one defect class. staleness.sh had a remedy
+// hard-coded to .trellis/internal/ while its branch fired for two overlay shapes;
+// that was fixed earlier in this branch. install.sh had the same bug and was not
+// looked at — its $static_conflict takes THREE values, one of which
+// ("managed block in <file>") involves no overlay directory at all.
+//
+// Following a remedy that names the wrong shape deletes nothing, so the refusal
+// fires again on every subsequent run: a permanent false-positive refusal that
+// the consumer cannot clear by doing what they were told.
+func TestVendorRefusalRemedyNamesTheShapeItFound(t *testing.T) {
+	cases := []struct {
+		name    string
+		build   func(t *testing.T, repo string)
+		wants   []string
+		forbids []string
+	}{
+		{
+			name: "internal overlay",
+			build: func(t *testing.T, repo string) {
+				mustMkdirAll(t, filepath.Join(repo, ".trellis", "internal"))
+				mustWrite(t, filepath.Join(repo, ".trellis", "internal", "version"), "payload@000000000000\n")
+			},
+			wants: []string{".trellis/internal/"},
+		},
+		{
+			name: "legacy flat overlay",
+			build: func(t *testing.T, repo string) {
+				mustMkdirAll(t, filepath.Join(repo, ".trellis"))
+				mustWrite(t, filepath.Join(repo, ".trellis", "trellis.md"), "legacy vendored prose\n")
+			},
+			wants:   []string{".trellis/trellis.md"},
+			forbids: []string{"delete .trellis/internal/"},
+		},
+		{
+			name: "inline managed block, no overlay directory",
+			build: func(t *testing.T, repo string) {
+				mustWrite(t, filepath.Join(repo, "CLAUDE.md"), "<!-- trellis:begin -->\nrules\n<!-- trellis:end -->\n")
+			},
+			wants:   []string{"managed block in CLAUDE.md"},
+			forbids: []string{".trellis/internal/", ".trellis/trellis.md"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			tc.build(t, repo)
+
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			combined := res.stdout + res.stderr
+
+			for _, want := range tc.wants {
+				if !strings.Contains(combined, want) {
+					t.Errorf("the remedy must name %q — the shape actually present; got:\n%s", want, combined)
+				}
+			}
+			for _, forbid := range tc.forbids {
+				if strings.Contains(combined, forbid) {
+					t.Errorf("the remedy names %q, which this project does not have — following it "+
+						"deletes nothing and the refusal fires forever; got:\n%s", forbid, combined)
+				}
+			}
+		})
+	}
+}
+
+func mustMkdirAll(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustWrite(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)
@@ -1170,8 +1307,15 @@ func TestVendorRefusesToRenderOverAVendoredOverlay(t *testing.T) {
 	if !strings.Contains(combined, ".trellis/internal") {
 		t.Errorf("refusing silently is its own defect: the output must name the overlay as the reason; got:\n%s", combined)
 	}
-	if !strings.Contains(combined, "/trellis:setup") && !strings.Contains(combined, "/trellis:remove") {
-		t.Errorf("a refusal with no way forward strands the user; name the migration route; got:\n%s", combined)
+	// This used to accept `/trellis:setup` OR `/trellis:remove`. Both halves were
+	// wrong after decision-0072: the first names a retired skill, and the second is
+	// a REMOVAL route, not a migration route — it satisfied the assertion alone,
+	// so deleting every line of migration guidance left the test green.
+	if !strings.Contains(combined, ".trellis/internal/") || !strings.Contains(combined, ".trellis/rules.toml") {
+		t.Errorf("a refusal with no way forward strands the user; name the migration route and what survives it; got:\n%s", combined)
+	}
+	if strings.Contains(combined, "/trellis:setup") {
+		t.Errorf("refusal still points at the setup skill, retired by decision-0072; got:\n%s", combined)
 	}
 	// The bundle itself must still vendor — the overlay conflicts with the
 	// rendered file, not with the plugin package.

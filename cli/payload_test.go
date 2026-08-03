@@ -401,81 +401,30 @@ func TestPayloadRulesTomlSeeds(t *testing.T) {
 	}
 }
 
-// TestSetupSkillCopiesCompleteReadout: decision-0053 Consequences — SKILL.md step
-// 4's per-row selection cat became a plain copy of the shipped complete readout; no
-// fragment-selection command remains anywhere in the skill; the skill states the
-// live row semantics (edits take effect at the next host boundary) and names a floor row set
-// false as overridden-by-floor, never silently honored. (Replaces
-// TestSetupSkillAssemblyOrderMatchesCatalog — the catalog-order second home retired
-// with the assembly command it pinned.)
-func TestSetupSkillWritesOnlyTheConfig(t *testing.T) {
-	// Replaces TestSetupSkillCopiesCompleteReadout. That test guarded setup's
-	// vendoring contract — that it copied the complete readout into
-	// .trellis/internal/. decision-0065 retires vendoring from the plugin
-	// path: the rules are injected at session start and setup writes exactly one
-	// file. The drift guard is still wanted, so it now guards the new invariant
-	// rather than being deleted with the old one.
-	b, err := os.ReadFile("../plugins/trellis/skills/setup/SKILL.md")
+// TestSetupSkillWritesOnlyTheConfig was DELETED by decision-0072, which retired
+// /trellis:setup. It guarded the skill's one-write contract; there is no skill
+// left to guard. It is not replaced by a narrower assertion on the same file
+// because the file is gone — the guard that matters now is
+// TestOnlyTheRemoveSkillShips below, which fails if a setup skill reappears
+// without a decision reversing 0072.
+
+// TestOnlyTheRemoveSkillShips: decision-0072 retired /trellis:setup, and the
+// plugin ships exactly one skill. A skill directory is user-visible surface —
+// it becomes a slash command the moment it exists — so its return must be a
+// deliberate act, not a file someone restores from a stale branch.
+func TestOnlyTheRemoveSkillShips(t *testing.T) {
+	entries, err := os.ReadDir("../plugins/trellis/skills")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := string(b)
-
-	// The one write, and it must be a copy of a preset rather than a composition.
-	if !strings.Contains(s, `cp "$root/reference/rules-<p>.toml" .trellis/rules.toml`) {
-		t.Error("SKILL.md must seed .trellis/rules.toml by copying the chosen preset")
-	}
-	// The plugin root must come from a variable a host actually exports. An
-	// earlier draft used ${TRELLIS_PLUGIN_ROOT}, which nothing in this repo
-	// defines — it had been set by the deleted preflight — so the one write
-	// command expanded to `cp "/reference/rules-b.toml"`. This test asserted the
-	// broken literal and passed.
-	if !strings.Contains(s, `root="${CLAUDE_PLUGIN_ROOT:-$PLUGIN_ROOT}"`) {
-		t.Error("SKILL.md must resolve the plugin root from a host-exported variable")
-	}
-	if strings.Contains(s, "TRELLIS_PLUGIN_ROOT") {
-		t.Error("SKILL.md references TRELLIS_PLUGIN_ROOT, which nothing defines")
-	}
-	// The migration is the only path off a vendored overlay: /trellis:remove
-	// deletes all of .trellis/, including the rules.toml this skill writes.
-	for _, required := range []string{"trellis:begin", ".trellis/internal/", "never impose"} {
-		if !strings.Contains(s, required) {
-			t.Errorf("SKILL.md must describe the vendored-overlay migration (%q)", required)
+	var got []string
+	for _, e := range entries {
+		if e.IsDir() {
+			got = append(got, e.Name())
 		}
 	}
-
-	// No vendoring may creep back in. Asserted against the file's *commands*
-	// rather than its prose: the skill legitimately names the retired paths to
-	// forbid them ("never touch anything under .trellis/internal/") and to record
-	// where each old job went, so a substring ban cannot tell "do X" from "never
-	// do X". What is unambiguous is what it tells the agent to run.
-	var writes []string
-	for _, line := range strings.Split(s, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "cp ") || strings.HasPrefix(line, "mkdir ") ||
-			strings.HasPrefix(line, "cat >") || strings.HasPrefix(line, "printf ") {
-			writes = append(writes, line)
-		}
-	}
-	if len(writes) == 0 {
-		t.Fatal("SKILL.md declares no write commands at all")
-	}
-	for _, w := range writes {
-		if !strings.Contains(w, ".trellis/rules.toml") && !strings.Contains(w, "mkdir -p .trellis") {
-			t.Errorf("setup may only write .trellis/rules.toml, but SKILL.md runs: %s", w)
-		}
-	}
-
-	// The consumer-owned file may not be clobbered without a human saying so.
-	for _, required := range []string{
-		"explicit confirmation",
-		"floor-intent-gate",
-		"overridden-by-floor",
-		"next session, not this one",
-	} {
-		if !strings.Contains(s, required) {
-			t.Errorf("SKILL.md missing required contract phrase %q", required)
-		}
+	if len(got) != 1 || got[0] != "remove" {
+		t.Errorf("the plugin must ship exactly the remove skill (decision-0072 retired setup); got %v", got)
 	}
 }
 

@@ -12,7 +12,7 @@ Before substantive work, assess two independently loaded components:
 
 Use this single-copy fallback table:
 
-- If both the sentinel-plus-fixed-footer boundary and valid activation TOML are already present from a setup-verified generated overlay, use the loaded context and read no Trellis file again.
+- If both the sentinel-plus-fixed-footer boundary and valid activation TOML are already present from a previously verified generated overlay, use the loaded context and read no Trellis file again.
 - If the boundary is present but activation TOML is absent or invalid, read only `.trellis/rules.toml`.
 - If valid activation TOML is present but the boundary is absent, read only the three `.trellis/internal/` files.
 - If neither component is present, read and validate all four installed inputs.

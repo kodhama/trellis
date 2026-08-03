@@ -6,7 +6,7 @@
 // checksum manifest that ships vendored in plugins/trellis/reference/, and the tests
 // in this package are the CI guards that keep the vendored payload, the repo's own
 // overlay, and the docs in sync with the render. End users install Trellis via the
-// Claude Code plugin (/trellis:setup) or the documented manual copy path — never this
+// Claude Code plugin or the documented manual copy path — never this
 // binary; the interactive setup/status/remove/uninstall commands retired with the
 // homebrew/curl distribution channel.
 package main
@@ -76,6 +76,6 @@ usage:
   trellis help       show this message
 
 This is not the installer. Install Trellis via the Claude Code plugin
-(/plugin marketplace add kodhama/kodhama → /plugin install trellis@kodhama →
-/trellis:setup) or the manual copy path in the repo README.`)
+(/plugin marketplace add kodhama/kodhama → /plugin install trellis@kodhama)
+or the manual copy path in the repo README.`)
 }

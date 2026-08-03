@@ -42,7 +42,6 @@ framing, which is why this copy changed):
   ```
   > /plugin marketplace add kodhama/kodhama
   > /plugin install trellis@kodhama
-  > /trellis:setup    # optional — changes posture or turns rules off
   ```
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
@@ -132,17 +131,22 @@ Four-step flow (`01` – `04`):
 1. **01 · install — Add the plugin.** From the kodhama family
    marketplace — or, for a harness the plugin does not cover, copy the
    pre-rendered bundle by hand.
-2. **02 · posture — Pick a posture.** Conductor or author-adapt — seeded
-   as explicit rows in your `rules.toml`: how strict, and what's active.
-   A refresh reads the rows and asks nothing.
+2. **02 · posture — A posture you can change.** Every rule active,
+   adaptive posture — the shipped default, seeded as explicit rows in
+   your `rules.toml`. No file yet? Copy a complete preset —
+   `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive.
+   Already have one? Edit `strictness` in place; copying a preset over it
+   re-enables every row you turned off. Unless it is the `governed = false`
+   opt-out — that one is a replace, not an edit. Rows govern at read time, and the
+   set has to stay whole.
 3. **03 · deliver — The rules arrive on their own.** On the plugin path a
    session hook injects them; on the curl path they are rendered into
    `.claude/rules/`. Never both — the hook stands down when it finds the
    rendered file, and says so if it ever sees both.
 4. **04 · verify — You approve.** The curl path checks every byte against
-   a shipped checksum manifest before it writes one. `/trellis:setup`
-   diffs and asks before replacing rows you already have. Trellis
-   proposes; the merge is yours.
+   a shipped checksum manifest before it writes one, and never
+   overwrites rows you already have — `.trellis/rules.toml` is seeded
+   only when it is absent. Trellis proposes; the merge is yours.
 
 **Repo footprint** (rendered as a small code block, not the terminal
 pattern — this is a file-tree illustration, not a shell session):

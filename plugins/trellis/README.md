@@ -15,16 +15,17 @@ keeps its separate content identity in
 ## Phase 1 host support
 
 Since `decision-0065` both hosts deliver the same way: a `SessionStart` hook injects the rules
-from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. Setup writes only
-that config file — no `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
+from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. On the plugin
+path nothing writes that config file — the hook reads it, and applies the shipped defaults when it
+is absent (`decision-0070` D3). No `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
 
 **Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
 the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
-projects the plugin's `reference/` files stay setup sources rather than runtime substitutes, which
+projects the plugin's `reference/` files stay installation sources rather than runtime substitutes, which
 is what the previous contract said of every project.
 
-Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
-bootstrap-only degradation and leaves the installed-file fallback usable. Trellis requires no
+Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
+see below. Trellis requires no
 project runtime, daemon, or network service. Row edits take effect at the next supported host
 context-loading boundary without refresh, never in a context already in flight.
 
@@ -49,8 +50,8 @@ install has been evidenced**: no recorded check has exercised installing this pa
 marketplace listing, on either host, so a catalog entry means Trellis is listed — not that the
 listed install path has been shown to work.
 
-Applying a preset **replaces** rows, strictness and `seeded_from`; `/trellis:setup` diffs first
-and requires explicit confirmation. There is no per-host disable: `/trellis:remove` removes both
+Applying a preset **replaces** rows, strictness and `seeded_from`, so replacing a file you
+already have shows up as a git diff — provided the file is committed, which nothing does for you. There is no per-host disable: `/trellis:remove` removes both
 host blocks and the shared overlay. The parked `seed` and `custom` presets stay parked.
 
 ## Install
@@ -64,15 +65,29 @@ resolved):
 /plugin install trellis@kodhama
 ```
 
-Then run the setup skill in any project:
+That is the whole install **on Claude Code**, where installing at project scope is the adoption
+act — the shipped defaults apply immediately, all fourteen rules at the adaptive posture, with no
+further command and no file required (`decision-0070` D3).
 
-```
-/trellis:setup
-```
+**Codex is not supported yet.** It remains a delivery target (`kodhama-0013`) with **no date
+attached**. The machinery is already here — `hooks/codex-context.mjs`, a `.codex-plugin/`
+manifest, a catalog entry — and none of it is claimed as a supported path (`kodhama-0021` §2).
+Until it is, Codex is carried rather than maintained: its behaviour is not kept in step with the
+Claude path, and a difference between them is expected rather than a defect to file. `#220` holds
+what a supported Codex distribution would require. Its adoption signal also differs —
+`codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
+when there is none, so the project-scope default above is Claude-only (`decision-0070` D7).
 
-It asks for a **posture** (conductor / author-adapt — or reads the config from
-`.trellis/rules.toml` if the project already carries one, asking nothing) and copies Trellis onto
-your project as an **overlay**, split by who owns what (`decision-0051`):
+On Claude, changing the posture has two shapes. **With no `.trellis/rules.toml` yet**, copy a
+**complete** preset — `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — then set
+`active = false` on any row you want off. The hook validates the row set against what the plugin
+ships and injects **nothing** when a slug is missing, so a hand-written partial file leaves the
+project ungoverned rather than firm. **With a file already there**, edit `strictness` in place:
+both presets set every row active, so copying one over your file silently re-enables every rule
+you disabled. **With the one-line `governed = false` opt-out**, re-enabling is a replace rather
+than an edit — editing `strictness` beside the opt-out leaves it in force and the hook stays
+silent — so confirm the intent, then write a complete preset over it (`decision-0070` D5). Older projects still carry an
+**overlay**, split by who owns what (`decision-0051`):
 
 - **`.trellis/` root — yours.** `rules.toml` alone (the machine-read config: one row per rule,
   `active = true|false`, plus a `strictness` key), seeded once from the payload and **never
@@ -80,52 +95,53 @@ your project as an **overlay**, split by who owns what (`decision-0051`):
   the readout ships complete with an authority header, and your rows govern which rules apply at
   read time (`decision-0053`); each rule in the readout ends with its row's slug, so the two are
   matchable. The two floors (`floor-transparency`, `floor-intent-gate`) have rows too, but the
-  floor rules apply regardless of their value — setup says so out loud if you try to turn one
-  off, never silently honoring the row. (There is no `expression.md`: it retired with the
+  floor rules apply regardless of their value, and the injected readout says so rather than
+  silently honoring a row set false. (There is no `expression.md`: it retired with the
   `decision-0051` amendment — your governance prose belongs in your own instructions file, which
   every harness already loads.)
 - **`.trellis/internal/` — trellis's.** The generated files (`trellis.md`, `rules.md` — the
   complete rules readout, `invariants.md`, the `version` stamp), rewritten verbatim on every
   refresh and verified byte-for-byte against the shipped checksum manifest.
 
-All content is pre-rendered at release (`kodhama-0007`: the skill copies and verifies, it never
-composes). One managed block in your `CLAUDE.md` imports `.trellis/internal/trellis.md` **and**
+All content is pre-rendered at release (`kodhama-0007`: writers copy and verify, they never
+compose). One managed block in your `CLAUDE.md` imports `.trellis/internal/trellis.md` **and**
 `.trellis/rules.toml`, so the rules and your rows stay always-loaded and a row edit governs the
 very next session. Augment-never-clobber; nothing else is touched, and it's idempotent.
 
 ## Migrating an older install
 
-`/trellis:setup`'s refresh **is** the migration vehicle — no flag-day:
+Migration is a manual edit since `decision-0072` retired the setup skill. Delete
+`.trellis/internal/` (or the pre-`decision-0051` flat files directly in `.trellis/`) and the
+managed block from your instructions file, keeping `.trellis/rules.toml`. The plugin then
+delivers the rules and the hook stops nudging. Three cases the retired refresh used to handle,
+and what to do about each yourself:
 
 - **Flat-layout overlays** (generated files directly in `.trellis/`, from before `decision-0051`):
-  a refresh writes the new layout, deletes the old-path copies, and seeds `rules.toml` from the
-  legacy `profile:` frontmatter key in `expression.md`.
-- **A leftover `expression.md`** (seeded before the amendment retired it): **never silently
-  deleted** — a refresh preserves any hand-written body and *offers* to move it into your own
-  instructions file (outside the managed block), or to leave the file in place; a pure seed stub
-  may be offered for deletion.
+  delete the old-path copies. If there is no `.trellis/rules.toml`, copy the shipped preset
+  (`reference/rules-b.toml`) rather than recovering rows from the legacy `profile:` key in
+  `expression.md` — the preset is the current row set.
+- **A leftover `expression.md`** (seeded before the amendment retired it): move any hand-written
+  body into your own instructions file, outside the managed block, then delete the file. Nothing
+  reads it any more, so leaving it in place is harmless but inert.
 - **Hand-authored content in the generated readout** (the clobber target of
   [#112](https://github.com/kodhama/trellis/issues/112)): moot on the plugin path since
-  `decision-0065` — setup no longer writes generated files, so there is nothing to rewrite whole.
+  `decision-0065` — the setup skill no longer wrote generated files, so there was nothing to
+  rewrite whole.
   It survives as a concern for `install.sh`, which does vendor them.
 
 ## What it bundles
 
-- **`skills/setup`** — `/trellis:setup`: install or refresh the overlay (done natively, no binary),
-  and — only on explicit request — the **M2 morph**: a model-driven rewrite of the project's own
-  instructions on a `trellis/morph` git branch, with a recorded rollback point, for the human to
-  review (`kodhama-0007` rule 5 moved M2 hosting here from the retired binary).
 - **`skills/remove`** — `/trellis:remove`: cleanly reverse the overlay (strip the Claude and Codex
   blocks, then delete `.trellis/`, touching nothing else), and point a morphed project at its git
   rollback.
 - **`reference/`** — the pre-rendered payload (`kodhama-0007`): `invariants.md` (the full signature
   catalog: every invariant with its *why* and a with/without example), the complete rules readout
   (`rules.md`, opened by the live-rows authority header), the `rules-<p>.toml` posture seeds,
-  every posture variant of the header and managed blocks, and the checksum manifest the setup
-  skill verifies against.
+  every posture variant of the header and managed blocks, and the checksum manifest
+  `install.sh` verifies against.
 - **`hooks/`** — host-isolated hooks: Claude's `SessionStart` staleness hook stays quiet until the installed plugin's payload differs
   from the overlay in your project (`decision-0039` rule 1, mechanics per `decision-0043`), then
-  nudges you once: *"the overlay may be stale — run `/trellis:setup`."* Binary-free and network-free:
+  nudges you once, with the manual migration steps. Binary-free and network-free:
   it compares your project's `.trellis/internal/version` stamp to the installed plugin's
   `reference/version` — file to file — so it can tell you the overlay is *behind the installed
   plugin*, not how far behind the marketplace. (A stamp still at the legacy flat path

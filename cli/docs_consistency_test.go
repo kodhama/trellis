@@ -2,29 +2,64 @@ package main
 
 import (
 	"html"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
 )
 
-// docSurfaces are the user-facing files whose claims must match the shipped product
-// (decision-0025). Paths are relative to this package dir (cli/).
-// install.sh returned in #124 as a plugin vendor script — a different, much smaller
-// artifact class than the end-user binary installer retired in #120/decision-0043
-// (see the note appended to decision-0043 §4); it is a doc surface in its own right
-// (its usage text references /trellis:setup) so it is checked here too.
-var docSurfaces = []string{
-	"../README.md",
-	"../docs/index.html",
-	"../docs/invariants.html",
-	"../install.sh",
-	// docs/lp-content.md is the LP's source of truth and was NOT checked here
-	// until 2026-07-31. It is the copy an author edits; index.html is the page a
-	// consumer reads. Leaving the source out meant the one file most likely to
-	// be edited was the one file nothing verified.
-	"../docs/lp-content.md",
+// docSurfaces returns the user-facing files whose claims must match the shipped
+// product (decision-0025) — anything a consumer reads, or that is injected into
+// their session, discovered by walking the tree.
+//
+// It used to be a hand-maintained list, and that list was found SHORT TWICE:
+// docs/lp-content.md on 2026-07-31 (the LP's own source, the file most likely to
+// be edited), then plugins/trellis/README.md, skills/remove/SKILL.md and
+// cli/README.md on 2026-08-02 while decision-0072 retired /trellis:setup — where
+// fixing only the listed files would have turned this guard GREEN with three
+// surfaces still teaching a command the plugin no longer has. Two misses with
+// the same shape make the list the defect, so it is discovered rather than
+// written down. The highest-exposure surface was among the missing:
+// hooks/staleness.sh emits slash commands straight into the consumer's session.
+//
+// The governance corpus is excluded on purpose: decisions, specs and research
+// records legitimately name artifacts that later retired, and they are
+// append-only, so a live-command check there would be permanently red.
+func docSurfaces(t *testing.T) []string {
+	t.Helper()
+	skipDirs := map[string]bool{
+		".git": true, ".github": true, ".grove": true, ".claude": true,
+		"decisions": true, "specs": true, "research": true, "eval": true,
+		"fixtures": true, "testdata": true,
+	}
+	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}
+	var out []string
+	err := filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if skipDirs[d.Name()] {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if exts[filepath.Ext(d.Name())] {
+			out = append(out, path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walking the repo for doc surfaces: %v", err)
+	}
+	if len(out) < 20 {
+		t.Fatalf("doc-surface discovery found only %d files (%v) — the walk is broken, "+
+			"and a guard that checks nothing passes silently", len(out), out)
+	}
+	return out
 }
 
 // proseAfterTrellis are lowercase words that legitimately follow "trellis" in prose
@@ -34,6 +69,9 @@ var proseAfterTrellis = map[string]bool{
 	"is": true, "a": true, "an": true, "the": true, "and": true, "or": true,
 	"on": true, "in": true, "to": true, "as": true, "for": true, "with": true,
 	"that": true, "governance": true, "mark": true,
+	// Added 2026-08-02 when docSurfaces became a walk of the whole tree: prose in
+	// AGENTS.md, core/lexicon.md and the hook's own comments, not commands.
+	"keeps": true, "expresses": true, "delivery": true,
 }
 
 // TestDocsClaimOnlyRealCommands enforces decision-0025: the docs must not advertise a
@@ -46,7 +84,7 @@ func TestDocsClaimOnlyRealCommands(t *testing.T) {
 	cmdRe := regexp.MustCompile(`trellis ([a-z][a-z-]+)`)
 	skillRe := regexp.MustCompile(`/trellis:([a-z-]+)`)
 
-	for _, f := range docSurfaces {
+	for _, f := range docSurfaces(t) {
 		b, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatalf("reading %s: %v", f, err)
@@ -69,6 +107,64 @@ func TestDocsClaimOnlyRealCommands(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestNoUnqualifiedSetupClaims: a Codex P2 on #227, and the THIRD time a guard on
+// this branch was found to recognise only one spelling of the thing it guards.
+//
+// TestDocsClaimOnlyRealCommands matches `/trellis:<skill>`. After decision-0072
+// the docs still said "Setup installs no receipt and no fallback" and "without
+// it, setup reports bootstrap-only degradation" — present-tense promises about a
+// skill that no longer exists, invisible to a guard keyed on the slash spelling.
+// (Compare TestEveryDestructiveInstructionIsGated, which matched only "delete"
+// and missed "drop".)
+//
+// The word is not banned: the retired binary's `setup` TUI, and the remove
+// skill's cleanup of artifacts a PAST setup left behind, are both legitimate and
+// historical. What must not appear is the bare word as a live actor. Each
+// allowed form below names why it is allowed, so the exemption list is a record
+// rather than a mute.
+var setupQualifiers = []string{
+	"the retired setup skill", // decision-0072's own name for it
+	"a past setup",            // remove skill: cleaning artifacts it left
+	"past setup",              // same, mid-sentence
+	"setup skill retired",     // README pointer at the decision
+	"the setup skill",         // qualified reference to the artifact
+	"`setup` TUI",             // the retired v0 BINARY, not the skill
+	"setup\n  CLI",            // same, across a line wrap
+	"grove:setup",             // a different product's skill
+}
+
+func TestNoUnqualifiedSetupClaims(t *testing.T) {
+	re := regexp.MustCompile(`(?i)\bsetup\b`)
+	checked := 0
+	for _, f := range docSurfaces(t) {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("reading %s: %v", f, err)
+		}
+		for _, line := range strings.Split(string(b), "\n") {
+			if !re.MatchString(line) {
+				continue
+			}
+			checked++
+			qualified := false
+			for _, q := range setupQualifiers {
+				if strings.Contains(line, strings.ReplaceAll(q, "\\n  ", "")) {
+					qualified = true
+					break
+				}
+			}
+			if !qualified {
+				t.Errorf("%s says \"setup\" as a live actor; decision-0072 retired it. Qualify it "+
+					"(\"a past setup\", \"the retired setup skill\") or delete the claim:\n  %s", f, strings.TrimSpace(line))
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no line mentioning setup was found at all — the scan is broken, not the docs")
+	}
+	t.Logf("checked %d lines mentioning setup", checked)
 }
 
 func pluginSkills(t *testing.T) map[string]bool {
