@@ -70,8 +70,10 @@ item as **ambiguous and consent-gated** — never decide it from the bytes.
 - **Integrity problems stop everything.** Ambiguous marker structure, any other preflight
   failure, or a §4 verification mismatch: stop with the whole-project snapshot unchanged (or,
   mid-§4, with no further step applied), and still produce the §5 report — every untouched item
-  **retained**, the stopping artifact itself reported **ambiguous**, with the stopping reason
-  named.
+  **retained**, save the stopping artifact itself, where the stop has one (a nobody-to-ask stop
+  has none): an ambiguity or preflight stop's artifact is reported **ambiguous**; a §4
+  mismatch's target is reported **verification-failed**. The stopping reason is named either
+  way.
 - **Denied item-scoped consents narrow the transaction; they never abort it.** Each of these is
   asked in this preflight, and a **denied** answer removes exactly that item from the staged
   transaction while everything else proceeds: the bundle deletion; the `.trellis/` deletion (one
@@ -147,10 +149,11 @@ Delete only the file. `.claude/rules/` is a shared directory a project may fill
 with unrelated rules of its own, and the directory itself is not Trellis's to
 remove.
 
-Each target is verified against its §1 snapshot **immediately before writing it** — verifying
-only after the writes would make the mismatch branch below dead code, and would overwrite a
-concurrent user edit and then report clean. Verify surrounding instruction-file and ignore-file
-bytes against the snapshots. **A mismatch
+Each target — written **or deleted** — is verified against its §1 snapshot **immediately before
+applying that step**; what is compared is the target's own bytes, the surrounding
+instruction-file and ignore-file bytes around each managed region included. Verifying only
+after the fact would make the mismatch branch below dead code, and would destroy a concurrent
+user edit and then report clean. **A mismatch
 stops the transaction where it stands**: apply no further step, leave every not-yet-applied
 staging unwritten, and report per §5 — the mismatched path in the **verification-failed**
 category, completed steps as removed, remaining steps as retained, and the fact that the tree
@@ -170,10 +173,14 @@ the `trellis-pre-morph` tag).
 
 This report is owed on **every** exit — a completed transaction, one narrowed by denied
 consents, a preflight stop, a verification failure, the already-absent no-op (the predicate
-sentence below is itself that exit's report), or a morph hand-off (showing the rollback options,
-or saying none can be located, **ends this operation**: the reversal itself is the user's, and a
-completed reversal re-enters through a fresh preflight). A stop before any write reports **every
-item retained** — save the stopping artifact itself, which is reported **ambiguous** — with the
+sentence below is itself that exit's report), or a morph hand-off (a **standing morph** only:
+showing the rollback options,
+or saying none can be located, **ends this operation** — the reversal itself is the user's, and a
+completed reversal re-enters through a fresh preflight; a stale tag alone is no hand-off, and
+that removal continues — see the morph section). A stop before any write reports **every
+item retained** — save the stopping artifact itself, where the stop has one: it is reported
+**ambiguous** after an ambiguity or preflight stop, **verification-failed** after a
+first-target mismatch — with the
 stopping reason named; a narrowed transaction reports each denied item
 as retained by consent.
 
@@ -215,7 +222,10 @@ model-driven rewrite of the project's own files, on the `trellis/morph` branch),
 completed removal leaves it behind (`decision-0073` D1, S6). To tell, read the project's own
 instruction files — does the rewritten content still stand? If the morph was already reversed,
 the leftover tag is stale; offer to clear it with `git tag -d trellis-pre-morph`, behind the same
-explicit confirmation as every other change here.
+explicit confirmation as every other change here. Clearing — or declining to clear — a stale tag
+is **not** the morph hand-off: with the morph already reversed there is no morph to hand off, so
+the removal **continues from §2** as an ordinary removal. Only a standing morph ends the
+operation.
 
 If the morph stands, show the user the options (`git reset --hard trellis-pre-morph`,
 `git revert`, or deleting the unmerged `trellis/morph` branch) and let them run the destructive

@@ -291,6 +291,16 @@ func TestRemoveSkillConsentModelIsDefinedOnce(t *testing.T) {
 		// out the stopping artifact itself, or the ambiguous category is
 		// unreachable from the class that exists to feed it.
 		{"the ambiguous carve-out on the stop-everything class (R2)", "reported **ambiguous**"},
+		// Round 5 (F1/F2/F3, the convergent blocker): the carve-out must
+		// EXCEPT the artifact from the retained quantifier (not coordinate it
+		// into both categories), must be conditional (a nobody-to-ask stop
+		// has no stopping artifact), and must scope by trigger — a §4
+		// mismatch's mandatory category is verification-failed, never
+		// ambiguous, or one artifact carries two mandatory categories in an
+		// exclusive grammar.
+		{"the excepting construction in §1's stop (F2)", "save the stopping artifact"},
+		{"the conditional artifact clause — nobody-to-ask has none (F3)", "where the stop has one"},
+		{"the mismatch category scoped inside the stop class (F1)", "verification-failed"},
 	} {
 		if !strings.Contains(preflight, tc.needle) {
 			t.Errorf("§1's consent model is missing %s — no %q in it", tc.element, tc.needle)
@@ -337,11 +347,14 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 		// Round 3 (spec-adversary R1/R3): the entry threshold must read
 		// resolves — a denied consent narrows the transaction, it never bars
 		// entry — and verification must be timed per target, immediately
-		// before its write: the verify-after-writing reading makes the
+		// before its step: the verify-after-the-fact reading makes the
 		// mismatch branch dead code and destroys a concurrent user edit
-		// before reporting clean.
+		// before reporting clean. Round 5 (F4) widened the timing needle:
+		// "writing it" did not literally cover the three deletion steps, so
+		// the pin is per-step (written OR deleted) now.
 		{"§4", "the resolves entry threshold (R1)", "preflight and consent resolves", tx},
-		{"§4", "per-target pre-write verification timing (R3)", "immediately before writing it", tx},
+		{"§4", "per-target pre-step verification timing (R3/F4)", "immediately before applying that step", tx},
+		{"§4", "deletion steps inside the verification scope (F4)", "or deleted", tx},
 		{"§5", "the verification-failed report bucket (N4)", "verification-failed", report},
 		{"§5", "the report owed on every exit, a stop included (N4)", "every item retained", report},
 		// Round 3 (R2/R4): a stop must leave the ambiguous category reachable
@@ -352,6 +365,15 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 		{"§5", "the reachable ambiguous category on a stop (R2)", "reported **ambiguous**", report},
 		{"§5", "the no-op exit in the every-exit list (R4)", "itself that exit's report", report},
 		{"§5", "the morph hand-off named as an exit (R4)", "morph hand-off", report},
+		// Round 5 (F1/F3/F5 in §5's mirror): the stop sentence must route a
+		// first-target mismatch — a pre-write stop under per-target timing —
+		// to verification-failed, carry the same conditional
+		// stopping-artifact clause as §1, and scope the hand-off exit to a
+		// STANDING morph so the stale-tag resume does not falsify the
+		// every-exit completeness claim.
+		{"§5", "the mismatch category in the stop sentence (F1 mirror)", "first-target mismatch", report},
+		{"§5", "the conditional stopping-artifact clause (F3)", "where the stop has one", report},
+		{"§5", "the standing-morph scoping of the hand-off exit (F5)", "standing morph", report},
 	} {
 		if !strings.Contains(tc.window, tc.needle) {
 			t.Errorf("%s is missing %s — no %q in it", tc.where, tc.element, tc.needle)
@@ -385,5 +407,13 @@ func TestRemoveSkillMorphReentryAndTrigger(t *testing.T) {
 	}
 	if !strings.Contains(morph, "start over from the preflight") {
 		t.Errorf("post-reversal re-entry is unspecified — a reversal rewrites the tree, so the fresh preflight must be ordered (N5)")
+	}
+	// Round 5 (F5): the stale-tag branch shows no options and locates
+	// nothing, so it fits neither the exit definition nor a stated resume —
+	// its routing was a live guess. Clearing (or declining to clear) a stale
+	// tag is not a hand-off: there is no morph left to hand off, and the
+	// removal continues as an ordinary one.
+	if !strings.Contains(morph, "continues from §2") {
+		t.Errorf("the stale-tag branch has no stated routing — with the morph already reversed the removal must continue from §2, not exit (F5)")
 	}
 }
