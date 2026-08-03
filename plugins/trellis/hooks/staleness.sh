@@ -183,11 +183,22 @@ governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*g
 # the fail-open direction is a real block escaping the probe). The literal
 # `trellis:begin` does not match `trellis:codex-bootstrap:begin` — different
 # text after `trellis:` — so the Codex receipt alone never trips this.
+# EVERY match, not the first. A block in CLAUDE.md AND one in AGENTS.md is a
+# legitimate multi-file state — skills/remove/SKILL.md says so in terms ("a
+# legitimate multi-file state — remove each; it is not a duplicate") — and the
+# host loads both files, so both blocks are in context. Breaking at the first
+# match named one file in every message below: the refusal's remedy then left
+# the second block live, the project stayed in the refused state forever, and
+# the message was wrong about the state the reader was actually in — the exact
+# class decision-0073 exists to end, in the code that closed it. $inline_file
+# holds the first match (kept for messages that name one file); $inline_files
+# holds all of them, space-separated, and is what the remedies name.
 inline_file=""
+inline_files=""
 for f in CLAUDE.md AGENTS.md; do
   if grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$root/$f" 2>/dev/null; then
-    inline_file="$f"
-    break
+    [ -n "$inline_file" ] || inline_file="$f"
+    inline_files="${inline_files:+$inline_files and }$f"
   fi
 done
 
@@ -221,7 +232,7 @@ if [ -f "$root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
   # review found it as such). Every string that reaches an agent lives inside
   # an emit literal, even at the cost of repeating the base message.
   if [ -n "$inline_file" ]; then
-    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. This project also carries a Trellis managed block in $inline_file (the inline shape): any rules embedded between its markers were likewise loaded at launch and must be disregarded too — and if the block holds only @-import lines, it may be delivering nothing at all. To stop them being loaded at all, run /trellis:remove."
+    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. This project also carries a Trellis managed block in $inline_files (the inline shape, in each file named): any rules embedded between its markers were likewise loaded at launch and must be disregarded too — and if the block holds only @-import lines, it may be delivering nothing at all. To stop them being loaded at all, run /trellis:remove."
   elif [ -f "$root/.claude/rules/trellis.md" ] || [ -d "$root/.trellis/internal" ] || [ -f "$root/.trellis/trellis.md" ]; then
     emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. To stop them being loaded at all, run /trellis:remove."
   fi
@@ -264,7 +275,7 @@ fi
 # assert "twice" as fact. What it does assert: two static delivery shapes
 # coexist, and the project should keep at most one.
 if [ -n "$inline_file" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
-  emit "TRELLIS_STATIC_SHAPES_CONFLICT — this project has BOTH a rendered .claude/rules/trellis.md and a Trellis managed block in $inline_file. The rendered file is loaded by the host before any hook runs. The block, if it embeds the rules readout between its markers, puts the same rules in context twice; if it holds only dangling @-import lines whose .trellis/ targets are gone, it delivers nothing — read the block in $inline_file to tell which. Either way, keep at most one static shape: delete the managed block in $inline_file (its trellis:begin marker through its trellis:end marker) to keep the rendered file, or delete .claude/rules/trellis.md to keep the block — keeping .trellis/rules.toml either way. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
+  emit "TRELLIS_STATIC_SHAPES_CONFLICT — this project has BOTH a rendered .claude/rules/trellis.md and a Trellis managed block in $inline_files. The rendered file is loaded by the host before any hook runs. The block, if it embeds the rules readout between its markers, puts the same rules in context twice; if it holds only dangling @-import lines whose .trellis/ targets are gone, it delivers nothing — read each block named above to tell which. Either way, keep at most one static shape: delete the managed block from EACH of $inline_files (its trellis:begin marker through its trellis:end marker in every file named — leaving one behind leaves this conflict live) to keep the rendered file, or delete .claude/rules/trellis.md to keep the block — keeping .trellis/rules.toml either way. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -433,7 +444,7 @@ fi
 # ungoverned), so the refusal names both states, says how to tell, and asserts
 # neither as fact.
 if [ -n "$inline_file" ]; then
-  emit "TRELLIS_INLINE_BLOCK — $inline_file carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read the block in $inline_file to tell which. To move onto plugin-delivered rules either way, delete the managed block from $inline_file — everything from its trellis:begin marker through its trellis:end marker — keeping .trellis/rules.toml rows if that file exists (without it, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the project stays governed). Or run /trellis:remove to take Trellis out of this project entirely — the opposite endpoint, not a migration. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
+  emit "TRELLIS_INLINE_BLOCK — $inline_files carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read each block named above to tell which. To move onto plugin-delivered rules either way, delete the managed block from EACH of $inline_files — everything from its trellis:begin marker through its trellis:end marker, in every file named; leaving one behind leaves this project in the same refused state — keeping .trellis/rules.toml rows if that file exists (without it, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the project stays governed). Or run /trellis:remove to take Trellis out of this project entirely — the opposite endpoint, not a migration. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
   exit 0
 fi
 

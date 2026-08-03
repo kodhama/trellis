@@ -1746,6 +1746,53 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		}
 	})
 
+	// guards decision-0073 D1/D2 — Codex P1 on #231. The probe used to `break` at
+	// the first match, so a project with a block in BOTH files had every message
+	// name only one: following the remedy left the second block live and the
+	// project stayed in the refused state forever. skills/remove/SKILL.md calls
+	// that state legitimate in terms ("a legitimate multi-file state — remove
+	// each; it is not a duplicate"), and the host loads both files, so both
+	// blocks are in context.
+	t.Run("blocks in BOTH instruction files are all named, not just the first", func(t *testing.T) {
+		proj := t.TempDir()
+		block := files["block-inline-b.md"]
+		for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+			if err := os.WriteFile(filepath.Join(proj, name), []byte(block), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Premise: both files really do carry a column-0 marker.
+		for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+			b, err := os.ReadFile(filepath.Join(proj, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !colZeroBegin.Match(b) {
+				t.Fatalf("fixture premise failed: %s carries no column-0 trellis:begin marker", name)
+			}
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if !strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Fatalf("want the inline refusal, got:\n%s", ctx)
+		}
+		for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+			if !strings.Contains(ctx, name) {
+				t.Errorf("the refusal names only some of the blocks — %s is missing, so its remedy "+
+					"leaves that block live and the project stays in the refused state:\n%s", name, ctx)
+			}
+		}
+	})
+
 	t.Run("a BOM'd block at line 1 still draws the refusal", func(t *testing.T) {
 		// The probe's BOM tolerance is documented as load-bearing — an editor
 		// on a Windows-default checkout rewrites the encoding, and the
