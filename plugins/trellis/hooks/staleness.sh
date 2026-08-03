@@ -150,6 +150,47 @@ governed_head="$(sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | sed 
 # depended on where you ran it. Pinning the JS class alone could not fix that;
 # the shell had to stop asking the locale.
 governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*governed[[:space:]]*=' 2>/dev/null || true)"
+
+# ------------------------------------------------------------------ the S4 probe
+# decision-0073 D2: the inline managed-block shape (S4 in decision-0073 D1's
+# closed set) is a column-0 `<!-- trellis:begin` marker in an instruction file —
+# the rules body embedded between the markers, OR a dangling import whose
+# overlay was deleted. The probe cannot tell those two apart, so every message
+# it feeds below is written for both states and asserts neither as fact. It
+# feeds three decision sites: the governed = false disregard, the coexistence
+# check, and a refusal before path B.
+#
+# DELIBERATE TWO-FILE SUBSET (decision-0073 D1's per-component relevance
+# clause, stated here where it is done): only CLAUDE.md and AGENTS.md are
+# probed, while /trellis:remove recognises blocks in five instruction files.
+# These two are the files the Claude host loads; refusing delivery over a block
+# in GEMINI.md, .github/copilot-instructions.md or .clinerules — files this
+# host never reads — would ungovern a Claude session for content that was never
+# in it, the exact wrong-about-the-reader's-state class decision-0073 exists to
+# end. Same subset, same reason, as install.sh's render-time probe.
+#
+# Also deliberate, same clause: this hook does NOT probe the M2 morph markers
+# (.trellis/rollback, the trellis-pre-morph tag — decision-0073 D1's S6).
+# decision-0073 D2's change-set for this hook is the inline probe alone; a
+# morphed project's delivery is its own rewritten files, its rules.toml still
+# governs activation, and path B runs unchanged. The S6 fixture in
+# cli/plugin_hook_test.go pins that by name, so any change to it is a
+# decision, not a drive-by.
+#
+# Column-0 anchor with an optional UTF-8 BOM, mirroring install.sh's probe:
+# prose that names the marker mid-sentence must not match, and a BOM'd block at
+# line 1 must (an editor on a Windows-default checkout rewrites the encoding;
+# the fail-open direction is a real block escaping the probe). The literal
+# `trellis:begin` does not match `trellis:codex-bootstrap:begin` — different
+# text after `trellis:` — so the Codex receipt alone never trips this.
+inline_file=""
+for f in CLAUDE.md AGENTS.md; do
+  if grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$root/$f" 2>/dev/null; then
+    inline_file="$f"
+    break
+  fi
+done
+
 if [ -f "$root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
    printf '%s\n' "$governed_head" | LC_ALL=C grep -qE '^[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$' 2>/dev/null; then
   # One thing the hook cannot do is UN-load. On the curl path the host reads
@@ -166,8 +207,16 @@ if [ -f "$root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
   # branch used to check only the latter — so a declining project carrying an
   # overlay got total silence while its rules were live. Same defect, other
   # transport.
-  if [ -f "$root/.claude/rules/trellis.md" ] || [ -d "$root/.trellis/internal" ] || [ -f "$root/.trellis/trellis.md" ]; then
-    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. To stop them being loaded at all, run /trellis:remove."
+  # The inline managed block belongs in this condition too (decision-0073 D2):
+  # a block in CLAUDE.md/AGENTS.md is read by the host at launch exactly like
+  # the rendered file and the overlay imports, so a declining project carrying
+  # one used to get total silence while any rules embedded in it were live —
+  # the same defect this branch's comment already records for the overlay,
+  # on a transport the hook could not see at all.
+  if [ -f "$root/.claude/rules/trellis.md" ] || [ -d "$root/.trellis/internal" ] || [ -f "$root/.trellis/trellis.md" ] || [ -n "$inline_file" ]; then
+    inline_note=""
+    [ -n "$inline_file" ] && inline_note=" This project also carries a Trellis managed block in $inline_file (the inline shape): any rules embedded between its markers were likewise loaded at launch and must be disregarded too — and if the block holds only @-import lines, it may be delivering nothing at all."
+    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld.${inline_note} To stop them being loaded at all, run /trellis:remove."
   fi
   exit 0
 fi
@@ -197,6 +246,18 @@ overlay_paths=""
 [ -z "$static_overlay" ] && [ -f "$root/.trellis/trellis.md" ] && { static_overlay="legacy flat .trellis/ overlay"; overlay_paths=".trellis/trellis.md (and .trellis/version if present)"; }
 if [ -n "$static_overlay" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
   emit "TRELLIS_RULES_LOADED_TWICE — this project has BOTH a vendored $static_overlay (imported by its managed block) and a rendered .claude/rules/trellis.md. Both are loaded by the host before any hook runs, so the rules are in context TWICE right now and no hook can undo it. Remove one: delete .claude/rules/trellis.md to keep the overlay, or delete $overlay_paths and the managed block from this project's instructions file, keeping .trellis/rules.toml, to keep the rendered file. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
+  exit 0
+fi
+
+# The inline counterpart (decision-0073 D2/AC2): a managed block in an
+# instruction file PLUS a rendered file, with no overlay to claim the arm
+# above. The rendered file is loaded by the host unconditionally; the block may
+# embed the rules (a live second copy) or be a dangling import delivering
+# nothing — the probe cannot tell, so unlike the overlay arm this one does not
+# assert "twice" as fact. What it does assert: two static delivery shapes
+# coexist, and the project should keep at most one.
+if [ -n "$inline_file" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
+  emit "TRELLIS_STATIC_SHAPES_CONFLICT — this project has BOTH a rendered .claude/rules/trellis.md and a Trellis managed block in $inline_file. The rendered file is loaded by the host before any hook runs. The block, if it embeds the rules readout between its markers, puts the same rules in context twice; if it holds only dangling @-import lines whose .trellis/ targets are gone, it delivers nothing — read the block in $inline_file to tell which. Either way, keep at most one static shape: delete the managed block in $inline_file (its trellis:begin marker through its trellis:end marker) to keep the rendered file, or delete .claude/rules/trellis.md to keep the block — keeping .trellis/rules.toml either way. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -350,6 +411,22 @@ fi
 # shape; the hook did not know it existed.
 if [ -f "$root/.trellis/trellis.md" ]; then
   emit "TRELLIS_RULES_NOT_LOADED — this project carries a legacy flat .trellis/trellis.md overlay, which its managed block imports directly. This hook injected nothing: doing so would deliver the same rules twice. To move onto plugin-delivered rules, delete .trellis/trellis.md and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
+  exit 0
+fi
+
+# ---------------------------------------------------- S4: the inline managed block
+# (decision-0073 D2/AC2.) Reaching here, the project has no overlay, no legacy
+# stamp and no rendered file — the block the probe found is the only static
+# shape, so this branch sees exactly embedded-or-dangling S4 (S2 took path A
+# above, S3 the flat branches). Falling through to path B was the P1: the full
+# payload injected on top of a block the host had already loaded. The probe
+# cannot tell an EMBEDDED block (rules body between the markers — injecting
+# would be double delivery) from a DANGLING import (bare @-import lines whose
+# .trellis/internal/ overlay was deleted — nothing loaded, silently
+# ungoverned), so the refusal names both states, says how to tell, and asserts
+# neither as fact.
+if [ -n "$inline_file" ]; then
+  emit "TRELLIS_INLINE_BLOCK — $inline_file carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read the block in $inline_file to tell which. To move onto plugin-delivered rules either way, delete the managed block from $inline_file — everything from its trellis:begin marker through its trellis:end marker — keeping .trellis/rules.toml rows, or run /trellis:remove. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
   exit 0
 fi
 
