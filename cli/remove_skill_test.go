@@ -30,10 +30,20 @@ func removeSkillSection(t *testing.T, body, from, to string) string {
 	return body[i:j]
 }
 
-// noOpPredicateWindow returns the no-op predicate clause. Same anchor as
-// TestRemoveSkillNoOpPredicateCountsTheRenderedFile ("only when there is no"
-// appears in the predicate and nowhere else); the window is wider because the
-// predicate now counts every removable D1 state, not three shapes.
+// normalizeWS collapses every whitespace run to one space. SKILL.md hard-wraps
+// its prose, so a multi-word needle routinely straddles a line break — two of
+// this file's negative needles shipped never having matched the pre-fix bytes
+// for exactly that reason (code-review finding A on this run: the sub-guards
+// were green against the very sentences they pin). Line wrapping is not
+// semantic; every multi-word Contains over skill prose goes through here.
+func normalizeWS(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// noOpPredicateWindow returns the no-op predicate clause: from the anchor
+// ("only when there is no" appears in the predicate and nowhere else — same
+// anchor as TestRemoveSkillNoOpPredicateCountsTheRenderedFile) to the next
+// section heading. It was a fixed 700-byte window, which ended six bytes short
+// of "## Reversing" — a latent wrong-section satisfaction waiting for the next
+// edit (code-review finding D). Structure, not a byte count, bounds it now.
 func noOpPredicateWindow(t *testing.T, body string) string {
 	t.Helper()
 	const anchor = "only when there is no"
@@ -41,11 +51,12 @@ func noOpPredicateWindow(t *testing.T, body string) string {
 	if j < 0 {
 		t.Fatalf("cannot locate the no-op predicate clause — this assertion would silently not run")
 	}
-	end := j + 700
-	if end > len(body) {
-		end = len(body)
+	rest := body[j:]
+	k := strings.Index(rest, "\n## ")
+	if k < 0 {
+		t.Fatalf("cannot bound the predicate window at the next section heading — this assertion would silently read into nothing")
 	}
-	return body[j:end]
+	return rest[:k]
 }
 
 // TestRemoveSkillCoversEveryDeliveryState guards decision-0073 D3/D4/AC1: the
@@ -218,7 +229,12 @@ func TestRemoveSkillHandlesManuallyPastedBlocks(t *testing.T) {
 // provenance predicate (F4). Negative needles quoted verbatim from the
 // pre-decision-0073 file.
 func TestRemoveSkillFalseSentencesRemoved(t *testing.T) {
-	body := readFileT(t, removeSkillPath)
+	// Whitespace-normalized on purpose: the pre-fix file line-wrapped two of
+	// these sentences ("has the rendered\nfile…", "leaves **at least one**\n
+	// delivery path intact"), so space-carrying needles over the raw bytes
+	// never matched them and those sub-guards were green against the exact
+	// defect they pin — demonstrated by reverting the fix (code-review A).
+	body := normalizeWS(readFileT(t, removeSkillPath))
 
 	for _, tc := range []struct{ why, needle string }{
 		{"frontmatter 'touching nothing else' contradicts the body (conformance item 11)", "touching nothing else"},
@@ -234,7 +250,7 @@ func TestRemoveSkillFalseSentencesRemoved(t *testing.T) {
 	// The plugin README repeats the same three-shape 'touching nothing else'
 	// description of remove; shipping it unchanged would be a fresh private,
 	// partial enumeration — the exact class decision-0073 ends.
-	readme := readFileT(t, "../plugins/trellis/README.md")
+	readme := normalizeWS(readFileT(t, "../plugins/trellis/README.md"))
 	if strings.Contains(readme, "touching nothing else") {
 		t.Errorf("plugins/trellis/README.md still describes remove as 'touching nothing else' — stale against decision-0073 D3")
 	}
