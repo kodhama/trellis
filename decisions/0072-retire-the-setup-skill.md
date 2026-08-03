@@ -1,7 +1,7 @@
 ---
 id: decision-0072
 type: decision
-status: gated  # drafted by agent; awaiting the maintainer's intent act. Requested 2026-08-01 ("retire trellis:setup"), evaluated in #219, unblocked by decision-0071 removing the last overlay.
+status: approved  # maintainer intent act 2026-08-03, in session, at the governed run's batched intent gate: "Approve both, in order (0072 then 0073)" — an in-PR flip recording that act per lifecycle; author (agent) != approver (maintainer). The #227 merge remains the separate ship act. Originally: drafted by agent; awaiting the maintainer's intent act. Requested 2026-08-01 ("retire trellis:setup"), evaluated in #219, unblocked by decision-0071 removing the last overlay.
 depends_on: [decision-0053, decision-0065, decision-0070, decision-0071]
 owner: agent
 date: 2026-08-02
