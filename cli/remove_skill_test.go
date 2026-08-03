@@ -199,8 +199,9 @@ func TestRemoveSkillReportIsTrueUnderEitherBundleAnswer(t *testing.T) {
 	}
 }
 
-// TestRemoveSkillHandlesManuallyPastedBlocks guards code-review F7: the
-// separator-newline instruction assumed every block was appended by a setup;
+// TestRemoveSkillHandlesManuallyPastedBlocks guards decision-0073 D3
+// (code-review F7): the separator-newline instruction assumed every block was
+// appended by a setup;
 // a manually pasted block may carry no separator newline at all, and removing
 // "the one separator newline" over it eats a byte the user wrote.
 func TestRemoveSkillHandlesManuallyPastedBlocks(t *testing.T) {
@@ -211,10 +212,11 @@ func TestRemoveSkillHandlesManuallyPastedBlocks(t *testing.T) {
 	}
 }
 
-// TestRemoveSkillFalseSentencesRemoved pins the three recorded false sentences
-// out of the file (code-review F3, conformance items 10/11, the
-// decision-adversary's F1) plus §3's undecidable provenance predicate (F4).
-// Negative needles quoted verbatim from the pre-decision-0073 file.
+// TestRemoveSkillFalseSentencesRemoved guards decision-0073 D3/AC1: it pins
+// the three recorded false sentences out of the file (code-review F3,
+// conformance items 10/11, the decision-adversary's F1) plus §3's undecidable
+// provenance predicate (F4). Negative needles quoted verbatim from the
+// pre-decision-0073 file.
 func TestRemoveSkillFalseSentencesRemoved(t *testing.T) {
 	body := readFileT(t, removeSkillPath)
 
