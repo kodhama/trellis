@@ -1,7 +1,7 @@
 ---
 id: decision-0073
 type: decision
-status: gated  # drafted by agent; revision 2 after decision-adversary NEEDS-REVISION (six findings, all folded); self-check re-run and recorded below; awaiting fresh adversary convergence, then the maintainer intent act at this run's intent gate
+status: gated  # drafted by agent; revision 3 after two decision-adversary rounds (six findings each, all folded; the revision record locates every one); awaiting fresh adversary convergence, then the maintainer intent act at this run's intent gate
 depends_on: [decision-0068, decision-0070, decision-0072]
 informed_by: [spec-0006]
 owner: agent
@@ -51,8 +51,11 @@ Measured against `main`+#227, 2026-08-03 (fixtures and a live-session probe):
   `CLAUDE_PLUGIN_ROOT` pointed at the bundle — constructing the premise it
   claimed to test. Measured properly (headless sessions, trusted fixture,
   with a positive control): **a curl-vendored bundle's hook does not fire**;
-  the bundle is delivery-inert on the measured surface. This partially
-  answers `decision-0068` open question 5 in the negative. So a bundle left
+  the bundle's **hook** is delivery-inert on the measured surface. Stated
+  precisely: 0068's open question 5 asks whether the vendored **skills** load
+  at all, and skills discovery and hook registration are different host
+  mechanisms — this measurement answers only the hook-firing sub-question,
+  negatively, headless; the skills half of OQ5 remains open in full. So a bundle left
   behind by `/trellis:remove` does **not** silently re-govern the project;
   what remains true is that the skill leaves the adoption-act artifact and
   the product's skills on disk, unreported, in a project it just declared
@@ -112,6 +115,7 @@ absorb:
 | S3 | legacy flat overlay | `.trellis/trellis.md` (+ `.trellis/version`) + managed block |
 | S4 | inline managed block | `<!-- trellis:begin` at column 0 of **a documented instruction file** (the remove skill's five-file set: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.clinerules`), rules body embedded **or** a dangling import whose overlay was deleted |
 | S5 | project-scope plugin bundle | `.claude/skills/trellis/` — the adoption-act artifact (`decision-0070` D3), **except when the project root is `$HOME`** (0070 D6 carve-out); measured delivery-inert on the headless surface, adoption semantics unchanged |
+| S6 | M2 morph | `.trellis/rollback` and/or the `trellis-pre-morph` tag (`spec-0004` §2's first-class markers) — delivery is the project's **own rewritten instruction files**; no block, overlay, rendered file or bundle need exist |
 
 Two closure clauses, both load-bearing: **the none-state is a member** — a
 test that enumerates S1–S5 and forgets S0 repeats draft 1's defect; and
@@ -124,8 +128,14 @@ that every *named* state stays covered.
 
 **2. `staleness.sh` handles every state, and its inline-shape refusal is
 honest about what the probe can know.** The hook gains the column-0
-`<!-- trellis:begin` probe, feeding its three decision sites: the coexistence
-check, the `governed = false` disregard message, and a refusal before path B.
+`<!-- trellis:begin` probe **over `CLAUDE.md` and `AGENTS.md` only — a
+deliberate S4 subset under D1's relevance clause, recorded here as that clause
+requires**: those are the files the Claude host loads, and refusing delivery
+over a block in `GEMINI.md` or `.clinerules` — files this host never reads —
+would ungovern a Claude session for content that was never in it, the exact
+wrong-about-the-reader's-state class this record exists to end. The probe
+feeds the hook's three decision sites: the coexistence check, the
+`governed = false` disregard message, and a refusal before path B.
 The probe cannot distinguish an embedded block (rules live in context) from a
 dangling import whose overlay was deleted (no rules in context, silently) —
 so the refusal message is written for both: it names the block, says which of
@@ -152,7 +162,10 @@ Specifically, beyond its current three:
 - **Morph detection moves to preflight**, before any write — step 4's
   `.trellis/` deletion destroys `.trellis/rollback`, and the current
   procedure reaches the morph section only after the destruction. The no-op
-  predicate counts every state above, morph state included.
+  predicate distinguishes **S0-unadopted** (the one true "already absent")
+  from every removable state: S1–S6 and S0-config-only, whose bare
+  `rules.toml` is removable state — today's predicate would call a
+  fully-governed plugin-native project "already absent".
 
 **4. The closed set is executable, with the assertion mode matched to the
 component class.** For the two shell components, behavioural fixtures: every
@@ -167,10 +180,10 @@ D4 states this split rather than implying uniform strength.
 
 - **AC1**: the bundle-only fixture — every SKILL.md deletion performed, the
   bundle surviving — draws a report that names the bundle as retained (or a
-  removal that deletes it on confirmation); the no-op predicate no longer
-  reports "already absent" while any D1 state is present. The
-  `governed = false` and morph-marker fixtures draw their named surfacing
-  before any write.
+  removal that deletes it on confirmation); the no-op predicate reports
+  "already absent" **only in S0-unadopted** — never while any removable D1
+  artifact (S1–S6, or S0's config file) is present. The `governed = false`
+  and morph-marker fixtures draw their named surfacing before any write.
 - **AC2**: the embedded-inline fixture draws the loud refusal from path B,
   never double delivery; the dangling-import fixture draws the same refusal
   with its either-state wording, never a false "loaded twice" claim;
@@ -184,14 +197,22 @@ D4 states this split rather than implying uniform strength.
 ## Consequences
 
 - `staleness.sh` and `skills/remove/SKILL.md` change under this record's
-  build stage; `install.sh` is touched only if its enumeration drifts from
-  D1's per-component relevance clause.
+  build stage. `install.sh` gets exactly one touch: its existing two-file
+  narrowing comment gains the pointer to this record that D1's relevance
+  clause requires (it currently cites 0068 D7 only); its behaviour does not
+  change.
 - The build must also reconcile `README.md`'s manual inline recipe, which
   currently instructs copying `.trellis/internal/` *and* appending the inline
-  block — a layout D1 classifies as S2-plus-S4 conflicting; the recipe should
-  produce clean S4.
-- The OQ5 headless measurement is recorded here; `decision-0068`'s open
-  question 5 narrows to the interactive surface. 0068 is not edited.
+  block — a layout D1 classifies as S2-plus-S4 conflicting. Producing clean
+  S4 requires more than a recipe edit: the shipped inline payload itself
+  points readers at `.trellis/internal/invariants.md`
+  (`block-inline-tail.md`), so the generated block text changes in
+  `cli/apply.go` with the payload re-rendered — the `decision-0072`
+  generator-boundary rule — or the recipe keeps shipping the conflict.
+- The OQ5 headless measurement is recorded here. It answers only the
+  hook-firing sub-question (negative, headless surface); 0068's question as
+  written — whether the vendored **skills** load — remains open in full, and
+  the interactive hook surface stays unmeasured. 0068 is not edited.
 - **Sequencing at the gate (adversary F4):** `decision-0072` is `gated` and
   rides #227; this record depends on it. The intent act on 0073 must land
   together with or after 0072's — the gate owner rules the order as part of
@@ -200,6 +221,20 @@ D4 states this split rather than implying uniform strength.
   aspirational.
 
 ## Revision record
+
+**Revision 2 → revision 3, on decision-adversary round 2 NEEDS-REVISION
+(2026-08-03), all six items folded:** N1 the morph state D3 named three times
+was absent from D1's "closed" table — now S6, signed by spec-0004 §2's
+markers; N2 the hook probe's file scope was an absorbed enumeration — now
+stated in D2 as a deliberate two-file subset with its reason; N3 S0's
+membership made AC1 literally unsatisfiable — the quantifier is now "any
+removable D1 artifact", and D3's predicate splits S0-unadopted from
+S0-config-only; N4 the OQ5 narrowing had substituted the hook for the skills —
+both sentences now scope the measurement to the hook-firing sub-question;
+N5 "clean S4" now names the generated-payload change it requires; N6 the
+install.sh pointer is now an explicit single touch. The adversary's Part-4
+objection (Open(0) hiding two silently-decided questions) is met by deciding
+both in the text above rather than reopening them.
 
 **Draft 1 → revision 2, on decision-adversary NEEDS-REVISION (2026-08-03),
 all six findings folded:** F1 the set omitted the none/config-only state —
@@ -216,13 +251,17 @@ SKILL.md decision-adversary's decline-artifact finding (F3 there) is D3's
 second bullet. The OQ5 measurement corrected this run's own audit fixture,
 and the correction is stated in Context rather than absorbed.
 
-## Self-check (revision 2)
+## Self-check (revision 3)
 
 Sections present; every load-bearing code claim either verified by the round-1
 adversary against source or re-measured this session (the OQ5 probe, with a
 positive control and the constructed-premise error owned in Context);
 `depends_on` unchanged and the gated-0072 bind now an explicit gate-sequencing
 consequence rather than silent settled-ground; Open count is zero with both
-former items decided and recorded; parked items carry their routing. Promoted
-to `gated` on this self-check; `approved` remains the maintainer's intent act,
-after the fresh adversary pass on this revision.
+former items decided and recorded; parked items carry their routing.
+Round-2 items were folded as edits to the exact clauses the adversary named,
+with the revision record locating each; Open stays 0 because both
+silently-decided enumerations are now explicitly decided in the text, which is
+the remedy the adversary's Part 4 asked for. Promoted to `gated` on this
+self-check; `approved` remains the maintainer's intent act, after the fresh
+adversary pass on this revision.
