@@ -484,7 +484,11 @@ if [ "$scope" = "project" ]; then
   # blocks in five instruction files. That is deliberate, not an oversight: the
   # other three (GEMINI.md, .github/copilot-instructions.md, .clinerules) are not
   # loaded by Claude Code, so a block in one of them cannot double-deliver
-  # alongside .claude/rules/. Stated because D7 asks for stated, not implied.
+  # alongside .claude/rules/. Stated because D7 asks for stated, not implied —
+  # and because decision-0073 D1's per-component relevance clause requires a
+  # deliberate subset of the delivery states said where it is done, with the
+  # pointer: decision-0073 (the closed set's normative home; this narrowing is
+  # its S4 row scoped to the files this host loads).
   #
   # Verified: LF inline -> refuses; CRLF inline -> refuses; BOM'd inline ->
   # refuses; prose naming the marker mid-sentence -> renders.
