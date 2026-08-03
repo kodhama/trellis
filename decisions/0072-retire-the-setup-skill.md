@@ -114,7 +114,7 @@ Every message that named the skill as the remedy for a stale overlay now carries
 the manual steps instead: delete the overlay, keep `.trellis/rules.toml`. A nudge
 that reports a problem without a way out of it is worse than the skill it lost.
 
-**Four rounds of review found ONE defect class six times.** Every finding on this
+**Five rounds of review found ONE defect class seven times.** Every finding on this
 change was the same thing: a replacement remedy that was wrong about the reader's
 actual state, or that dropped a gate the skill had carried. Listed together
 because the pattern is the finding, not any single repair:
@@ -127,6 +127,7 @@ because the pattern is the finding, not any single repair:
 | 4 | the documented posture recipe | file completeness — a hand-written partial file leaves the project **ungoverned** | Codex |
 | 5 | the corrected recipe | file presence — copying a preset over an existing file re-enables every disabled row | Codex |
 | 6 | every deletion the hook instructs | authority — the retired skill confirmed first; the replacements did not | Codex |
+| 7 | the guard written for #6 | its own coverage — it matched the literal word `delete`, so a remedy saying "drop the unknown ones" walked past it ungated | Codex |
 
 **Three of the six are the same mechanism: retiring a confirm-gated writer
 silently retires the gate.** `/trellis:setup` diffed and asked before replacing
@@ -137,6 +138,16 @@ because the thing being removed was a skill, and the gate lived inside it.
 Fixing #6 with a class-wide guard rather than three edits surfaced **four more
 ungated deletion instructions** in the rendered-file branches that predate this
 change entirely and that no reviewer flagged. They are gated here too.
+
+**Finding #7 is the most useful of the seven, because it is about the guard.**
+The class-wide check matched the literal string `delete`, and one remedy said
+*"drop the unknown ones"* — a consumer-owned row removed with no confirmation,
+two clauses away from a reseed path that WAS gated for exactly that risk. A guard
+that recognises one verb is a guard against one verb. It now scans a verb list,
+excludes slash-command names (`/trellis:remove` is a gated skill, not an
+instruction), and asserts a floor on how many messages it matches — so narrowing
+the filter fails the test instead of quietly passing an empty set. Widening it
+found an eleventh message the narrow version had missed.
 
 The third is the worst of them and is not a wording problem. The rewrite told
 the agent to *"copy `rules-b.toml` over `.trellis/rules.toml`"* — the adaptive

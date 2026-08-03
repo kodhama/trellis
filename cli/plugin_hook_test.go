@@ -479,6 +479,89 @@ func renderedFile(files map[string]string, stamp string) string {
 // This test pins the recipe end to end, in both directions: the partial file
 // must fail loudly, and the documented copy-then-edit must deliver all fourteen
 // rules at the requested posture.
+// TestEveryDestructiveInstructionIsGated: a Codex P2 on #227, and then a Codex
+// P2 on the GUARD ITSELF, which is the more useful of the two.
+//
+// staleness.sh's emit strings are injected straight into the agent's context, so
+// "delete .trellis/internal/ and the managed block" is an instruction an
+// autonomous agent can act on immediately, against tracked files. The retired
+// /trellis:setup offered exactly this migration behind a confirmation
+// (floor-intent-gate). Retiring the skill silently retired the gate with it.
+//
+// The first version of this guard matched the literal word "delete" — and a
+// remedy saying "drop the unknown ones" slipped past it, instructing the removal
+// of a consumer-owned row with no confirmation, while the reseed remedy two
+// clauses later WAS gated for exactly that risk. A guard that recognises one
+// verb is a guard against one verb.
+//
+// So the verb list below is the weak point, and is written to fail loudly rather
+// than quietly: if it ever matches fewer messages than it does today, the
+// filter has broken and the test says so instead of passing on an empty set.
+var slashCommandRe = regexp.MustCompile(`/trellis:[a-z-]+`)
+
+var destructiveVerbs = []string{
+	"delete", "drop", "remove", "overwrite", "replace", "reset", "discard", "rm ",
+}
+
+func TestEveryDestructiveInstructionIsGated(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	emits := regexp.MustCompile(`(?m)^\s*emit "((?:[^"\\]|\\.)*)"`).FindAllStringSubmatch(string(body), -1)
+	if len(emits) < 8 {
+		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
+	}
+	gated := 0
+	for _, m := range emits {
+		msg := m[1]
+		// Pointing at a slash command is not instructing a mutation: /trellis:remove
+		// is a skill that runs its own confirmation. Scanning the raw text matched
+		// its NAME and demanded a gate on a message that only names it, which would
+		// have taught the next reader that the guard cries wolf.
+		scan := strings.ToLower(slashCommandRe.ReplaceAllString(msg, " "))
+		hit := ""
+		for _, v := range destructiveVerbs {
+			if strings.Contains(scan, v) {
+				hit = v
+				break
+			}
+		}
+		if hit == "" {
+			continue
+		}
+		gated++
+		if !strings.Contains(msg, "explicit confirmation") {
+			t.Errorf("this message instructs a mutation (%q) with no confirmation gate — an autonomous "+
+				"agent can act on it against files the consumer owns (floor-intent-gate):\n%s", hit, msg)
+		}
+	}
+	// A floor, not a ceiling: the count only ever grows as remedies are added, so
+	// a drop means the regex or the verb list stopped matching, not that the
+	// script got safer.
+	const known = 11
+	if gated < known {
+		t.Fatalf("matched %d destructive messages, expected at least %d — the filter broke; "+
+			"a guard that matches nothing passes silently", gated, known)
+	}
+	t.Logf("checked %d destructive messages of %d emits", gated, len(emits))
+}
+
+// TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
+// sharpest finding on it — the documented replacement for the retired skill
+// BROKE governance if followed literally.
+//
+// decision-0072's first draft said the replacement was "one sentence: edit
+// .trellis/rules.toml — strictness = \"firm\"". But the hook validates the row
+// set against the shipped catalog and injects NOTHING when a slug is missing, so
+// a project-scope install sitting at a governed 14/14 goes to ZERO the moment
+// someone hand-writes a file containing strictness alone. The retired skill's §1
+// copied a whole preset first; that step was the part that had to survive, and
+// the record had described it away.
+//
+// This test pins the recipe end to end, in both directions: the partial file
+// must fail loudly, and the documented copy-then-edit must deliver all fourteen
+// rules at the requested posture.
 // TestEveryDeletionInstructionIsGated: a Codex P2 on #227, and the SIXTH
 // appearance of one class on this PR — every finding here has been a remedy that
 // told an agent to do something destructive or shape-wrong without a gate.

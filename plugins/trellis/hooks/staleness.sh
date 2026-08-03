@@ -472,7 +472,7 @@ slug_report="$(
   ' "$rules" "$toml"
 )"
 if [ "$slug_report" != "ok" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Repair the rows WITHOUT discarding the project's choices: add the missing slugs, drop the unknown ones, and leave strictness and every existing active value exactly as they are. If you reseed from a preset instead — $plugin/reference/rules-a.toml for strictness = \"firm\", rules-b.toml for adaptive — show the user a diff and get explicit confirmation FIRST: a reseed resets every row they chose. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Every repair below edits a file the consumer owns, so show them the exact rows you would add and the exact rows you would remove, and get explicit confirmation before writing anything (floor-intent-gate). The minimal repair keeps their choices: add the missing slugs, remove the unknown ones, and leave strictness and every existing active value exactly as they are. A reseed from a preset — $plugin/reference/rules-a.toml for strictness = \"firm\", rules-b.toml for adaptive — is the bigger hammer and resets every row they chose, so name it as that when you offer it. Tell the user before doing substantive work."
   exit 0
 fi
 
