@@ -1577,9 +1577,14 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		assertRefusal(t, runIn(t, proj), "CLAUDE.md")
 	})
 
-	t.Run("embedded block in AGENTS.md draws the same refusal", func(t *testing.T) {
+	// The import is load-bearing, not incidental: AGENTS.md reaches a Claude
+	// session only through it (decision-0057). Without it this fixture asserted
+	// a refusal over a block this host never read — it encoded the defect Codex
+	// found on #231. The sibling subtest below pins the un-imported case.
+	t.Run("embedded block in an IMPORTED AGENTS.md draws the same refusal", func(t *testing.T) {
 		proj := newProj(t, files["rules-b.toml"])
 		writeInstr(t, proj, "AGENTS.md", files["block-inline-b.md"])
+		writeInstr(t, proj, "CLAUDE.md", "@AGENTS.md\n")
 		got, err := os.ReadFile(filepath.Join(proj, "AGENTS.md"))
 		if err != nil {
 			t.Fatal(err)
@@ -1753,13 +1758,95 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 	// that state legitimate in terms ("a legitimate multi-file state — remove
 	// each; it is not a duplicate"), and the host loads both files, so both
 	// blocks are in context.
+	// guards decision-0073 D2 + decision-0057 — Codex P1 on #231. AGENTS.md reaches
+	// a Claude session only through a CLAUDE.md import; probing it unconditionally
+	// refused delivery over a block THIS host never read, leaving an otherwise
+	// plugin-governed session ungoverned while the refusal claimed the block was
+	// loaded. D2's own reason for the two-file subset is exactly this test.
+	t.Run("an AGENTS.md block Claude never imports does not refuse delivery", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// CLAUDE.md exists but does NOT import AGENTS.md — the mixed-host layout.
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("# project notes\n\nnothing imported here.\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Premise: the block IS there at column 0, and CLAUDE.md really lacks the import.
+		b, err := os.ReadFile(filepath.Join(proj, "AGENTS.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(b) {
+			t.Fatal("fixture premise failed: AGENTS.md carries no column-0 marker")
+		}
+		c, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(c), "@AGENTS.md") {
+			t.Fatal("fixture premise failed: CLAUDE.md must NOT import AGENTS.md")
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("refused over a block this host never loaded — the session is ungoverned "+
+				"for content that was never in context:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, ruleSlug) {
+			t.Errorf("want normal delivery for a Claude session that never saw the block; got:\n%s", ctx)
+		}
+	})
+
+	t.Run("an AGENTS.md block Claude DOES import still refuses", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("@AGENTS.md\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if !strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("an imported AGENTS.md block IS loaded by this host and must still refuse:\n%s", ctx)
+		}
+		// P2: the remedy must not silently downgrade a firm project.
+		if !strings.Contains(ctx, "rules-a.toml") || !strings.Contains(ctx, "strictness") {
+			t.Errorf("the missing-rules.toml remedy must preserve the block's own posture "+
+				"(name rules-a for firm), not assume adaptive:\n%s", ctx)
+		}
+	})
+
 	t.Run("blocks in BOTH instruction files are all named, not just the first", func(t *testing.T) {
 		proj := t.TempDir()
 		block := files["block-inline-b.md"]
-		for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
-			if err := os.WriteFile(filepath.Join(proj, name), []byte(block), 0o644); err != nil {
-				t.Fatal(err)
-			}
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(block), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// CLAUDE.md carries its own block AND imports AGENTS.md — only then are
+		// both blocks in this host's context, which is what makes naming both
+		// mandatory (decision-0057).
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("@AGENTS.md\n\n"+block), 0o644); err != nil {
+			t.Fatal(err)
 		}
 		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
 			t.Fatal(err)

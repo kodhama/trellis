@@ -193,9 +193,24 @@ governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*g
 # class decision-0073 exists to end, in the code that closed it. $inline_file
 # holds the first match (kept for messages that name one file); $inline_files
 # holds all of them, space-separated, and is what the remedies name.
+# AGENTS.md reaches a CLAUDE session only through a CLAUDE.md import
+# (decision-0057: "Claude Code can import AGENTS.md from CLAUDE.md; Codex
+# discovers AGENTS.md directly"). Probing it unconditionally refused delivery
+# over a block THIS host never read — a documented mixed-host layout, where a
+# Codex-facing inline block in AGENTS.md left an otherwise plugin-governed
+# Claude session ungoverned while the refusal claimed the block was loaded.
+# That is the wrong-about-the-reader's-state class decision-0073 exists to end,
+# and D2's own recorded reason for the two-file subset is exactly this test:
+# refuse only over files this host actually loads.
+claude_imports_agents=no
+grep -q "@AGENTS\.md" "$root/CLAUDE.md" 2>/dev/null && claude_imports_agents=yes
+
 inline_file=""
 inline_files=""
 for f in CLAUDE.md AGENTS.md; do
+  if [ "$f" = AGENTS.md ] && [ "$claude_imports_agents" = no ]; then
+    continue
+  fi
   if grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$root/$f" 2>/dev/null; then
     [ -n "$inline_file" ] || inline_file="$f"
     inline_files="${inline_files:+$inline_files and }$f"
@@ -444,7 +459,7 @@ fi
 # ungoverned), so the refusal names both states, says how to tell, and asserts
 # neither as fact.
 if [ -n "$inline_file" ]; then
-  emit "TRELLIS_INLINE_BLOCK — $inline_files carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read each block named above to tell which. To move onto plugin-delivered rules either way, delete the managed block from EACH of $inline_files — everything from its trellis:begin marker through its trellis:end marker, in every file named; leaving one behind leaves this project in the same refused state — keeping .trellis/rules.toml rows if that file exists (without it, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the project stays governed). Or run /trellis:remove to take Trellis out of this project entirely — the opposite endpoint, not a migration. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
+  emit "TRELLIS_INLINE_BLOCK — $inline_files carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read each block named above to tell which. To move onto plugin-delivered rules either way, delete the managed block from EACH of $inline_files — everything from its trellis:begin marker through its trellis:end marker, in every file named; leaving one behind leaves this project in the same refused state — keeping .trellis/rules.toml rows if that file exists. Without it, read the block's own strictness value BEFORE deleting it and copy the preset that matches — $plugin/reference/rules-a.toml for firm, rules-b.toml for adaptive — to $root/.trellis/rules.toml, so the project keeps the posture it had instead of silently becoming adaptive. Or run /trellis:remove to take Trellis out of this project entirely — the opposite endpoint, not a migration. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
   exit 0
 fi
 
