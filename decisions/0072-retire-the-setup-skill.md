@@ -39,11 +39,15 @@ so §3 now serves nobody.
 **1. `/trellis:setup` is retired.** `plugins/trellis/skills/setup/` is deleted,
 with its manifest entry and registrations.
 
-**2. The replacement is two steps: copy a complete preset, then edit it.**
-`reference/rules-a.toml` for the firm posture, `rules-b.toml` for adaptive, to
-`.trellis/rules.toml`; then `active = false` on any row to turn a rule off. That
-file is the consumer's and is already the authority (`decision-0053`), and every
-surface that pointed at the skill now points at this recipe.
+**2. The replacement has two shapes, and which one applies depends on the
+project's state.** With **no `.trellis/rules.toml`**, copy a complete preset —
+`reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — then
+`active = false` on any row to turn a rule off. With a **file already present**,
+edit `strictness` in place and never copy a preset over it: both presets set
+every row active, so a posture-only change made by copying discards every row
+the consumer disabled. That file is the consumer's and is already the authority
+(`decision-0053`), and every surface that pointed at the skill now points at
+this pair.
 
 **The copy step is mandatory, and an earlier draft of this record got it wrong.**
 It said the replacement was *"one sentence: edit `.trellis/rules.toml`"*, which
@@ -110,15 +114,29 @@ Every message that named the skill as the remedy for a stale overlay now carries
 the manual steps instead: delete the overlay, keep `.trellis/rules.toml`. A nudge
 that reports a problem without a way out of it is worse than the skill it lost.
 
-**Two rounds of review found the same defect class three times, in three
-places.** A remedy is only useful if it names the shape the reader actually has,
-and every rewritten message here was first written against one shape:
+**Four rounds of review found ONE defect class six times.** Every finding on this
+change was the same thing: a replacement remedy that was wrong about the reader's
+actual state, or that dropped a gate the skill had carried. Listed together
+because the pattern is the finding, not any single repair:
 
-| where | wrong for | found by |
-|---|---|---|
-| `staleness.sh` coexistence nudge | flat overlays (no `internal/`) | cold review |
-| `install.sh` refusal | flat overlays **and** the inline managed-block shape (no overlay directory at all) | Claude, on the PR |
-| `staleness.sh` row mismatch | firm-posture projects and any hand-disabled row | Claude, on the PR |
+| # | where | wrong about | found by |
+|---|---|---|---|
+| 1 | `staleness.sh` coexistence nudge | overlay shape — flat overlays have no `internal/` | cold review |
+| 2 | `install.sh` refusal | overlay shape — three values, one remedy; the inline shape has no overlay directory at all | Claude |
+| 3 | `staleness.sh` row mismatch | posture — told the agent to clobber a firm project's rows, ungated | Claude |
+| 4 | the documented posture recipe | file completeness — a hand-written partial file leaves the project **ungoverned** | Codex |
+| 5 | the corrected recipe | file presence — copying a preset over an existing file re-enables every disabled row | Codex |
+| 6 | every deletion the hook instructs | authority — the retired skill confirmed first; the replacements did not | Codex |
+
+**Three of the six are the same mechanism: retiring a confirm-gated writer
+silently retires the gate.** `/trellis:setup` diffed and asked before replacing
+rows or deleting an overlay. Each remedy that replaced it inherited the action
+and not the confirmation, and none of that was noticed while writing them —
+because the thing being removed was a skill, and the gate lived inside it.
+
+Fixing #6 with a class-wide guard rather than three edits surfaced **four more
+ungated deletion instructions** in the rendered-file branches that predate this
+change entirely and that no reviewer flagged. They are gated here too.
 
 The third is the worst of them and is not a wording problem. The rewrite told
 the agent to *"copy `rules-b.toml` over `.trellis/rules.toml`"* — the adaptive

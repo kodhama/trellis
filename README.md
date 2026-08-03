@@ -23,12 +23,17 @@ That is the whole install:
 
 Installing the plugin at **project scope is the adoption act** — no further command, no file
 required (`decision-0070`). The shipped defaults apply: all fourteen rules, adaptive posture.
-To change that, **copy a complete preset and then edit it** — `reference/rules-a.toml` from
-the installed plugin for the firm posture, `rules-b.toml` for adaptive — to
-`.trellis/rules.toml`, then set `active = false` on any row you want off (rows govern at read
-time, `decision-0053`). **Copy the whole file, never hand-write a partial one:** the hook
-validates your rows against the shipped set and injects nothing if any slug is missing, so a
-file containing `strictness` alone leaves the project ungoverned. The plugin vendors
+To change that, the recipe depends on whether you already have a `.trellis/rules.toml`:
+
+- **No file yet** — copy a complete preset from the installed plugin: `reference/rules-a.toml`
+  for the firm posture, `rules-b.toml` for adaptive. Then set `active = false` on any row you
+  want off (rows govern at read time, `decision-0053`). **Copy the whole file, never hand-write
+  a partial one:** the hook validates your rows against the shipped set and injects nothing if
+  any slug is missing, so a file containing `strictness` alone leaves the project ungoverned.
+- **File already there** — edit it **in place**: change `strictness` (and `seeded_from` to
+  match), flip individual rows. **Do not copy a preset over it** — both presets set every row
+  active, so a posture-only change made by copying silently re-enables every rule you turned
+  off. The plugin vendors
 nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
 plugin's payload, so there is no copy in your repo to install, refresh or let drift
 (`decision-0065`). A project set up before that change still carries a vendored `.trellis/`
@@ -89,8 +94,9 @@ less install.sh && sh install.sh --scope personal
 Neither path needs a command to become governed — the curl path seeds the rows and a
 project-scoped plugin applies the shipped defaults without any file at all (`decision-0070`).
 When you want the **firm** posture instead of the default adaptive one, or to turn individual
-rules off, copy the matching preset (`reference/rules-a.toml` / `rules-b.toml`) to
-`.trellis/rules.toml` and edit it from there — the row set must stay complete.
+rules off: copy the matching preset (`reference/rules-a.toml` / `rules-b.toml`) if you have no
+`.trellis/rules.toml` yet, otherwise edit the one you have in place. The row set must stay
+complete, and copying over an existing file discards every row you disabled.
 
 ### Local Codex support — Phase 1
 

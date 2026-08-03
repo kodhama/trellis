@@ -479,6 +479,47 @@ func renderedFile(files map[string]string, stamp string) string {
 // This test pins the recipe end to end, in both directions: the partial file
 // must fail loudly, and the documented copy-then-edit must deliver all fourteen
 // rules at the requested posture.
+// TestEveryDeletionInstructionIsGated: a Codex P2 on #227, and the SIXTH
+// appearance of one class on this PR — every finding here has been a remedy that
+// told an agent to do something destructive or shape-wrong without a gate.
+//
+// staleness.sh's emit strings are injected straight into the agent's context, so
+// "delete .trellis/internal/ and the managed block" is an instruction an
+// autonomous agent can act on immediately, against TRACKED files. The retired
+// /trellis:setup offered exactly this migration and required confirmation
+// (floor-intent-gate). Retiring the skill silently retired the gate with it.
+//
+// This is a source-level check on purpose. A per-branch behavioural test would
+// pin the six remedies that exist today; the defect is that a SEVENTH can be
+// added without a gate, so the guard reads every emit string in the script.
+func TestEveryDeletionInstructionIsGated(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Each emit "..." payload, which is what reaches the agent.
+	emits := regexp.MustCompile(`(?m)^\s*emit "((?:[^"\\]|\\.)*)"`).FindAllStringSubmatch(string(body), -1)
+	if len(emits) < 8 {
+		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
+	}
+	gated := 0
+	for _, m := range emits {
+		msg := m[1]
+		if !strings.Contains(msg, "delete") {
+			continue
+		}
+		gated++
+		if !strings.Contains(msg, "explicit confirmation") {
+			t.Errorf("this message instructs a deletion with no confirmation gate — an autonomous "+
+				"agent can act on it against tracked files (floor-intent-gate):\n%s", msg)
+		}
+	}
+	if gated == 0 {
+		t.Fatal("no deletion-instructing message was found at all — the filter is wrong, not the script")
+	}
+	t.Logf("checked %d deletion-instructing messages of %d emits", gated, len(emits))
+}
+
 func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
