@@ -43,8 +43,12 @@ nothing. The rules themselves arrive at session start, injected by the plugin's 
 plugin's payload, so there is no copy in your repo to install, refresh or let drift
 (`decision-0065`). A project set up before that change still carries a vendored `.trellis/`
 bundle and a managed block in your `CLAUDE.md`, and keeps working — the hook detects the overlay
-and steps aside, so the rules still arrive exactly once. To migrate it, delete `.trellis/internal/`
-and the managed block, keeping `.trellis/rules.toml`.
+and steps aside, so the rules still arrive exactly once. To migrate it, delete the overlay and the
+managed block, keeping `.trellis/rules.toml` — **and the overlay's path depends on its age**:
+`.trellis/internal/` for a `decision-0051` layout, `.trellis/trellis.md` plus `.trellis/version`
+for a flat one from before it. Deleting only `internal/` on a flat-layout project removes the
+managed block and leaves the legacy stamp, which the hook then detects — still ungoverned, one
+repair later.
 That earlier behaviour — the managed block, the vendored bundle, and an optional **M2 morph**
 rewriting your own instructions on a fresh git branch — is retired for new installs; only existing
 consumers still carry it. The plugin lives in [`plugins/trellis`](plugins/trellis).

@@ -463,16 +463,24 @@ slug_report="$(
     }
     END {
       for (s in want) if (!(s in seen)) missing = missing " " s
-      if (length(want) == 0) print "no-slugs-in-payload"
-      else if (missing != "") print "missing:" missing
-      else if (unknown != "") print "unknown:" unknown
-      else if (dup != "") print "duplicate:" dup
-      else print "ok"
+      if (length(want) == 0) { print "no-slugs-in-payload"; exit }
+      # EVERY category, not the first one an else-if chain reaches. A plugin
+      # update that RENAMES a slug produces a missing new row and an unknown old
+      # row at the same time; reporting only `missing:` sent the agent to add the
+      # new one, and validation failed again next session on the old one it was
+      # never told about. The remedy text below promises the report names the
+      # repair, so a partial report makes that promise false.
+      report = ""
+      if (missing != "") report = report "missing:" missing "; "
+      if (unknown != "") report = report "unknown:" unknown "; "
+      if (dup != "") report = report "duplicate:" dup "; "
+      if (report == "") print "ok"
+      else { sub(/; $/, "", report); print report }
     }
   ' "$rules" "$toml"
 )"
 if [ "$slug_report" != "ok" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Every repair below edits a file the consumer owns, so show them the exact rows you would add and the exact rows you would remove, and get explicit confirmation before writing anything (floor-intent-gate). The minimal repair keeps their choices, and the report above says which kind you have: for missing:, add those slugs; for unknown:, remove those rows; for duplicate:, delete the extra occurrences and keep the one whose value they intend. Leave strictness and every other existing active value exactly as they are. A reseed from a preset — $plugin/reference/rules-a.toml for strictness = \"firm\", rules-b.toml for adaptive — is the bigger hammer and resets every row they chose, so name it as that when you offer it. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Every repair below edits a file the consumer owns, so show them the exact rows you would add and the exact rows you would remove, and get explicit confirmation before writing anything (floor-intent-gate). The minimal repair keeps their choices, and the report above lists EVERY defect found, not just the first — fix all of them in one pass or validation fails again next session: for missing:, add those slugs; for unknown:, remove those rows; for duplicate:, delete the extra occurrences and keep the one whose value they intend. Leave strictness and every other existing active value exactly as they are. A reseed from a preset — $plugin/reference/rules-a.toml for strictness = \"firm\", rules-b.toml for adaptive — is the bigger hammer and resets every row they chose, so name it as that when you offer it. Tell the user before doing substantive work."
   exit 0
 fi
 

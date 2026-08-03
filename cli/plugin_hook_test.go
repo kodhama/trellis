@@ -647,10 +647,37 @@ func TestRepairRemedyCoversEveryMismatchKind(t *testing.T) {
 		return string(out)
 	}
 
+	t.Run("a renamed slug reports BOTH categories, not the first", func(t *testing.T) {
+		// A plugin update that renames a slug leaves the config simultaneously
+		// missing the new row and carrying the old one as unknown. The report was
+		// an else-if chain, so it named only `missing:` — the agent added the new
+		// row, and validation failed again next session on the unknown row it was
+		// never told about. Each repair round looked like progress and delivered
+		// none.
+		renamed := strings.Replace(files["rules-b.toml"],
+			"inv-minimal-first         = { active = true }",
+			"inv-renamed-first         = { active = true }", 1)
+		if renamed == files["rules-b.toml"] {
+			t.Fatal("fixture did not rename anything — the case would prove nothing")
+		}
+		out := run(t, renamed)
+		// Scope the assertion to the REPORT — the parenthesised list after "ships".
+		// The remedy text that follows it explains what to do "for missing:", "for
+		// unknown:" and "for duplicate:", so a whole-output Contains check is
+		// satisfied by the ADVICE and passes against a report that names one
+		// category. That is exactly how this assertion first shipped, and the
+		// mutation caught it.
+		report := reportSection(t, out)
+		if !strings.Contains(report, "missing:") || !strings.Contains(report, "unknown:") {
+			t.Errorf("a renamed slug is BOTH missing and unknown; reporting one sends the agent "+
+				"back for another round that also fails. report was %q, full output:\n%s", report, out)
+		}
+	})
+
 	t.Run("a duplicated slug is reported AND its repair is explained", func(t *testing.T) {
 		dup := files["rules-b.toml"] + "inv-minimal-first         = { active = true }\n"
 		out := run(t, dup)
-		if !strings.Contains(out, "duplicate:") {
+		if !strings.Contains(reportSection(t, out), "duplicate:") {
 			t.Fatalf("fixture did not produce the condition it names — the case would prove nothing:\n%s", out)
 		}
 		if !strings.Contains(out, "duplicate:, delete the extra occurrences") {
@@ -1405,4 +1432,17 @@ func keysOfBool(m map[string]bool) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// reportSection returns just the "(...)" defect report the hook prints after
+// "the rules the installed plugin ships", excluding the remedy prose that
+// follows. The remedy names every category by name, so assertions against the
+// whole message cannot tell a one-category report from a three-category one.
+func reportSection(t *testing.T, out string) string {
+	t.Helper()
+	m := regexp.MustCompile(`installed plugin ships \(([^)]*)\)`).FindStringSubmatch(out)
+	if m == nil {
+		t.Fatalf("no defect report found in the hook output:\n%s", out)
+	}
+	return m[1]
 }
