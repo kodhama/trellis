@@ -131,9 +131,10 @@ and what to do about each yourself:
 
 ## What it bundles
 
-- **`skills/remove`** — `/trellis:remove`: cleanly reverse the overlay (strip the Claude and Codex
-  blocks, then delete `.trellis/`, touching nothing else), and point a morphed project at its git
-  rollback.
+- **`skills/remove`** — `/trellis:remove`: cleanly reverse every delivery state in
+  `decision-0073`'s closed set — the managed blocks in the documented instruction files, the
+  rendered `.claude/rules/trellis.md`, a vendored bundle at `.claude/skills/trellis/` (behind
+  confirmation), then `.trellis/` — and point a morphed project at its git rollback.
 - **`reference/`** — the pre-rendered payload (`kodhama-0007`): `invariants.md` (the full signature
   catalog: every invariant with its *why* and a with/without example), the complete rules readout
   (`rules.md`, opened by the live-rows authority header), the `rules-<p>.toml` posture seeds,
@@ -150,8 +151,10 @@ and what to do about each yourself:
 
 ## Removing it
 
-Run `/trellis:remove` — it strips the managed blocks in `CLAUDE.md` and `AGENTS.md`, then deletes
-`.trellis/`, leaving your own content intact; for an M2-morphed project it points you at the recorded git rollback
+Run `/trellis:remove` — it strips the managed blocks from the documented instruction files,
+removes the rendered `.claude/rules/trellis.md`, deletes a project-scope vendored bundle at
+`.claude/skills/trellis/` behind your confirmation, then deletes `.trellis/`, leaving your own
+content intact; for an M2-morphed project it points you at the recorded git rollback
 (`trellis-pre-morph` / `.trellis/rollback`).
 
 ## Plugin vs manual copy
