@@ -1,7 +1,7 @@
 ---
 id: decision-0073
 type: decision
-status: gated  # drafted by agent; revision 3 after two decision-adversary rounds (six findings each, all folded; the revision record locates every one); awaiting fresh adversary convergence, then the maintainer intent act at this run's intent gate
+status: gated  # drafted by agent; revision 4 after three decision-adversary rounds (6+6+3 findings, all folded; the revision record locates every one); awaiting fresh adversary convergence, then the maintainer intent act at this run's intent gate
 depends_on: [decision-0068, decision-0070, decision-0072]
 informed_by: [spec-0006]
 owner: agent
@@ -95,10 +95,12 @@ adversary round 1):
 - The guard's unclaimed-type over-owing on SKILL.md files (grove#200) — its
   fail-closed behaviour left intact here; the typing question (a deliberate
   `skill` lane vs the full set forever) is grove's to decide.
-- Whether interactive (non-headless) sessions load a vendored bundle's hook —
-  the measurement covered the headless surface with a positive control;
-  0068's open question 5 stays open for the interactive surface, and D3's
-  report wording is chosen to be true under either answer.
+- Whether interactive (non-headless) sessions fire a vendored bundle's
+  **hook** — a question this run's measurement raised and did not answer. It
+  is **not** 0068's open question 5, which asks whether the vendored
+  **skills** load and remains open in full; the hook sub-question is measured
+  negative headless and unmeasured interactive, and D3's report wording is
+  chosen to be true under any answer.
 
 ## Decision
 
@@ -115,7 +117,7 @@ absorb:
 | S3 | legacy flat overlay | `.trellis/trellis.md` (+ `.trellis/version`) + managed block |
 | S4 | inline managed block | `<!-- trellis:begin` at column 0 of **a documented instruction file** (the remove skill's five-file set: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.clinerules`), rules body embedded **or** a dangling import whose overlay was deleted |
 | S5 | project-scope plugin bundle | `.claude/skills/trellis/` — the adoption-act artifact (`decision-0070` D3), **except when the project root is `$HOME`** (0070 D6 carve-out); measured delivery-inert on the headless surface, adoption semantics unchanged |
-| S6 | M2 morph | `.trellis/rollback` and/or the `trellis-pre-morph` tag (`spec-0004` §2's first-class markers) — delivery is the project's **own rewritten instruction files**; no block, overlay, rendered file or bundle need exist |
+| S6 | M2 morph | `.trellis/rollback` and/or the `trellis-pre-morph` tag (`spec-0004` §2's first-class markers) — delivery is the project's **own rewritten instruction files**; no block, overlay, rendered file or bundle need exist. **The tag can outlive the state** (a rollback or completed removal leaves it; `git tag -d trellis-pre-morph` clears it) — see AC1's surfacing rule |
 
 Two closure clauses, both load-bearing: **the none-state is a member** — a
 test that enumerates S1–S5 and forgets S0 repeats draft 1's defect; and
@@ -129,8 +131,10 @@ that every *named* state stays covered.
 **2. `staleness.sh` handles every state, and its inline-shape refusal is
 honest about what the probe can know.** The hook gains the column-0
 `<!-- trellis:begin` probe **over `CLAUDE.md` and `AGENTS.md` only — a
-deliberate S4 subset under D1's relevance clause, recorded here as that clause
-requires**: those are the files the Claude host loads, and refusing delivery
+deliberate S4 subset, stated in the probe's own comment with a pointer to
+this record, which is where D1's relevance clause requires it (the build owes
+that comment; this record is the pointer's target, not a substitute for
+it)**: those are the files the Claude host loads, and refusing delivery
 over a block in `GEMINI.md` or `.clinerules` — files this host never reads —
 would ungovern a Claude session for content that was never in it, the exact
 wrong-about-the-reader's-state class this record exists to end. The probe
@@ -183,7 +187,11 @@ D4 states this split rather than implying uniform strength.
   removal that deletes it on confirmation); the no-op predicate reports
   "already absent" **only in S0-unadopted** — never while any removable D1
   artifact (S1–S6, or S0's config file) is present. The `governed = false`
-  and morph-marker fixtures draw their named surfacing before any write.
+  and morph-marker fixtures draw their named surfacing before any write —
+  and the morph surfacing presents the marker **as a marker**, never the
+  morph as asserted fact: it may be stale after a rollback, so the message
+  says how to tell (does the rewritten content still stand?) and how to
+  clear a stale tag.
 - **AC2**: the embedded-inline fixture draws the loud refusal from path B,
   never double delivery; the dangling-import fixture draws the same refusal
   with its either-state wording, never a false "loaded twice" claim;
@@ -222,6 +230,16 @@ D4 states this split rather than implying uniform strength.
 
 ## Revision record
 
+**Revision 3 → revision 4, on decision-adversary round 3 NEEDS-REVISION
+(2026-08-03), one blocking item and two tightenings, all folded:** A the
+Parked section still carried the hook-for-skills substitution the N4 fix
+corrected two sections above it — the parked question is now stated as the
+interactive *hook* surface, explicitly not OQ5; B the S6 tag can outlive the
+morph state — the row says so and AC1's surfacing rule presents the marker as
+a marker, never the morph as fact; C D2 no longer reads as if the
+decision-side record satisfies D1's say-it-where-you-do-it clause — the build
+owes the probe comment, with this record as the pointer's target.
+
 **Revision 2 → revision 3, on decision-adversary round 2 NEEDS-REVISION
 (2026-08-03), all six items folded:** N1 the morph state D3 named three times
 was absent from D1's "closed" table — now S6, signed by spec-0004 §2's
@@ -251,7 +269,7 @@ SKILL.md decision-adversary's decline-artifact finding (F3 there) is D3's
 second bullet. The OQ5 measurement corrected this run's own audit fixture,
 and the correction is stated in Context rather than absorbed.
 
-## Self-check (revision 3)
+## Self-check (revision 4)
 
 Sections present; every load-bearing code claim either verified by the round-1
 adversary against source or re-measured this session (the OQ5 probe, with a
