@@ -1,0 +1,8 @@
+schema = 1
+record_type = "conformance"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "62607065ad3884b995eef0e77c0304a016e361f18ed38c5d179528168bd650af"
+verdict = "PASS — thirteen-item table all PASS, bound to c0bd94b. The reviewer reconstructed BOTH blobs and hashed them directly rather than trusting the manifest or the prior record, confirming the parent record genuinely binds the parent bytes (so everything outside the one hunk inherits by byte-identity) and that the manifest advance is correct rather than stale. Every decision-0073 D3/AC1 obligation verified byte-identical to the parent (transaction order, bundle gate and retained-report, decline surfacing, morph preflight, predicate discipline, marker-as-marker); the protected 'one ignored prompt re-governs at 14/14' sentence confirmed byte-untouched by diffing reconstructed blobs, not by grep. On the specific question asked: IMPLEMENTATION, not drift — decision-0073's S6 row states the tag can outlive the state and AC1 requires the surfacing to say how to clear it, the skill implements exactly that with a consented pre-transaction clear, and the old blanket wording would then have reported a deleted tag as retained; the fix closes a gap the record itself flagged. spec-0004 section 3: sharpens honest-disclosure fidelity rather than weakening it. decision-0070 untouched. Gates fresh: go test -count=1 ok 12.2s, build+vet clean. Evidence mode inferred with the ledger absence explicitly declared (config token 'none dedicated'), and the inline guards-decision-0073 convention verified present. [Reviewer plain sha256 17710e515c8e…]"
+by = "grove:conformance-reviewer (subagent, round 6); recorded by dispatcher"
+date = "2026-08-03T22:55:00Z"

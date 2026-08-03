@@ -1,0 +1,8 @@
+schema = 1
+record_type = "code-review"
+subject = "README.md"
+subject_state = "present"
+subject_sha256 = "17e668b752a82d573761eb129cb22bc872925f108b4e6d9edaf14791426ba778"
+verdict = "PASS-WITH-ADVISORIES, round 2 — the global BLOCK lifts. Every routed finding verified the reviewer way: H1 by independent column-0 fence parse (three recipe blocks, no block containing both branches) AND by walking both branches end-to-end with built fixtures — common+@import lands S2 with silence proven to be path A's ownership (stamp mutation draws the nudge), common+inline lands clean S4 drawing the TRELLIS_INLINE_BLOCK refusal with the M3-corrected framing; the H1 guard red against pre-split bytes, green now, and fails loud if a branch stops being locatable. M2 exercised in all three file states (marker at column 0 in each); L2 proven non-vacuous (OK against real checksums, FAILED against a tampered copy); L1's order now matches SKILL.md section 4 with the manifest genuinely advanced. The producer's disclosed sibling hazard verified real and distinct-class exactly as claimed, with a contrast fixture demonstrating why (path A keys on the directory, delivery intact; the pre-fix inline paste double-delivers). Two new lows riding: the inline guard line aborts under sh -e in two benign states (fail direction closed), and the @import branch's block append precedes its verify line (pre-existing asymmetry). M1 and L3 ride per the original routing. Gates fresh: go test -count=1 ok 13.0s. Record-convention note carried: the prior record's subject_sha256 was verified to be the tagged digest, so the chain binds. [Reviewer plain sha256 9b1279d0ffad…]"
+by = "grove:code-reviewer (subagent, global re-check); recorded by dispatcher"
+date = "2026-08-03T19:45:00Z"

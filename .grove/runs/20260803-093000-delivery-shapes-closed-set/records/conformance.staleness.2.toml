@@ -1,0 +1,8 @@
+schema = 1
+record_type = "conformance"
+subject = "plugins/trellis/hooks/staleness.sh"
+subject_state = "present"
+subject_sha256 = "9beca1b816f509c9362f3bacf9a26fa1ec3e7e709770b8d155bf28aa13a5c6ff"
+verdict = "PASS, round 2 — twelve-item table all PASS. Prior-PASS lineage digest-verified back to the exact pre-revision blob; revision delta confined to the two declared regions with the probe and all three decision sites untouched; both new disregard literals byte-identical to the old assembled message (reconstructed programmatically, behavior-preserving by four-case analysis); the S4 refusal's new clause fixes an instance of 0073's own defect class (the old text presupposed a rules.toml an S4 project need not have) and matches the legacy-overlay remedy and 0070 D3 semantics. The guard blind spot verified REAL by counterfactual (ungated deletion planted in the old inline_note: both guards stay green) and CLOSED by mutation (same plant in the new literal: deletion guard red on exactly that message). One non-blocking wording note ('stays governed' is proleptic for the dangling-import sub-state; within the honesty rule). Reviewer discloses and resolved a scratchpad collision with a concurrent agent (redone in a uniquely-named copy with pre-run content verification). Gates fresh: go test -count=1 ok 12.6s, build+vet ok, bash -n ok. Manifest entry equals the current digest. [Reviewer plain sha256 685f6bcfe62c…]"
+by = "grove:conformance-reviewer (subagent, round 2); recorded by dispatcher"
+date = "2026-08-03T17:20:00Z"

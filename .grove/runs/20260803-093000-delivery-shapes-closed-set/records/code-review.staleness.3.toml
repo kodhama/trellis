@@ -1,0 +1,8 @@
+schema = 1
+record_type = "code-review"
+subject = "plugins/trellis/hooks/staleness.sh"
+subject_state = "present"
+subject_sha256 = "5140ab79180395a9f3afa1dc1c623aa1d246e0b3db578f411622f180a47f437a"
+verdict = "PASS-WITH-ADVISORIES, round 3 — no new findings at any tier. The M3 reword verified inside the emit literal and inside both guards' field of view by independent scan replication (19 emits / 13 gated, matching the known=13 floor exactly); the round-2 literal-parity property re-diffed and holding; the M3 defect genuinely fixed with one honest nuance recorded (the claimed match to the disregard message is of stance, not words — substance holds). The mid-line-marker pin proven discriminating by mutation in BOTH directions: dropping the probe's anchor turns the pin red, and giving the fixture a trailing newline fatals its own premise check — it cannot pass vacuously, and the refusal text carries no rule slug so delivery-vs-refusal cannot false-green. The README newline guard hand-verified in all four file states with the marker landing at column 0 each time, POSIX-portable, and probed under set -e (safe: a non-final AND-OR command is exempt; verified empirically). Riding unchanged: the two round-2 lows (literal sync unbound by automation — re-verified in parity by hand; incomplete mutation recipe in the commit message) and prior advisories 1/5/6. Gates fresh: go test -count=1 ok 12.2s; manifest byte-equal. [Reviewer plain sha256 9362d10fcf3c…]"
+by = "grove:code-reviewer (subagent, round 3); recorded by dispatcher"
+date = "2026-08-03T19:15:00Z"
