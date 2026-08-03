@@ -363,3 +363,58 @@ func parseBriefTabs(t *testing.T, source string) map[string][]string {
 	}
 	return out
 }
+
+// TestManualRecipeBranchesAreSeparatePastes guards decision-0073 Consequence 2
+// (global review H1). The manual recipe's two delivery branches — the @import
+// branch (overlay copies + block-claude.md) and the inline branch
+// (block-inline-<p>.md, no overlay) — lived in ONE fenced sh block where both
+// were live commands, so a wholesale paste produced overlay + import block +
+// inline block: exactly the S2-plus-S4 conflict the record ordered the recipe
+// to stop shipping, and the hook absorbs it silently (path A exits first on a
+// current stamp — a reviewer built the state and ran the hook: silence). The
+// branches must live in separate fenced blocks so no single paste can produce
+// both.
+func TestManualRecipeBranchesAreSeparatePastes(t *testing.T) {
+	body, err := os.ReadFile("../README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Column-0 fence delimiters only: the README also NAMES a ```toml fence
+	// mid-sentence in its re-paste prose, which a naive split on backticks
+	// would count as a boundary and silently misalign every block after it.
+	var blocks []string
+	var cur []string
+	in := false
+	for _, line := range strings.Split(string(body), "\n") {
+		if strings.HasPrefix(line, "```") {
+			if in {
+				blocks = append(blocks, strings.Join(cur, "\n"))
+				cur = nil
+			}
+			in = !in
+			continue
+		}
+		if in {
+			cur = append(cur, line)
+		}
+	}
+	var importBlocks, inlineBlocks []int
+	for i, b := range blocks {
+		if strings.Contains(b, "block-claude.md") {
+			importBlocks = append(importBlocks, i)
+		}
+		if strings.Contains(b, "block-inline-<p>.md") {
+			inlineBlocks = append(inlineBlocks, i)
+		}
+	}
+	if len(importBlocks) == 0 || len(inlineBlocks) == 0 {
+		t.Fatalf("cannot locate both recipe branches in fenced blocks (import: %v, inline: %v) — the guard would silently check nothing", importBlocks, inlineBlocks)
+	}
+	for _, a := range importBlocks {
+		for _, b := range inlineBlocks {
+			if a == b {
+				t.Errorf("the @import and inline branches share fenced block %d — one wholesale paste produces the overlay AND both managed blocks, the S2-plus-S4 conflict decision-0073 Consequence 2 ordered this recipe to stop shipping", a)
+			}
+		}
+	}
+}

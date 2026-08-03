@@ -1717,6 +1717,35 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		}
 	})
 
+	t.Run("mid-line marker pin: a newline-less append is outside S4's signature", func(t *testing.T) {
+		// PIN, not a branch — same treatment as the S6 pin below. decision-0073
+		// D1 signs S4 as a COLUMN-0 `<!-- trellis:begin` marker; a block
+		// appended onto a file whose last line had no trailing newline lands
+		// the marker mid-line, outside that signature, and the probe
+		// deliberately does not chase it (the same fail-open class as the BOM
+		// case, which HAS a branch because the host loads a BOM'd file
+		// normally). The recipe closes this hole on the writer side — the
+		// README's inline branch guards the append with a newline — and this
+		// fixture pins the reader-side behaviour so any change to it is a
+		// decision, not a drive-by: today the probe misses the mid-line
+		// marker and path B delivers in full.
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "AGENTS.md", "existing content without trailing newline"+files["block-inline-b.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "AGENTS.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if colZeroBegin.Match(got) {
+			t.Fatal("premise: the marker must NOT sit at column 0 — a mid-line marker is the state under test")
+		}
+		if !strings.Contains(string(got), "<!-- trellis:begin") {
+			t.Fatal("premise: the marker must be present, just not at column 0")
+		}
+		if out := runIn(t, proj); !strings.Contains(out, ruleSlug) {
+			t.Fatalf("a mid-line marker is outside D1's column-0 S4 signature — current behaviour is full path-B delivery, pinned here; got:\n%s", out)
+		}
+	})
+
 	t.Run("a BOM'd block at line 1 still draws the refusal", func(t *testing.T) {
 		// The probe's BOM tolerance is documented as load-bearing — an editor
 		// on a Windows-default checkout rewrites the encoding, and the

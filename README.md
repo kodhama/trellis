@@ -158,8 +158,14 @@ git clone --depth 1 https://github.com/kodhama/trellis /tmp/trellis
 ref=/tmp/trellis/plugins/trellis/reference   # <p> below: a (conductor) | b (author-adapt)
 mkdir -p .trellis
 cp "$ref"/rules-<p>.toml .trellis/rules.toml          # first install only — yours after that
+```
 
-# @import-capable file (CLAUDE.md)? vendor the overlay the block imports:
+Then pick **exactly one** delivery branch — the two blocks below are alternatives, never both
+(both at once is the overlay-plus-inline conflict the installer refuses and the hook alarms on).
+
+**@import-capable file (CLAUDE.md)** — vendor the overlay the block imports:
+
+```sh
 mkdir -p .trellis/internal
 cp "$ref"/invariants.md  .trellis/internal/invariants.md
 cp "$ref"/rules.md       .trellis/internal/rules.md   # the complete rules readout
@@ -171,11 +177,18 @@ sed -n -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
        -e 's|  trellis-<p>\.md$|  .trellis/internal/trellis.md|p' \
        -e 's|  version$|  .trellis/internal/version|p' \
        "$ref"/checksums | shasum -a 256 -c -           # verify: all four lines print OK
+```
 
-# no @import support (e.g. AGENTS.md)? append the SELF-CONTAINED inline block
-# INSTEAD — it embeds the rules and the rows, and takes NO .trellis/internal/
-# copies: the block plus .trellis/rules.toml is the whole install. Copying the
-# overlay beside it would deliver the rules twice.
+**No @import support (e.g. AGENTS.md)** — append the SELF-CONTAINED inline block instead. It
+embeds the rules and the rows and takes NO `.trellis/internal/` copies: the block plus
+`.trellis/rules.toml` is the whole install, and copying the overlay beside it would deliver the
+rules twice.
+
+```sh
+# the block must start at column 0 of its own line: guard against a file
+# whose last line has no trailing newline before appending
+[ -s AGENTS.md ] && [ -n "$(tail -c1 AGENTS.md)" ] && echo >> AGENTS.md
+(cd "$ref" && grep '  block-inline-<p>\.md$' checksums | shasum -a 256 -c -)  # verify: OK
 cat "$ref"/block-inline-<p>.md >> AGENTS.md
 ```
 
