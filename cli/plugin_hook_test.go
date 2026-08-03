@@ -1807,6 +1807,78 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		}
 	})
 
+	// guards spec-0006:57 — Codex P1 (round 2) on #231. The import gate used an
+	// unanchored substring match, so a CLAUDE.md that merely MENTIONED
+	// "@AGENTS.md" in prose or a fenced example read as importing it, recreating
+	// the mixed-host regression the gate exists to prevent.
+	t.Run("a MENTION of the import is not an import", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Inline prose only. A @AGENTS.md line inside a FENCE is deliberately not
+		// exercised: whether Claude's import parser is fence-aware is unmeasured,
+		// so a fixture either way would assert a host behaviour nobody here has
+		// observed. Recorded as an open question on #231 rather than guessed.
+		mention := "# notes\n\nTo share instructions, put an `@AGENTS.md` import on its own line. We have not done that here.\n"
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte(mention), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Premise: the text really does contain the token, just never as a
+		// standalone import line outside a fence.
+		c, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(c), "@AGENTS.md") {
+			t.Fatal("fixture premise failed: the mention must be present")
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("a documented MENTION of the import was read as the import itself, so the hook "+
+				"refused over a block this host never loaded:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, ruleSlug) {
+			t.Errorf("want normal delivery; got:\n%s", ctx)
+		}
+	})
+
+	// guards decision-0073 D2 — Codex P2 (round 2) on #231: two blocks can carry
+	// different postures, so "copy the preset that matches" has no answer. The
+	// remedy must surface the conflict rather than pick silently.
+	t.Run("blocks disagreeing on strictness surface the conflict", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-a.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("@AGENTS.md\n\n"+files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// No .trellis/rules.toml — the state where a preset must be chosen.
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if !strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Fatalf("want the inline refusal, got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "disagree on strictness") {
+			t.Errorf("two blocks can carry different postures; the remedy must say so and let the "+
+				"user choose rather than picking one silently:\n%s", ctx)
+		}
+	})
+
 	t.Run("an AGENTS.md block Claude DOES import still refuses", func(t *testing.T) {
 		proj := t.TempDir()
 		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-b.md"]), 0o644); err != nil {
