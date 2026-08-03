@@ -1717,6 +1717,44 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		}
 	})
 
+	t.Run("a BOM'd block at line 1 still draws the refusal", func(t *testing.T) {
+		// The probe's BOM tolerance is documented as load-bearing — an editor
+		// on a Windows-default checkout rewrites the encoding, and the
+		// fail-open direction is a real block escaping the probe into double
+		// delivery — yet it had NO fixture: deleting the \($bom\)\{0,1\}
+		// alternative left the whole suite green (staleness review finding 2).
+		// Mutation-proven: de-BOMing the grep turns exactly this subtest red.
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "CLAUDE.md", "\xef\xbb\xbf"+files["block-inline-b.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(string(got), "\xef\xbb\xbf<!-- trellis:begin") {
+			t.Fatal("premise: the file must open with the BOM followed immediately by the marker")
+		}
+		// Note the plain column-0 regexp does NOT see this marker — the BOM
+		// precedes it — which is exactly why the probe needs its alternative.
+		if colZeroBegin.Match(got) {
+			t.Fatal("premise: with the BOM in front, the bare column-0 pattern must not match — otherwise this fixture proves nothing about the BOM branch")
+		}
+		assertRefusal(t, runIn(t, proj), "CLAUDE.md")
+	})
+
+	t.Run("a CRLF block still draws the refusal", func(t *testing.T) {
+		// Same population as the BOM case: a Windows-default checkout rewrites
+		// line endings. The probe is a prefix match with no $ anchor, so a
+		// trailing CR cannot matter — pinned here so an anchored rewrite shows
+		// up as a red test instead of a silently escaped block.
+		proj := newProj(t, files["rules-b.toml"])
+		body := strings.ReplaceAll(files["block-inline-b.md"], "\n", "\r\n")
+		if !strings.Contains(body, "\r\n") {
+			t.Fatal("premise: the fixture must actually carry CRLF line endings")
+		}
+		writeInstr(t, proj, "CLAUDE.md", body)
+		assertRefusal(t, runIn(t, proj), "CLAUDE.md")
+	})
+
 	t.Run("S6 pin: morph markers alone do not gate path B", func(t *testing.T) {
 		// decision-0073 D1 names S6 (the M2 morph: .trellis/rollback and/or
 		// the trellis-pre-morph tag) and D4 owes every state a fixture. This
