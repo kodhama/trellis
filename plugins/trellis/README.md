@@ -151,11 +151,12 @@ and what to do about each yourself:
 
 ## Removing it
 
-Run `/trellis:remove` — it strips the managed blocks from the documented instruction files,
-removes the rendered `.claude/rules/trellis.md`, deletes a project-scope vendored bundle at
-`.claude/skills/trellis/` behind your confirmation, then deletes `.trellis/`, leaving your own
-content intact; for an M2-morphed project it points you at the recorded git rollback
-(`trellis-pre-morph` / `.trellis/rollback`).
+Run `/trellis:remove` — it removes the rendered `.claude/rules/trellis.md` first (the skill's
+load-bearing order: no interruption may strand that always-loaded file without its rows), then
+strips the managed blocks from the documented instruction files, deletes a project-scope
+vendored bundle at `.claude/skills/trellis/` behind your confirmation, then deletes `.trellis/`,
+leaving your own content intact; for an M2-morphed project it points you at the recorded git
+rollback (`trellis-pre-morph` / `.trellis/rollback`).
 
 ## Plugin vs manual copy
 
