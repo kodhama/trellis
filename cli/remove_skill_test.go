@@ -361,7 +361,7 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 		{"§4", "per-target (not per-step) verification timing (R3/F4/N1)", "immediately before that target's own write or delete", tx},
 		{"§4", "deletion steps inside the verification scope (F4)", "or deleted", tx},
 		{"§5", "the verification-failed report bucket (N4)", "verification-failed", report},
-		{"§5", "the report owed on every exit, a stop included (N4)", "every item retained", report},
+		{"§5", "the report owed on every exit, a stop included (N4)", "every untouched item retained", report},
 		// Round 3 (R2/R4): a stop must leave the ambiguous category reachable
 		// (the artifact whose duplicate markers stopped the run is its whole
 		// purpose), and the every-exit list must cover the already-absent

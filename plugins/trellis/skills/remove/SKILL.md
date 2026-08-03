@@ -180,7 +180,7 @@ showing the rollback options,
 or saying none can be located, **ends this operation** — the reversal itself is the user's, and a
 completed reversal re-enters through a fresh preflight; a stale tag alone is no hand-off, and
 that removal continues — see the morph section). A stop before any step is applied reports
-**every item retained** — save the stopping artifact itself, where the stop has one: it is reported
+**every untouched item retained** — save the stopping artifact itself, where the stop has one: it is reported
 **ambiguous** after an ambiguity or preflight stop, **verification-failed** after a
 first-target mismatch — with the
 stopping reason named; a narrowed transaction reports each denied item
