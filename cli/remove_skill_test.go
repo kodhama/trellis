@@ -112,6 +112,15 @@ func TestRemoveSkillCoversEveryDeliveryState(t *testing.T) {
 		// the predicate: a marker-only project is removable state, not absence.
 		{"S6", preflight, "§1 preflight", []string{".trellis/rollback", "trellis-pre-morph"}},
 		{"S6", predicate, "no-op predicate", []string{".trellis/rollback", "trellis-pre-morph"}},
+		// spec-adversary N2, both halves: the predicate claimed closure while
+		// missing two removable states. An ignore entry is removable residue —
+		// a project whose sole leftover is a .trellis/ line in .prettierignore
+		// is not "already absent". And the bundle clause needs the $HOME
+		// carve-out (decision-0070 D6): without it a $HOME-rooted project can
+		// never report already-absent, because the user-scope install at that
+		// same path is not this project's artifact.
+		{"ignore entries", predicate, "no-op predicate", []string{"ignore entry"}},
+		{"S5 ($HOME carve-out)", predicate, "no-op predicate", []string{"$HOME"}},
 	} {
 		for _, needle := range tc.needles {
 			if !strings.Contains(tc.window, needle) {
@@ -253,5 +262,105 @@ func TestRemoveSkillFalseSentencesRemoved(t *testing.T) {
 	readme := normalizeWS(readFileT(t, "../plugins/trellis/README.md"))
 	if strings.Contains(readme, "touching nothing else") {
 		t.Errorf("plugins/trellis/README.md still describes remove as 'touching nothing else' — stale against decision-0073 D3")
+	}
+}
+
+// TestRemoveSkillConsentModelIsDefinedOnce guards decision-0073 D3
+// (spec-adversary N1/N3/N9): the file used to say both "withheld consent stops
+// with the snapshot unchanged" (§1) and "the bundle may be retained by
+// withheld consent while the rest proceeds" (§5), with a denied rows-consent
+// making the .trellis/ step unexecutable and no defined partial-transaction
+// behavior. The consent model must be stated once: integrity problems stop
+// everything; a DENIED item-scoped consent narrows the transaction and is
+// reported retained; only unobtainable consent stops with the snapshot
+// unchanged. And no predicate may decide provenance from bytes: file deletion
+// joins the consent list, the ignore evidence is the user's confirmation, and
+// unrecognized files inside .trellis/ are surfaced before the wholesale step.
+func TestRemoveSkillConsentModelIsDefinedOnce(t *testing.T) {
+	body := readFileT(t, removeSkillPath)
+	preflight := normalizeWS(removeSkillSection(t, body, "## 1.", "## 2."))
+	staging := normalizeWS(removeSkillSection(t, body, "## 2.", "## 3."))
+	ignores := normalizeWS(removeSkillSection(t, body, "## 3.", "## 4."))
+
+	for _, tc := range []struct{ element, needle string }{
+		{"the stop-everything class (integrity problems)", "stop everything"},
+		{"the item-scoped class (a denial narrows, never aborts)", "narrow the transaction"},
+		{"file deletion on the consent list (N3: a deletion was gated on provenance)", "becomes empty"},
+		{"unrecognized .trellis/ files surfaced before the wholesale step (N9)", "anything unrecognized"},
+	} {
+		if !strings.Contains(preflight, tc.needle) {
+			t.Errorf("§1's consent model is missing %s — no %q in it", tc.element, tc.needle)
+		}
+	}
+
+	// The three provenance-from-bytes predicates (N3), pinned out.
+	if strings.Contains(staging, "because Trellis created it") {
+		t.Errorf("§2 still gates a file DELETION on creation provenance, which cannot be proven from bytes (N3)")
+	}
+	if !strings.Contains(staging, "consented in the preflight") {
+		t.Errorf("§2's empty-file deletion must route to the preflight consent, not a provenance claim")
+	}
+	if strings.Contains(ignores, "demonstrably wrote") {
+		t.Errorf("§3 still decides provenance from surrounding bytes (N3)")
+	}
+	if strings.Contains(ignores, "it may be removed") {
+		t.Errorf("§3 still carries the operative nondeterministic 'may' (N7) — the empty-file outcome must be deterministic")
+	}
+	if !strings.Contains(ignores, "never guess") {
+		t.Errorf("§3 lost its never-guess rule — the consent routing must keep it")
+	}
+}
+
+// TestRemoveSkillVerificationAndReportSemantics guards decision-0073 D3
+// (spec-adversary N4, prior F7; code-review E/G; N6): a §4 snapshot mismatch
+// had no specified behavior and no report bucket, and a preflight stop did not
+// say whether it reports. Both are specified now: a mismatch stops the
+// transaction where it stands with a verification-failed category, and the §5
+// report is owed on every exit. The §4 rationale describes the rendered file
+// one way only (import-form — the shape install.sh actually renders), the
+// numbered-step collision ("resolved in step 1") is gone, and self-deletion
+// at project scope is acknowledged.
+func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
+	body := readFileT(t, removeSkillPath)
+	tx := normalizeWS(removeSkillSection(t, body, "## 4.", "## 5."))
+	report := normalizeWS(removeSkillSection(t, body, "## 5.", "## Reversing"))
+
+	for _, tc := range []struct{ where, element, needle, window string }{
+		{"§4", "the mismatch-stop behavior (N4)", "stops the transaction where it stands", tx},
+		{"§4", "the verification-failed category (N4)", "verification-failed", tx},
+		{"§4", "the single import-form rendered-file characterization (N6)", "imported activation rows", tx},
+		{"§4", "the self-deletion acknowledgement (code-review E)", "this very skill file", tx},
+		{"§5", "the verification-failed report bucket (N4)", "verification-failed", report},
+		{"§5", "the report owed on every exit, a stop included (N4)", "every item retained", report},
+	} {
+		if !strings.Contains(tc.window, tc.needle) {
+			t.Errorf("%s is missing %s — no %q in it", tc.where, tc.element, tc.needle)
+		}
+	}
+	if strings.Contains(tx, "resolved in step 1") {
+		t.Errorf("§4 still says \"resolved in step 1\" inside its own numbered list — that reads as transaction step 1, not the preflight (code-review G)")
+	}
+}
+
+// TestRemoveSkillMorphReentryAndTrigger guards decision-0073 D3/AC1
+// (spec-adversary N5/N8): the both-markers-absent branch was unreachable —
+// the morph section was entered only when a marker was present — so its
+// cannot-locate-a-rollback-point instruction could never fire; the user's own
+// assertion of a morph is its trigger. And a completed git reversal rewrites
+// the tree, so the operation must re-enter through a fresh preflight rather
+// than continue on stale snapshots and consents.
+func TestRemoveSkillMorphReentryAndTrigger(t *testing.T) {
+	body := readFileT(t, removeSkillPath)
+	i := strings.Index(body, "## Reversing")
+	if i < 0 {
+		t.Fatalf("cannot locate the morph section — every assertion below would silently not run")
+	}
+	morph := normalizeWS(body[i:])
+
+	if !strings.Contains(morph, "the user says this project was morphed") {
+		t.Errorf("the both-markers-absent branch has no reachable trigger — the user's assertion must open it (N8)")
+	}
+	if !strings.Contains(morph, "start over from the preflight") {
+		t.Errorf("post-reversal re-entry is unspecified — a reversal rewrites the tree, so the fresh preflight must be ordered (N5)")
 	}
 }
