@@ -1,6 +1,6 @@
 ---
 name: remove
-description: Remove Trellis from this project — delete the .trellis/ overlay, strip the managed block from CLAUDE.md, and strip any .trellis/ lint-ignore entry setup added, touching nothing else. Use when the user asks to remove, uninstall, undo, or take out Trellis from their repo.
+description: Remove Trellis from this project — delete the .trellis/ overlay, strip the managed block from CLAUDE.md, and strip any .trellis/ lint-ignore entry a past setup added, touching nothing else. Use when the user asks to remove, uninstall, undo, or take out Trellis from their repo.
 ---
 
 # Remove Trellis from this project
@@ -28,7 +28,8 @@ Also inspect, without writing:
   (`decision-0068` D1). It is a Trellis-authored instructions file loaded into
   every session, and it imports `.trellis/rules.toml`;
 - `.trellis/`, including consumer-owned `rules.toml` and any legacy `expression.md`;
-- every recognized lint/format ignore target that may contain a setup-added `.trellis/` line.
+- every recognized lint/format ignore target that may contain a `.trellis/` line added by a
+  past setup (the skill that wrote these is retired; the artifacts it left are not).
 
 **Order matters between those two.** Remove `.claude/rules/trellis.md` *before*
 `.trellis/`. An interrupted removal must never leave the governing file present
@@ -51,18 +52,19 @@ is unavailable, stop with the whole-project snapshot unchanged.
 
 Prepare the resulting bytes for all five documented instruction files before changing any one:
 
-- Remove only each recognized managed region, including the one separator newline setup added.
+- Remove only each recognized managed region, including the one separator newline a past setup added.
 - Preserve all bytes before and after the region exactly.
 - Delete an instruction file only when it becomes empty because Trellis created it; otherwise keep
   it, even when the remainder is whitespace.
 
-Do not treat an absent block as an error. A recognized, valid block is removed wherever setup or a
+Do not treat an absent block as an error. A recognized, valid block is removed wherever a past setup or a
 documented manual path placed it; ambiguous placement or markers were already a preflight failure.
 
 ## 3. Stage consented ignore cleanup
 
-For ESLint, Prettier, Biome, and markdownlint targets detected by setup, remove only a `.trellis/`
-entry known to have been added by Trellis. If an ignore file created by setup then becomes empty,
+For ESLint, Prettier, Biome, and markdownlint targets a past setup detected, remove only a
+`.trellis/` entry known to have been added by Trellis. If an ignore file a past setup created then
+becomes empty,
 it may be removed. Preserve all other patterns byte-for-byte. An ambiguous entry requires consent
 in step 1; never guess.
 

@@ -21,7 +21,7 @@ is absent (`decision-0070` D3). No `CLAUDE.md` block, no `AGENTS.md` receipt, no
 
 **Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
 the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
-projects the plugin's `reference/` files stay setup sources rather than runtime substitutes, which
+projects the plugin's `reference/` files stay installation sources rather than runtime substitutes, which
 is what the previous contract said of every project.
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
@@ -125,7 +125,8 @@ and what to do about each yourself:
   reads it any more, so leaving it in place is harmless but inert.
 - **Hand-authored content in the generated readout** (the clobber target of
   [#112](https://github.com/kodhama/trellis/issues/112)): moot on the plugin path since
-  `decision-0065` — setup no longer writes generated files, so there is nothing to rewrite whole.
+  `decision-0065` — the setup skill no longer wrote generated files, so there was nothing to
+  rewrite whole.
   It survives as a concern for `install.sh`, which does vendor them.
 
 ## What it bundles

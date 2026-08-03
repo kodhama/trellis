@@ -6,7 +6,7 @@
 # there): it downloads no binary and, more importantly, makes exactly ONE decision
 # (where to put the plugin) and composes NOTHING else. Every other decision —
 # posture, which instructions file to patch, block style, hand-authored-content
-# guarding — stays entirely inside plugins/trellis/skills/setup/SKILL.md, unmodified
+# guarding — stayed entirely inside the retired setup skill's SKILL.md, unmodified
 # and identical whether the plugin arrived via marketplace, a pre-committed
 # skills-dir vendor (this script), or the manual copy path. A second independent
 # writer of that skill's *decision logic* is exactly the drift-risk class
@@ -309,28 +309,28 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-9e7e6a151540b841424ff868816bf4da0e1e73511df4f1201268c190e9628414  README.md
+363f3f36f36748355d4a07c2b1b6d1009f4da3b1c78c4258cd41976286d48bdf  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 3da7f2cf8765fe95d1936a36d3341736f16b438353f2130368af58897dad20c4  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
 7bc38b5c51bb76231f5a2a344fde796b0822e5f83110a64b95f6dfa91d6ccf4c  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
-3a676709b23fd12f730695c71b46f7a6f485ec5d363739c40f52fb902f86f842  reference/block-codex.md
+3a2e43eeff953642a19946e8a1671487137f832b0e4aa1e62d2639998a8a4bfe  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
 f15315d1df95ca5df6bc59901e65691ffb77187e45f4df0a5438365e80149342  reference/block-inline-a.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-b-head.md
 f8efb5a0cd6f636164d8283c738a264b775671b10cb1e984613bb96f9ddef933  reference/block-inline-b.md
 a33f9904a063986caab0ccc156a229b959c232829c1f1b90c252377d3c028795  reference/block-inline-tail.md
-4318ba1db3eb5f270415e1288bfb179acc6229c27a276611ddd4e0fc9d76b214  reference/checksums
+32d89c062c7a19fdb9ec3cd75f531a6e3db7a7e80014b0598a2e06227596800d  reference/checksums
 68b803d9f4a45fc1af07c327a35c4a4b58aac878b233a4196079dac419bd28b3  reference/invariants.md
 a675233ee08c0c41b5c0490a163f4d6ff4e95c6bbf9964eac59e4772f6597454  reference/rules-a.toml
 534c9178b4c5173f6dd51f382a48b970cc263a83d410c0e9fff6c41a7c937386  reference/rules-b.toml
 238fca2fb2c9e91af22764fc403da9b0dc8625291ef8fc4530d52c1a2618df0e  reference/rules.md
 d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trellis-a.md
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
-f63c4d15f8ce3cf4932ed3412e141e3e47b886daed15223c8402b1c3718049c3  reference/version
-dc981bb8def6820bc8ff4c6b82785569d50016fd41e52adf1dc209a561234a44  skills/remove/SKILL.md
+51ab18b3eafb46df2a5d085eac0b66b7175e07972193185870cd943e277c1896  reference/version
+13d071ae21e31b4421791e1d347d03265558cdd3c85b4124e9497ad06ad89016  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -363,7 +363,7 @@ $out"
 
 # The bundle REPLACES the target rather than being copied over it. Copying in
 # place only ever creates and overwrites, so a file that LEAVES the bundle
-# survives every future upgrade: when decision-0072 retired skills/setup/, an
+# survives every future upgrade: when decision-0072 retired the setup skill, an
 # existing curl install kept the directory on disk and Claude Code kept
 # discovering the retired setup skill from it — the retirement reached new
 # installs and missed exactly the consumers who could not be told. That is a
@@ -473,7 +473,7 @@ if [ "$scope" = "project" ]; then
   #   - Prose that merely NAMED the delimiters matched twice. Column-0 anchoring
   #     fixes that: documentation writes the marker mid-sentence.
   # Opening marker only, anchored at column 0, with an optional leading UTF-8
-  # BOM. The BOM matters for the same reason it does in staleness.sh: setup wrote
+  # BOM. The BOM matters for the same reason it does in staleness.sh: a past setup wrote
   # the block at line 1 of a fresh CLAUDE.md, and an editor on a Windows-default
   # checkout rewrites the encoding. Without it a real block escapes the check and
   # renders into live double delivery -- the same fail-open direction, on the
@@ -673,7 +673,7 @@ elif [ "$scope" = "project" ]; then
   #
   # This amends decision-0065:26-29, the plugin/install split ("install.sh is
   # vendoring and never configures ... and continues to never touch .trellis/") —
-  # NOT :18-19's "setup writes exactly one file", which binds the skill and is
+  # NOT :18-19's "the setup skill writes exactly one file", which bound it and is
   # untouched. That clause was named here, and in three other places, before the
   # boundary was got right. Openly,
   # in decision-0070 D2, not by routing around it. The clause's purpose, that no

@@ -103,13 +103,19 @@ rules off: copy the matching preset (`reference/rules-a.toml` / `rules-b.toml`) 
 `.trellis/rules.toml` yet, otherwise edit the one you have in place. The row set must stay
 complete, and copying over an existing file discards every row you disabled.
 
-### Local Codex support — Phase 1
+### Local Codex — carried, not supported
 
-The same plugin supports Codex, and since `decision-0065` both hosts work the same way **on the
-plugin path**: a `SessionStart(startup)` hook injects the rules from the plugin's own payload,
-together with the project's `.trellis/rules.toml`. The **curl** path is Claude-only — it delivers
-through `.claude/rules/`, which is a Claude mechanism (`decision-0068` D7). Setup installs no receipt and no fallback — it writes the config
-file and nothing else.
+**Codex is not supported yet.** It remains a delivery target (`kodhama-0013`) with **no date
+attached**, and until it is claimed, nothing here is kept in step with the Claude path
+(`kodhama-0028`; `kodhama-0021` §2). `#220` holds what a supported Codex distribution would
+require.
+
+What exists: since `decision-0065` the plugin path works the same shape on both hosts — a
+`SessionStart(startup)` hook injects the rules from the plugin's own payload together with the
+project's `.trellis/rules.toml`. The **curl** path is Claude-only, delivering through
+`.claude/rules/`, which is a Claude mechanism (`decision-0068` D7). Adoption also differs: on
+Codex the config file is the adoption signal, so there is no project-scope default
+(`decision-0070` D7).
 
 A project that still carries a vendored `.trellis/internal/` overlay is read from that overlay
 instead, on both hosts, so nothing is delivered twice and no existing consumer breaks. The hook
@@ -119,10 +125,10 @@ choosing one. A valid row
 edit is seen at the next startup without refresh, and does not change a context already in
 flight.
 
-Native Codex delivery requires local **Node.js 20** or newer. Without it, setup reports
-bootstrap-only degradation; Trellis adds no project runtime, daemon, or network service. Native
-hook success is stronger than the fallback: fallback execution remains model-directed rather
-than deterministic.
+Native Codex delivery requires local **Node.js 20** or newer; without it the hook cannot run and
+nothing reports that, which is one of the things `#220` covers. Trellis adds no project runtime,
+daemon, or network service. Native hook success is stronger than the fallback: fallback execution
+remains model-directed rather than deterministic.
 
 Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desktop, IDE,
 headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
@@ -230,8 +236,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
   documented **manual copy path** for any other harness. It stands on the *spine* + an
   **independent conformance check** (`spec-0001`, running on this repo), the expression-profile +
   catalog **schema** (`spec-0002`), the machinery design (`spec-0003`), the populated catalog and
-  the first per-project **profile** (instance #1), and the cross-lens **lexicon**. The v0 **setup
-  CLI** shipped first (`v0.1.0`–`v0.2.29`) and its end-user channel retired in favor of the above
+  the first per-project **profile** (instance #1), and the cross-lens **lexicon**. The v0 setup **CLI** (the retired binary, unrelated to the retired setup skill) shipped first (`v0.1.0`–`v0.2.29`) and its end-user channel retired in favor of the above
   (`kodhama-0007` rule 5, `decision-0043`); the Go code survives as the release-time payload
   generator.
 - **In progress** — **supervisor mode** (installed live gates).

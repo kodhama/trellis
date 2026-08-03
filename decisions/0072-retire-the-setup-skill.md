@@ -119,7 +119,7 @@ Every message that named the skill as the remedy for a stale overlay now carries
 the manual steps instead: delete the overlay, keep `.trellis/rules.toml`. A nudge
 that reports a problem without a way out of it is worse than the skill it lost.
 
-**Six rounds of review found ONE defect class nine times.** Every finding on this
+**Seven rounds of review found ONE defect class eleven times.** Every finding on this
 change was the same thing: a replacement remedy that was wrong about the reader's
 actual state, or that dropped a gate the skill had carried. Listed together
 because the pattern is the finding, not any single repair:
@@ -135,6 +135,8 @@ because the pattern is the finding, not any single repair:
 | 7 | the guard written for #6 | its own coverage — it matched the literal word `delete`, so a remedy saying "drop the unknown ones" walked past it ungated | Codex |
 | 8 | the repair remedy | mismatch kind — `$slug_report` emits `missing:`, `unknown:` **and** `duplicate:`; the remedy explained two, so a duplicate had no working repair | Codex |
 | 9 | the corrected recipe, again | file shape — `governed = false` is a legal one-line file, and "edit `strictness` in place" leaves the opt-out in force and the hook **silent** | Codex |
+| 10 | the docs guard, again | spelling — it matched `/trellis:setup`, so bare-word claims ("Setup installs no receipt", "setup reports bootstrap-only degradation") stayed invisible | Codex |
+| 11 | the two shipped READMEs | agreement — one said Codex is not supported yet, the other kept a "Local Codex support" section saying "the same plugin supports Codex" | Codex |
 
 **Three of the six are the same mechanism: retiring a confirm-gated writer
 silently retires the gate.** `/trellis:setup` diffed and asked before replacing
@@ -193,3 +195,23 @@ specific path instead.
    their keep?** No project in the family has an overlay after `decision-0071`,
    but an outside consumer might. Retiring them is a separate question with a
    separate blast radius, and is not answered here.
+
+**Finding #10 is the third guard-coverage failure on this change, and the three
+rhyme.** `TestDocsClaimOnlyRealCommands` matched `/trellis:setup` and missed
+`setup`. `TestEveryDeletionInstructionIsGated` matched `delete` and missed
+`drop`. `docSurfaces` was a hand-written list and missed three files. Each guard
+was written against **the spelling in front of me at the time**, and each was
+then described in this record as covering a class.
+
+`TestNoUnqualifiedSetupClaims` is the answer to #10 and, like the other two
+widenings, it found more than the reviewer did: **11 more references across four
+files**, one of them in `reference/block-codex.md` — the payload injected into
+every governed Codex session, still telling agents about a `setup-verified`
+overlay. That file is generated, so the fix belongs in `cli/apply.go` and the
+payload is re-rendered; editing the artifact directly broke its own checksum and
+the suite said so, which is the generator boundary working.
+
+The exemption list in that guard names *why* each allowed form is allowed — the
+retired v0 `setup` CLI is a different artifact from the retired setup skill, and
+the remove skill legitimately cleans up what a past setup left behind. An
+exemption list without reasons is a mute button.

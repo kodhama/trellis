@@ -109,6 +109,64 @@ func TestDocsClaimOnlyRealCommands(t *testing.T) {
 	}
 }
 
+// TestNoUnqualifiedSetupClaims: a Codex P2 on #227, and the THIRD time a guard on
+// this branch was found to recognise only one spelling of the thing it guards.
+//
+// TestDocsClaimOnlyRealCommands matches `/trellis:<skill>`. After decision-0072
+// the docs still said "Setup installs no receipt and no fallback" and "without
+// it, setup reports bootstrap-only degradation" — present-tense promises about a
+// skill that no longer exists, invisible to a guard keyed on the slash spelling.
+// (Compare TestEveryDestructiveInstructionIsGated, which matched only "delete"
+// and missed "drop".)
+//
+// The word is not banned: the retired binary's `setup` TUI, and the remove
+// skill's cleanup of artifacts a PAST setup left behind, are both legitimate and
+// historical. What must not appear is the bare word as a live actor. Each
+// allowed form below names why it is allowed, so the exemption list is a record
+// rather than a mute.
+var setupQualifiers = []string{
+	"the retired setup skill", // decision-0072's own name for it
+	"a past setup",            // remove skill: cleaning artifacts it left
+	"past setup",              // same, mid-sentence
+	"setup skill retired",     // README pointer at the decision
+	"the setup skill",         // qualified reference to the artifact
+	"`setup` TUI",             // the retired v0 BINARY, not the skill
+	"setup\n  CLI",            // same, across a line wrap
+	"grove:setup",             // a different product's skill
+}
+
+func TestNoUnqualifiedSetupClaims(t *testing.T) {
+	re := regexp.MustCompile(`(?i)\bsetup\b`)
+	checked := 0
+	for _, f := range docSurfaces(t) {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("reading %s: %v", f, err)
+		}
+		for _, line := range strings.Split(string(b), "\n") {
+			if !re.MatchString(line) {
+				continue
+			}
+			checked++
+			qualified := false
+			for _, q := range setupQualifiers {
+				if strings.Contains(line, strings.ReplaceAll(q, "\\n  ", "")) {
+					qualified = true
+					break
+				}
+			}
+			if !qualified {
+				t.Errorf("%s says \"setup\" as a live actor; decision-0072 retired it. Qualify it "+
+					"(\"a past setup\", \"the retired setup skill\") or delete the claim:\n  %s", f, strings.TrimSpace(line))
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no line mentioning setup was found at all — the scan is broken, not the docs")
+	}
+	t.Logf("checked %d lines mentioning setup", checked)
+}
+
 func pluginSkills(t *testing.T) map[string]bool {
 	t.Helper()
 	entries, err := os.ReadDir("../plugins/trellis/skills")
