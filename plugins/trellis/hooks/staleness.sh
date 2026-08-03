@@ -213,10 +213,17 @@ if [ -f "$root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
   # one used to get total silence while any rules embedded in it were live —
   # the same defect this branch's comment already records for the overlay,
   # on a transport the hook could not see at all.
-  if [ -f "$root/.claude/rules/trellis.md" ] || [ -d "$root/.trellis/internal" ] || [ -f "$root/.trellis/trellis.md" ] || [ -n "$inline_file" ]; then
-    inline_note=""
-    [ -n "$inline_file" ] && inline_note=" This project also carries a Trellis managed block in $inline_file (the inline shape): any rules embedded between its markers were likewise loaded at launch and must be disregarded too — and if the block holds only @-import lines, it may be delivering nothing at all."
-    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld.${inline_note} To stop them being loaded at all, run /trellis:remove."
+  #
+  # TWO COMPLETE LITERALS on purpose, not a base plus an interpolated note.
+  # The destructive/deletion guards in cli/plugin_hook_test.go scan `emit "…"`
+  # literals; prose assembled into a variable and spliced in is agent-facing
+  # text those guards never see — a blind spot in a declared guard (this run's
+  # review found it as such). Every string that reaches an agent lives inside
+  # an emit literal, even at the cost of repeating the base message.
+  if [ -n "$inline_file" ]; then
+    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. This project also carries a Trellis managed block in $inline_file (the inline shape): any rules embedded between its markers were likewise loaded at launch and must be disregarded too — and if the block holds only @-import lines, it may be delivering nothing at all. To stop them being loaded at all, run /trellis:remove."
+  elif [ -f "$root/.claude/rules/trellis.md" ] || [ -d "$root/.trellis/internal" ] || [ -f "$root/.trellis/trellis.md" ]; then
+    emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. To stop them being loaded at all, run /trellis:remove."
   fi
   exit 0
 fi
@@ -426,7 +433,7 @@ fi
 # ungoverned), so the refusal names both states, says how to tell, and asserts
 # neither as fact.
 if [ -n "$inline_file" ]; then
-  emit "TRELLIS_INLINE_BLOCK — $inline_file carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read the block in $inline_file to tell which. To move onto plugin-delivered rules either way, delete the managed block from $inline_file — everything from its trellis:begin marker through its trellis:end marker — keeping .trellis/rules.toml rows, or run /trellis:remove. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
+  emit "TRELLIS_INLINE_BLOCK — $inline_file carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read the block in $inline_file to tell which. To move onto plugin-delivered rules either way, delete the managed block from $inline_file — everything from its trellis:begin marker through its trellis:end marker — keeping .trellis/rules.toml rows if that file exists (without it, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the project stays governed), or run /trellis:remove. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
   exit 0
 fi
 
