@@ -603,6 +603,91 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 	t.Logf("checked %d deletion-instructing messages of %d emits", gated, len(emits))
 }
 
+// TestRepairRemedyCoversEveryMismatchKind and the opt-out shape: two Codex P2s
+// on #227, both the same class as the five before them — a remedy that does not
+// cover the state the reader is actually in.
+//
+// $slug_report emits THREE kinds (missing:, unknown:, duplicate:) and the repair
+// remedy explained two. Following it on a duplicate leaves the hook injecting
+// nothing, so the advertised minimal repair was a dead end for that third of the
+// cases.
+//
+// The opt-out is the same shape of gap in the docs: `governed = false` is a
+// legal, supported one-line file, and the documented "edit strictness in place"
+// branch is WRONG for it — the opt-out wins and the hook goes silent, so the
+// consumer who asked for the firm posture gets no rules and no message either.
+func TestRepairRemedyCoversEveryMismatchKind(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(t *testing.T, rows string) string {
+		t.Helper()
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		return string(out)
+	}
+
+	t.Run("a duplicated slug is reported AND its repair is explained", func(t *testing.T) {
+		dup := files["rules-b.toml"] + "inv-minimal-first         = { active = true }\n"
+		out := run(t, dup)
+		if !strings.Contains(out, "duplicate:") {
+			t.Fatalf("fixture did not produce the condition it names — the case would prove nothing:\n%s", out)
+		}
+		if !strings.Contains(out, "duplicate:, delete the extra occurrences") {
+			t.Errorf("the remedy explains missing and unknown but not duplicate, so following it on this "+
+				"report leaves the project ungoverned; got:\n%s", out)
+		}
+	})
+
+	t.Run("the governed = false opt-out is silent, so 'edit in place' cannot re-enable", func(t *testing.T) {
+		// This pins the hazard the docs now describe as a third shape. It is NOT a
+		// defect in the hook — decision-0070 D5 makes the opt-out absolute — it is
+		// the reason "edit strictness in place" is wrong advice for this file.
+		out := run(t, "strictness  = \"firm\"\ngoverned = false\n")
+		if strings.TrimSpace(out) != "" {
+			t.Fatalf("the opt-out must stay absolute: no rules, no nudge; got:\n%s", out)
+		}
+	})
+}
+
+// TestDocsNameTheOptOutShape: the counterpart to the case above. The recipe is
+// only safe if the docs warn that the opt-out is a REPLACE, not an edit — a
+// behavioural test can prove the hook is silent, but only the prose can stop a
+// reader walking into it.
+func TestDocsNameTheOptOutShape(t *testing.T) {
+	for _, f := range []string{"../README.md", "../plugins/trellis/README.md"} {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := string(b)
+		if !strings.Contains(s, "governed = false") {
+			t.Errorf("%s documents editing rules.toml in place without naming the governed = false "+
+				"opt-out, for which that advice yields no rules and no message", f)
+		}
+	}
+}
+
 func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {

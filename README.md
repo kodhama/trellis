@@ -33,7 +33,12 @@ To change that, the recipe depends on whether you already have a `.trellis/rules
 - **File already there** — edit it **in place**: change `strictness` (and `seeded_from` to
   match), flip individual rows. **Do not copy a preset over it** — both presets set every row
   active, so a posture-only change made by copying silently re-enables every rule you turned
-  off. The plugin vendors
+  off.
+- **The file is the one-line `governed = false` opt-out** — Trellis is switched off for this
+  project (`decision-0070` D5). Re-enabling is a **replace, not an edit**: editing `strictness`
+  beside the opt-out leaves it in force and the hook stays silent, and deleting the line alone
+  leaves the partial file described above. Confirm that turning governance back on is what you
+  want, then write a complete preset over it. The plugin vendors
 nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
 plugin's payload, so there is no copy in your repo to install, refresh or let drift
 (`decision-0065`). A project set up before that change still carries a vendored `.trellis/`

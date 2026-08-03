@@ -45,9 +45,14 @@ project's state.** With **no `.trellis/rules.toml`**, copy a complete preset —
 `active = false` on any row to turn a rule off. With a **file already present**,
 edit `strictness` in place and never copy a preset over it: both presets set
 every row active, so a posture-only change made by copying discards every row
-the consumer disabled. That file is the consumer's and is already the authority
-(`decision-0053`), and every surface that pointed at the skill now points at
-this pair.
+the consumer disabled. And with the **one-line `governed = false` opt-out** (`decision-0070` D5),
+re-enabling is a replace rather than an edit: editing `strictness` beside the
+opt-out leaves it in force and the hook stays silent, while deleting the line
+alone leaves the partial file above. Confirm the intent, then write a complete
+preset over it.
+
+That file is the consumer's and is already the authority (`decision-0053`), and
+every surface that pointed at the skill now points at these three shapes.
 
 **The copy step is mandatory, and an earlier draft of this record got it wrong.**
 It said the replacement was *"one sentence: edit `.trellis/rules.toml`"*, which
@@ -114,7 +119,7 @@ Every message that named the skill as the remedy for a stale overlay now carries
 the manual steps instead: delete the overlay, keep `.trellis/rules.toml`. A nudge
 that reports a problem without a way out of it is worse than the skill it lost.
 
-**Five rounds of review found ONE defect class seven times.** Every finding on this
+**Six rounds of review found ONE defect class nine times.** Every finding on this
 change was the same thing: a replacement remedy that was wrong about the reader's
 actual state, or that dropped a gate the skill had carried. Listed together
 because the pattern is the finding, not any single repair:
@@ -128,6 +133,8 @@ because the pattern is the finding, not any single repair:
 | 5 | the corrected recipe | file presence — copying a preset over an existing file re-enables every disabled row | Codex |
 | 6 | every deletion the hook instructs | authority — the retired skill confirmed first; the replacements did not | Codex |
 | 7 | the guard written for #6 | its own coverage — it matched the literal word `delete`, so a remedy saying "drop the unknown ones" walked past it ungated | Codex |
+| 8 | the repair remedy | mismatch kind — `$slug_report` emits `missing:`, `unknown:` **and** `duplicate:`; the remedy explained two, so a duplicate had no working repair | Codex |
+| 9 | the corrected recipe, again | file shape — `governed = false` is a legal one-line file, and "edit `strictness` in place" leaves the opt-out in force and the hook **silent** | Codex |
 
 **Three of the six are the same mechanism: retiring a confirm-gated writer
 silently retires the gate.** `/trellis:setup` diffed and asked before replacing
@@ -148,6 +155,16 @@ excludes slash-command names (`/trellis:remove` is a gated skill, not an
 instruction), and asserts a floor on how many messages it matches — so narrowing
 the filter fails the test instead of quietly passing an empty set. Widening it
 found an eleventh message the narrow version had missed.
+
+**The count is the point.** Nine findings, one class, and the last two arrived
+*after* the class had been named and tabled here. Enumerating the reader's
+possible states is not something this change did once and got right; it is
+something six review rounds did incrementally, each finding a state the previous
+round's fix had not considered. Three file shapes (absent, present,
+`governed = false`) and three mismatch kinds (`missing:`, `unknown:`,
+`duplicate:`) are covered now because they were finally **enumerated from the
+code that produces them** — `$slug_report`'s three branches, the `governed`
+sentinel, the presence test — instead of from what the author could recall.
 
 The third is the worst of them and is not a wording problem. The rewrite told
 the agent to *"copy `rules-b.toml` over `.trellis/rules.toml`"* — the adaptive

@@ -136,7 +136,8 @@ Four-step flow (`01` – `04`):
    your `rules.toml`. No file yet? Copy a complete preset —
    `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive.
    Already have one? Edit `strictness` in place; copying a preset over it
-   re-enables every row you turned off. Rows govern at read time, and the
+   re-enables every row you turned off. Unless it is the `governed = false`
+   opt-out — that one is a replace, not an edit. Rows govern at read time, and the
    set has to stay whole.
 3. **03 · deliver — The rules arrive on their own.** On the plugin path a
    session hook injects them; on the curl path they are rendered into
