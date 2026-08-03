@@ -1,7 +1,7 @@
 ---
 id: decision-0073
 type: decision
-status: gated  # drafted by agent; revision 4 after three decision-adversary rounds (6+6+3 findings, all folded; the revision record locates every one); awaiting fresh adversary convergence, then the maintainer intent act at this run's intent gate
+status: approved  # maintainer intent act 2026-08-03, in session, at the governed run's batched intent gate: "Approve both, in order (0072 then 0073)" — recorded AFTER decision-0072's flip, satisfying this record's own sequencing consequence. An in-PR flip recording the act; author (agent) != approver (maintainer). Decision-adversary SOUND at revision 4 (record: decision-adversary.d0073.toml). Originally: drafted by agent; revision 4 after three decision-adversary rounds (6+6+3 findings, all folded; the revision record locates every one); awaiting fresh adversary convergence, then the maintainer intent act at this run's intent gate
 depends_on: [decision-0068, decision-0070, decision-0072]
 informed_by: [spec-0006]
 owner: agent
