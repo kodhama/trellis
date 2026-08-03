@@ -287,6 +287,10 @@ func TestRemoveSkillConsentModelIsDefinedOnce(t *testing.T) {
 		{"the item-scoped class (a denial narrows, never aborts)", "narrow the transaction"},
 		{"file deletion on the consent list (N3: a deletion was gated on provenance)", "becomes empty"},
 		{"unrecognized .trellis/ files surfaced before the wholesale step (N9)", "anything unrecognized"},
+		// Round 3 (R2): the stop's every-item-retained quantifier must carve
+		// out the stopping artifact itself, or the ambiguous category is
+		// unreachable from the class that exists to feed it.
+		{"the ambiguous carve-out on the stop-everything class (R2)", "reported **ambiguous**"},
 	} {
 		if !strings.Contains(preflight, tc.needle) {
 			t.Errorf("§1's consent model is missing %s — no %q in it", tc.element, tc.needle)
@@ -330,8 +334,24 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 		{"§4", "the verification-failed category (N4)", "verification-failed", tx},
 		{"§4", "the single import-form rendered-file characterization (N6)", "imported activation rows", tx},
 		{"§4", "the self-deletion acknowledgement (code-review E)", "this very skill file", tx},
+		// Round 3 (spec-adversary R1/R3): the entry threshold must read
+		// resolves — a denied consent narrows the transaction, it never bars
+		// entry — and verification must be timed per target, immediately
+		// before its write: the verify-after-writing reading makes the
+		// mismatch branch dead code and destroys a concurrent user edit
+		// before reporting clean.
+		{"§4", "the resolves entry threshold (R1)", "preflight and consent resolves", tx},
+		{"§4", "per-target pre-write verification timing (R3)", "immediately before writing it", tx},
 		{"§5", "the verification-failed report bucket (N4)", "verification-failed", report},
 		{"§5", "the report owed on every exit, a stop included (N4)", "every item retained", report},
+		// Round 3 (R2/R4): a stop must leave the ambiguous category reachable
+		// (the artifact whose duplicate markers stopped the run is its whole
+		// purpose), and the every-exit list must cover the already-absent
+		// no-op (whose predicate sentence is itself the report) and name the
+		// morph hand-off as an exit, not a resume.
+		{"§5", "the reachable ambiguous category on a stop (R2)", "reported **ambiguous**", report},
+		{"§5", "the no-op exit in the every-exit list (R4)", "itself that exit's report", report},
+		{"§5", "the morph hand-off named as an exit (R4)", "morph hand-off", report},
 	} {
 		if !strings.Contains(tc.window, tc.needle) {
 			t.Errorf("%s is missing %s — no %q in it", tc.where, tc.element, tc.needle)
@@ -339,6 +359,9 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 	}
 	if strings.Contains(tx, "resolved in step 1") {
 		t.Errorf("§4 still says \"resolved in step 1\" inside its own numbered list — that reads as transaction step 1, not the preflight (code-review G)")
+	}
+	if strings.Contains(tx, "consent succeeds") {
+		t.Errorf("§4's threshold still says \"consent succeeds\" — the abort-on-denial model the consent rework replaced (R1)")
 	}
 }
 

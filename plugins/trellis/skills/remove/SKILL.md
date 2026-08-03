@@ -70,7 +70,8 @@ item as **ambiguous and consent-gated** — never decide it from the bytes.
 - **Integrity problems stop everything.** Ambiguous marker structure, any other preflight
   failure, or a §4 verification mismatch: stop with the whole-project snapshot unchanged (or,
   mid-§4, with no further step applied), and still produce the §5 report — every untouched item
-  **retained**, with the stopping reason named.
+  **retained**, the stopping artifact itself reported **ambiguous**, with the stopping reason
+  named.
 - **Denied item-scoped consents narrow the transaction; they never abort it.** Each of these is
   asked in this preflight, and a **denied** answer removes exactly that item from the staged
   transaction while everything else proceeds: the bundle deletion; the `.trellis/` deletion (one
@@ -109,7 +110,8 @@ consented in the preflight (§1); otherwise keep the empty file.
 
 ## 4. Apply the complete product-wide transaction
 
-Only after every preflight and consent succeeds:
+Only after every preflight and consent resolves (a denial narrows the transaction — §1 — it
+never bars entry here):
 
 1. delete the rendered `.claude/rules/trellis.md` if present;
 2. write or delete every staged documented instruction-file result;
@@ -145,7 +147,10 @@ Delete only the file. `.claude/rules/` is a shared directory a project may fill
 with unrelated rules of its own, and the directory itself is not Trellis's to
 remove.
 
-Verify surrounding instruction-file and ignore-file bytes against the snapshots. **A mismatch
+Each target is verified against its §1 snapshot **immediately before writing it** — verifying
+only after the writes would make the mismatch branch below dead code, and would overwrite a
+concurrent user edit and then report clean. Verify surrounding instruction-file and ignore-file
+bytes against the snapshots. **A mismatch
 stops the transaction where it stands**: apply no further step, leave every not-yet-applied
 staging unwritten, and report per §5 — the mismatched path in the **verification-failed**
 category, completed steps as removed, remaining steps as retained, and the fact that the tree
@@ -164,8 +169,12 @@ was one), legacy consumer content, ignore entries, and the morph markers (`.trel
 the `trellis-pre-morph` tag).
 
 This report is owed on **every** exit — a completed transaction, one narrowed by denied
-consents, a preflight stop, or a verification failure. A stop before any write reports **every
-item retained**, with the stopping reason named; a narrowed transaction reports each denied item
+consents, a preflight stop, a verification failure, the already-absent no-op (the predicate
+sentence below is itself that exit's report), or a morph hand-off (showing the rollback options,
+or saying none can be located, **ends this operation**: the reversal itself is the user's, and a
+completed reversal re-enters through a fresh preflight). A stop before any write reports **every
+item retained** — save the stopping artifact itself, which is reported **ambiguous** — with the
+stopping reason named; a narrowed transaction reports each denied item
 as retained by consent.
 
 When the bundle is **retained** — consent withheld, or found only after the fact — say what is
