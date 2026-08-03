@@ -347,13 +347,18 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 		// Round 3 (spec-adversary R1/R3): the entry threshold must read
 		// resolves — a denied consent narrows the transaction, it never bars
 		// entry — and verification must be timed per target, immediately
-		// before its step: the verify-after-the-fact reading makes the
-		// mismatch branch dead code and destroys a concurrent user edit
-		// before reporting clean. Round 5 (F4) widened the timing needle:
-		// "writing it" did not literally cover the three deletion steps, so
-		// the pin is per-step (written OR deleted) now.
+		// before its own write or delete: the verify-after-the-fact reading
+		// makes the mismatch branch dead code and destroys a concurrent user
+		// edit before reporting clean. Round 5 (F4) widened the wording to
+		// cover deletions and, doing so, traded the per-TARGET anchor for
+		// "that step" — this document's term of art for the five numbered
+		// transaction items, two of which BATCH targets (five instruction
+		// files, up to four ignore files). Batch-verify-at-the-step-boundary
+		// is still "before the fact" and reopens the very window the next
+		// sentence names, so round 6 re-anchors to the individual target and
+		// this needle moves with it: the anchor is the target, never the step.
 		{"§4", "the resolves entry threshold (R1)", "preflight and consent resolves", tx},
-		{"§4", "per-target pre-step verification timing (R3/F4)", "immediately before applying that step", tx},
+		{"§4", "per-target (not per-step) verification timing (R3/F4/N1)", "immediately before that target's own write or delete", tx},
 		{"§4", "deletion steps inside the verification scope (F4)", "or deleted", tx},
 		{"§5", "the verification-failed report bucket (N4)", "verification-failed", report},
 		{"§5", "the report owed on every exit, a stop included (N4)", "every item retained", report},
@@ -374,6 +379,14 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 		{"§5", "the mismatch category in the stop sentence (F1 mirror)", "first-target mismatch", report},
 		{"§5", "the conditional stopping-artifact clause (F3)", "where the stop has one", report},
 		{"§5", "the standing-morph scoping of the hand-off exit (F5)", "standing morph", report},
+		// Round 6 (code-review M1): the stop-class gate said "before any
+		// write", but this round's own F4 ruling is that a write is not a
+		// delete — so a §4 mismatch on step 2's first target, after step 1
+		// already deleted the rendered file, was literally "a stop before any
+		// write" and mandated every-item-retained while §4 mandates completed
+		// steps removed. Two statuses for one artifact on a mundane
+		// concurrency path.
+		{"§5", "the stop gate covering applied deletions too (M1)", "stop before any step is applied", report},
 	} {
 		if !strings.Contains(tc.window, tc.needle) {
 			t.Errorf("%s is missing %s — no %q in it", tc.where, tc.element, tc.needle)
@@ -415,5 +428,35 @@ func TestRemoveSkillMorphReentryAndTrigger(t *testing.T) {
 	// removal continues as an ordinary one.
 	if !strings.Contains(morph, "continues from §2") {
 		t.Errorf("the stale-tag branch has no stated routing — with the morph already reversed the removal must continue from §2, not exit (F5)")
+	}
+}
+
+// TestRemoveSkillStopCategoryBindings guards decision-0073 D3 (code-review M2,
+// this round's own lesson). Rounds 4 and 5 were spent making one artifact
+// carry exactly one mandatory category per trigger — and the guards that
+// landed pinned only the PRESENCE of each category word, so swapping the two
+// bindings (an ambiguity stop reported verification-failed, a §4 mismatch
+// reported ambiguous) survived every needle in this file. Presence is not
+// binding, the same lesson TestRemoveSkillEnumeratesTheRenderedRulesFile
+// records for presence-vs-deletion. Each needle below is a complete
+// trigger-plus-category phrase, so the swap mutation kills it.
+//
+// Whitespace-normalized: both sentences wrap, and two of this file's needles
+// once shipped never having matched wrapped prose (code-review A).
+func TestRemoveSkillStopCategoryBindings(t *testing.T) {
+	body := readFileT(t, removeSkillPath)
+	preflight := normalizeWS(removeSkillSection(t, body, "## 1.", "## 2."))
+	report := normalizeWS(removeSkillSection(t, body, "## 5.", "## Reversing"))
+
+	for _, tc := range []struct{ where, binding, needle, window string }{
+		{"§1", "an ambiguity/preflight stop binds ambiguous", "preflight stop's artifact is reported **ambiguous**", preflight},
+		{"§1", "a §4 mismatch binds verification-failed", "mismatch's target is reported **verification-failed**", preflight},
+		{"§5", "an ambiguity/preflight stop binds ambiguous", "**ambiguous** after an ambiguity or preflight stop", report},
+		{"§5", "a first-target mismatch binds verification-failed", "**verification-failed** after a first-target mismatch", report},
+	} {
+		if !strings.Contains(tc.window, tc.needle) {
+			t.Errorf("%s no longer binds its category to its trigger (%s) — no %q in it. The categories are mutually exclusive per trigger; a guard that only checks both words are present passes a swap.",
+				tc.where, tc.binding, tc.needle)
+		}
 	}
 }

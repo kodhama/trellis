@@ -150,7 +150,9 @@ with unrelated rules of its own, and the directory itself is not Trellis's to
 remove.
 
 Each target — written **or deleted** — is verified against its §1 snapshot **immediately before
-applying that step**; what is compared is the target's own bytes, the surrounding
+that target's own write or delete**, never once per numbered step: steps 2 and 3 each carry
+several targets, and verifying them together at the step's start reopens the window this
+paragraph exists to close. What is compared is the target's own bytes, the surrounding
 instruction-file and ignore-file bytes around each managed region included. Verifying only
 after the fact would make the mismatch branch below dead code, and would destroy a concurrent
 user edit and then report clean. **A mismatch
@@ -177,8 +179,8 @@ sentence below is itself that exit's report), or a morph hand-off (a **standing 
 showing the rollback options,
 or saying none can be located, **ends this operation** — the reversal itself is the user's, and a
 completed reversal re-enters through a fresh preflight; a stale tag alone is no hand-off, and
-that removal continues — see the morph section). A stop before any write reports **every
-item retained** — save the stopping artifact itself, where the stop has one: it is reported
+that removal continues — see the morph section). A stop before any step is applied reports
+**every item retained** — save the stopping artifact itself, where the stop has one: it is reported
 **ambiguous** after an ambiguity or preflight stop, **verification-failed** after a
 first-target mismatch — with the
 stopping reason named; a narrowed transaction reports each denied item
