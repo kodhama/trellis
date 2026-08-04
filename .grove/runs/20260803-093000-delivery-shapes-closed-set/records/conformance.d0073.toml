@@ -1,0 +1,8 @@
+schema = 1
+record_type = "conformance"
+subject = "decisions/0073-the-delivery-shapes-are-a-closed-set.md"
+subject_state = "present"
+subject_sha256 = "ca3daea1cf2ac60f9a18b9011fb179f557062208112e14bed1fdd9b2a23ab0e1"
+verdict = "skipped — recorded skip, never silent (floor-recorded-skips). The guard owes this record because it classifies type: decision as unclaimed (grove#200, filed 2026-08-02 at the maintainer's direction with their standing ruling for this exact situation: review what makes sense, skip what does not, loudly). What makes sense for a decision is the decision-adversary review, which RAN — four rounds to SOUND, recorded beside this file. A conformance review of a decision artifact has no upstream contract, spec rubric, or code to grade; the skip covers the OWED RECORD, not scrutiny, which this subject received in depth."
+by = "maintainer's standing in-session direction (grove#200, 2026-08-02); recorded by dispatcher"
+date = "2026-08-03T12:10:00Z"

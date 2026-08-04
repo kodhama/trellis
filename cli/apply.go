@@ -145,6 +145,18 @@ func governanceHeader(p Profile) string {
 // lives under .trellis/internal/ since decision-0051 (the authority split).
 const invariantsTrigger = "If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating."
 
+// inlineInvariantsTrigger is the inline channel's FORK of invariantsTrigger
+// (decision-0073, Consequence 2). Clean S4 — the inline block plus
+// .trellis/rules.toml, no overlay — has no .trellis/internal/, so the shipped
+// inline tail must not point its reader at a file that need not exist; doing
+// so is what made the documented inline recipe producible only as the
+// S2-plus-S4 conflict. The fork points at the shipped reference, which exists
+// wherever the block's bytes came from. The shared const above is NOT edited
+// in place: renderHeader still uses it (in S2 the vendored copy is real, and
+// staleness.sh repoints it at the plugin for path B), so changing it there
+// would move a pointer nothing in decision-0073 orders moved.
+const inlineInvariantsTrigger = "If a rule seems ambiguous, or in tension with this project's own instructions, read its entry — the description and with/without examples — in the shipped Trellis reference: `reference/invariants.md` in the installed plugin, or `plugins/trellis/reference/invariants.md` at github.com/kodhama/trellis — before deviating."
+
 // The readout's top matter (decision-0053 point 2): the authority header — the
 // eval-tested AUTHORITY_HEADER of research-0012, verbatim except one word adapted
 // for the channel split ("inlined" → "loaded": the inline block inlines the rows
@@ -183,7 +195,7 @@ func renderInlineBlockHead(p Profile) string {
 // wording — the last thing the model reads must not claim refresh-time row
 // semantics, decision-0053 point 4), and the end marker.
 func renderInlineBlockTail() string {
-	return "\n" + invariantsTrigger + " Rule activation follows the rows in `.trellis/rules.toml` directly (see the authority note above).\n" +
+	return "\n" + inlineInvariantsTrigger + " Rule activation follows the rows in `.trellis/rules.toml` directly (see the authority note above).\n" +
 		trellisEnd
 }
 
@@ -198,8 +210,9 @@ func renderRowsSection(toml string) string {
 // renderInlineBlock is the M1 footprint for instruction files WITHOUT @import support
 // (e.g. AGENTS.md): the whole thing is inlined and self-contained — the seed-state
 // instance of the head + readout + rows + tail sandwich (decision-0053 point 2).
-// The reasoning + examples still live in .trellis/internal/invariants.md, but the
-// block stands on its own.
+// The reasoning + examples live in the shipped reference (invariants.md in the
+// plugin/payload — the tail points there, decision-0073); the block stands on
+// its own with no .trellis/internal/ beside it.
 func renderInlineBlock(p Profile) string {
 	return renderInlineBlockHead(p) + renderRulesReadout() + renderRowsSection(renderRulesToml(p)) + renderInlineBlockTail()
 }

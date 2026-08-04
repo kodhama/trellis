@@ -1,0 +1,8 @@
+schema = 1
+record_type = "conformance"
+subject = "plugins/trellis/hooks/staleness.sh"
+subject_state = "present"
+subject_sha256 = "e4d3a934cbddf7b6b9710cd3b313077c07ed4ba84ba7e0dda84a4e52db1988e0"
+verdict = "PASS (dispatcher-verified) — two more Codex findings on trellis#231, both confirmed against source. P1: the import gate used an UNANCHORED substring match, so a CLAUDE.md merely MENTIONING @AGENTS.md read as importing it — documentation about the import treated as the import itself, recreating the mixed-host regression the gate exists to prevent. spec-0006:57 defines the contract as 'one standalone @AGENTS.md line'; the gate is now anchored to that. Same class as every other defect on this change: a check matching text NEAR the thing instead of the thing. P2: the two earlier fixes INTERACT — with blocks in both CLAUDE.md and an imported AGENTS.md, they can carry different strictness values while rules.toml is absent, so 'copy the preset that matches' has no deterministic answer; the remedy now says to surface the disagreement and let the user choose rather than picking silently. Both mutation-proven (unanchoring turns the MENTION subtest red; dropping the conflict clause turns its sibling red). ONE THING DELIBERATELY NOT ASSERTED: whether Claude's import parser is fence-aware is UNMEASURED, so the MENTION fixture exercises inline prose only and says so in a comment — a fenced @AGENTS.md line would have required asserting a host behaviour nobody here has observed. Surfaced on the PR as an open question rather than guessed. Manifest advanced; gate green 12.6s."
+by = "dispatcher (Codex P1/P2 round 2 on #231; verified against spec-0006 and the shipped presets)"
+date = "2026-08-04T00:50:00Z"

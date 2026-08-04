@@ -1,0 +1,8 @@
+schema = 1
+record_type = "code-review"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "62607065ad3884b995eef0e77c0304a016e361f18ed38c5d179528168bd650af"
+verdict = "CLEAN — no findings. The needle genuinely moved with the sentence and can fail: reverting ONLY the prose in a scratch copy (test file and manifest untouched) produced exactly one failure, the N4 needle, and nothing else. No other needle moved — a tree-wide grep for both quantifier strings returns exactly the two diff sites in clean 1:1 pairing, and all seven adjacent needles in the same table remain verbatim-present in the new section-5 text. Manifest advance matches the new bytes exactly, and the reviewer independently recomputed the df68fb8 and b827b25 digests, confirming the prior records' chain claims. No new hazard: 'every untouched item' is not a new coinage — section 1 already carries it verbatim for the identical integrity-stop scenario, so section 5 is aligning to an established term, not introducing a second one; the reviewer traced the fixed scenario to the consented pre-step-1 tag clear and corroborated it against decision-0073's own S6 row. Gates fresh: go test -count=1 ok 12.2s. DISPATCH NOTE: this agent was asked for three lens verdicts and correctly refused two, citing its charter's boundary that conformance is not its question and that collapsing roles would misrepresent the independence the prior records attest to; the conformance and decision-adversary verdicts were dispatched separately to their own charters. The refusal is recorded as correct."
+by = "grove:code-reviewer (subagent, round 6); recorded by dispatcher"
+date = "2026-08-03T22:25:00Z"

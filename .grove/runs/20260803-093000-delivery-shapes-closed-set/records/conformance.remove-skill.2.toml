@@ -1,0 +1,8 @@
+schema = 1
+record_type = "conformance"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "3cd34bc1996022e1ef491463511c08c46d7cf766a65bc09c40f7405d42e7ade2"
+verdict = "PASS, round 2 — the revision preserves everything the prior PASS verified: sixteen-item table all PASS. The touched sentence re-verified against install.sh's render and staleness.sh's landmark validation ('whose imported activation rows are already gone' is strictly more precise than the verified original — the rows are the one imported part); the other two replacement sentences present verbatim; transaction order intact; the new consent model blessed by AC1's own retained-or-deleted wording, with D3's sole-survivor clause correctly read as targeting unreported interruption, not consented-and-reported retention; morph re-entry makes spec-0004 AC3's cannot-locate branch reachable — an obligation going from dead prose to live path. Guards mutation-verified in a scratch copy (19 red on pre-revision bytes). Three recorded non-blocking findings: the producer's disclosure was under-inclusive by one edit (section-3's 'demonstrably wrote' removal — strictly narrowing, guard-pinned); the spec-0004 AC5 tension resolved toward the newer upstream with the reasoning recorded ('only if' is a necessary condition, so keep-without-consent cannot contradict it); an every-item-retained vs absent wording looseness resolved by section-5's closed-set duty. Digest tag convention verified against guard-core source, and the chain reproduced backward to the prior record. Gates fresh: go test ok 13.3s. [Reviewer plain sha256 15a8d6d39bc9…]"
+by = "grove:conformance-reviewer (subagent, round 2); recorded by dispatcher"
+date = "2026-08-03T16:55:00Z"

@@ -156,19 +156,40 @@ render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) 
 ```sh
 git clone --depth 1 https://github.com/kodhama/trellis /tmp/trellis
 ref=/tmp/trellis/plugins/trellis/reference   # <p> below: a (conductor) | b (author-adapt)
+mkdir -p .trellis
+cp "$ref"/rules-<p>.toml .trellis/rules.toml          # first install only — yours after that
+```
+
+Then pick **exactly one** delivery branch — the two blocks below are alternatives, never both
+(both at once is the overlay-plus-inline conflict the installer refuses and the hook alarms on).
+
+**@import-capable file (CLAUDE.md)** — vendor the overlay the block imports:
+
+```sh
 mkdir -p .trellis/internal
 cp "$ref"/invariants.md  .trellis/internal/invariants.md
 cp "$ref"/rules.md       .trellis/internal/rules.md   # the complete rules readout
 cp "$ref"/trellis-<p>.md .trellis/internal/trellis.md
 cp "$ref"/version        .trellis/internal/version
-cp "$ref"/rules-<p>.toml .trellis/rules.toml          # first install only — yours after that
-cat "$ref"/block-claude.md >> CLAUDE.md               # @import-capable files
-# no @import support (e.g. AGENTS.md)?  append block-inline-<p>.md instead
+cat "$ref"/block-claude.md >> CLAUDE.md
 sed -n -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
        -e 's|  rules\.md$|  .trellis/internal/rules.md|p' \
        -e 's|  trellis-<p>\.md$|  .trellis/internal/trellis.md|p' \
        -e 's|  version$|  .trellis/internal/version|p' \
        "$ref"/checksums | shasum -a 256 -c -           # verify: all four lines print OK
+```
+
+**No @import support (e.g. AGENTS.md)** — append the SELF-CONTAINED inline block instead. It
+embeds the rules and the rows and takes NO `.trellis/internal/` copies: the block plus
+`.trellis/rules.toml` is the whole install, and copying the overlay beside it would deliver the
+rules twice.
+
+```sh
+# the block must start at column 0 of its own line: guard against a file
+# whose last line has no trailing newline before appending
+[ -s AGENTS.md ] && [ -n "$(tail -c1 AGENTS.md)" ] && echo >> AGENTS.md
+(cd "$ref" && grep '  block-inline-<p>\.md$' checksums | shasum -a 256 -c -)  # verify: OK
+cat "$ref"/block-inline-<p>.md >> AGENTS.md
 ```
 
 To deactivate a rule later, set its row in `.trellis/rules.toml` to `active = false` — that's

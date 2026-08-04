@@ -1,0 +1,8 @@
+schema = 1
+record_type = "code-review"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "0c9d2f476909c2f59d1b6cc4914142fd5e4004361ae515c892e9e7187d6d682a"
+verdict = "CLEAN, round 5 (combined-lens re-bind, sonnet) — M2 verified by running the record's specified mutation: swapping the category-to-trigger binding in section 1 turns the NEW guard red on both needles while the OLD presence-only guard stays green, reproducing the round-4 defect empirically and confirming the new test is what closes it. M1 landed correctly and is logically sound, not cosmetic: step 1 having been APPLIED (not merely written) is what the new wording tests, and the two sibling 'before any write' occurrences are byte-identical and correctly untouched. No pre-existing needle edited or reordered except the disclosed R3/F4 timing needle, which corresponds 1:1 to the N1 re-anchor riding in the same commit. M1 and M2 each contributed a pure addition. Gates fresh: go test -count=1 ok 12.0s, vet clean, gofmt empty. Prior L1/L2 ride (L1 in fact resolved by this same commit as a bonus). Digest note: the reviewing agent's own tagged-digest computation was malformed (it concatenated the tag prefix with the plain HEX rather than hashing prefix+bytes), which produced a false 'chain does not match' caveat in its report; the dispatcher recomputed independently — b827b25 tagged = c8fde0db... (matching every round-4/5 record) and df68fb8 tagged = 0c9d2f47... The chain is intact; the caveat is withdrawn. SUPERSEDED BY ROUND 7: the section-5 quantifier fix (spec-adversary round-6 F1) changes these bytes; this record binds df68fb8 only."
+by = "grove:code-reviewer (subagent, combined re-bind); recorded by dispatcher"
+date = "2026-08-03T21:45:00Z"

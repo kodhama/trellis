@@ -1,0 +1,8 @@
+schema = 1
+record_type = "code-review"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "82724a335d7b2d507fe9fa59a3e590fbfaf07050725acdb344beebf89d8e3c44"
+verdict = "BLOCK, round 3 — H1 converges independently with the spec-adversary's round-4 F1: the R2 carve-out over-applies to the section-4 verification mismatch, assigning one artifact two mandatory categories (ambiguous vs verification-failed) inside a bullet branded 'stated once', with no precedence rule, reachable a second way through this commit's own R3 per-target timing. The reviewer's direct answer to the ordered seam check: the two R2 sentences are consistent with each other; the inconsistency is between their host sentence and the section-4/5 machinery. Fix route named: scope section 1's ambiguous clause to the ambiguity/preflight class, route the mismatch to verification-failed, mirror in section 5 — all seven new guards survive that fix as written. M1 (advisory) = the unobtainable-consent stop swept into the artifact carve-out (resolves free with H1's scoping); L1 (advisory): 'immediately before writing it' does not literally cover the three deletion steps. Verification: the seven-red mutation claim reproduced exactly in a scratch copy (each failure named); manifest chain proven to trip loudly on divergence; gates fresh (go test -count=1 ok 12.8s, vet clean, gofmt empty). The reviewer's own summary: the guard set is the best part of the change. Returns to the executor alongside spec-adversary round 4's F1-F5 — same fix list. [Reviewer plain sha256 d43ca051e95c…]"
+by = "grove:code-reviewer (subagent, round 3); recorded by dispatcher"
+date = "2026-08-03T19:30:00Z"

@@ -1,0 +1,8 @@
+schema = 1
+record_type = "decision-adversary"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "62607065ad3884b995eef0e77c0304a016e361f18ed38c5d179528168bd650af"
+verdict = "SOUND — bound to the one-clause quantifier change alone, per scope. F1: no conflict with spec-0004 section 3; the change makes the report duty MORE accurate, not narrower — the old universal 'every item retained' would have mandated calling a just-deleted tag 'retained', a false statement against section 3's 'surfaces exactly what it did', while section 5's opening (unchanged) still requires every morph marker be named with a status, so the duty is intact and only the false label is gone. F2: decision-0073's S6 row and AC1 anticipate this exact path — both contemplate a stale-tag clear as a legitimate non-hand-off event the removal survives — so the fix is consistent with the record's own model, which requires distinguishing a cleared tag from a retained one; no standing clause is contradicted. F3: this closes a PRE-EXISTING split inside the file rather than creating one — section 1's mirror already carried the correct quantifier at df68fb8 and was reviewed SOUND there, so aligning section 5 introduces no new normative claim. F4: unchanged text out of scope per the prior record. No load-bearing break on the contradiction or internal-coherence axes. [Reviewer plain sha256 17710e515c8e…]"
+by = "grove:decision-adversary (subagent, round 6); recorded by dispatcher"
+date = "2026-08-03T22:40:00Z"

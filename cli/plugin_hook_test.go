@@ -538,8 +538,9 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	}
 	// A floor, not a ceiling: the count only ever grows as remedies are added, so
 	// a drop means the regex or the verb list stopped matching, not that the
-	// script got safer.
-	const known = 11
+	// script got safer. Advanced 11 → 13 when decision-0073 D2 added the two
+	// inline-shape messages (the S4 refusal and the inline+rendered conflict).
+	const known = 13
 	if gated < known {
 		t.Fatalf("matched %d destructive messages, expected at least %d — the filter broke; "+
 			"a guard that matches nothing passes silently", gated, known)
@@ -1445,4 +1446,569 @@ func reportSection(t *testing.T, out string) string {
 		t.Fatalf("no defect report found in the hook output:\n%s", out)
 	}
 	return m[1]
+}
+
+// TestStalenessHookHandlesInlineManagedBlock guards decision-0073 D2/AC2 (and
+// carries the S6 pin, decision-0073 D1/D4). S4 — the inline managed block — is
+// a column-0 `<!-- trellis:begin` marker in CLAUDE.md or AGENTS.md, with the
+// rules body embedded between the markers OR a dangling import whose overlay
+// was deleted. Before decision-0073 the hook never read an instructions file:
+// an inline project fell through to path B and received the full payload on
+// top of the block the host had already loaded (double delivery), a
+// `governed = false` beside an inline block drew total silence, and
+// inline-plus-rendered drew the quiet stand-down naming only the rendered
+// file. The probe cannot tell embedded from dangling, so every message it
+// feeds is written for both states and asserts neither as fact.
+func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The delivery proxy: present in every injected rules body, absent from
+	// every refusal/stand-down message.
+	const ruleSlug = "inv-directional-flow"
+
+	// AC3's count discipline, stated once: the payload ships 14 slugs — 12
+	// `inv-` rules plus 2 `floor-` rules — derived from the payload itself so
+	// the premise checks below cannot drift from what actually ships.
+	slugSet := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(?:inv|floor)-[a-z-]+`).FindAllString(files["rules.md"], -1) {
+		slugSet[m] = true
+	}
+	if len(slugSet) != 14 {
+		t.Fatalf("premise: the payload ships 14 rule slugs (12 inv- + 2 floor-), found %d — every embedded-block premise check below would prove nothing", len(slugSet))
+	}
+
+	colZeroBegin := regexp.MustCompile(`(?m)^<!-- trellis:begin`)
+
+	newProj := func(t *testing.T, rows string) string {
+		t.Helper()
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return proj
+	}
+	runIn := func(t *testing.T, proj string) string {
+		t.Helper()
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
+		}
+		return string(out)
+	}
+	writeInstr := func(t *testing.T, proj, name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(proj, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// premiseAbsent: AC3 — a fixture provably contains the state it names,
+	// which includes NOT containing the shapes that would reroute the hook.
+	premiseAbsent := func(t *testing.T, proj string, rels ...string) {
+		t.Helper()
+		for _, rel := range rels {
+			if _, err := os.Stat(filepath.Join(proj, filepath.FromSlash(rel))); !os.IsNotExist(err) {
+				t.Fatalf("premise: %s must be absent in this fixture (stat err: %v)", rel, err)
+			}
+		}
+	}
+
+	assertRefusal := func(t *testing.T, out, file string) string {
+		t.Helper()
+		if strings.Contains(out, ruleSlug) {
+			t.Fatalf("DOUBLE DELIVERY: the hook injected the payload over an inline managed block the host already loaded; got:\n%s", out)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(out))
+		if !strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("the inline shape must draw its named refusal, not silence or a borrowed message; got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, file) || !strings.Contains(ctx, "managed block") {
+			t.Errorf("the refusal must name the block and the file it sits in (%s); got:\n%s", file, ctx)
+		}
+		// The probe cannot know which S4 sub-state this is, so the message
+		// must present both and say how to tell — and never claim the rules
+		// are loaded twice as fact (they are not, when the block is a
+		// dangling import).
+		for _, want := range []string{"twice", "ungoverned", "tell which"} {
+			if !strings.Contains(ctx, want) {
+				t.Errorf("the refusal must carry the either-state wording (missing %q): names the embedded case, the dangling case, and how to tell; got:\n%s", want, ctx)
+			}
+		}
+		if strings.Contains(ctx, "TRELLIS_RULES_LOADED_TWICE") || strings.Contains(ctx, "TWICE right now") {
+			t.Errorf("the refusal asserts loaded-twice as fact — false when the block is a dangling import; got:\n%s", ctx)
+		}
+		return ctx
+	}
+
+	t.Run("embedded block in CLAUDE.md draws the refusal, never double delivery", func(t *testing.T) {
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "CLAUDE.md", files["block-inline-b.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(got) {
+			t.Fatal("premise: the fixture's CLAUDE.md has no column-0 trellis:begin marker — it does not contain the state it names")
+		}
+		for s := range slugSet {
+			if !strings.Contains(string(got), s) {
+				t.Fatalf("premise: the embedded block is missing rule %s — it would not be the full readout the host loads", s)
+			}
+		}
+		assertRefusal(t, runIn(t, proj), "CLAUDE.md")
+	})
+
+	// The import is load-bearing, not incidental: AGENTS.md reaches a Claude
+	// session only through it (decision-0057). Without it this fixture asserted
+	// a refusal over a block this host never read — it encoded the defect Codex
+	// found on #231. The sibling subtest below pins the un-imported case.
+	t.Run("embedded block in an IMPORTED AGENTS.md draws the same refusal", func(t *testing.T) {
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "AGENTS.md", files["block-inline-b.md"])
+		writeInstr(t, proj, "CLAUDE.md", "@AGENTS.md\n")
+		got, err := os.ReadFile(filepath.Join(proj, "AGENTS.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(got) {
+			t.Fatal("premise: no column-0 marker in AGENTS.md")
+		}
+		assertRefusal(t, runIn(t, proj), "AGENTS.md")
+	})
+
+	t.Run("dangling import block draws the refusal with either-state wording", func(t *testing.T) {
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "CLAUDE.md", files["block-claude.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(got) || !strings.Contains(string(got), "@.trellis/internal/trellis.md") {
+			t.Fatal("premise: the fixture must be the @import block at column 0")
+		}
+		// The dangling premise: the overlay the import points at does not
+		// exist, and no other delivery shape is present to reroute the hook.
+		premiseAbsent(t, proj, ".trellis/internal", ".claude/rules/trellis.md", ".trellis/trellis.md", ".trellis/version")
+		assertRefusal(t, runIn(t, proj), "CLAUDE.md")
+	})
+
+	t.Run("governed = false beside an inline block: the disregard names the shape", func(t *testing.T) {
+		proj := newProj(t, "governed = false\n")
+		writeInstr(t, proj, "CLAUDE.md", files["block-inline-b.md"])
+		rows, err := os.ReadFile(filepath.Join(proj, ".trellis", "rules.toml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(rows) != "governed = false\n" {
+			t.Fatal("premise: the decline must be the exact top-level one-line opt-out")
+		}
+		out := runIn(t, proj)
+		if strings.Contains(out, ruleSlug) {
+			t.Fatalf("a declined project must receive no rules; got:\n%s", out)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(out))
+		if !strings.Contains(ctx, "TRELLIS_NOT_GOVERNING") {
+			t.Errorf("the decline beside an already-loaded shape must draw the disregard message, not silence; got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "managed block") || !strings.Contains(ctx, "CLAUDE.md") {
+			t.Errorf("the disregard must name the inline managed block and its file — the shape the host already loaded; got:\n%s", ctx)
+		}
+	})
+
+	t.Run("inline block plus rendered file: the coexistence alarm names both", func(t *testing.T) {
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "CLAUDE.md", files["block-inline-b.md"])
+		if err := os.MkdirAll(filepath.Join(proj, ".claude", "rules"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		rendered := renderedFile(files, strings.TrimSpace(files["version"]))
+		if err := os.WriteFile(filepath.Join(proj, ".claude", "rules", "trellis.md"), []byte(rendered), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(got) || !strings.Contains(rendered, "<!-- trellis:rendered-begin -->") {
+			t.Fatal("premise: both artifacts must be present and real (column-0 block; hook-valid rendered file)")
+		}
+		out := runIn(t, proj)
+		if strings.Contains(out, ruleSlug) {
+			t.Fatalf("two static shapes present and the hook still injected a third copy; got:\n%s", out)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(out))
+		if !strings.Contains(ctx, "TRELLIS_STATIC_SHAPES_CONFLICT") {
+			t.Errorf("inline-plus-rendered must draw the coexistence alarm, not the quiet single-artifact stand-down; got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, ".claude/rules/trellis.md") || !strings.Contains(ctx, "CLAUDE.md") {
+			t.Errorf("the alarm must name BOTH artifacts; got:\n%s", ctx)
+		}
+		// The rendered file is loaded for certain; the block only maybe. The
+		// alarm must not flatten that into a factual "twice".
+		if strings.Contains(ctx, "TWICE right now") {
+			t.Errorf("the alarm asserts loaded-twice as fact — false when the block is a dangling import; got:\n%s", ctx)
+		}
+	})
+
+	// Negative controls — decision-0073 D2's probe is DELIBERATELY narrow, and
+	// each narrowing is pinned so a well-meaning widening shows up as a red
+	// test instead of a silent behaviour change.
+
+	t.Run("a block in GEMINI.md alone does not gate Claude delivery", func(t *testing.T) {
+		// The two-file subset is D2's own decision: GEMINI.md, .clinerules and
+		// .github/copilot-instructions.md are not loaded by the Claude host,
+		// so refusing over them would ungovern a session for content that was
+		// never in it.
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "GEMINI.md", files["block-inline-b.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "GEMINI.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(got) {
+			t.Fatal("premise: no column-0 marker in GEMINI.md")
+		}
+		if out := runIn(t, proj); !strings.Contains(out, ruleSlug) {
+			t.Fatalf("a block in a file this host never loads must not stop delivery (decision-0073 D2's two-file subset); got:\n%s", out)
+		}
+	})
+
+	t.Run("an indented marker is prose, not a block", func(t *testing.T) {
+		proj := newProj(t, files["rules-b.toml"])
+		doc := "Docs about trellis markers:\n\n    <!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\n    example block body\n    <!-- trellis:end -->\n"
+		writeInstr(t, proj, "CLAUDE.md", doc)
+		if colZeroBegin.MatchString(doc) || !strings.Contains(doc, "<!-- trellis:begin") {
+			t.Fatal("premise: the marker must be present but NOT at column 0")
+		}
+		if out := runIn(t, proj); !strings.Contains(out, ruleSlug) {
+			t.Fatalf("an indented/fenced marker is documentation — the column-0 anchor must keep delivering; got:\n%s", out)
+		}
+	})
+
+	t.Run("the codex bootstrap marker is not the inline block", func(t *testing.T) {
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "AGENTS.md", files["block-codex.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "AGENTS.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !regexp.MustCompile(`(?m)^<!-- trellis:codex-bootstrap:begin`).Match(got) {
+			t.Fatal("premise: the codex bootstrap block must open at column 0")
+		}
+		if colZeroBegin.Match(got) {
+			t.Fatal("premise: the fixture must carry ONLY the codex-bootstrap family")
+		}
+		if out := runIn(t, proj); !strings.Contains(out, ruleSlug) {
+			t.Fatalf("the codex receipt carries no rule delivery — `trellis:begin` must not match `trellis:codex-bootstrap:begin`; got:\n%s", out)
+		}
+	})
+
+	t.Run("mid-line marker pin: a newline-less append is outside S4's signature", func(t *testing.T) {
+		// PIN, not a branch — same treatment as the S6 pin below. decision-0073
+		// D1 signs S4 as a COLUMN-0 `<!-- trellis:begin` marker; a block
+		// appended onto a file whose last line had no trailing newline lands
+		// the marker mid-line, outside that signature, and the probe
+		// deliberately does not chase it (the same fail-open class as the BOM
+		// case, which HAS a branch because the host loads a BOM'd file
+		// normally). The recipe closes this hole on the writer side — the
+		// README's inline branch guards the append with a newline — and this
+		// fixture pins the reader-side behaviour so any change to it is a
+		// decision, not a drive-by: today the probe misses the mid-line
+		// marker and path B delivers in full.
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "AGENTS.md", "existing content without trailing newline"+files["block-inline-b.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "AGENTS.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if colZeroBegin.Match(got) {
+			t.Fatal("premise: the marker must NOT sit at column 0 — a mid-line marker is the state under test")
+		}
+		if !strings.Contains(string(got), "<!-- trellis:begin") {
+			t.Fatal("premise: the marker must be present, just not at column 0")
+		}
+		if out := runIn(t, proj); !strings.Contains(out, ruleSlug) {
+			t.Fatalf("a mid-line marker is outside D1's column-0 S4 signature — current behaviour is full path-B delivery, pinned here; got:\n%s", out)
+		}
+	})
+
+	// guards decision-0073 D1/D2 — Codex P1 on #231. The probe used to `break` at
+	// the first match, so a project with a block in BOTH files had every message
+	// name only one: following the remedy left the second block live and the
+	// project stayed in the refused state forever. skills/remove/SKILL.md calls
+	// that state legitimate in terms ("a legitimate multi-file state — remove
+	// each; it is not a duplicate"), and the host loads both files, so both
+	// blocks are in context.
+	// guards decision-0073 D2 + decision-0057 — Codex P1 on #231. AGENTS.md reaches
+	// a Claude session only through a CLAUDE.md import; probing it unconditionally
+	// refused delivery over a block THIS host never read, leaving an otherwise
+	// plugin-governed session ungoverned while the refusal claimed the block was
+	// loaded. D2's own reason for the two-file subset is exactly this test.
+	t.Run("an AGENTS.md block Claude never imports does not refuse delivery", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// CLAUDE.md exists but does NOT import AGENTS.md — the mixed-host layout.
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("# project notes\n\nnothing imported here.\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Premise: the block IS there at column 0, and CLAUDE.md really lacks the import.
+		b, err := os.ReadFile(filepath.Join(proj, "AGENTS.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(b) {
+			t.Fatal("fixture premise failed: AGENTS.md carries no column-0 marker")
+		}
+		c, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(c), "@AGENTS.md") {
+			t.Fatal("fixture premise failed: CLAUDE.md must NOT import AGENTS.md")
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("refused over a block this host never loaded — the session is ungoverned "+
+				"for content that was never in context:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, ruleSlug) {
+			t.Errorf("want normal delivery for a Claude session that never saw the block; got:\n%s", ctx)
+		}
+	})
+
+	// guards spec-0006:57 — Codex P1 (round 2) on #231. The import gate used an
+	// unanchored substring match, so a CLAUDE.md that merely MENTIONED
+	// "@AGENTS.md" in prose or a fenced example read as importing it, recreating
+	// the mixed-host regression the gate exists to prevent.
+	t.Run("a MENTION of the import is not an import", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Inline prose only. A @AGENTS.md line inside a FENCE is deliberately not
+		// exercised: whether Claude's import parser is fence-aware is unmeasured,
+		// so a fixture either way would assert a host behaviour nobody here has
+		// observed. Recorded as an open question on #231 rather than guessed.
+		mention := "# notes\n\nTo share instructions, put an `@AGENTS.md` import on its own line. We have not done that here.\n"
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte(mention), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Premise: the text really does contain the token, just never as a
+		// standalone import line outside a fence.
+		c, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(c), "@AGENTS.md") {
+			t.Fatal("fixture premise failed: the mention must be present")
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("a documented MENTION of the import was read as the import itself, so the hook "+
+				"refused over a block this host never loaded:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, ruleSlug) {
+			t.Errorf("want normal delivery; got:\n%s", ctx)
+		}
+	})
+
+	// guards decision-0073 D2 — Codex P2 (round 2) on #231: two blocks can carry
+	// different postures, so "copy the preset that matches" has no answer. The
+	// remedy must surface the conflict rather than pick silently.
+	t.Run("blocks disagreeing on strictness surface the conflict", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-a.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("@AGENTS.md\n\n"+files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// No .trellis/rules.toml — the state where a preset must be chosen.
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if !strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Fatalf("want the inline refusal, got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "disagree on strictness") {
+			t.Errorf("two blocks can carry different postures; the remedy must say so and let the "+
+				"user choose rather than picking one silently:\n%s", ctx)
+		}
+	})
+
+	t.Run("an AGENTS.md block Claude DOES import still refuses", func(t *testing.T) {
+		proj := t.TempDir()
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(files["block-inline-b.md"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("@AGENTS.md\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if !strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("an imported AGENTS.md block IS loaded by this host and must still refuse:\n%s", ctx)
+		}
+		// P2: the remedy must not silently downgrade a firm project.
+		if !strings.Contains(ctx, "rules-a.toml") || !strings.Contains(ctx, "strictness") {
+			t.Errorf("the missing-rules.toml remedy must preserve the block's own posture "+
+				"(name rules-a for firm), not assume adaptive:\n%s", ctx)
+		}
+	})
+
+	t.Run("blocks in BOTH instruction files are all named, not just the first", func(t *testing.T) {
+		proj := t.TempDir()
+		block := files["block-inline-b.md"]
+		if err := os.WriteFile(filepath.Join(proj, "AGENTS.md"), []byte(block), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// CLAUDE.md carries its own block AND imports AGENTS.md — only then are
+		// both blocks in this host's context, which is what makes naming both
+		// mandatory (decision-0057).
+		if err := os.WriteFile(filepath.Join(proj, "CLAUDE.md"), []byte("@AGENTS.md\n\n"+block), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Premise: both files really do carry a column-0 marker.
+		for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+			b, err := os.ReadFile(filepath.Join(proj, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !colZeroBegin.Match(b) {
+				t.Fatalf("fixture premise failed: %s carries no column-0 trellis:begin marker", name)
+			}
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		ctx := string(out)
+		if !strings.Contains(ctx, "TRELLIS_INLINE_BLOCK") {
+			t.Fatalf("want the inline refusal, got:\n%s", ctx)
+		}
+		for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+			if !strings.Contains(ctx, name) {
+				t.Errorf("the refusal names only some of the blocks — %s is missing, so its remedy "+
+					"leaves that block live and the project stays in the refused state:\n%s", name, ctx)
+			}
+		}
+	})
+
+	t.Run("a BOM'd block at line 1 still draws the refusal", func(t *testing.T) {
+		// The probe's BOM tolerance is documented as load-bearing — an editor
+		// on a Windows-default checkout rewrites the encoding, and the
+		// fail-open direction is a real block escaping the probe into double
+		// delivery — yet it had NO fixture: deleting the \($bom\)\{0,1\}
+		// alternative left the whole suite green (staleness review finding 2).
+		// Mutation-proven: de-BOMing the grep turns exactly this subtest red.
+		proj := newProj(t, files["rules-b.toml"])
+		writeInstr(t, proj, "CLAUDE.md", "\xef\xbb\xbf"+files["block-inline-b.md"])
+		got, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(string(got), "\xef\xbb\xbf<!-- trellis:begin") {
+			t.Fatal("premise: the file must open with the BOM followed immediately by the marker")
+		}
+		// Note the plain column-0 regexp does NOT see this marker — the BOM
+		// precedes it — which is exactly why the probe needs its alternative.
+		if colZeroBegin.Match(got) {
+			t.Fatal("premise: with the BOM in front, the bare column-0 pattern must not match — otherwise this fixture proves nothing about the BOM branch")
+		}
+		assertRefusal(t, runIn(t, proj), "CLAUDE.md")
+	})
+
+	t.Run("a CRLF block still draws the refusal", func(t *testing.T) {
+		// Same population as the BOM case: a Windows-default checkout rewrites
+		// line endings. The probe is a prefix match with no $ anchor, so a
+		// trailing CR cannot matter — pinned here so an anchored rewrite shows
+		// up as a red test instead of a silently escaped block.
+		proj := newProj(t, files["rules-b.toml"])
+		body := strings.ReplaceAll(files["block-inline-b.md"], "\n", "\r\n")
+		if !strings.Contains(body, "\r\n") {
+			t.Fatal("premise: the fixture must actually carry CRLF line endings")
+		}
+		writeInstr(t, proj, "CLAUDE.md", body)
+		assertRefusal(t, runIn(t, proj), "CLAUDE.md")
+	})
+
+	t.Run("S6 pin: morph markers alone do not gate path B", func(t *testing.T) {
+		// decision-0073 D1 names S6 (the M2 morph: .trellis/rollback and/or
+		// the trellis-pre-morph tag) and D4 owes every state a fixture. This
+		// IS the hook's S6 fixture — and it pins CURRENT behaviour by name:
+		// D2's change-set for this hook is the inline probe alone, so the
+		// hook deliberately does not probe the morph markers (stated in the
+		// probe's own comment, with the decision-0073 pointer). A morphed
+		// project with a rules.toml takes path B unchanged; its rewritten
+		// files are its own, and rules.toml still governs activation.
+		proj := newProj(t, files["rules-b.toml"])
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rollback"), []byte("0123abc — git reset --hard 0123abc\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(proj, ".trellis", "rollback")); err != nil {
+			t.Fatal("premise: the rollback marker must exist")
+		}
+		premiseAbsent(t, proj, "CLAUDE.md", "AGENTS.md", ".trellis/internal", ".claude/rules/trellis.md", ".trellis/trellis.md")
+		if out := runIn(t, proj); !strings.Contains(out, ruleSlug) {
+			t.Fatalf("S6 with a rules.toml is path B today — this pin exists so any change to that is a decision, not a drive-by; got:\n%s", out)
+		}
+	})
 }

@@ -1,0 +1,8 @@
+schema = 1
+record_type = "conformance"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "82724a335d7b2d507fe9fa59a3e590fbfaf07050725acdb344beebf89d8e3c44"
+verdict = "PASS, round 3 — thirteen-item scoped checklist all PASS. The digest chain reproduced backward proves the round-2 PASS bound exactly the pre-edit bytes, so scope discipline holds. Both protected sentences verified untouched at the byte level (zero occurrences even as diff context); every D3/AC1/0070 obligation located outside the four hunks; each R-edit checked against the upstreams — R2 and R3 both convert dead prose to live paths (the ambiguous category becomes reachable; the mismatch branch becomes live), the same direction round 2 credited for morph re-entry; R4's wording matches spec-0004 section-2/AC3 obligations verbatim. Guards mutation-verified in a scratch clone (exactly 7 red on parent bytes, one per assertion). Manifest at HEAD carries the reviewer's independently computed digest. Producer disclosure accurate this round: the diff contains exactly the four described edits and nothing else. One non-blocking advisory, independently convergent with the decision-adversary's F2: section 1's general stop clause assigns 'ambiguous' where sections 4/5 assign 'verification-failed' — the parent had the identical general/specific structure, so not a regression; spec-adversary-lane polish at most. Gates fresh: go test -count=1 ok 12.8s. [Reviewer plain sha256 d43ca051e95c…]"
+by = "grove:conformance-reviewer (subagent, round 3); recorded by dispatcher"
+date = "2026-08-03T18:35:00Z"

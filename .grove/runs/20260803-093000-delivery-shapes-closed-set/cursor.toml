@@ -1,0 +1,7 @@
+schema = 1
+run = "20260803-093000-delivery-shapes-closed-set"
+opened = "2026-08-03T09:30:00Z"
+intent = "Fix the two P1s from the 2026-08-03 state-coverage audit under decision-0073 (the delivery shapes are a closed set): staleness.sh gains the inline managed-block shape at all three decision sites, and /trellis:remove inventories, reports and removes every D1 state including the bundle, the governed=false decline artifact, and morph markers in preflight. Reviewers converge before the change reaches the PR reviewers."
+subjects = [ "decisions/0073-the-delivery-shapes-are-a-closed-set.md", "plugins/trellis/hooks/staleness.sh", "plugins/trellis/skills/remove/SKILL.md" ]
+status = "closed"
+closed = "2026-08-03T23:00:00Z"

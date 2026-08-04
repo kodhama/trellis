@@ -309,28 +309,28 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-363f3f36f36748355d4a07c2b1b6d1009f4da3b1c78c4258cd41976286d48bdf  README.md
+941c09d8e986bccd6010a16202ab1783df89c9fe2ce3ee8279c71ff8b0b21143  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
 3da7f2cf8765fe95d1936a36d3341736f16b438353f2130368af58897dad20c4  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-8016f6cc9402ae84365c60538323f66428ba61287d6513bd5e7c435883fa51e3  hooks/staleness.sh
+8d3a61662deb36f804cacee1846f0232238a61386afc3f8963e94a773e8d5d7b  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 3a2e43eeff953642a19946e8a1671487137f832b0e4aa1e62d2639998a8a4bfe  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
-f15315d1df95ca5df6bc59901e65691ffb77187e45f4df0a5438365e80149342  reference/block-inline-a.md
+6179726ebc2044b8abe064716061851c149847f29c00c8a9dbcf66c9a73dbb7c  reference/block-inline-a.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-b-head.md
-f8efb5a0cd6f636164d8283c738a264b775671b10cb1e984613bb96f9ddef933  reference/block-inline-b.md
-a33f9904a063986caab0ccc156a229b959c232829c1f1b90c252377d3c028795  reference/block-inline-tail.md
-32d89c062c7a19fdb9ec3cd75f531a6e3db7a7e80014b0598a2e06227596800d  reference/checksums
+ae8da700b316aad352d57c4f61ede584b1f7bb500540b6a4fed7dfaadb96e77d  reference/block-inline-b.md
+10892805ec9c8297e2385bf0c6a552ee64eca7491ca89862ee3941fe60833e32  reference/block-inline-tail.md
+4ea134fe245dbed14ceb5843b133f1132e493bf6a719c52916a5f595e65128d2  reference/checksums
 68b803d9f4a45fc1af07c327a35c4a4b58aac878b233a4196079dac419bd28b3  reference/invariants.md
 a675233ee08c0c41b5c0490a163f4d6ff4e95c6bbf9964eac59e4772f6597454  reference/rules-a.toml
 534c9178b4c5173f6dd51f382a48b970cc263a83d410c0e9fff6c41a7c937386  reference/rules-b.toml
 238fca2fb2c9e91af22764fc403da9b0dc8625291ef8fc4530d52c1a2618df0e  reference/rules.md
 d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trellis-a.md
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
-51ab18b3eafb46df2a5d085eac0b66b7175e07972193185870cd943e277c1896  reference/version
-13d071ae21e31b4421791e1d347d03265558cdd3c85b4124e9497ad06ad89016  skills/remove/SKILL.md
+5d289208c909a688460816b13ad3c4340beb215d129349d1694d44eb18c6e70d  reference/version
+17710e515c8ed887a79b2784baf652ee1690e361082b77d7d907c57dcb337d67  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -484,7 +484,11 @@ if [ "$scope" = "project" ]; then
   # blocks in five instruction files. That is deliberate, not an oversight: the
   # other three (GEMINI.md, .github/copilot-instructions.md, .clinerules) are not
   # loaded by Claude Code, so a block in one of them cannot double-deliver
-  # alongside .claude/rules/. Stated because D7 asks for stated, not implied.
+  # alongside .claude/rules/. Stated because D7 asks for stated, not implied —
+  # and because decision-0073 D1's per-component relevance clause requires a
+  # deliberate subset of the delivery states said where it is done, with the
+  # pointer: decision-0073 (the closed set's normative home; this narrowing is
+  # its S4 row scoped to the files this host loads).
   #
   # Verified: LF inline -> refuses; CRLF inline -> refuses; BOM'd inline ->
   # refuses; prose naming the marker mid-sentence -> renders.

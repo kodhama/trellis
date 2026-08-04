@@ -1,0 +1,8 @@
+schema = 1
+record_type = "spec-adversary"
+subject = "plugins/trellis/skills/remove/SKILL.md"
+subject_state = "present"
+subject_sha256 = "3cd34bc1996022e1ef491463511c08c46d7cf766a65bc09c40f7405d42e7ade2"
+verdict = "NEEDS-REVISION, round 3 — narrow; N1-N9 all verified resolved with quoted evidence and the unified consent model judged sound. Four residual defects in/around the new text, each a one-to-two-line fix: R1 section-4's threshold sentence still encodes the abort-on-denial model ('after every preflight and consent succeeds' — one word, resolved, fixes it); R2 the new every-item-retained quantifier makes the ambiguous report category unreachable — the artifact whose duplicate markers stopped the run is the category's whole purpose; R3 (the one not to ship without) verification timing is unstated and the verify-after-writing reading makes the mismatch branch dead code — staged bytes restore snapshot-shaped surroundings, so a concurrent user edit is destroyed then reported clean; fix is verify-each-target-immediately-before-writing-it; R4 the every-exit report list omits the already-absent no-op exit. One surfaced observation outside scope: step 1 deletes .claude/rules/trellis.md on path-provenance alone, pre-existing and twice-reviewed. Adversary's own convergence estimate: round 4 converges. [Reviewer plain sha256 15a8d6d39bc9…]"
+by = "grove:spec-adversary (subagent, round 3); recorded by dispatcher"
+date = "2026-08-03T16:10:00Z"

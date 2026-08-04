@@ -255,9 +255,18 @@ func TestPayloadHeaderImportsSiblingRules(t *testing.T) {
 			t.Errorf("%s must point its trigger at .trellis/internal/invariants.md: %q", name, content)
 		}
 	}
+	// INVERTED by decision-0073 (Consequence 2). This loop used to require the
+	// inline blocks to carry the .trellis/internal/invariants.md pointer —
+	// which is exactly the defect 0073 names: clean S4 has no overlay, so the
+	// shipped inline payload pointed readers at a file that need not exist and
+	// the documented recipe could only produce the S2-plus-S4 conflict. The
+	// inline trigger is forked (inlineInvariantsTrigger); the headers above
+	// keep the internal pointer, which is correct for S2 and repointed by the
+	// hook for path B. TestPayloadInlineTailNeedsNoOverlay carries the
+	// positive half of the new property.
 	for _, name := range []string{"block-inline-a.md", "block-inline-b.md"} {
-		if !strings.Contains(files[name], ".trellis/internal/invariants.md") {
-			t.Errorf("%s must point its trigger at .trellis/internal/invariants.md: %q", name, files[name])
+		if strings.Contains(files[name], ".trellis/internal/invariants.md") {
+			t.Errorf("%s points its trigger at .trellis/internal/, which clean S4 does not have (decision-0073): %q", name, files[name])
 		}
 	}
 }
@@ -561,5 +570,32 @@ func TestPayloadCommandWritesPayload(t *testing.T) {
 
 	if err := run(strings.NewReader(""), &strings.Builder{}, []string{"payload"}); err == nil {
 		t.Error("payload without --out should be a loud error, not a silent default")
+	}
+}
+
+// TestPayloadInlineTailNeedsNoOverlay guards decision-0073 (Consequence 2:
+// clean S4 must be producible). The inline block is the delivery shape for a
+// project with NO vendored overlay — the block plus .trellis/rules.toml is the
+// whole install — yet its shipped tail pointed readers at
+// `.trellis/internal/invariants.md`, a file that need not exist there, so the
+// documented inline recipe could only produce a conflicting S2-plus-S4 layout.
+// The tail's trigger is forked from the header's (renderHeader keeps the
+// shared invariantsTrigger const: in S2 the vendored copy is real, and the
+// hook repoints it for path B), and points at the shipped reference instead.
+func TestPayloadInlineTailNeedsNoOverlay(t *testing.T) {
+	files := payloadFiles()
+	for _, name := range []string{"block-inline-tail.md", "block-inline-a.md", "block-inline-b.md"} {
+		if strings.Contains(files[name], ".trellis/internal/") {
+			t.Errorf("%s points its reader at .trellis/internal/, which clean S4 does not have (decision-0073): %q", name, files[name])
+		}
+	}
+	tail := files["block-inline-tail.md"]
+	// The affordance survives the repoint: an ambiguity/deviating trigger with
+	// a target that exists wherever the block came from.
+	if !strings.Contains(tail, "before deviating") {
+		t.Errorf("block-inline-tail.md lost the invariants trigger — the repoint must move the target, not delete the affordance: %q", tail)
+	}
+	if !strings.Contains(tail, "invariants.md") {
+		t.Errorf("block-inline-tail.md must still name an invariants reference the reader can actually open: %q", tail)
 	}
 }
