@@ -16,6 +16,7 @@ const SLUGS = [
   "inv-ratifiable-artifacts",
   "inv-graph-maintenance",
   "inv-self-improvement",
+  "inv-deliberate-succession",
   "inv-gate-at-handover",
   "inv-independent-judgment",
   "inv-auditable-archive",
