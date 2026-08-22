@@ -57,3 +57,44 @@ artifact `id`s (`invariants-v1`, `decision-*`, `research-*`) carry no product na
 ## Supersedes / superseded by
 
 — (none)
+
+---
+
+> **Amendment (2026-08-22, append-only — the maintainer's correction, raised in conversation
+> while auditing the leftover mentions; the merge of this PR ratifies it).**
+> **Follow-up (c) was misclassified, and is owed rather than optional.** The original text calls
+> the leftover "bonsai" in open issues #22–#28 *"(historical; optional)"*. An audit of all 46
+> issues found **33 occurrences across 7 issues, none of them historical**: there is not one dated
+> quotation, "renamed from" construction, or as-it-was-then gloss among them. They are ordinary
+> product prose about a live product, written 2026-07-01/02 — one and two days *before* this
+> decision ratified — which is why they read as current rather than retrospective.
+>
+> Three are not cosmetic at all but **dangling pointers to renamed artifacts**: #28 cites
+> `bonsai-self` (now `profiles/trellis-self.md`), #23 cites `bonsai-core` ×3 (now `trellis-core`),
+> and #26 glosses `decision-0009` as *"how bonsai improves itself"* while that record's heading
+> reads *"How Trellis improves itself"* — an open issue misquoting the current title of the
+> decision it points at. "Optional" was the wrong call for a broken reference.
+>
+> **This is an amendment, not a supersession** (`decision-0051`'s correction precedent): the
+> judgement was loose when made, not outgrown by later events. **The original text above is not
+> edited** — what was decided on 2026-07-03, and that it was decided wrongly on this one point,
+> both stay legible.
+>
+> **The genuine historical set is named here so the sweep cannot swallow it:** this record itself
+> (filename and body — it *is* the record of the rename); `research/0008`, whose §Part 2 declares
+> its own "Bonsai" mentions load-bearing as the subject of its analysis; merged PR titles #1, #10
+> and #31; and git history. Issue **comments** are also exempt — they are dated utterances by a
+> person, not specification, and are not rewritten. Follow-up (a) is now **done** (the working
+> copy is `Projects/trellis`); (b) is untouched by this amendment.
+>
+> **Two boundary rules the sweep needed, decided by the maintainer and recorded so the next
+> rename does not re-litigate them:**
+> 1. **A closed issue is frozen.** Closing is what "historical" is *for*, so a closed issue is not
+>    swept regardless of what its text says. #25 is therefore exempt, and its live-in-kind
+>    `bonsai-native` mention stays.
+> 2. **A quotation follows its source when the source is revise-in-place; it pins when the source
+>    is append-only.** #22 quotes `invariants-v1` on *"Bonsai's value"*, and the rename rewrote that
+>    sentence in the source. `invariants-v1` declares itself *"the compiled current-truth spec
+>    (revise-in-place)"* — so a citation of it tracks it, and the fixed text is the accurate
+>    citation; anyone wanting the 2026-07-01 wording cites a git rev. Had the quoted source been a
+>    `decisions/` record, the opposite would hold: append-only text never moves, so the quote pins.
