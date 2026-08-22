@@ -201,6 +201,27 @@ clears it if it carries the shape, not only if it names stages.*
   **Neighbor to `inv-graph-maintenance`:** graph-maintenance keeps the graph *true* (referential
   integrity); self-improvement makes the process *better* (adaptation). *Backported from math-quest,
   which kept these trellis-compatible; concrete engine in `decision-0018`.*
+- **`inv-deliberate-succession` — the boundary with what came before is decided, not drifted
+  through** — *provisional* (**new**, `decision-0074`). Wherever new work meets an existing base —
+  code, conventions, decisions, data, docs — the boundary is settled **out loud, in both
+  directions**. *One relationship, two directions:*
+  - **Forward — what the new leaves behind:** introducing a pattern throws off a retrofit-scope
+    signal (what now sits outside it?). Migrate, or name the exemption and ask; never resolve it in
+    boundary prose. *(Formerly rendered inside `inv-self-improvement`'s directive, `decision-0052`;
+    re-homed here so both directions carry worked examples — the iron rule.)*
+  - **Backward — what the old still supplies:** when the new design needs a value, shape, or default
+    the old one already has, the reuse is **chosen and justified against the new model**, never
+    inherited by default. Inheriting a *shape* (a streak, a window, a counter) smuggles in the model
+    it was calibrated for.
+  - *The prior version is evidence to weigh — never gravity to drift with, never debris to step
+    over.* Reuse is often right; unexamined reuse is not, and neither is discarding history because
+    it is old.
+  - Surfacing rides **SI-1**'s channel discipline (asked or inferred, never assumed) and **SI-2**'s
+    existing rituals — the retrofit or inheritance question rides the change that creates it.
+  **Neighbor to `inv-self-improvement`:** that one adapts the process when friction appears; this one
+  decides the boundary when new work meets old. *(Evidence: trellis PR #165, forward direction;
+  math-quest's phase-1 architecture, backward direction — four recurrences in one session with the
+  forward rendering loaded, recorded on trellis#166.)*
 - **`inv-minimal-first` — minimal-first** — *strong, less settled.* Smallest process that
   works; add a step only when friction reveals the boundary. *(v0's "reference-not-adoption"
   split out to `inv-reference-relationship` — strict single-framework adoption is legitimate,

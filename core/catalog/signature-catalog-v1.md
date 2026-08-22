@@ -33,8 +33,9 @@ ratified: 2026-07-04
 > claim on the page without a rule behind it (`decision-0020`). Consumed by Assess (#23) and tutoring
 > (#27). `trellis-product` scope — one, shipped.
 
-> **Coverage (spec-0002 §1, AC1).** Covers the **14 assessable invariants** — the structural set, the
-> operating set (incl. **`inv-self-improvement`**, `decision-0018`), the floors. `inv-reference-relationship`
+> **Coverage (spec-0002 §1, AC1).** Covers the **15 assessable invariants** — the structural set, the
+> operating set (incl. **`inv-self-improvement`**, `decision-0018`, and **`inv-deliberate-succession`**,
+> `decision-0074`), the floors. `inv-reference-relationship`
 > was **collapsed into `floor-transparency` + the adopt/adapt dial** (`decision-0021`) — its "divergence from a framework"
 > case lives in `floor-transparency`'s example below. Excludes the two dials (they are the *axes* entries are set
 > along, not rows).
@@ -163,31 +164,62 @@ ratified: 2026-07-04
     judgment)  ·  intent_locus: `false`
   - default_C1: `enforced`  ·  default_C2: `independent-agent`
 
-- **`inv-self-improvement`** *(restored first-class, `decision-0018`; neighbor of `inv-graph-maintenance`)*
+- **`inv-self-improvement`** *(restored first-class, `decision-0018`; neighbor of `inv-graph-maintenance`; the entropy lean it briefly carried now homes in `inv-deliberate-succession`, `decision-0074`)*
   - what: the process learns from friction and gets better — improvement signals are surfaced and
     acted on, deliberately, so a glitch does not happen twice.
-  - directive: When something breaks or causes friction, fix the root cause so it can't happen twice — don't just re-run it and move on. And notice the friction you are about to create: when you introduce a new pattern — a convention, a naming scheme, a format — the existing stock now sitting outside it is a signal to surface, riding the same change: migrate it, or name the exemption and ask — never resolve it silently in prose.
+  - directive: When something breaks or causes friction, fix the root cause so it can't happen twice — don't just re-run it and move on.
   - why: **a process glitch never happens twice** — friction becomes a fix, not a recurring tax.
   - signature: a trigger format (`condition → action`) stored where it fires; improvement signals
     surfaced through the project's **chosen channel** (asked/inferred, never assumed); retirement in
-    the same change; prune-bias (the trigger set does not grow monotonically); the entropy lean as
-    proactive notice — a pattern-introducing change throws off a retrofit-scope signal (what now
-    sits outside the pattern?); migrate-or-exempt is surfaced through the channel, asked not
-    assumed, never resolved in boundary prose (SI-1 applied at change-introduction time).
+    the same change; prune-bias (the trigger set does not grow monotonically). *(The entropy lean —
+    signals thrown off where new work meets existing stock — moved to `inv-deliberate-succession`,
+    `decision-0074`; SI-1 still governs how any such signal reaches the channel.)*
   - honored:
     - *(CI)* a flaky test recurs → a trigger is filed, the root cause fixed, the trigger retired in the
       same change.
     - *(process)* a repeated review miss becomes a checklist item that rides the PR you already write.
-    - *(structure)* a change that introduces a pattern ships with its retrofit question — "the old
-      suite now sits outside this convention: migrate or exempt?" — and the human rules on it.
   - violated:
-    - *(CI)* the same pipeline step fails weekly and everyone just re-runs it, forever — or a new
-      convention lands and the old stock stays loose beside it, exempted by prose nobody approved.
+    - *(CI)* the same pipeline step fails weekly and everyone just re-runs it, forever.
     - *(process)* a PR raises the same open question every time, with no follow-up, and it rots unowned.
-    - *(structure)* a new directory convention lands while the old stock stays loose beside it,
-      exempted by confident boundary prose nobody approved — two conventions in one tree.
   - class: `trellis-design`  ·  mechanizable: `false` (the surfacing floor — improvement signals reach the
     declared channel — is checkable; the proactive-notice disposition is not)  ·  intent_locus: `false`
+  - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
+
+- **`inv-deliberate-succession`** *(new, `decision-0074`; neighbor of `inv-self-improvement` — that one adapts the process to friction, this one decides the boundary between new work and what came before)*
+  - what: wherever new work meets an existing base — code, conventions, decisions, data, docs — the
+    boundary is **decided out loud in both directions**: what the new pattern leaves outside it, and
+    what the old base quietly supplies to a gap in the new design. The prior version is evidence to
+    weigh, never gravity to drift with and never debris to step over.
+  - directive: When you introduce a new pattern, say what the existing stock outside it should become — migrate it, or name the exemption and ask; never resolve it silently in prose. And when your new design needs a value, shape, or default that the old one already supplies, say why it fits the new model or choose differently — reuse is often right, reuse by default is not.
+  - why: **the new thing is actually new, and the old thing is actually decided** — otherwise a
+    superseded convention lingers beside its replacement, and an inherited constant smuggles in the
+    model it was calibrated for, each exempted by prose nobody approved.
+  - signature: pattern-introducing changes throw off a retrofit-scope signal (what now sits outside
+    the pattern?), surfaced through the project's channel — asked, not assumed (SI-1 at
+    change-introduction time); gap-filling reuse stated with its justification against the new model
+    rather than its provenance; inherited values named as parameters with the old calibration's
+    context recorded; the superseded version reachable and marked superseded, never edited in
+    substance or silently dropped.
+  - honored:
+    - *(structure)* a change that introduces a pattern ships with its retrofit question — "the old
+      suite now sits outside this convention: migrate or exempt?" — and the human rules on it.
+    - *(design)* a new model reuses a threshold from the one it replaces, and names the property of
+      the new model that keeps the old value apt.
+    - *(docs)* a rewritten guide states which claims of the previous version it carries forward and
+      which it drops, so a reader who knew the old one can tell what changed.
+    - *(metrics)* a success signal is defined against the outcome the new model is meant to produce,
+      so the current implementation's behaviour can fail it.
+  - violated:
+    - *(structure)* a new directory convention lands while the old stock stays loose beside it,
+      exempted by confident boundary prose nobody approved — two conventions in one tree.
+    - *(design)* a new two-threshold model needs a lower bound; the constant from the retired model
+      fills it unexamined, carrying a *streak* shape into a design whose other threshold is
+      *coverage* — two thresholds, silently two different measures.
+    - *(docs)* a rewritten spec silently keeps a constraint whose original rationale no longer
+      applies; nobody can tell whether it was re-decided or merely retyped.
+    - *(metrics)* a success signal is defined against what the current implementation already does,
+      so the experiment passes on the untreated baseline and cannot fail.
+  - class: `trellis-design`  ·  mechanizable: `false` (the surfacing floor is checkable per SI-1; noticing that a moment is one of succession is not)  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
 
 - **`inv-gate-at-handover`**
@@ -355,7 +387,7 @@ ratified: 2026-07-04
 
 ## Acceptance criteria
 
-- Covers all **14 assessable** slugs (the four structural, the eight remaining operating, the two floors — `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`);
+- Covers all **15 assessable** slugs (the four structural, the nine remaining operating, the two floors — `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`);
   the two dials are excluded by design.
 - Every entry carries `what` · **`directive`** · **`why`** · `signature` · **`honored`** · **`violated`** · `class` ·
   `mechanizable` · `default_C1` · `default_C2` (+ `intent_locus` where `true`), and `honored`/`violated`

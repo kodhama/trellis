@@ -37,11 +37,18 @@ transcript. A reviewer marks each **followed / violated / n-a** with an evidence
   - a regression test blocks a convenient reading of the spec, so it is quietly deleted — the defect it pinned ships again; no one can say which requirement any test guards.
 
 ## inv-self-improvement
-- **rule:** When something breaks or causes friction, fix the root cause so it can't happen twice — don't just re-run it and move on. And notice the friction you are about to create: when you introduce a new pattern — a convention, a naming scheme, a format — the existing stock now sitting outside it is a signal to surface, riding the same change: migrate it, or name the exemption and ask — never resolve it silently in prose.
+- **rule:** When something breaks or causes friction, fix the root cause so it can't happen twice — don't just re-run it and move on.
 - **✗ look for:**
-  - the same pipeline step fails weekly and everyone just re-runs it, forever — or a new convention lands and the old stock stays loose beside it, exempted by prose nobody approved.
+  - the same pipeline step fails weekly and everyone just re-runs it, forever.
   - a PR raises the same open question every time, with no follow-up, and it rots unowned.
+
+## inv-deliberate-succession
+- **rule:** When you introduce a new pattern, say what the existing stock outside it should become — migrate it, or name the exemption and ask; never resolve it silently in prose. And when your new design needs a value, shape, or default that the old one already supplies, say why it fits the new model or choose differently — reuse is often right, reuse by default is not.
+- **✗ look for:**
   - a new directory convention lands while the old stock stays loose beside it, exempted by confident boundary prose nobody approved — two conventions in one tree.
+  - a new two-threshold model needs a lower bound; the constant from the retired model fills it unexamined, carrying a *streak* shape into a design whose other threshold is *coverage* — two thresholds, silently two different measures.
+  - a rewritten spec silently keeps a constraint whose original rationale no longer applies; nobody can tell whether it was re-decided or merely retyped.
+  - a success signal is defined against what the current implementation already does, so the experiment passes on the untreated baseline and cannot fail.
 
 ## inv-gate-at-handover
 - **rule:** Don't skip the review or verification step before handing work on. If you have to skip it, say so out loud — never let it silently not happen.

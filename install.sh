@@ -309,28 +309,28 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
 600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
-941c09d8e986bccd6010a16202ab1783df89c9fe2ce3ee8279c71ff8b0b21143  README.md
+c0969885035d5229c9ecd58ef2c9bdebc3bc5e9cd75c98a86966a3e21781f759  README.md
 40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
-3da7f2cf8765fe95d1936a36d3341736f16b438353f2130368af58897dad20c4  hooks/codex-context.mjs
+4cf7f3a7eb4d0a517e2b4c35a600870a831fc2d83f9c087d4228bd5741f187e8  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-8d3a61662deb36f804cacee1846f0232238a61386afc3f8963e94a773e8d5d7b  hooks/staleness.sh
+d5b8fa25c1ba676cc55c6b64aadf9f509cbb79225990fea64f6a867fcbd4920a  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
-3a2e43eeff953642a19946e8a1671487137f832b0e4aa1e62d2639998a8a4bfe  reference/block-codex.md
+ddd6e2410d030ff95e8fe05d680f075bef871be6f67373d245244e05841718cb  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
-6179726ebc2044b8abe064716061851c149847f29c00c8a9dbcf66c9a73dbb7c  reference/block-inline-a.md
+ef59c3206b5e6fd636d3d2366ecc0d60f16d4c6b68a87b2d469285b3a6267439  reference/block-inline-a.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-b-head.md
-ae8da700b316aad352d57c4f61ede584b1f7bb500540b6a4fed7dfaadb96e77d  reference/block-inline-b.md
+daff7e456ce910899501c46205715a2c3d236a99e5d7b7d90130ac285117c9ad  reference/block-inline-b.md
 10892805ec9c8297e2385bf0c6a552ee64eca7491ca89862ee3941fe60833e32  reference/block-inline-tail.md
-4ea134fe245dbed14ceb5843b133f1132e493bf6a719c52916a5f595e65128d2  reference/checksums
-68b803d9f4a45fc1af07c327a35c4a4b58aac878b233a4196079dac419bd28b3  reference/invariants.md
-a675233ee08c0c41b5c0490a163f4d6ff4e95c6bbf9964eac59e4772f6597454  reference/rules-a.toml
-534c9178b4c5173f6dd51f382a48b970cc263a83d410c0e9fff6c41a7c937386  reference/rules-b.toml
-238fca2fb2c9e91af22764fc403da9b0dc8625291ef8fc4530d52c1a2618df0e  reference/rules.md
+229b7cd3d5c12f24c8e9d78b055c602aaeab7a1bfde15a071ca229f5baf8394d  reference/checksums
+74f9bfcda1a464b5f960d663a001580f24d2db4f4f223c19cd7744b9e2afaf8f  reference/invariants.md
+75898475b55d862486e0de16036813a4e966c2747318818103e685a56a11a3ab  reference/rules-a.toml
+bd52eb3b934b053e3e8d7d09b6441947d2dcf82ad34611fffcc6b2cc14ac242b  reference/rules-b.toml
+854db813c03d163e1383f6fcdd870bc41472626079cd3968cb0c260e53275c2a  reference/rules.md
 d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trellis-a.md
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
-5d289208c909a688460816b13ad3c4340beb215d129349d1694d44eb18c6e70d  reference/version
-17710e515c8ed887a79b2784baf652ee1690e361082b77d7d907c57dcb337d67  skills/remove/SKILL.md
+f99317b39b0aee01c6bd43b346d7d1ba2f7e2971c0affbe6f942dc89a5e2a366  reference/version
+7e41cc45af111b2bbe27be18b8ed3d8bdb36c7a885c5a096e277804dac66c434  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -667,7 +667,7 @@ elif [ "$scope" = "project" ]; then
 
   # decision-0070 D2. Seed the rows, so the path that renders the rules also
   # makes them apply. Without this the curl path shipped its full context cost —
-  # all fourteen rules, always loaded — while only the two floor- rules turned,
+  # all fifteen rules, always loaded — while only the two floor- rules turned,
   # and the rendered file's own @../../.trellis/rules.toml import resolved to
   # nothing, silently.
   #
@@ -746,7 +746,7 @@ if [ "$scope" = "project" ]; then
 fi
 case "${seeded_rows:-}" in
   yes)
-    say "This project is governed now: all fourteen rules are active, followed by"
+    say "This project is governed now: all fifteen rules are active, followed by"
     say "default with deviations said out loud. .trellis/rules.toml holds the rows —"
     say "it is yours to edit: strictness = \"firm\" for the by-the-book posture,"
     say "active = false on a row to turn that rule off."
@@ -764,7 +764,7 @@ case "${seeded_rows:-}" in
     # for all of them. `seeded_rows` is unset here, so ask the disk instead.
     if [ "$scope" = "project" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
       # The floors-only warning, restored. Dropping it was a regression: a
-      # static-conflict repo with no rows is running on two rules out of fourteen
+      # static-conflict repo with no rows is running on two rules out of fifteen
       # and was no longer told so.
       say "This project has no .trellis/rules.toml, so only floor-transparency and"
       say "floor-intent-gate apply — every other rule is gated on a row in that file."

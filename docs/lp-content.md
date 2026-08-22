@@ -46,7 +46,7 @@ framing, which is why this copy changed):
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
-  # that's it — all 14 rules active, adaptive posture
+  # that's it — all 15 rules active, adaptive posture
   ```
 - `manual` (harnesses the plugin does not cover — **not** Claude Code,
   which the tabs above serve; `decision-0069`):
@@ -154,7 +154,7 @@ pattern — this is a file-tree illustration, not a shell session):
 ```
 .trellis/
   rules.toml       # which rules are active, how strictly — yours to edit.
-                   #   Seeded by the installer, all 14 on (decision-0070)
+                   #   Seeded by the installer, all 15 on (decision-0070)
 .claude/           # curl path only — the plugin path writes neither:
   rules/
     trellis.md     #   the rules readout, loaded every session — Trellis owns
@@ -172,7 +172,7 @@ longer true.)*
 
 **Eyebrow:** The core
 **Heading:** A small set of invariants, expressed at your strength.
-**Lede:** Not a process — the layer above it. Fourteen load-bearing
+**Lede:** Not a process — the layer above it. Fifteen load-bearing
 invariants (directional flow, ratifiable artifacts, gate-at-handover,
 independent judgment, transparency…), each set along two dials: how
 strictly it applies, and who gates it. Everything else, Trellis
@@ -190,7 +190,7 @@ Two cards:
    on the invariants and gets out of the way of your methodology.
 
 Secondary CTA below the cards: ghost → `invariants.html` — "See all
-fourteen, with why + examples →"
+fifteen, with why + examples →"
 
 ## Section: Free & open
 

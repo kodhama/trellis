@@ -83,7 +83,7 @@ keyed by its **stable slug** (`decision-0013`). Fields:
 
 **Coverage is a gate (AC1) — the *assessable* invariants, not the dials.** The catalog covers
 every **assessable** invariant slug: the A structural set, the B operating set, and the D floors
-(14 slugs — `inv-directional-flow` … `floor-intent-gate`; B8 collapsed into D1, `decision-0021`). It
+(`inv-directional-flow` … `floor-intent-gate`; B8 collapsed into D1, `decision-0021`). It
 **excludes the two C dials** (`dial-enforcement-strength`, `dial-gatekeeper`): a project does not
 "honor a dial implicitly" — the dials are the *axes the catalog's entries are set along* (columns of a
 profile, not rows). A missing *assessable* slug is a conformance failure; the two dials are correctly
@@ -154,7 +154,7 @@ Added checks (they compose with `spec-0001`'s existing seven):
 1. **Type registry.** `signature-catalog` (`scope: trellis-product`) and `expression-profile`
    (`scope: core-methodology`) are declared types with the required sections below.
 2. **Catalog coverage + examples (AC1, `decision-0020`).** Every *assessable* `invariants-v1` slug
-   (A/B/D — the 14, excluding the two C dials; a collapsed slug is covered by its successor) has a
+   (A/B/D — all fifteen, excluding the two C dials; a collapsed slug is covered by its successor) has a
    catalog entry carrying **all §1 required fields, including `why` / `honored` / `violated`**. *FAIL →
    name the uncovered assessable slug or the entry missing a field (a bare entry with no `why`/example
    is a fail).*
@@ -226,8 +226,8 @@ one schema serves #22 (minimize), #23/#24 (assess/apply), #28 (diff).
 ## Acceptance criteria
 
 - **AC1 — catalog covers every assessable invariant, with goal + examples.** The catalog covers every
-  A/B/D slug (**14** — `inv-self-improvement` restored `decision-0018`, `inv-reference-relationship`
-  collapsed into D1 `decision-0021`), each with `what` / **`directive`** / **`why`** / `signature` / **`honored`** /
+  A/B/D slug (**15** — `inv-self-improvement` restored `decision-0018`, `inv-deliberate-succession`
+  minted `decision-0074`, `inv-reference-relationship` collapsed into D1 `decision-0021`), each with `what` / **`directive`** / **`why`** / `signature` / **`honored`** /
   **`violated`** / `class` / `mechanizable` / `default_C1` / `default_C2`; a missing assessable slug or
   field (including a missing example) fails the check (§4.2). The two C dials are excluded by design.
 - **AC2 — profiles resolve.** Every profile gene references a catalog slug; an unresolved slug is a

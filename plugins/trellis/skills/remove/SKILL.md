@@ -40,7 +40,7 @@ Also inspect, without writing:
   - **the decline artifact** — a `rules.toml` carrying top-level `governed = false` is the
     project's recorded decline (`decision-0070` D4). State the consequence out loud: on a machine
     with a user-scope plugin, deleting the recorded decline re-arms the adoption announcement, and
-    one ignored prompt re-governs at 14/14. Deleting it is legitimate — removal is removal — but
+    one ignored prompt re-governs at 15/15. Deleting it is legitimate — removal is removal — but
     doing it unnamed is not;
   - **the consumer's own rows** — `rules.toml` is the consumer's file, and deleting `.trellis/`
     deletes every row they edited. Show them the rows that will go, as part of the consent below;

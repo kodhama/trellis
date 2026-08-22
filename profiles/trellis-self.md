@@ -34,7 +34,7 @@ ratified: 2026-07-04
 
 ## Profile
 
-*All 14 assessable genes are active and honored natively — unsurprising for the reference organism
+*All 15 assessable genes are active and honored natively — unsurprising for the reference organism
 (see the discount above; `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`). Each
 `evidence` points at a real artifact in this repo.*
 
@@ -50,6 +50,7 @@ ratified: 2026-07-04
 | `inv-auditable-archive` | true | enforced | independent-agent | honored-implicitly | verified | `decisions/` append-only; `decision-0014` splits current-truth from change-history |
 | `inv-bounded-context` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | sub-agents scoped to declared inputs (conformance-reviewer corpus; narrow tool sets) |
 | `inv-self-improvement` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0018` restored it after friction (the merge into `inv-graph-maintenance` lost "evolve"); the conformance check caught *this row's own absence* and it was added in the same change |
+| `inv-deliberate-succession` | true | default-on-but-skippable | human | honored-implicitly | inferred | PR #165 is a real forward instance (the retrofit question surfaced and ruled on) and math-quest's phase-1 architecture the backward one (`#166`). **Deliberately not `verified`:** the entry is `*provisional*` in the set, and the change that minted it failed this rule four times — three count sweeps that each matched only some of the shapes a succession leaves behind, and the `superseded_in_part_by` mark omitted on `decision-0052` — all caught by independent review, not by the author. The repo holds this one with help, not natively |
 | `inv-minimal-first` | true | expressed | human | honored-implicitly | verified | `AGENTS.md`: "a deliberately tiny instance of the seed operating method" |
 | `inv-clarify-before-commit` | true | default-on-but-skippable | human | honored-implicitly | verified | `## Open questions` in every artifact; the delivery-axis + dial-coverage frictions were surfaced, not guessed |
 | `floor-transparency` | true | enforced | human | honored-implicitly | verified | `AGENTS.md` "Loud failure"; this session surfaced the merge conflict + catalog friction rather than papering over |
@@ -61,9 +62,13 @@ design, `signature-catalog-v1`.)*
 
 ## Assessment notes
 
-- **Confidence is `verified` across the board** because each tell is a real, citable artifact in this
+- **Confidence is `verified` on every row but one** because each tell is a real, citable artifact in this
   repo — not because the invariants are proven in general. The evidence is strong *for this instance*;
-  the N=1 caveat above governs any wider claim.
+  the N=1 caveat above governs any wider claim. **The exception is `inv-deliberate-succession`
+  (`inferred`, `decision-0074`):** it is `*provisional*` in the set, and the change that minted it
+  violated it four times before independent review caught them. A rule the reference organism
+  needs help to hold is not one it honors natively, and saying otherwise would be the sycophancy
+  the floors forbid.
 - **The behavioral genes** (`inv-independent-judgment` intent face, `inv-clarify-before-commit`,
   `floor-transparency`) are the hardest to evidence — I ground them in the `AGENTS.md` rule **plus a
   demonstrated instance from this very session** (surfacing frictions, and this profile authored as a

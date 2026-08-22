@@ -10,6 +10,7 @@ inv-intent-locus          = { active = true }
 inv-ratifiable-artifacts  = { active = true }
 inv-graph-maintenance     = { active = true }
 inv-self-improvement      = { active = true }
+inv-deliberate-succession = { active = true }
 inv-gate-at-handover      = { active = true }
 inv-independent-judgment  = { active = true }
 inv-auditable-archive     = { active = true }
