@@ -8,7 +8,7 @@ Before substantive work, assess two independently loaded components:
 1. Generated prose is complete only when the exact terminal sentinel `<!-- trellis:rules-loaded -->` is followed, after only its generated newline, by the fixed footer whose first nonblank line is `---` and whose next text is the ambiguity/fallback sentence. A sentinel alone, a diagnostic marker, this bootstrap's mention of the sentinel, or bare slug-name presence is not completion.
 2. Activation TOML is complete only when it parses, strictness is exactly `firm` or `adaptive`, every canonical slug below occurs exactly once, no unknown or duplicate slug occurs, and any disabled floor row is understood as overridden-by-floor:
 
-`inv-directional-flow`, `inv-handover-points`, `inv-intent-locus`, `inv-ratifiable-artifacts`, `inv-graph-maintenance`, `inv-self-improvement`, `inv-gate-at-handover`, `inv-independent-judgment`, `inv-auditable-archive`, `inv-bounded-context`, `inv-minimal-first`, `inv-clarify-before-commit`, `floor-transparency`, `floor-intent-gate`
+`inv-directional-flow`, `inv-handover-points`, `inv-intent-locus`, `inv-ratifiable-artifacts`, `inv-graph-maintenance`, `inv-self-improvement`, `inv-deliberate-succession`, `inv-gate-at-handover`, `inv-independent-judgment`, `inv-auditable-archive`, `inv-bounded-context`, `inv-minimal-first`, `inv-clarify-before-commit`, `floor-transparency`, `floor-intent-gate`
 
 Use this single-copy fallback table:
 

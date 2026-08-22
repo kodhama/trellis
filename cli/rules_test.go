@@ -9,8 +9,8 @@ import (
 // parsed from the bundled catalog, so every assessable invariant must yield a rule.
 func TestInvariantRulesCoverCatalog(t *testing.T) {
 	rules := invariantRules()
-	if len(rules) != 14 {
-		t.Errorf("expected 14 invariant rules parsed from the catalog, got %d: %v", len(rules), sortedKeys(rules))
+	if len(rules) != 15 {
+		t.Errorf("expected 15 invariant rules parsed from the catalog, got %d: %v", len(rules), sortedKeys(rules))
 	}
 	for _, slug := range []string{"inv-directional-flow", "floor-transparency", "floor-intent-gate", "inv-self-improvement"} {
 		if rules[slug] == "" {
@@ -24,8 +24,8 @@ func TestInvariantRulesCoverCatalog(t *testing.T) {
 // always-loaded grounding line.
 func TestInvariantPrimaryFailureCoverCatalog(t *testing.T) {
 	fails := invariantPrimaryFailure()
-	if len(fails) != 14 {
-		t.Errorf("expected 14 primary failures parsed from the catalog, got %d: %v", len(fails), sortedKeys(fails))
+	if len(fails) != 15 {
+		t.Errorf("expected 15 primary failures parsed from the catalog, got %d: %v", len(fails), sortedKeys(fails))
 	}
 	// spot-check: the first violated example for directional-flow, not the second.
 	if got := fails["inv-directional-flow"]; !strings.Contains(got, "still being edited") {
@@ -39,14 +39,14 @@ func TestInvariantPrimaryFailureCoverCatalog(t *testing.T) {
 // preserve. The set must be exactly the assessable slugs the other parsers cover.
 func TestCatalogSlugOrder(t *testing.T) {
 	order := catalogSlugOrder()
-	if len(order) != 14 {
-		t.Fatalf("expected 14 slugs in catalog order, got %d: %v", len(order), order)
+	if len(order) != 15 {
+		t.Fatalf("expected 15 slugs in catalog order, got %d: %v", len(order), order)
 	}
 	if order[0] != "inv-directional-flow" {
 		t.Errorf("catalog order must open with the structural set (inv-directional-flow), got %s", order[0])
 	}
-	if order[12] != "floor-transparency" || order[13] != "floor-intent-gate" {
-		t.Errorf("catalog order must close with the floors (floor-transparency, floor-intent-gate), got %v", order[12:])
+	if order[13] != "floor-transparency" || order[14] != "floor-intent-gate" {
+		t.Errorf("catalog order must close with the floors (floor-transparency, floor-intent-gate), got %v", order[13:])
 	}
 	dirs := invariantDirectives()
 	for _, slug := range order {
@@ -74,13 +74,44 @@ func TestDeliberateSuccessionCarriesEntropyLean(t *testing.T) {
 	if frag := ruleFragment("inv-deliberate-succession"); strings.Count(frag, "\u2717") != 1 {
 		t.Errorf("decision-0052 point 4, still binding at the new home: exactly one failure bullet, got: %q", frag)
 	}
-	catalog := strings.Join(strings.Fields(invariantsRef), " ")
-	if !strings.Contains(catalog, "migrate or exempt?") || !strings.Contains(catalog, "two conventions in one tree") {
-		t.Error("the *(structure)* honored/violated pair did not travel to inv-deliberate-succession")
+	// Scoped to the ENTRY BODY, not the whole catalog. Searching invariantsRef whole
+	// proved only that the strings existed somewhere — the assertion passed with both
+	// *(structure)* bullets moved back into inv-self-improvement, i.e. with the very
+	// move decision-0074 exists to make left un-made. Caught by mutation testing at
+	// this change's independent review.
+	entry := strings.Join(strings.Fields(catalogEntry("inv-deliberate-succession")), " ")
+	if !strings.Contains(entry, "migrate or exempt?") || !strings.Contains(entry, "two conventions in one tree") {
+		t.Errorf("the *(structure)* honored/violated pair did not travel to inv-deliberate-succession: %q", entry)
 	}
-	if !strings.Contains(catalog, "two thresholds, silently two different measures") {
-		t.Error("catalog missing decision-0074's backward-direction violated example")
+	if !strings.Contains(entry, "two thresholds, silently two different measures") {
+		t.Errorf("inv-deliberate-succession missing decision-0074's backward-direction violated example: %q", entry)
 	}
+	if old := strings.Join(strings.Fields(catalogEntry("inv-self-improvement")), " "); strings.Contains(old, "two conventions in one tree") {
+		t.Errorf("the *(structure)* pair is still at its OLD home, inv-self-improvement: %q", old)
+	}
+}
+
+// catalogEntry returns one catalog entry's raw body — from its `- **`slug`**` line to
+// the next entry's — so a test can assert that content lives at a PARTICULAR entry
+// rather than anywhere in the document.
+func catalogEntry(slug string) string {
+	lines := strings.Split(invariantsRef, "\n")
+	start := -1
+	for i, ln := range lines {
+		if strings.HasPrefix(ln, "- **`"+slug+"`**") {
+			start = i
+			break
+		}
+	}
+	if start < 0 {
+		return ""
+	}
+	for i := start + 1; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], "- **`") {
+			return strings.Join(lines[start:i], "\n")
+		}
+	}
+	return strings.Join(lines[start:], "\n")
 }
 
 // TestSelfImprovementRevertsToReactiveFace guards decision-0074 point 2: the lean is

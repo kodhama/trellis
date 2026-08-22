@@ -160,7 +160,7 @@ func TestRemoveSkillBundleTransactionPosition(t *testing.T) {
 // (second bullet) and code-review F6: the recorded governed = false decline is
 // surfaced BY NAME before any deletion, with its consequence (deleting the
 // recorded decline re-arms the adoption announcement on a user-scope machine;
-// one ignored prompt re-governs at 14/14) — and the consumer's own rules.toml
+// one ignored prompt re-governs at 15/15) — and the consumer's own rules.toml
 // rows are shown before the directory holding them is destroyed, closing the
 // consent asymmetry where lesser artifacts got consent and the consumer's rows
 // did not.
@@ -168,7 +168,10 @@ func TestRemoveSkillSurfacesDeclineAndConsumerRows(t *testing.T) {
 	body := readFileT(t, removeSkillPath)
 	preflight := removeSkillSection(t, body, "## 1.", "## 2.")
 
-	for _, needle := range []string{"governed = false", "re-arms", "14/14"} {
+	// The count needle tracks LIVE behaviour, not decision-0073's wording: 0073 D3 is
+	// append-only and correctly frozen at "14/14", but this skill text tells a user what
+	// will happen in their repo now, so it moves with the rule count (decision-0074).
+	for _, needle := range []string{"governed = false", "re-arms", "15/15"} {
 		if !strings.Contains(preflight, needle) {
 			t.Errorf("§1 does not carry %q — the decline artifact must be surfaced by name, with its consequence, before any write (decision-0073 D3)", needle)
 		}

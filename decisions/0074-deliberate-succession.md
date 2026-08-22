@@ -1,7 +1,7 @@
 ---
 id: decision-0074
 type: decision
-status: draft  # the author does not grade its own decision (decision-0046); the gate and any flip are the maintainer's intent act
+status: approved  # maintainer's intent act 2026-08-22, in-conversation ("I already decided it's a 15th one"), taken through a separate session first — this flip records it (decision-0046, decision-0022). Author (agent) != approver (maintainer). Scope: the mint. The contract-layer corrections below landed after an independent code + corpus review and are the maintainer's to accept at merge
 depends_on: [invariants-v1, signature-catalog-v1, decision-0052]
 informed_by: [decision-0018, decision-0021, decision-0027, decision-0028, decision-0040]
 owner: agent
@@ -18,6 +18,25 @@ date: 2026-08-19
 > does not schedule that experiment.**
 
 # 0074 — `inv-deliberate-succession`: the boundary with what came before is decided, not drifted through
+
+> **Decided: mint it.** The maintainer settled this on 2026-08-22, having taken it through a
+> separate session first: *"I already decided it's a 15th one."*
+>
+> **Recorded against it, because the objection is real and should not vanish.**
+> `decision-0021`'s minting test is *mechanism* — *"keep it when it introduces a mechanism the
+> others don't"* — and by this record's own Context, `inv-self-improvement`'s dispositional face
+> already covers succession generically. This buys **worked examples**, not a new mechanism, and
+> `inv-minimal-first` argues against the catalog growing. The counter that carried the day is the
+> iron rule: a rule you can't exemplify is vaporware, and a disposition covering succession
+> generically cannot host *"what do you do with the previous version of this knowledge base?"*
+> without becoming a rule about two things. Two instances back it, one of them four recurrences in
+> a single session **with the existing forward rendering loaded throughout**.
+>
+> **Where the objection goes next.** Compression is a set-wide question, not this record's:
+> **trellis#239** asks whether the set carries an unnamed dimension that would let several
+> entries collapse, and takes this pair as its starting corpus. That audit — not a veto here —
+> is where "should this be fifteen?" gets answered properly, and `inv-prune-bias` cuts both
+> ways when it runs.
 
 ## Context
 
@@ -54,7 +73,7 @@ date: 2026-08-19
   and therefore cannot carry worked examples of it: a rule about friction cannot host *"what
   do you do with the previous version of this knowledge base?"* without becoming a rule about
   two things. A slug can, and this one must — it ships with four honored and four violated
-  pairs spanning structure, design, docs, data and metrics.
+  pairs spanning structure, design, docs and metrics.
 
 - **Why a set amendment is the honest layer.** Minting a catalog slug with no set entry forks
   annotation from annotated — `inv-graph-maintenance`'s own violated case, and the failure 0052
@@ -71,12 +90,20 @@ framed as *evidence to weigh, never gravity to drift with, never debris to step 
 Surfacing rides SI-1's channel discipline and SI-2's existing rituals; it declares
 `inv-self-improvement` its neighbor.
 
-**2. `inv-self-improvement` reverts to its reactive face** at both layers. Its directive drops
+**2. `inv-self-improvement` reverts to its reactive face** — in the catalog, which is the only
+layer that carried the lean (the Context above records why: 0052 made no `invariants-v1`
+amendment, so there is nothing at the set layer to revert). Its directive drops
 the appended entropy-lean sentence (`decision-0052` point 1); its signature clause
 (0052 point 2) and its `(structure)` honored/violated pair (0052 point 3) move to the new
-entry, with a pointer left in place. **`decision-0052` is not edited** — it is superseded in
-part by this record, per the append-only rule; SI-1 continues to govern how any such signal
-reaches the channel.
+entry, with a pointer left in place. **`decision-0052` is superseded in part, and carries the
+forward marking this contract requires**: `spec-0001` §2 and `decision-0040` point 5 class
+`superseded_in_part_by` as *"a marking, not an edit-in-substance"* and require it on the
+predecessor, so *not* marking it would leave a reader on the outgrown half with no forward
+link — the failure this record's own new signature names. An earlier draft of this decision
+claimed the opposite (that leaving 0052 untouched was the append-only-correct move); that was
+a misreading, caught at the independent review, and the mark lands in this change per
+`decision-0040`'s own worked instance (`decision-0013` → `decision-0038`). Its substance is
+untouched; SI-1 continues to govern how any such signal reaches the channel.
 
 **3. The catalog gains the matching entry** with the two-direction directive and **four
 honored / four violated pairs** — the iron-rule obligation this decision rests on. Coverage
@@ -88,28 +115,38 @@ architecture (backward) — both named above.
 
 ## Consequences
 
-- **The derived chain regenerates in the same change** (`decision-0028`): catalog → the
-  plugin's `reference/` render → `rules.md` assembly → both inline-block sandwiches →
-  `checksums` → `version` stamp → `install.sh` bundle manifest (Go-test-guarded) → the
-  invariant scorecard. A new slug also needs its **row in the preset `rules-a.toml` /
-  `rules-b.toml`**, and in consuming repos' `.trellis/rules.toml` on their next refresh —
-  without it the rule is delivered but inactive.
+- **The derived chain regenerates in the same change** (`decision-0028`), and it has two layers:
+  the **render** chain — catalog → the plugin's `reference/` render → `rules.md` → both
+  inline-block sandwiches → `checksums` → `version` stamp → `install.sh` bundle manifest → the
+  invariant scorecard, plus the preset rows in `rules-a.toml` / `rules-b.toml` (without a row the
+  rule ships but is inactive) — and the **contract** chain: `spec-0007`'s canonical slug inventory
+  and its activation-row predicate, `spec-0002` §1 check 2 + AC1, `core/rubrics/artifact-contract.md`,
+  and the `corpus-reviewer` checklist. Miss the second and the gate instructs its reader to expect
+  fourteen. `spec-0007` takes a `version` bump: its inventory is a testable clause.
+- **`decision-0052` gains `superseded_in_part_by: [decision-0074]`.** Required by `spec-0001` §2
+  and `decision-0040` point 5, which class the marking as *"a marking, not an edit-in-substance"*.
+  Its substance is untouched; SI-1 still governs how any such signal reaches the channel.
+- **This retires the live worked instance of `decision-0027`'s amendment.** That amendment permits
+  the first `violated` bullet to carry an appended clause from another pair's use case, and cites
+  exactly one example: `inv-self-improvement`'s *(CI)* bullet carrying the *(structure)* clause.
+  Point 2 deletes that clause, so the amendment keeps its rule and loses its example. It is not
+  edited — recorded here so the dangling example is known, not discovered.
+- **Four pairs exceeds `decision-0027` point 3, which says two.** The enforced gates say `≥2`, and
+  the catalog already ships three- and four-pair entries, so four is conformant and precedented.
+  Named because point 3's rationale — *"uniform, scannable cards"* — is a readout-budget concern
+  this entry doubles.
 - **Count change, not a pair-door change.** `decision-0027`'s pair door and `decision-0040`'s
-  directive-extension door both preserve the count; this does not. It is an amendment and is
-  flagged as one.
-- **The readout grows by one rule.** `decision-0052`'s open question — *"does the extended
-  wording pull its weight in the readout?"* — applies with more force here, and
-  `inv-minimal-first` argues against its own catalog growing. The counter-argument is the iron
-  rule: the content was already in the readout as an unexemplified disposition, and this
-  buys examples for the same budget plus one heading.
-- **`inv-clarify-before-commit` and `inv-graph-maintenance` stay untouched** — 0052's Context
-  records why both were rejected as homes, and nothing here disturbs that.
-- **trellis#166 is unaffected and unscheduled.** The backward direction is plausibly the harder
-  moment to trap — forward has a change to attach to, backward has none — which is evidence
-  *for* the trigger-format hypothesis, recorded there. Whether this rule needs a `fires when:`
-  line is that decision's to make, not this one's.
-- **`profiles/trellis-self.md`** gains a row for the new slug; the self-application overlay and
-  managed block regenerate with the payload.
+  directive-extension door both preserve the count; this does not. It is an amendment, flagged as one.
+- **The readout grows by one rule** — `decision-0052`'s open question applies with more force here.
+  The counter-argument: the content was already in the readout as an unexemplified disposition, and
+  this buys examples for the same budget plus one heading.
+- **`inv-clarify-before-commit` and `inv-graph-maintenance` stay untouched** — 0052's Context records
+  why both were rejected as homes.
+- **trellis#166 is unaffected and unscheduled.** The backward direction is plausibly the harder moment
+  to trap — forward has a change to attach to, backward has none — which is evidence *for* the
+  trigger-format hypothesis, recorded there.
+- **`profiles/trellis-self.md`** gains a row, at `confidence: inferred` — see its own note for why
+  `verified` would overclaim.
 
 ## Open questions
 
@@ -124,13 +161,22 @@ architecture (backward) — both named above.
 
 ## Self-check (gate)
 
-Homed at the layer the change actually touches: a new slug is a set amendment
-(`decision-0018`/`0021` path), not a catalog-only door, and the decision says so instead of
-minting at the annotation layer. Two rejected homings recorded with their kill-reasons, one of
-them my own withdrawn argument and why it was wrong (`inv-auditable-archive`). `decision-0052`
-is superseded in part, never edited (append-only). The count change is flagged, not smuggled
-(`floor-transparency`). The iron-rule obligation is discharged in-artifact — four honored and
-four violated pairs, spanning five domains. Grove-routing and readout-budget hazards surfaced
-in-artifact rather than discovered later. Left at `draft`: the author does not grade its own
-decision, and the `approved` flip is the maintainer's intent act (`decision-0046`), ideally
-after an independent pass (`inv-independent-judgment`).
+Homed at the layer the change touches: a new slug is a set amendment (`decision-0018`/`0021`
+path), not a catalog-only door. Two rejected homings recorded with their kill-reasons, one of
+them the author's own withdrawn argument (`inv-auditable-archive`). `decision-0052` carries its
+`superseded_in_part_by` mark, substance untouched. The count change and the `decision-0027`
+point-3 excess are both flagged, not smuggled (`floor-transparency`). The iron-rule obligation is
+discharged in-artifact: four honored / four violated pairs, tag-aligned per `decision-0027`
+point 1.
+
+**Not self-caught.** Four defects came from the independent review, not the author: the missing
+`superseded_in_part_by` mark; the contract-layer count desync; `spec-0007`'s inventory left at
+fourteen while its prose was made count-free; and a guard that asserted the entropy lean had
+*moved* while searching the whole catalog, so it passed with the move un-made. Three of the four
+are the same root cause — a sweep that matched only some of the shapes a count takes. Recorded
+because a rule about noticing succession, whose own introduction missed four succession
+obligations, has earned the `provisional` tag it carries and the `inferred` confidence in the
+profile.
+
+Flipped to `approved` on the maintainer's intent act, not the author's judgement
+(`decision-0046`); the record of that act is in the frontmatter.

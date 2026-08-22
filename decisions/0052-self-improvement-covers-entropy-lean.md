@@ -3,6 +3,7 @@ id: decision-0052
 type: decision
 status: approved  # maintainer's intent act 2026-07-19, in-conversation ("Approved, go ahead and implement it") — this flip records it (decision-0046); pre-gate: adversarial thesis pass (UNSOUND -> re-homed on its constructive recommendation), corpus re-check on this third draft in flight at the act, verdict lands on PR #167 before merge
 depends_on: [invariants-v1, signature-catalog-v1, decision-0040]
+superseded_in_part_by: [decision-0074]  # 2026-08-21 — the entropy lean only (points 1-3: the appended directive sentence, the signature clause, and the *(structure)* honored/violated pair). 0074 re-homes all three to inv-deliberate-succession; inv-self-improvement reverts to its reactive face. What stands: SI-1's channel discipline still governs how any such signal reaches the channel, and the reasoning here is the origin record for the lean itself
 informed_by: [decision-0018, decision-0028, decision-0051]
 owner: agent
 date: 2026-07-19

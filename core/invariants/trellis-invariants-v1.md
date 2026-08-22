@@ -222,7 +222,6 @@ clears it if it carries the shape, not only if it names stages.*
   decides the boundary when new work meets old. *(Evidence: trellis PR #165, forward direction;
   math-quest's phase-1 architecture, backward direction — four recurrences in one session with the
   forward rendering loaded, recorded on trellis#166.)*
-
 - **`inv-minimal-first` — minimal-first** — *strong, less settled.* Smallest process that
   works; add a step only when friction reveals the boundary. *(v0's "reference-not-adoption"
   split out to `inv-reference-relationship` — strict single-framework adoption is legitimate,

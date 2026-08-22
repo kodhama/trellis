@@ -207,8 +207,8 @@ ratified: 2026-07-04
       the new model that keeps the old value apt.
     - *(docs)* a rewritten guide states which claims of the previous version it carries forward and
       which it drops, so a reader who knew the old one can tell what changed.
-    - *(data)* a new schema keeps a legacy column and records why it is still meaningful under the
-      new model, rather than carrying it because dropping it looked risky.
+    - *(metrics)* a success signal is defined against the outcome the new model is meant to produce,
+      so the current implementation's behaviour can fail it.
   - violated:
     - *(structure)* a new directory convention lands while the old stock stays loose beside it,
       exempted by confident boundary prose nobody approved — two conventions in one tree.
@@ -387,7 +387,7 @@ ratified: 2026-07-04
 
 ## Acceptance criteria
 
-- Covers all **14 assessable** slugs (the four structural, the eight remaining operating, the two floors — `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`);
+- Covers all **15 assessable** slugs (the four structural, the nine remaining operating, the two floors — `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`);
   the two dials are excluded by design.
 - Every entry carries `what` · **`directive`** · **`why`** · `signature` · **`honored`** · **`violated`** · `class` ·
   `mechanizable` · `default_C1` · `default_C2` (+ `intent_locus` where `true`), and `honored`/`violated`
