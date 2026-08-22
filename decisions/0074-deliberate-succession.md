@@ -123,6 +123,14 @@ architecture (backward) — both named above.
   and its activation-row predicate, `spec-0002` §1 check 2 + AC1, `core/rubrics/artifact-contract.md`,
   and the `corpus-reviewer` checklist. Miss the second and the gate instructs its reader to expect
   fourteen. `spec-0007` takes a `version` bump: its inventory is a testable clause.
+- **An existing curl install upgrades into a false all-clear** (trellis#241, found by the review
+  on this record's PR). `install.sh` never overwrites an existing `.trellis/rules.toml`, so a
+  re-run pairs a freshly rendered 15-rule file with a preserved 14-row config; the staleness
+  hook's curl-path branch checks markers, stamp presence and stamp freshness — all of which pass —
+  and then reports that the config governs. The rule is delivered, inactive, and *claimed as
+  governing*. The mechanism predates this change (that branch never validated rows); this is the
+  first slug added since the curl path existed, which is what makes it bite. Disclosed here rather
+  than fixed in this record's change: the fix is a hook behaviour change with its own tests.
 - **`decision-0052` gains `superseded_in_part_by: [decision-0074]`.** Required by `spec-0001` §2
   and `decision-0040` point 5, which class the marking as *"a marking, not an edit-in-substance"*.
   Its substance is untouched; SI-1 still governs how any such signal reaches the channel.
