@@ -48,8 +48,9 @@ group, whose descriptions are load-bearing and were adopted verbatim from math-q
 `blocker → High`, `broken-feature → Medium`, `papercut → Low`. `Critical` is reserved for its
 stated meaning — outage, data loss, or security exposure — and nothing in the backlog qualified.
 
-**3. Ideas are a document, not issues.** An idea filed as an issue is a to-do nobody agreed to; an
-idea written as prose is a claim someone can challenge. Each entry carries the **trigger** that
+**3. Ideas are a document, not issues** — the Linear [Ideas
+document](https://linear.app/kodhama/document/ideas-4220c523c6a1), team Trellis. An idea filed as an
+issue is a to-do nobody agreed to; an idea written as prose is a claim someone can challenge. Each entry carries the **trigger** that
 would promote it — a condition that revisits its priority, distinct from an *open question*, which
 is something undecided about work already scoped and is resolved by doing that work.
 
@@ -97,7 +98,11 @@ copy. Dual-homing does not announce itself (`inv-deliberate-succession`, backwar
   structure has no MCP mutation, so moving Trellis and Math Quest out and archiving it is UI work,
   and is not done by this change.
 - **Nothing in trellis resolves a Linear team by name yet, and that is worth keeping true.** Verified
-  at migration: no hook, skill or test in this repo hardcodes the string `Trellis`. math-quest's
+  at migration: **no hook, skill or test performs a Linear team lookup at all**, by name or
+  otherwise. (The literal string `Trellis` does appear widely — 37 times across `staleness.sh`,
+  `codex-context.mjs` and two test files — as the product's own name; an earlier wording of this
+  bullet claimed the string was absent, which is false and would have been contradicted by the first
+  session to re-run the check.) math-quest's
   automation resolves its team by the literal `Math Quest` in eight places, where a **rename** —
   not a key change — would break resolution silently, because an unmatched team yields nothing found
   rather than an error. If trellis acquires Linear automation, resolve by team **id**, not name.
@@ -119,9 +124,12 @@ copy. Dual-homing does not announce itself (`inv-deliberate-succession`, backwar
 
 The prior art was confirmed with the session that produced it rather than read from its artifacts,
 which caught a stale claim that would otherwise have been inherited (`inv-independent-judgment`).
-The divergence from math-quest's pointer rule is named with its reason rather than taken silently,
-and the family-convention exception is declared rather than left to be discovered
-(`inv-deliberate-succession`, `floor-transparency`). Two mapping judgements — severity levels and
+What looked like a divergence from math-quest's pointer rule was checked against that rule's own
+source and turned out to be the rule correctly applied; the record says so and keeps the wrong
+reading visible rather than quietly replacing it. The family-convention exception is declared rather
+than left to be discovered, and `AGENTS.md` gains the filing rule in this same change — without it a
+future agent would read the old convention and keep filing GitHub issues (`decision-0028`,
+`inv-deliberate-succession`, `floor-transparency`). Two mapping judgements — severity levels and
 unlabelled research issues — are recorded as the author's calls, not presented as derived. Flipped to
 `approved` on the maintainer's intent act after reading the drafted framing, not on the author's
 judgement (`decision-0046`); the record of that act is in the frontmatter.
