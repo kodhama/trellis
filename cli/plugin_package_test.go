@@ -224,6 +224,14 @@ func TestPluginPackageParity(t *testing.T) {
 	// while making every bump a two-file edit that fails with a message naming the
 	// OLD version. That is the same lockstep-literal shape that rotted three times
 	// during the 14 -> 15 rule change. What must hold is the shape and the parity.
+	// The LF is checked on the RAW bytes, before trimming. TrimSuffix is a no-op
+	// when the suffix is absent, so trimming first and then asserting "no embedded
+	// newline" silently accepts a file with no terminal LF at all — which the old
+	// exact-match literal rejected as a side effect of matching "0.4.0\n". Caught
+	// by review on the change that removed the literal.
+	if !bytes.HasSuffix(versionBytes, []byte("\n")) {
+		t.Fatalf("VERSION must end in exactly one LF, got %q", versionBytes)
+	}
 	version := strings.TrimSuffix(string(versionBytes), "\n")
 	if version == "" || strings.Contains(version, "\n") {
 		t.Fatalf("VERSION must be exactly one SemVer line plus LF, got %q", versionBytes)
