@@ -217,10 +217,17 @@ func TestPackageValidatorsRejectMalformedMetadata(t *testing.T) {
 
 func TestPluginPackageParity(t *testing.T) {
 	versionBytes := readPluginFile(t, "VERSION")
-	if string(versionBytes) != "0.4.0\n" {
-		t.Fatalf("VERSION must contain exactly 0.4.0 plus LF, got %q", versionBytes)
-	}
+	// VERSION is the source of truth, not a literal repeated here. A hard-pinned
+	// string ("0.4.0\n") lived here from #212 until decision-0074's release: it
+	// guarded nothing this test's doc comment claims — SemVer canonicality and
+	// cross-manifest parity are both checked below against whatever VERSION says —
+	// while making every bump a two-file edit that fails with a message naming the
+	// OLD version. That is the same lockstep-literal shape that rotted three times
+	// during the 14 -> 15 rule change. What must hold is the shape and the parity.
 	version := strings.TrimSuffix(string(versionBytes), "\n")
+	if version == "" || strings.Contains(version, "\n") {
+		t.Fatalf("VERSION must be exactly one SemVer line plus LF, got %q", versionBytes)
+	}
 	if !semverPattern.MatchString(version) {
 		t.Fatalf("VERSION is not canonical SemVer: %q", version)
 	}
