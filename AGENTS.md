@@ -122,9 +122,10 @@ new GitHub issues here.**
   staying a second copy.
 - **Ideas are a document, not issues** — one long-form Linear doc, each entry carrying the trigger
   that would promote it. An idea filed as an issue is a to-do nobody agreed to.
-- **Old GitHub issue numbers still resolve** and are cited throughout `decisions/`. Every migrated
-  issue is closed and carries a banner in its body pointing at its Linear home; nothing below that
-  banner is maintained.
+- **Old GitHub issue numbers still resolve** and are cited throughout `decisions/`. Every closed
+  issue carries a banner in its body saying where it went, and **not all of them went to Linear**:
+  19 point at a `TRL-*` issue, 5 point at the ideas document, and 3 point nowhere because they were
+  closed as resolved or on a dead premise. Nothing below a banner is maintained.
 - **Resolve a Linear team by id, not by name.** A rename breaks name resolution silently — an
   unmatched team yields nothing found rather than an error.
 

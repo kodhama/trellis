@@ -99,10 +99,10 @@ copy. Dual-homing does not announce itself (`inv-deliberate-succession`, backwar
   and is not done by this change.
 - **Nothing in trellis resolves a Linear team by name yet, and that is worth keeping true.** Verified
   at migration: **no hook, skill or test performs a Linear team lookup at all**, by name or
-  otherwise. (The literal string `Trellis` does appear widely — 37 times across `staleness.sh`,
-  `codex-context.mjs` and two test files — as the product's own name; an earlier wording of this
-  bullet claimed the string was absent, which is false and would have been contradicted by the first
-  session to re-run the check.) math-quest's
+  otherwise. The literal string `Trellis` is of course everywhere — it is the product's name — and
+  no count of it is stated here, because two earlier drafts of this bullet each stated one and each
+  got it wrong. The claim that matters is the absence of a lookup, not the presence of a word.
+  math-quest's
   automation resolves its team by the literal `Math Quest` in eight places, where a **rename** —
   not a key change — would break resolution silently, because an unmatched team yields nothing found
   rather than an error. If trellis acquires Linear automation, resolve by team **id**, not name.
