@@ -98,3 +98,38 @@ artifact `id`s (`invariants-v1`, `decision-*`, `research-*`) carry no product na
 >    (revise-in-place)"* — so a citation of it tracks it, and the fixed text is the accurate
 >    citation; anyone wanting the 2026-07-01 wording cites a git rev. Had the quoted source been a
 >    `decisions/` record, the opposite would hold: append-only text never moves, so the quote pins.
+
+---
+
+> **Correction to the amendment above (2026-08-22, append-only — raised by the automated review on
+> PR #240 after it merged, and by a second review on the first attempt at this correction. Verified
+> against source. Nothing above this line is edited; an earlier draft of this block did rewrite
+> Rule 2 in place, which was itself the mistake the open question below is about.)**
+>
+> **Rule 2 was wrong, and it was wrong on its axis, not merely its wording.** It said a quotation of
+> a `decisions/` record pins, "because append-only text never moves." The first attempt at this
+> correction replaced that with a substance-versus-identifier split: reasoning pins, titles and
+> filenames track. **That was also wrong.** Commit `3f27a29` rewrote the product name inside
+> substantive prose across **eight ratified decision records** — `decisions/0001`, `0002`, `0003`,
+> `0005`, `0009`, `0010`, `0012`, `0014` — e.g. *"Bonsai is built as a self-serve, shippable,
+> portable pack"* → *"Trellis is built as…"*. Reasoning moves too.
+>
+> **The rule, correctly:** a rename sweep rewrites the renamed token **wherever it appears** —
+> heading, filename, slug, or body prose — in **every** artifact class, append-only records
+> included. Append-only guarantees that a record's *decisions are not re-made*; it has never
+> guaranteed its *bytes* are immutable under a global rename. So **a quotation containing a renamed
+> token tracks its source, everywhere.** There is no `decisions/`-versus-revise-in-place split. #22
+> and #26 were the same case all along, and Rule 2's original distinction described a boundary that
+> does not exist.
+>
+> **The open question this does not settle.** Both reviews' P1 was that this whole amendment should
+> be a superseding decision rather than an append-only block, on `AGENTS.md`'s *"you supersede …
+> never edit, a ratified decision"* — `decision-0015` had stood ratified 50 days. One supporting
+> claim is wrong and the correction matters for whoever settles it: the review asserted every
+> post-approval correction here has used supersession, but **`decision-0027` was ratified
+> 2026-07-05 and amended in place on 2026-07-19**. The precedent exists, at 14 days. What is
+> genuinely open: whether an append-only block that leaves the original text untouched is an "edit"
+> at all in the sense `AGENTS.md` forbids, and whether elapsed time changes that. Left open on
+> purpose, and recorded so it is decided deliberately. **Evidence against my own position, stated
+> plainly:** the first attempt at this correction claimed to append while deleting two lines from
+> the ratified record — which is exactly how "amendment" slides into "edit" when nobody is checking.
