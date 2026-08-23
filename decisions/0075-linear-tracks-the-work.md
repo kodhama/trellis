@@ -60,11 +60,22 @@ instructions keeps reading as true after it closes. Three banner texts, because 
 three different reasons — *moved*, *parked as an idea*, *resolved*. A "moved to Linear" banner on an
 issue that was actually resolved would be false, and these are permanent.
 
-**5. A pointer carries content here, diverging from math-quest deliberately.** That repo's rule is
-that a Linear issue is a thin pointer, because a repo artifact holds the content. trellis has no such
-artifact — the GitHub issue body *was* the content, and it is now closed. So each Linear issue
-carries a real summary plus a link to the original. The rule was not inherited by default
-(`inv-deliberate-succession`).
+**5. A Linear issue carries content here — the same rule as math-quest, correctly applied.** The
+rule is *content lives where the work lives*; thin pointers are what that **produces** when a repo
+artifact exists, not the rule itself. math-quest's own `linear-bug-report` skill already states the
+carve-out: *"The contentless-pointer rule in `CLAUDE.md` governs **epic and story** pointers, whose
+content lives in the repo. A bug has no repo artifact behind it, so its detail belongs in the issue
+itself… There is nothing for a stub to point at."* trellis is that bug-shaped case applied to a whole
+repo — the GitHub body *was* the content, and it is now closed — so each Linear issue carries a real
+summary plus a link.
+
+*An earlier draft of this record called this a deliberate divergence. That was wrong, and wrong in a
+way that mattered: framing a correct application as a divergence invites a future session to "fix" it
+back to stubs. Corrected on the evidence above, supplied by the session that wrote the original rule.*
+
+**The drift this rule exists to prevent, stated so it is watched for:** the day a trellis issue grows
+a repo artifact behind it, that issue's body must **become** a pointer rather than staying a second
+copy. Dual-homing does not announce itself (`inv-deliberate-succession`, backward direction).
 
 ## Consequences
 
@@ -85,6 +96,11 @@ carries a real summary plus a link to the original. The rule was not inherited b
 - **The Kodhama team is owed an archive.** It holds only Linear's four onboarding stubs. Team
   structure has no MCP mutation, so moving Trellis and Math Quest out and archiving it is UI work,
   and is not done by this change.
+- **Nothing in trellis resolves a Linear team by name yet, and that is worth keeping true.** Verified
+  at migration: no hook, skill or test in this repo hardcodes the string `Trellis`. math-quest's
+  automation resolves its team by the literal `Math Quest` in eight places, where a **rename** —
+  not a key change — would break resolution silently, because an unmatched team yields nothing found
+  rather than an error. If trellis acquires Linear automation, resolve by team **id**, not name.
 - **Research issues carry no type label.** Linear's set is Bug / Feature / Improvement; a research
   question is none of them. Leaving the label off was judged better than minting one for four
   issues — revisit if the count grows.
