@@ -307,10 +307,10 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-89e04f3cf9a24f29b1bcc01daf5c3c795189a171d10100890dad836681a57779  .claude-plugin/plugin.json
-600d207e6f4ea8dc73b54880d4def72947b25d3a054136f1c32446aa186d4a9b  .codex-plugin/plugin.json
+f84637b2d59c87d355aea10b62a1b2bc08e24a49f997bc8a240af6d652fa8896  .claude-plugin/plugin.json
+99fd827cdff29d3d83943d2c593b09a95c5bdacb025a489205ab340ec58308d3  .codex-plugin/plugin.json
 c0969885035d5229c9ecd58ef2c9bdebc3bc5e9cd75c98a86966a3e21781f759  README.md
-40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79  VERSION
+a0ad50640139a524f86591157145bf1d4674ea9c065bfea21558f0f7b04430c8  VERSION
 4cf7f3a7eb4d0a517e2b4c35a600870a831fc2d83f9c087d4228bd5741f187e8  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
