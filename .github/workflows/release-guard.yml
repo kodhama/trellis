@@ -1,0 +1,67 @@
+name: release-guard
+
+# decision-0028 (derived resources stay in sync) applied to the plugin package:
+# `plugins/trellis/VERSION` is a DERIVATIVE of the payload, and the pair was unguarded.
+#
+# Why it needs a guard. Per the marketplace contract, `plugin.json`'s version string is
+# what gates re-pull: an existing install keeps its cached copy until that string changes.
+# So a payload edit that ships without a bump reaches FRESH installs — which have no cache
+# and materialize whatever is on `main` — and reaches no one else. The two populations then
+# run different rule catalogs while reporting the same version.
+#
+# That is not hypothetical. VERSION bumped 2026-07-31 (#212), then the payload changed on
+# 2026-08-03 (#227), 2026-08-04 (#231) and 2026-08-22 (#237) before the next bump on
+# 2026-08-23 (#244) — three payload changes across 23 days under a stale version string.
+# A consumer container installed in that window reported `v0.4.0` while carrying the
+# 15-rule `payload@457ab23911d9`, and the consuming repo's 14-row rules.toml no longer
+# matched the catalog, so its SessionStart hook refused to inject and every session there
+# ran with no overlay at all.
+#
+# Keys on `reference/version` — the payload content stamp, which changes exactly when the
+# payload content changes. A payload edit committed WITHOUT regenerating that stamp is a
+# different defect, already caught by the regenerate-and-diff test in cli-ci; the two
+# guards compose and neither substitutes for the other.
+#
+# Draft PRs are exempt, matching ratify-guard: marking a PR draft is this repo's sanctioned
+# "keep it clearly WIP" escape, and a release bump is reasonably the last commit on a branch.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+jobs:
+  release-guard:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Fail when the payload changed without a VERSION bump
+        run: |
+          set -eu
+          git fetch origin "${{ github.base_ref }}" --quiet
+          range="origin/${{ github.base_ref }}...HEAD"
+
+          payload="$(git diff --name-only "$range" -- 'plugins/trellis/reference/version' || true)"
+          if [ -z "$payload" ]; then
+            echo "ok — this PR does not change the plugin payload"
+            exit 0
+          fi
+
+          version="$(git diff --name-only "$range" -- 'plugins/trellis/VERSION' || true)"
+          if [ -n "$version" ]; then
+            echo "ok — payload changed and plugins/trellis/VERSION was bumped with it"
+            exit 0
+          fi
+
+          echo "::error::This PR changes the plugin payload but does not bump plugins/trellis/VERSION."
+          echo "decision-0028: VERSION derives from the payload — update it in the same change."
+          echo "Consumers keep their cached copy until the version string changes, so as it"
+          echo "stands this payload would reach fresh installs only, and existing installs"
+          echo "would keep serving the previous catalog under the same version number."
+          echo ""
+          echo "Fix: bump plugins/trellis/VERSION (TestPluginPackageParity keeps plugin.json"
+          echo "and the Codex manifest in step), or mark this PR as draft if it is still WIP."
+          exit 1

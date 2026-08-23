@@ -68,6 +68,17 @@ rule you can't exemplify is probably vaporware.*
   same change. A source names its derivatives (so you see them at the edit), and a check
   guards each pair. If you edit something and can't name what derives from it, that's the
   question to ask. (This is `inv-graph-maintenance` made salient: the graph, pointed forward.)
+- **A payload change is a release (`decision-0028`, applied to the plugin package).**
+  `plugins/trellis/VERSION` **derives from the payload**: an existing install keeps its
+  cached copy until the version string changes, so a payload edit shipped without a bump
+  reaches *fresh* installs — which have no cache — and reaches no one else. Bump `VERSION`
+  in the **same PR** as any change under `plugins/trellis/reference/`; `release-guard`
+  checks the pair, and `TestPluginPackageParity` keeps `plugin.json` and the Codex manifest
+  in step. *Concretely:* `VERSION` bumped 2026-07-31 (#212), the payload then changed in
+  #227, #231 and #237 before the next bump on 2026-08-23 (#244) — 23 days in which a fresh
+  container reported `v0.4.0` while carrying the 15-rule payload, and a consumer whose
+  `rules.toml` still listed 14 rows got **no overlay at all**, because the hook refuses to
+  inject a row set it cannot match.
 > The invariants this section used to restate — **transparency** (surface everything; fail loudly;
 > never emit plausible-but-unverified output) and **independent judgment** (no sycophancy; the builder
 > doesn't grade itself) — now arrive through Trellis's self-applied overlay (`.trellis/`), not
