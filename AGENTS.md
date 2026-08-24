@@ -107,6 +107,31 @@ only once the set's durability is proven across multiple instances.
 - What is the smallest enforcement that makes "downstream consumes only ratified" real
   here — convention, a check, or a gate sub-agent? (Resolve when the spine is built.)
 
+## Where work lives
+
+**Linear tracks the work; GitHub hosts the code** (`decision-0075`). Kodhama workspace, team
+**Trellis** (`TRL-*`). GitHub keeps pull requests, CI and the closed issue archive — **do not file
+new GitHub issues here.**
+
+- **The `kodhama:issues` convention does not apply in this repo.** trellis is a declared exception
+  to `kodhama-0026-issue-taxonomy` until the family move lands. Type is the `Bug` / `Feature` /
+  `Improvement` label; severity is the workspace `Severity` group; stage is Linear's workflow state.
+- **An issue carries its own content**, because no repo artifact sits behind it — the rule is
+  *content lives where the work lives*, and a thin pointer is only correct when there is something
+  to point at. If an issue ever grows a repo artifact, its body becomes a pointer rather than
+  staying a second copy.
+- **Ideas are a document, not issues** — one long-form Linear doc, each entry carrying the trigger
+  that would promote it. An idea filed as an issue is a to-do nobody agreed to.
+- **Old GitHub issue numbers still resolve** and are cited throughout `decisions/`. The **27 issues
+  closed by the 2026-08-23 migration** each carry a banner in their body marked
+  `<!-- trellis:linear-migration -->`, and not all of them went to Linear: 19 point at a `TRL-*`
+  issue, 5 at the ideas document, 3 nowhere (closed as resolved, or on a dead premise). Nothing
+  below such a banner is maintained. **Every other closed issue carries no banner** — the repo has
+  49 closed in total, and the other 22 closed before the migration existed, so absence of a banner
+  says nothing about an issue either way.
+- **Resolve a Linear team by id, not by name.** A rename breaks name resolution silently — an
+  unmatched team yields nothing found rather than an error.
+
 ## Maintaining project instructions
 
 `AGENTS.md` is the canonical home for shared project instructions. Edit new shared rules
