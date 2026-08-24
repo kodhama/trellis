@@ -122,10 +122,13 @@ new GitHub issues here.**
   staying a second copy.
 - **Ideas are a document, not issues** — one long-form Linear doc, each entry carrying the trigger
   that would promote it. An idea filed as an issue is a to-do nobody agreed to.
-- **Old GitHub issue numbers still resolve** and are cited throughout `decisions/`. Every closed
-  issue carries a banner in its body saying where it went, and **not all of them went to Linear**:
-  19 point at a `TRL-*` issue, 5 point at the ideas document, and 3 point nowhere because they were
-  closed as resolved or on a dead premise. Nothing below a banner is maintained.
+- **Old GitHub issue numbers still resolve** and are cited throughout `decisions/`. The **27 issues
+  closed by the 2026-08-23 migration** each carry a banner in their body marked
+  `<!-- trellis:linear-migration -->`, and not all of them went to Linear: 19 point at a `TRL-*`
+  issue, 5 at the ideas document, 3 nowhere (closed as resolved, or on a dead premise). Nothing
+  below such a banner is maintained. **Every other closed issue carries no banner** — the repo has
+  49 closed in total, and the other 22 closed before the migration existed, so absence of a banner
+  says nothing about an issue either way.
 - **Resolve a Linear team by id, not by name.** A rename breaks name resolution silently — an
   unmatched team yields nothing found rather than an error.
 
