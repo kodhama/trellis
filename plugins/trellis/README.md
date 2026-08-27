@@ -43,7 +43,10 @@ twice). **That covers Claude Code and project scope only**: a `--scope personal`
 delivers no rules, and neither does the curl path on **Codex CLI** and other hosts, which
 **get nothing from it** — `.claude/rules/` is a Claude mechanism and the installer registers
 nothing for any other host (`decision-0068` D7). On those hosts the rules arrive through the
-plugin, or not at all. A project-scope run prints both limits. **Trellis claims no support.** "Known to work" names
+plugin, or not at all. A project-scope run prints both limits. Separately from the host
+question, `install.sh` runs only on **macOS, Linux and WSL** — it is a POSIX `sh` script, so
+native Windows (cmd, PowerShell) cannot run the curl path at all, whichever host is being
+targeted (`decision-0068` §8). **Trellis claims no support.** "Known to work" names
 a check that ran; support is not claimed for any host, surface, or version, and nothing here
 undertakes to keep any of them working or to repair them if they stop. And **no marketplace
 install has been evidenced**: no recorded check has exercised installing this package from a

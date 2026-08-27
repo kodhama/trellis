@@ -74,6 +74,16 @@ change it afterwards (`decision-0070`; the setup skill retired by `decision-0072
 curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
 ```
 
+**Platform for this path — macOS, Linux, WSL** (`decision-0068` §8,
+[#210](https://github.com/kodhama/trellis/issues/210)). `install.sh` is a POSIX `sh`
+script, so cmd and PowerShell cannot run it at all; a Windows user runs it inside WSL.
+A POSIX layer such as Git Bash or MSYS will also run it, but sits outside the boundary
+named above and no check here covers it — WSL is the route this repo states. The shell
+is the whole of the barrier: the script creates no symlink, so no filesystem or
+developer-mode behaviour rides on top of it. Running natively on Windows would take a
+separate installer — `decision-0068` §8 names "a future PowerShell or Go installer" —
+not a flag here.
+
 Two scopes, `--scope project` (default, inside a git repo) or `--scope personal`:
 
 - **project** — `<repo-root>/.claude/skills/trellis/`, checked into git so it reaches every

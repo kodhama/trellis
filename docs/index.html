@@ -325,6 +325,7 @@
         </div>
         <div class="panel" data-panel="curl">
           <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
+          <div class="cmd"><code><span class="cmt"># macOS, Linux, WSL — a POSIX shell; not cmd or PowerShell</span></code></div>
           <div class="cmd"><code><span class="cmt"># that's it — all 15 rules active, adaptive posture</span></code></div>
         </div>
         <div class="panel" data-panel="manual">
@@ -333,7 +334,7 @@
           <div class="cmd"><code><span class="cmt"># for harnesses the plugin does not cover.</span></code></div>
         </div>
       </div>
-      <p class="tnote">The curl path is <strong>Claude Code, project scope</strong>: it vends the plugin <em>and</em> renders the rules to <code>.claude/rules/</code>. <code>--scope personal</code> vends the plugin but delivers no rules. No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest, verified before anything is written. Clean exits: <code>/trellis:remove</code> clears the rules and config from a project (on the curl path the vendored bundle is yours to delete — <code>rm -rf .claude/skills/trellis</code>), and a bundled session hook delivers the rules on the plugin path, stands down when the curl path has already delivered them, and warns if it ever finds both.</p>
+      <p class="tnote">The curl path is <strong>Claude Code, project scope</strong>: it vends the plugin <em>and</em> renders the rules to <code>.claude/rules/</code>. <code>--scope personal</code> vends the plugin but delivers no rules. It runs on <strong>macOS, Linux and WSL</strong>: <code>install.sh</code> is a POSIX <code>sh</code> script, so native Windows (cmd, PowerShell) cannot run this path at all — use WSL there. No binary, no runtime — the bundle is pre-rendered plain files with a checksum manifest, verified before anything is written. Clean exits: <code>/trellis:remove</code> clears the rules and config from a project (on the curl path the vendored bundle is yours to delete — <code>rm -rf .claude/skills/trellis</code>), and a bundled session hook delivers the rules on the plugin path, stands down when the curl path has already delivered them, and warns if it ever finds both.</p>
 
       <div class="cta">
         <a class="btn btn-primary" href="invariants.html">Explore the invariants →</a>
