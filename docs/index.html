@@ -704,6 +704,11 @@
        at all and said nothing about it. Failure is now visible in the label AND
        spoken, rather than swallowed. */
     function legacyCopy(text) {
+      // ta.select() takes focus, and removing the focused node drops
+      // activeElement to <body> — which would bounce a keyboard user to the top
+      // of the tab order as their reward for pressing the copy button. Put them
+      // back where they were.
+      var prev = document.activeElement;
       var ta = document.createElement("textarea");
       ta.value = text;
       ta.setAttribute("readonly", "");
@@ -713,6 +718,7 @@
       var ok = false;
       try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
       document.body.removeChild(ta);
+      if (prev && prev.focus) prev.focus();
       return ok;
     }
     function settle(ok) {

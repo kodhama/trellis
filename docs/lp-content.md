@@ -246,5 +246,14 @@ no longer "carried over unchanged" from the pre-retrofit page, and the
 ## Out of scope for this retrofit
 
 `docs/invariants.html` is a separate page (the invariants detail page
-linked from this one) and is untouched by this lane — only
-`docs/index.html` is a DS derivative as of this change.
+linked from this one). Only `docs/index.html` is a DS derivative, and that
+is still true — but "untouched", which this section used to say, is not.
+
+The TRL-11 accessibility pass changed it substantially: the two pages share
+the dark token block byte-for-byte, so the surface ramp had to move in both
+at once, and the theme toggle had to stay on the same three-state cycle
+because both read the same `trellis-theme` key. It also picked up a
+responsive header breakpoint, real headings for the fifteen invariant
+titles, and the removal of a dead CSS block. None of that makes it a DS
+derivative; it does mean the two pages now have shared state that has to be
+edited together, which is a stronger coupling than "out of scope" implies.
