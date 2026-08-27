@@ -9,8 +9,8 @@
   :root {
     --bg: #f5f7f4; --surface: #ffffff; --text: #16201b; --muted: #5a6b62;
     --accent: #1f9d68; --accent-ink: #0c5d3c; --line: #e0e7e1;
-    --with-bg: #eaf6f0; --with-line: #b7e0cc; --with-ink: #0c5d3c;
-    --without-bg: #f7ece9; --without-line: #e6c3ba; --without-ink: #a23f2c;
+    --with-bg: #eaf6f0; --with-ink: #0c5d3c;
+    --without-bg: #f7ece9; --without-ink: #a23f2c;
     --chip: #eef2ee; --chip-ink: #55665d;
     --maxw: 1000px;
     --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -19,31 +19,37 @@
   /* Dark surface ramp — kept byte-identical to docs/index.html, which carries
      the reasoning in full. Short version: --surface sat 3.6 L* above --bg, so
      the cards barely read as cards. The page lifts, the cards lift further,
-     and the pair fills come with them (--with-bg/--without-bg/--chip were all
-     drawn against the OLD --bg; against the new one --without-bg would have
-     been DARKER than the page it sits on). These two files share this block
-     and have to move together. */
+     and the pair fills come with them. Those sit inside a .card, so --surface
+     is the backdrop that matters, and against the OLD --surface the old
+     --without-bg was L* 9.28 against L* 9.28 — a dead-flat zero, not merely
+     close. The pair now straddles the card it sits in: "without" −4.9 L*,
+     "with" +4.6 L*. (An earlier pass lifted --with-bg only to #163023, which
+     put it +0.4 L* — flush with the card, and asymmetric against a "without"
+     already 4.9 below it. Caught in review.) --with-line/--without-line are
+     gone: their only consumers were the .pane rules deleted below, so the
+     ramp is no longer maintaining values nothing reads.
+     These two files share this block and have to move together. */
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #141f1a; --surface: #1f2d27; --text: #e2eae5; --muted: #91a59b;
       --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #33443c;
-      --with-bg: #163023; --with-line: #2f5c45; --with-ink: #7fdcae;
-      --without-bg: #2c1c17; --without-line: #5c382d; --without-ink: #e79b86;
+      --with-bg: #1a3a2a; --with-ink: #7fdcae;
+      --without-bg: #2c1c17; --without-ink: #e79b86;
       --chip: #25332c; --chip-ink: #9db2a7;
     }
   }
   :root[data-theme="light"] {
     --bg: #f5f7f4; --surface: #ffffff; --text: #16201b; --muted: #5a6b62;
     --accent: #1f9d68; --accent-ink: #0c5d3c; --line: #e0e7e1;
-    --with-bg: #eaf6f0; --with-line: #b7e0cc; --with-ink: #0c5d3c;
-    --without-bg: #f7ece9; --without-line: #e6c3ba; --without-ink: #a23f2c;
+    --with-bg: #eaf6f0; --with-ink: #0c5d3c;
+    --without-bg: #f7ece9; --without-ink: #a23f2c;
     --chip: #eef2ee; --chip-ink: #55665d;
   }
   :root[data-theme="dark"] {
     --bg: #141f1a; --surface: #1f2d27; --text: #e2eae5; --muted: #91a59b;
     --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #33443c;
-    --with-bg: #163023; --with-line: #2f5c45; --with-ink: #7fdcae;
-    --without-bg: #2c1c17; --without-line: #5c382d; --without-ink: #e79b86;
+    --with-bg: #1a3a2a; --with-ink: #7fdcae;
+    --without-bg: #2c1c17; --without-ink: #e79b86;
     --chip: #25332c; --chip-ink: #9db2a7;
   }
 

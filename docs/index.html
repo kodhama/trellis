@@ -62,8 +62,10 @@
    *   --surface 17.1      +6.5
    *   --line    27.2     +16.6  (+10.1 vs --surface)
    *
-   * Every foreground stays well clear of AA on the new fills — the least
-   * margin is --muted on --surface at 5.51:1. --code-line/--code-dim are
+   * Every foreground stays clear of AA on the new fills. The tightest is NOT
+   * --muted on --surface (5.51:1) but --muted on the compare-pair case chip,
+   * color-mix(--accent 6%, --surface), at 4.91:1 — measured on the rendered
+   * page, and the floor for the whole ramp. --code-line/--code-dim are
    * the terminal's own hairline and comment tones, tokenized here because
    * both are used on three separate blocks and both were failing.
    * ─────────────────────────────────────────────────────────────────── */
@@ -217,7 +219,12 @@
     background: transparent; color: #ffffff80; border: 0; border-radius: 6px; padding: 5px 10px;
   }
   .tab:hover { color: #cfe9db; }
-  .tab.active { background: #ffffff14; color: #d7e6dd; }
+  /* #ffffff16, was #ffffff14. White-alpha fills lose punch as the base darkens
+     — L* is compressive near black — so dropping --code-bg cost this pill and
+     .copy below ~1 L* of the weight they were drawn with. Realpha'd to land
+     back on it. Both stay under 1.4.11's 3:1 as they always have; tab state is
+     carried by aria-selected and a 35 L* label step, not by the fill. */
+  .tab.active { background: #ffffff16; color: #d7e6dd; }
   /* The tallest panel sets the height. Without this, switching tabs moved
      everything below it by up to 107px and pushed the hero CTA off screen. */
   /* The panel — not the row — owns the horizontal scroll. When each .cmd was
@@ -242,7 +249,7 @@
   .terminal .cmd .prompt { color: var(--code-accent); user-select: none; }
   .copy {
     margin-left: auto; flex: none; font-family: var(--mono); font-size: 12px; cursor: pointer;
-    background: #ffffff12; color: #cfe9db; border: 0; border-radius: 7px; padding: 6px 11px;
+    background: #ffffff14; color: #cfe9db; border: 0; border-radius: 7px; padding: 6px 11px;
   }
   .copy:hover { background: #ffffff22; }
   .terminal .cmt { color: var(--code-dim); } /* was #ffffff40 — 2.25:1, under AA */
