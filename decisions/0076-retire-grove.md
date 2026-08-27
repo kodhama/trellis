@@ -103,10 +103,15 @@ backward direction):
     three move into `AGENTS.md`, where an agent will actually read them. `LINT_CMD`'s value is the
     honest *"none dedicated; `gofmt -l cli/` is available locally but not CI-enforced"*, worth
     carrying precisely because it stops a future session inventing a lint gate that was never there.
-  - **`agents/run-resumer.md` carried one repo fact, and it is harvested too:** trellis branches are
-    `<category>/<slug>` and deliberately do **not** encode an issue number, so a branch is not
-    findable by searching for one. That is stated nowhere else in the tree, and it goes to
-    `AGENTS.md` rather than out with the directory.
+  - **`agents/run-resumer.md` carried one repo fact, and harvesting it needed a correction.** It
+    said trellis branches are `<category>/<slug>` and encode no issue number. True when written;
+    half-true now — since `decision-0075`'s Linear migration, `feature/*` branches carry the issue
+    key, including **this record's own PR branch**, `feature/trl-22-…`. It goes to `AGENTS.md`
+    scoped by category rather than copied across whole. *This is the backward direction of
+    `inv-deliberate-succession` failing in miniature — a value the old model supplied, reused by
+    default instead of checked against the new one, in the very change that cites the invariant for
+    doing the opposite. Caught by the automated review, which noticed the PR's own branch name
+    disproved the sentence it was reviewing.*
   - Four corpus tokens — `CONVENTIONS_PATH`, `ARTIFACT_DIRS`, `ARTIFACT_CONTRACT_PATHS`,
     `REPO_TYPED_CHECKS` — need no home, because the repo-owned `corpus-reviewer` already bakes the
     same values into its own charter (its default corpus is `ARTIFACT_DIRS` verbatim, exclusion and
@@ -153,13 +158,18 @@ forbids. Declaring it is the fix; the rule itself stands.
 - **`AGENTS.md` loses the managed block (`:144–159`) and gains the harvested commands.** No
   `/grove:refresh` exists to regenerate that block, so it could never have been maintained in place —
   removal was the only sanctioned exit available.
-- **Four assertions in `cli/selfapply_test.go` invert** (`:102`, `:110`, `:113`, `:164–165`): the
-  grove markers and `.grove/` files go from *required-present* to *required-absent*. Asserting the
-  absence matters as much as the presence did — a stray branch merge restoring `.grove/` would
-  otherwise reintroduce an operating model nobody chose, silently and greenly.
-- **The repo's own corpus-reviewer is the one working agent grove's absence degrades.** Its checks 4
-  and 5 cite the unreachable relations companion. It still runs; its edge-taxonomy reasoning now
-  rests on `decision-0047` alone, which is where the trellis-side rule actually lives.
+- **`cli/selfapply_test.go` changes at four loci, and only two are inversions.** `:113` and
+  `:164–165` genuinely invert — the grove markers and `.grove/` files move from *required-present*
+  to *required-absent*. `:102` is a **reword** that stays required-present, and `:110` is a
+  **deletion**: the ordering clause it belonged to compared against a marker that no longer exists,
+  so nothing replaces it. *An earlier draft called all four inversions. Corrected — in a record
+  whose whole method is naming its own overstatements, that was the one that slipped through, and
+  it was caught by the automated review rather than the author.*
+- **The corpus-reviewer's checks 4 and 5 are repaired, not degraded.** They named the companion as
+  plugin-carried; they now cite grove's relations charter directly, which is readable. *An earlier
+  draft of this bullet said the agent was "degraded" and left "resting on `decision-0047` alone" —
+  the same framing this record retracts two sections above. The retraction had not been propagated
+  here.*
 - **`core/README.md:13–16` was claiming a conformance mechanism that does not exist** — that
   conformance *"currently runs as the plugin-carried `grove:conformance-reviewer` in this repo."* It
   has been false since the plugin left. Corrected here, which means `core/` has no independent
@@ -237,14 +247,22 @@ fact while recorded as discarded. A new merge-gate rule had entered `AGENTS.md` 
 precise shape Decision point 5 forbids, committed by the record that forbids it. And the parked
 owed-set named one stale pointer where there are four.
 
-**None of the twelve was self-caught.** Three came from the corpus review, nine from the diff
-review; the author caught two arithmetic errors and no substantive one. A record about a repo that
-let an operating model arrive and depart without a decision needed two rounds of review to stop it
-departing wrongly. The count stays in rather than being smoothed away, and it is the strongest
-available argument for Decision point 6.
+**A third review — `decision-0007`'s automated PR check — returned three more, after two rounds had
+already run.** It caught the record calling four test changes "inversions" when two are a reword and
+a deletion; it caught the corpus-reviewer bullet still carrying the "degraded / unreachable" framing
+this same commit retracts two sections above, un-propagated; and it caught the harvested
+branch-naming claim being **disproved by this PR's own branch name**.
 
-A third leg failed and is named rather than passed over (`floor-transparency`): a cross-family
-(Codex) review was attempted and died on a usage limit, returning no findings.
+**None of the fifteen was self-caught** — three from the corpus review, nine from the diff review,
+three from the automated one. The author caught two arithmetic errors and no substantive defect. A
+record about a repo that let an operating model arrive and depart without a decision needed three
+rounds of independent review to stop it departing wrongly, and each round found things the previous
+one had read past. The count stays in rather than being smoothed away; it is the strongest available
+argument for Decision point 6, and a caution against reading any single green review as sufficient.
+
+A fourth leg failed and is named rather than passed over (`floor-transparency`): cross-family (Codex)
+review was attempted twice — once via CLI, once via the PR connector — and both died on usage limits,
+returning no findings. No cross-family perspective was obtained for this change.
 
 Two things this record deliberately does **not** do, declared so their absence is not read as
 completeness: it does not repair the two ratified carrier-pointers, and it does not settle
