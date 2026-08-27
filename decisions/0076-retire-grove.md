@@ -2,8 +2,8 @@
 id: decision-0076
 type: decision
 status: gated  # maintainer's intent act 2026-08-27, in-session ("Deliberately retired") on being shown the plugin is absent — that settles the retirement itself. Author (agent) != approver (maintainer). Held at `gated` rather than flipped to `approved`: the act covered the *fact* of retirement, not this record's consequence set — the `spec-0006` AC1 partial supersession, the `.grove/` deletion, and the parked owed-set below are the maintainer's to accept at merge (`decision-0046`, `decision-0022`)
-depends_on: [spec-0006, decision-0057]
-informed_by: [decision-0005, decision-0044, decision-0045, decision-0051, decision-0071, decision-0074]
+depends_on: [spec-0001, spec-0006, decision-0044, decision-0057]  # spec-0001 and decision-0044 moved in / up after an independent corpus review: Decision points 2 and 5 rest on spec-0001's registry and its versioning delegation, and point 2's correctness is contingent on decision-0044's qualified <repo>/<id> form standing — that is coupling under decision-0047's test, not provenance
+informed_by: [decision-0005, decision-0045, decision-0051, decision-0071, decision-0074]
 owner: agent
 date: 2026-08-27
 ---
@@ -36,9 +36,17 @@ date: 2026-08-27
   retiring it looked like a far bigger job than it is:
   - **grove-the-plugin** — `grove:<role>` subagents, `/grove:refresh`, `/grove:setup`, the
     plugin-carried companions, the `grove plugin@0.1.0` stamp. *This is what is gone.*
-  - **grove-the-repo** — `github.com/kodhama/grove`, public and unarchived, last pushed 2026-08-05.
-    Its ADRs are cited across the corpus as artifacts, under `decision-0044`'s qualified
-    `<repo>/<id>` form. *This is untouched, and cannot be touched.*
+  - **grove-the-repo** — cited across the corpus as artifacts, under `decision-0044`'s qualified
+    `<repo>/<id>` form, and still a member of the recognized-repo registry (`spec-0001:97`).
+    *This is untouched, and cannot be touched.*
+
+  *An earlier draft justified the second half on the repo still being live — public, last pushed
+  2026-08-05. That is true and it is irrelevant: `spec-0001:100–103` sets resolution depth at
+  **"shape + registry-membership only … no fetch-and-confirm-the-referent-actually-exists
+  mechanism."** What keeps these references valid is grove's row in the registry, which Decision
+  point 2 preserves. Liveness was reassurance, not the reason. Corrected after an independent corpus
+  review made the distinction, and left visible because a reader who inherited the author's test
+  would apply it to a repo that had since been deleted and reach the wrong answer.*
 
 - **The citation leg is load-bearing, not decorative.** `specs/0001-spine-artifact-contract.md:5`
   carries `depends_on: […, grove/adr-0010-versioning-is-operational]` — an approved spec with a
@@ -124,6 +132,11 @@ a spec under cover of a retirement PR is what it forbids.
 - **The eleven-to-thirteen drift is left as evidence, not corrected.** The install commit says
   eleven roles, the withdrawn block says thirteen. Both are now historical; there is nothing to
   reconcile and no live claim to fix.
+- **An `approved` spec now carries a supersession mark from a `gated` record.** No rule forbids it —
+  `superseded_in_part_by` is a forward pointer of the `superseded_by` class, explicitly not walked
+  as a flow edge, and resolution requires only that the entry resolve. But if this record never
+  reaches `approved`, `spec-0006` carries a live mark whose authority never ratified. Surfaced by
+  the corpus review and stated here because it is a conscious call at merge, not an oversight.
 
 ## Open questions
 
@@ -147,11 +160,24 @@ git log dated it. That mattered, because the *reason* offered turned out to be t
 `AGENTS.md` is stale, but so is an approved spec, a live agent's inputs, and `core/README.md`.
 
 The blast radius was **narrowed by evidence, not by preference**: an initial reading treated every
-`grove` string as breakage, which would have rewritten append-only history. Checking whether
-`kodhama/grove` still exists (it does — public, pushed 2026-08-05) split the references in two and
-cut roughly two thirds of the proposed diff. `decision-0045:7`'s `superseded_in_part_by` edge into
-grove was found *after* that split and confirms it; had the first reading been executed, that
+`grove` string as breakage, which would have rewritten append-only history. Splitting the references
+in two cut roughly two thirds of the proposed diff. `decision-0045:7`'s `superseded_in_part_by` edge
+into grove was found *after* that split and confirms it; had the first reading been executed, that
 supersession pointer would now be orphaned.
+
+**The split was right for the wrong reason, and the independent review caught it.** The author's
+test was *"does the repo still exist?"*; the contract's test is registry membership
+(`spec-0001:100–103`). Conclusion unchanged, justification replaced — recorded rather than quietly
+swapped, because the wrong test yields the wrong answer the day a cited repo is deleted. The same
+review moved `spec-0001` into `depends_on` and `decision-0044` from `informed_by` to `depends_on`:
+the two edges the record originally declared were not the ones its Decision section leaned hardest
+on (`decision-0047`'s coupling test). Neither was self-caught.
+
+The review returned one **FAIL** against the corpus, and it is not this change's:
+`decisions/0044-cross-repo-depends-on-convention.md:5` carries the bare unqualified
+`kodhama-0004-uniform-lifecycle`, dangling under rubric check 4. That artifact declares the gap
+itself and it predates this record by seven weeks. Named here so a green-looking review is not
+mistaken for a clean corpus.
 
 The `.grove/` deletion was put to the maintainer rather than taken, because it discards 224K of
 review records from `HEAD` — the standing evidence that past gates ran. Approved on the reasoning
