@@ -184,6 +184,16 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	if _, err := os.Stat(filepath.Join("..", ".grove")); !os.IsNotExist(err) {
 		t.Error(".grove/ exists — decision-0076 retired grove and deleted it; its return means configuration for an uninstalled plugin is back in the tree")
 	}
+	// decision-0076: the retirement is undone by one line of committed config.
+	// `.claude/settings.json` enables plugins on clone (f9d0347 committed grove's
+	// entry precisely "so a fresh clone has a fleet"), and the kodhama marketplace
+	// still publishes grove — so leaving the entry would reinstall the plugin, and
+	// restore the grove:<role> subagents, on the next fresh clone. Deleting .grove/
+	// and the AGENTS.md block without this would have retired grove everywhere
+	// except the file that actually installs it.
+	if strings.Contains(readRepoFile(".claude/settings.json"), "grove@kodhama") {
+		t.Error(".claude/settings.json enables grove@kodhama — decision-0076 retired the plugin, and this entry reinstalls it on a fresh clone")
+	}
 	for name, expectation := range boundedReferences {
 		content := readRepoFile(name)
 		if expectation.wantAGENTS && !strings.Contains(content, "AGENTS.md") {

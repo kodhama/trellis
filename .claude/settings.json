@@ -1,6 +1,5 @@
 {
   "enabledPlugins": {
-    "grove@kodhama": true,
     "kodhama@kodhama": true,
     "trellis@kodhama": true
   },

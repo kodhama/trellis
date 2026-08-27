@@ -142,6 +142,8 @@ new GitHub issues here.**
   `corpus-reviewer` (`.claude/agents/`) before merging a change to `decisions/`, `specs/`,
   `research/` or `core/`. It checks the corpus against `spec-0001` and
   `core/rubrics/artifact-contract.md`, and is read-only by charter — it reports, never fixes.
+- **Branches are `<category>/<slug>`** — e.g. `decision/0075-linear-tracks-the-work`. They
+  deliberately do **not** encode an issue number, so a branch is not findable by searching for one.
 - **Grove is retired** (`decision-0076`). The plugin, its `grove:<role>` subagents and the
   `/grove:*` commands are gone, and `.grove/` with them. Citations to **grove-the-repo**
   (`grove/adr-00NN`) are a different thing and remain live and load-bearing — `spec-0001`

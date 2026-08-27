@@ -133,7 +133,9 @@ var setupQualifiers = []string{
 	"the setup skill",         // qualified reference to the artifact
 	"`setup` TUI",             // the retired v0 BINARY, not the skill
 	"setup\n  CLI",            // same, across a line wrap
-	"grove:setup",             // a different product's skill
+	// "grove:setup" was exempted here as "a different product's skill". Dropped by
+	// decision-0076: grove is retired and no doc surface may name /grove:setup as a
+	// live command, so keeping the exemption would let one back in unnoticed.
 }
 
 func TestNoUnqualifiedSetupClaims(t *testing.T) {

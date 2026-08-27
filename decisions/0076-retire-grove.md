@@ -28,9 +28,8 @@ date: 2026-08-27
   loads in a session here, and `~/.claude/plugins/cache/kodhama/` holds only `kodhama` and `trellis`.
   Until this change, the managed block in `AGENTS.md` told every agent that work matching a grove
   workflow *"run[s] as grove runs, sequenced through grove's chartered agent roles, loaded from the
-  grove plugin as `grove:<role>` subagents (all thirteen)."* Thirteen was itself drift — the install
-  commit says eleven. The instruction had been unfollowable since the plugin left; the last recorded
-  run is `20260803-093000`.
+  grove plugin as `grove:<role>` subagents (all thirteen)."* The instruction had been unfollowable
+  since the plugin left; the last recorded run is `20260803-093000`.
 
 - **"Grove" names two different things, and only one of them is installable.** The conflation is why
   retiring it looked like a far bigger job than it is:
@@ -55,15 +54,22 @@ date: 2026-08-27
   partly superseded **by** a grove ADR. Severing the citation leg would orphan a supersession pointer
   in an append-only record.
 
-- **`spec-0001` is incomplete on its own terms, and this record only surfaced it.** Line 90 states
-  the versioning contract as *"shape only"* and delegates the semantics to *"the grove versioning
-  companion, now plugin-carried … their single home, deliberately not restated here."* Two steps got
-  it here: `ac63e7c` (2026-07-22, adr-0026 D7) deleted the vendored copies in favour of the plugin —
-  sound at the time, since the plugin was installed — and the plugin's later removal left the single
-  home with no carrier. The exact removal date is not recoverable from this repo; the last grove run
-  is 2026-08-03 and the last `.grove/` commit 2026-08-04, so the gap has been open at least three
-  weeks. `core/rubrics/artifact-contract.md:91` and `.claude/agents/corpus-reviewer.md:36,42`
-  delegate the same way. The delegation was sound when written. It is dangling now.
+- **Several artifacts point at a *carrier* that is gone — not at content that is gone.**
+  `spec-0001:90` states the versioning contract as *"shape only"* and delegates the semantics to
+  *"the grove versioning companion, now plugin-carried … their single home, deliberately not
+  restated here."* `core/rubrics/artifact-contract.md:91` and `.claude/agents/corpus-reviewer.md`
+  delegate the same way. `ac63e7c` (2026-07-22, adr-0026 D7) deleted the vendored copies in favour
+  of the plugin — sound at the time — and the plugin's removal left those pointers naming a carrier
+  that no longer exists. **The content is fine:** grove's charters are readable in the repo —
+  `charters/relations.md` (8838 bytes) and `charters/versioning.md` (9142 bytes), both
+  `status: approved`. So what is owed is a **pointer repair, not a rehoming.**
+
+  *An earlier draft of this record called those semantics "unhomed" and "dangling" and asked, in an
+  Open Question, where they should now live. That was wrong: an independent review fetched the
+  charters and found them present. The error mattered — "unhomed" invites a future session to
+  restate the semantics locally, which is precisely the duplication `grove/adr-0010` removed. The
+  draft also contradicted itself, since the same change described grove's corpus-reviewer charter as
+  "still readable" two lines from calling its sibling unreachable.*
 
 ## Decision
 
@@ -71,6 +77,15 @@ date: 2026-08-27
 2026-08-27 settles it; this record is the first and last decision record grove has here. Every
 instruction that routes work to a `grove:<role>` subagent, names a `/grove:*` command, or reads a
 plugin-carried companion is withdrawn, because none of them can be followed.
+
+**The operative line is `.claude/settings.json`, not the prose.** That file carried
+`"grove@kodhama": true` — committed by `f9d0347` (2026-07-26) *"so a fresh clone has a fleet"* — and
+the kodhama marketplace still publishes grove. Deleting `.grove/` and the `AGENTS.md` block while
+leaving that entry would have retired grove everywhere except the one file that actually installs
+it: the next fresh clone would have reinstated the whole fleet, silently, against a green suite —
+the exact failure the new absence assertions exist to prevent. The entry is removed and a test now
+asserts it cannot return. **This was not self-caught; an independent review found it**, and it is
+the single most consequential line in the change.
 
 **2. Grove-the-repo remains a cited source, and nothing citing it changes.** `grove/adr-00NN`
 references, `spec-0001:5`'s `depends_on`, `decision-0045:7`'s `superseded_in_part_by`, the amendment
@@ -84,15 +99,23 @@ zero information gain").
 `cli/`, `plugins/`, or `.github/workflows/` reads it; only test assertions and a skip-list entry
 name it. What it supplied is accounted for rather than assumed away (`inv-deliberate-succession`,
 backward direction):
-  - `config.toml`'s `TEST_CMD` and `TYPECHECK_CMD` are **real and still needed** — they move into
-    `AGENTS.md`, where an agent will actually read them.
+  - `config.toml`'s `TEST_CMD`, `TYPECHECK_CMD` and `LINT_CMD` are **real and still needed** — all
+    three move into `AGENTS.md`, where an agent will actually read them. `LINT_CMD`'s value is the
+    honest *"none dedicated; `gofmt -l cli/` is available locally but not CI-enforced"*, worth
+    carrying precisely because it stops a future session inventing a lint gate that was never there.
+  - **`agents/run-resumer.md` carried one repo fact, and it is harvested too:** trellis branches are
+    `<category>/<slug>` and deliberately do **not** encode an issue number, so a branch is not
+    findable by searching for one. That is stated nowhere else in the tree, and it goes to
+    `AGENTS.md` rather than out with the directory.
   - Four corpus tokens — `CONVENTIONS_PATH`, `ARTIFACT_DIRS`, `ARTIFACT_CONTRACT_PATHS`,
     `REPO_TYPED_CHECKS` — need no home, because the repo-owned `corpus-reviewer` already bakes the
     same values into its own charter (its default corpus is `ARTIFACT_DIRS` verbatim, exclusion and
     all). `config.toml:27–38` said so itself: that role *"is authoritative for corpus-linting here
     and has these values baked in."*
-  - The remaining **eight** tokens were already `"none …"` — an honest value with nothing to carry
-    forward. Two, four and eight account for all fourteen.
+  - The remaining **seven** tokens were already `"none …"` — an honest value with nothing to carry
+    forward. Three, four and seven account for all fourteen. *(An earlier draft said two and eight.
+    It had missed that the `AGENTS.md` bullet it wrote already carried `LINT_CMD`'s content —
+    harvested in fact while recorded as discarded.)*
   - `gates.toml`'s `intent = "human"` / `ship = "human"` is **already supplied twice over** by
     `floor-intent-gate` in the live `.trellis/rules.toml` overlay and by the maintainer's merge gate
     (`decision-0022`). Stated, not assumed.
@@ -103,13 +126,27 @@ Grove block exist in `AGENTS.md`"*. The Grove half is retired; the Layer-B half 
 entrypoint-adapter principle stand. The forward pointer goes on `spec-0006`; its AC text is left
 intact, exactly as `decision-0071` handled the same spec's AC3/AC4.
 
-**5. The unhomed semantics are named and parked, not invented.** `spec-0001:90`,
-`core/rubrics/artifact-contract.md:91` and `.claude/agents/corpus-reviewer.md:36,42` point at a
-companion that no longer resolves. Their pointers are marked honestly in this change so no reader
-believes a live home exists — but **rehoming versioning and relations semantics is a contract
-decision, not a cleanup, and this record does not make it.** Naming the exemption and leaving it for
-the maintainer is what `inv-deliberate-succession` asks for; quietly writing a replacement home into
-a spec under cover of a retirement PR is what it forbids.
+**5. The stale carrier-pointers in ratified artifacts are named and parked, not rewritten here.**
+`spec-0001:90` and `core/rubrics/artifact-contract.md:91` describe the companion as
+*plugin-carried*, which is no longer true. Both are **ratified** (the rubric is `owner: gundi`), and
+this record deliberately does not edit them: repairing an approved spec and a ratified product
+rubric under cover of a retirement PR is the move `inv-deliberate-succession` names as resolving a
+boundary in prose nobody approved. They are owed, and now known to be small — a re-citation, since
+the content is readable at `kodhama/grove/charters/`.
+
+`.claude/agents/corpus-reviewer.md` **is** repaired here, and the asymmetry is deliberate: it is a
+repo-owned agent file rather than a ratified artifact, and it is a **live input to a running agent**,
+so leaving it naming a dead carrier would degrade every corpus check taken with it.
+
+**6. One new standing rule enters with this change, declared rather than smuggled.** `AGENTS.md`
+gains: *invoke the repo-owned `corpus-reviewer` before merging a change to `decisions/`, `specs/`,
+`research/` or `core/`.* No such obligation was written down anywhere before. It belongs with this
+retirement because grove's departure removes the last trace of a chartered review fleet, and
+`decision-0010` puts artifact conformance in an agent rather than CI — so with grove gone and no CI
+check covering the contract, an unstated convention was the only thing between the corpus and no
+independent review at all (`inv-gate-at-handover`). It is called out as its own decision point
+because an independent review caught it arriving **undeclared**, which is the exact shape point 5
+forbids. Declaring it is the fix; the rule itself stands.
 
 ## Consequences
 
@@ -129,9 +166,12 @@ a spec under cover of a retirement PR is what it forbids.
   conformance sub-agent in this repo until `0012` packages one.
 - **This does not resolve `TRL-22`.** It clears the ground the superpowers question was standing on.
   The layering record is separate and comes next, onto an `AGENTS.md` that tells the truth.
-- **The eleven-to-thirteen drift is left as evidence, not corrected.** The install commit says
-  eleven roles, the withdrawn block says thirteen. Both are now historical; there is nothing to
-  reconcile and no live claim to fix.
+- **The eleven-to-thirteen difference is grove growing, not trellis drifting.** An earlier draft of
+  this record called it drift and filed it as a finding about this repo's discipline. Checked
+  against the upstream: grove publishes a *"thirteen-role operating model"* today and carries
+  fourteen role charters, against eleven at install. The block's count tracked its upstream
+  correctly. Retracted rather than deleted — a false disciplinary finding about oneself is worth
+  showing the correction for.
 - **An `approved` spec now carries a supersession mark from a `gated` record.** No rule forbids it —
   `superseded_in_part_by` is a forward pointer of the `superseded_by` class, explicitly not walked
   as a flow edge, and resolution requires only that the entry resolve. But if this record never
@@ -140,10 +180,14 @@ a spec under cover of a retirement PR is what it forbids.
 
 ## Open questions
 
-- **Where do versioning and relations semantics live now?** `spec-0001:90` delegates to an unreachable
-  home. Options: restate them in `spec-0001` (reversing the adr-0010 de-reflection), re-cite the grove
-  ADRs directly as repo artifacts, or accept the gap. **Owed, and blocking any corpus-reviewer change
-  that depends on edge taxonomy.**
+- **Who repairs the ratified carrier-pointers, and when?** `spec-0001:90` and
+  `core/rubrics/artifact-contract.md:91` still describe the companion as *plugin-carried*. The
+  content is readable at `kodhama/grove/charters/{versioning,relations}.md`, so the repair is a
+  re-citation rather than a decision about where semantics belong — but it touches an approved spec
+  and a ratified rubric, so it is the maintainer's call, not an agent's. **Take all four, not just
+  `:90`:** `spec-0001` also names deleted `.grove/internal/` paths at `:8`, `:25` and `:54`. An
+  earlier draft of this record enumerated only `:90`, so whoever resolved it would have left three
+  behind.
 - **Does the repo want a chartered-role operating model at all, or was grove's real contribution the
   four-gate vocabulary?** The gates outlived the roles here. Worth answering before adopting another
   role-shaped methodology.
@@ -183,8 +227,27 @@ The `.grove/` deletion was put to the maintainer rather than taken, because it d
 review records from `HEAD` — the standing evidence that past gates ran. Approved on the reasoning
 that git history is the archive `inv-auditable-archive` asks for.
 
+**A second independent review — fresh context, whole diff — returned nine more, one of them
+critical.** `.claude/settings.json` still enabled `grove@kodhama`, so the next fresh clone would
+have reinstalled the fleet and undone the retirement against a green suite. The "unhomed semantics"
+framing was simply false — the charters are readable, and the same change said so two lines from
+calling them unreachable. The eleven-to-thirteen "drift" was grove growing, not this repo slipping,
+so the record had filed a false disciplinary finding against itself. `LINT_CMD` was harvested in
+fact while recorded as discarded. A new merge-gate rule had entered `AGENTS.md` undeclared — the
+precise shape Decision point 5 forbids, committed by the record that forbids it. And the parked
+owed-set named one stale pointer where there are four.
+
+**None of the twelve was self-caught.** Three came from the corpus review, nine from the diff
+review; the author caught two arithmetic errors and no substantive one. A record about a repo that
+let an operating model arrive and depart without a decision needed two rounds of review to stop it
+departing wrongly. The count stays in rather than being smoothed away, and it is the strongest
+available argument for Decision point 6.
+
+A third leg failed and is named rather than passed over (`floor-transparency`): a cross-family
+(Codex) review was attempted and died on a usage limit, returning no findings.
+
 Two things this record deliberately does **not** do, declared so their absence is not read as
-completeness (`floor-transparency`): it does not rehome the unhomed versioning semantics, and it does
-not settle superpowers. Both are named above with what they are waiting on. Held at `gated`, not
-flipped to `approved`, because the maintainer's act covered the retirement and not this consequence
-set (`decision-0046`).
+completeness: it does not repair the two ratified carrier-pointers, and it does not settle
+superpowers. Both are named above with what they are waiting on. Held at `gated`, not flipped to
+`approved`, because the maintainer's act covered the retirement and not this consequence set
+(`decision-0046`).

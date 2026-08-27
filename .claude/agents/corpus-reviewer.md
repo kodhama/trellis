@@ -37,14 +37,15 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`spec-000
    (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
    registry (mapping to a successor). Flag dangling references. `informed_by` entries
    resolve the same way (edge taxonomy: **`decision-0047` is the trellis-side rule and is
-   sufficient here**; the grove relations companion that once carried the fuller taxonomy has
-   been unreachable since `decision-0076` retired the plugin — do not wait on it) — but **first**,
+   sufficient here**; the fuller taxonomy is grove's relations charter,
+   `https://github.com/kodhama/grove/blob/main/charters/relations.md` — read it from the repo, not
+   from a plugin, which `decision-0076` retired) — but **first**,
    before stripping and resolving, flag a `@version` pin on any `informed_by` entry as a
    **category error** (`informed_by` is non-drift; a version pin has nothing to compare
    against and would otherwise be silently swallowed by the strip-and-resolve step).
 5. **Directional flow (load-bearing):** no `gated`/`approved` (or legacy `ratified`)
    artifact `depends_on` a `draft` artifact. `informed_by` is **non-flow**
-   (`decision-0047`; the grove relations companion is unreachable since `decision-0076`): a draft `informed_by` referent does NOT trip this
+   (`decision-0047`; fuller taxonomy in grove's relations charter, linked in check 4): a draft `informed_by` referent does NOT trip this
    check. Instead, flag an `informed_by → draft` edge as a **flag** for the
    `conformance-reviewer`'s honesty judgment (a coupling relabeled as `informed_by` to
    dodge this very gate is non-conformant, `decision-0047`) — never a silent structural
