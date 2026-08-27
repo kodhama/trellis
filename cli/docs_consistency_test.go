@@ -313,7 +313,13 @@ func runnable(cmds []string) []string {
 
 func parseRenderedPanels(t *testing.T, page string) map[string][]string {
 	t.Helper()
-	re := regexp.MustCompile(`(?s)<div class="panel[^"]*" data-panel="([^"]+)">(.*?)</div>\s*(?:<div class="panel|</div>)`)
+	// `[^>]*` after data-panel, not `>`: the panels became real tabpanels in the
+	// TRL-11 a11y pass and now carry role/id/aria-labelledby/tabindex after that
+	// attribute. Pinning the `>` would have made this test fail closed on any
+	// future attribute — which is the loud failure this file wants, but the fix
+	// is to widen the match, not to drop the check. Everything it actually
+	// asserts on (the data-panel key, the <code> bodies) is unchanged.
+	re := regexp.MustCompile(`(?s)<div class="panel[^"]*" data-panel="([^"]+)"[^>]*>(.*?)</div>\s*(?:<div class="panel|</div>)`)
 	ms := re.FindAllStringSubmatch(page, -1)
 	if len(ms) == 0 {
 		t.Fatal("no terminal panels found in docs/index.html — this test's premise has drifted")

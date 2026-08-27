@@ -128,10 +128,10 @@ Naming a host a visitor cannot reach is worse than not naming it.)*
 
 Four-step flow (`01` – `04`):
 
-1. **01 · install — Add the plugin.** From the kodhama family
+1. **01 · install — You add the plugin.** From the kodhama family
    marketplace — or, for a harness the plugin does not cover, copy the
    pre-rendered bundle by hand.
-2. **02 · posture — A posture you can change.** Every rule active,
+2. **02 · posture — You set the posture.** Every rule active,
    adaptive posture — the shipped default, seeded as explicit rows in
    your `rules.toml`. No file yet? Copy a complete preset —
    `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive.
@@ -143,7 +143,7 @@ Four-step flow (`01` – `04`):
    session hook injects them; on the curl path they are rendered into
    `.claude/rules/`. Never both — the hook stands down when it finds the
    rendered file, and says so if it ever sees both.
-4. **04 · verify — You approve.** The curl path checks every byte against
+4. **04 · verify — You approve the merge.** The curl path checks every byte against
    a shipped checksum manifest before it writes one, and never
    overwrites rows you already have — `.trellis/rules.toml` is seeded
    only when it is absent. Trellis proposes; the merge is yours.
@@ -171,7 +171,7 @@ longer true.)*
 ## Section: The core (alt background)
 
 **Eyebrow:** The core
-**Heading:** A small set of invariants, expressed at your strength.
+**Heading:** A small set of invariants, held as firmly as you choose.
 **Lede:** Not a process — the layer above it. Fifteen load-bearing
 invariants (directional flow, ratifiable artifacts, gate-at-handover,
 independent judgment, transparency…), each set along two dials: how
@@ -218,13 +218,27 @@ completeness)
   ("Free & open"), `https://github.com/kodhama/trellis` ("GitHub"), plus
   the theme-toggle button
 
-## Behavior (not copy, but load-bearing — carried over unchanged)
+## Behavior (not copy, but load-bearing)
 
-- Theme toggle: flips `data-theme` on `<html>`, persisted to
-  `localStorage` under the key `trellis-theme` (already product-namespaced
-  per `patterns.md`'s own note on that pattern).
-- Terminal tabs: switches the active install-method panel; copy button
-  copies the active panel's commands to the clipboard.
+Two of the three below changed in the TRL-11 accessibility pass; they are
+no longer "carried over unchanged" from the pre-retrofit page, and the
+`patterns.md` extracts upstream still describe the older shapes.
+
+- Theme toggle: cycles three states — `auto` → `light` → `dark` → `auto`.
+  `light`/`dark` set `data-theme` on `<html>` and pin it to `localStorage`
+  under the key `trellis-theme` (already product-namespaced per
+  `patterns.md`'s own note on that pattern); `auto` **removes** both, so
+  the page follows `prefers-color-scheme` again. The visible label states
+  the current mode (`theme: auto`) and is the button's accessible name —
+  there is deliberately no `aria-label`, and deliberately no
+  `aria-pressed`, which cannot express three states.
+- Terminal tabs: switches the active install-method panel. The set is one
+  Tab stop with a roving `tabindex`; Left/Right/Home/End move within it.
+  Panels are real `tabpanel`s, labelled by their tab, and focusable
+  because they scroll horizontally. The copy button copies the active
+  panel's commands, falls back to a hidden-textarea `execCommand` copy
+  where `navigator.clipboard` is unavailable (any non-secure origin), and
+  reports both outcomes in its label and through a polite live region.
 - Climbing-plant hero animation: decorative, `prefers-reduced-motion`
   aware — DS `patterns.md`'s "Climbing-plant animation" pattern, used
   as-is (this page is that pattern's origin).
@@ -232,5 +246,14 @@ completeness)
 ## Out of scope for this retrofit
 
 `docs/invariants.html` is a separate page (the invariants detail page
-linked from this one) and is untouched by this lane — only
-`docs/index.html` is a DS derivative as of this change.
+linked from this one). Only `docs/index.html` is a DS derivative, and that
+is still true — but "untouched", which this section used to say, is not.
+
+The TRL-11 accessibility pass changed it substantially: the two pages share
+the dark token block byte-for-byte, so the surface ramp had to move in both
+at once, and the theme toggle had to stay on the same three-state cycle
+because both read the same `trellis-theme` key. It also picked up a
+responsive header breakpoint, real headings for the fifteen invariant
+titles, and the removal of a dead CSS block. None of that makes it a DS
+derivative; it does mean the two pages now have shared state that has to be
+edited together, which is a stronger coupling than "out of scope" implies.

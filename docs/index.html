@@ -31,7 +31,9 @@
   :root {
     --bg: #f5f7f4; --surface: #ffffff; --text: #16201b; --muted: #5a6b62;
     --accent: #1f9d68; --accent-ink: #0c5d3c; --line: #e0e7e1;
+    --without-ink: #a23f2c;
     --code-bg: #0e1712; --code-text: #d7e6dd; --code-accent: #56d69b;
+    --code-line: #ffffff2b; --code-dim: #ffffff8c;
     --maxw: 1080px; --gutter: 24px; --space-section: 56px; --card-pad: 24px; --grid-gap: 20px;
     --radius-chip: 7px; --radius-button: 10px; --radius-panel: 12px; --radius-card: 14px; --radius-pill: 999px;
     --shadow-lift: 0 18px 40px -24px rgba(0, 0, 0, .44);
@@ -43,22 +45,49 @@
     --weight-heading: 650; --weight-strong: 600; --tracking-heading: -0.02em; --tracking-eyebrow: 0.18em;
     --leading-heading: 1.12; --leading-body: 1.6;
   }
+  /* ─── Dark surface ramp ──────────────────────────────────────────────
+   * The old ramp had no surface separation to speak of: --surface sat
+   * 3.6 L* above --bg and --code-bg sat 1.2 L* BELOW it, so the cards and
+   * the terminal — the page's most important component — were discernible
+   * only by their hairline border. Contrast RATIO is the wrong instrument
+   * this close to black (the +0.05 flare constant compresses everything
+   * down there: --code-bg could not be pushed past 1.13:1 against the old
+   * --bg even at pure #000000). Perceptual lightness is the honest metric,
+   * so the ramp is set in L*: the page lifts, the cards lift further, and
+   * the terminal drops to a near-black well.
+   *
+   *              L*     ΔL* vs --bg        for reference: GitHub dark's
+   *   --code-bg  2.4      -8.2             canvas→surface step is 4.6 L*,
+   *   --bg      10.6        —              Tailwind slate-950→900 is 6.1.
+   *   --surface 17.1      +6.5
+   *   --line    27.2     +16.6  (+10.1 vs --surface)
+   *
+   * Every foreground stays clear of AA on the new fills. The tightest is NOT
+   * --muted on --surface (5.51:1) but --muted on the compare-pair case chip,
+   * color-mix(--accent 6%, --surface), at 4.91:1 — measured on the rendered
+   * page, and the floor for the whole ramp. --code-line/--code-dim are
+   * the terminal's own hairline and comment tones, tokenized here because
+   * both are used on three separate blocks and both were failing.
+   * ─────────────────────────────────────────────────────────────────── */
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0d1411; --surface: #131c18; --text: #e2eae5; --muted: #91a59b;
-      --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #223029;
-      --code-bg: #0a110d; --code-text: #d7e6dd; --code-accent: #56d69b;
+      --bg: #141f1a; --surface: #1f2d27; --text: #e2eae5; --muted: #91a59b;
+      --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #33443c;
+      --without-ink: #e79b86;
+      --code-bg: #050a07; --code-text: #d7e6dd; --code-accent: #56d69b;
     }
   }
   :root[data-theme="light"] {
     --bg: #f5f7f4; --surface: #ffffff; --text: #16201b; --muted: #5a6b62;
     --accent: #1f9d68; --accent-ink: #0c5d3c; --line: #e0e7e1;
+    --without-ink: #a23f2c;
     --code-bg: #0e1712; --code-text: #d7e6dd; --code-accent: #56d69b;
   }
   :root[data-theme="dark"] {
-    --bg: #0d1411; --surface: #131c18; --text: #e2eae5; --muted: #91a59b;
-    --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #223029;
-    --code-bg: #0a110d; --code-text: #d7e6dd; --code-accent: #56d69b;
+    --bg: #141f1a; --surface: #1f2d27; --text: #e2eae5; --muted: #91a59b;
+    --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #33443c;
+    --without-ink: #e79b86;
+    --code-bg: #050a07; --code-text: #d7e6dd; --code-accent: #56d69b;
   }
 
   /* ─── Seasonal accents ───────────────────────────────────────────────
@@ -70,11 +99,17 @@
    * --accent-ink holds the base dark ink (#9fe9c4) — seasons ship no dark ink.
    * Season is picked by date at generation time, or by one line of runtime
    * JS. Staleness is a finding, not a break — same as the DS versioning rule.
+   *
+   * A season's --accent is a BUTTON FILL (.btn-primary paints #06110b on it),
+   * so every candidate has to clear 4.5:1 against that ink before it ships.
+   * Autumn was drawn at #bf4f30 and measured 4.00:1 — under AA, and latent
+   * only because nothing sets data-season today. Lightened to #cb6243 (4.91:1).
+   * The other three passed as drawn: spring 6.98, summer 6.23, winter 5.56.
    * ─────────────────────────────────────────────────────────────────────── */
 
   :root[data-season="spring"] { --accent: #35b077; --accent-ink: #156b45; }
   :root[data-season="summer"] { --accent: #ba8b26; --accent-ink: #7d5a14; }
-  :root[data-season="autumn"] { --accent: #bf4f30; --accent-ink: #86301c; }
+  :root[data-season="autumn"] { --accent: #cb6243; --accent-ink: #86301c; }
   :root[data-season="winter"] { --accent: #4f93a8; --accent-ink: #245b6e; }
 
   @media (prefers-color-scheme: dark) {
@@ -87,7 +122,7 @@
   /* explicit theme pins beat OS preference */
   :root[data-theme="light"][data-season="spring"] { --accent: #35b077; --accent-ink: #156b45; }
   :root[data-theme="light"][data-season="summer"] { --accent: #ba8b26; --accent-ink: #7d5a14; }
-  :root[data-theme="light"][data-season="autumn"] { --accent: #bf4f30; --accent-ink: #86301c; }
+  :root[data-theme="light"][data-season="autumn"] { --accent: #cb6243; --accent-ink: #86301c; }
   :root[data-theme="light"][data-season="winter"] { --accent: #4f93a8; --accent-ink: #245b6e; }
   :root[data-theme="dark"][data-season="spring"] { --accent: #62dfa3; --accent-ink: #9fe9c4; }
   :root[data-theme="dark"][data-season="summer"] { --accent: #e6c260; --accent-ink: #9fe9c4; }
@@ -132,7 +167,10 @@
      product concrete, so it is the last thing that should vanish on a phone. */
   @media (max-width: 640px) {
     .bar .wrap { height: auto; min-height: 56px; padding-top: 8px; padding-bottom: 8px; gap: 12px; }
-    .bar nav { gap: 14px; font-size: 14px; }
+    /* The toggle's label grew from "theme" to "theme: auto" when it gained its
+       third state, which is enough to push the row past 375px. It wraps to a
+       second line instead of being sliced — the bar is height:auto here. */
+    .bar nav { gap: 14px; font-size: 14px; flex-wrap: wrap; justify-content: flex-end; }
     .bar nav a[href^="#"] { display: none; }
   }
   .toggle {
@@ -170,36 +208,57 @@
   /* --- install command --- */
   .terminal {
     margin-top: 34px; max-width: 760px; background: var(--code-bg); color: var(--code-text);
-    border-radius: 12px; border: 1px solid #ffffff10; overflow: hidden;
+    border-radius: 12px; border: 1px solid var(--code-line); overflow: hidden;
     box-shadow: 0 18px 40px -24px #00000070;
   }
-  .terminal .tt { display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px; border-bottom: 1px solid #ffffff12; }
+  .terminal .tt { display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px; border-bottom: 1px solid var(--code-line); }
   .terminal .dot { width: 11px; height: 11px; border-radius: 50%; background: #ffffff20; }
   .tabs { display: flex; gap: 4px; margin-left: 10px; }
   .tab {
     font-family: var(--mono); font-size: 12px; cursor: pointer;
-    background: transparent; color: #ffffff66; border: 0; border-radius: 6px; padding: 5px 10px;
+    background: transparent; color: #ffffff80; border: 0; border-radius: 6px; padding: 5px 10px;
   }
   .tab:hover { color: #cfe9db; }
-  .tab.active { background: #ffffff14; color: #d7e6dd; }
+  /* #ffffff16, was #ffffff14. White-alpha fills lose punch as the base darkens
+     — L* is compressive near black — so dropping --code-bg cost this pill and
+     .copy below ~1 L* of the weight they were drawn with. Realpha'd to land
+     back on it. Both stay under 1.4.11's 3:1 as they always have; tab state is
+     carried by aria-selected and a 35 L* label step, not by the fill. */
+  .tab.active { background: #ffffff16; color: #d7e6dd; }
   /* The tallest panel sets the height. Without this, switching tabs moved
      everything below it by up to 107px and pushed the hero CTA off screen. */
-  .terminal .panel { display: none; padding: 9px 0; min-height: 125px; }
-  .terminal .panel.active { display: block; }
-  .terminal .cmd {
-    padding: 7px 16px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
+  /* The panel — not the row — owns the horizontal scroll. When each .cmd was
+     its own scroller, dragging line 1 left the other lines behind and the $
+     prompts fell out of column, so the "session" stopped reading as one thing.
+     Rows are max-content so they all share the panel's scroll width; the panel
+     is a focusable tabpanel so the overflow is reachable by keyboard at all
+     (it was not — WCAG 2.1.1, on real content rather than decoration). */
+  .terminal .panel {
+    display: none; padding: 9px 0; min-height: 125px; overflow-x: auto;
     scrollbar-width: thin; scrollbar-color: #ffffff22 transparent;
   }
-  .terminal .cmd::-webkit-scrollbar { height: 6px; }
-  .terminal .cmd::-webkit-scrollbar-thumb { background: #ffffff22; border-radius: 3px; }
+  .terminal .panel.active { display: block; }
+  .terminal .panel::-webkit-scrollbar { height: 6px; }
+  .terminal .panel::-webkit-scrollbar-thumb { background: #ffffff22; border-radius: 3px; }
+  .terminal .panel:focus-visible { outline-offset: -2px; }
+  .terminal .cmd {
+    padding: 7px 16px; font-family: var(--mono); font-size: 13.5px;
+    width: max-content; min-width: 100%;
+  }
   .terminal .cmd code { white-space: pre; }
   .terminal .cmd .prompt { color: var(--code-accent); user-select: none; }
   .copy {
     margin-left: auto; flex: none; font-family: var(--mono); font-size: 12px; cursor: pointer;
-    background: #ffffff12; color: #cfe9db; border: 0; border-radius: 7px; padding: 6px 11px;
+    background: #ffffff14; color: #cfe9db; border: 0; border-radius: 7px; padding: 6px 11px;
   }
   .copy:hover { background: #ffffff22; }
-  .terminal .cmt { color: #ffffff8c; } /* was #ffffff40 — 2.25:1, under AA */
+  .terminal .cmt { color: var(--code-dim); } /* was #ffffff40 — 2.25:1, under AA */
+  /* Visually hidden, still announced. The copy button used to report success
+     by rewriting its own label, which assistive tech has no reason to speak. */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
   .tnote { margin-top: 14px; color: var(--muted); font-size: 0.92rem; max-width: 640px; }
   .tnote code { font-family: var(--mono); font-size: 0.85em; background: color-mix(in srgb, var(--accent) 13%, transparent); padding: 1px 6px; border-radius: 5px; color: var(--accent-ink); }
 
@@ -221,10 +280,14 @@
 
   /* --- flow --- */
   .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 42px; }
+  /* Two-up was the whole responsive story here, and it bottomed out: at 375px
+     the 1fr 1fr grid gives ~163px columns and the prose wraps to 2-4 words a
+     line. It goes one-up below 560px like every other grid on the page. */
   @media (max-width: 820px) { .flow { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .flow { grid-template-columns: 1fr; } }
   .step { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
   .step .k { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-  .step h4 { margin: 8px 0 6px; font-size: 1.02rem; letter-spacing: -0.01em; }
+  .step h3 { margin: 8px 0 6px; font-size: 1.02rem; letter-spacing: -0.01em; }
   .step p { margin: 0; font-size: 0.92rem; color: var(--muted); }
 
   /* --- with / without --- */
@@ -232,10 +295,14 @@
   .compare-pairs .stack { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .compare-pairs .case { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); padding: 8px 14px; }
   .compare-pairs .s { padding: 13px 14px; font-size: .95rem; display: flex; gap: 12px; }
-  .compare-pairs .s.wo { background: color-mix(in srgb, #b4432f 8%, var(--surface)); }
+  .compare-pairs .s.wo { background: color-mix(in srgb, var(--without-ink) 8%, var(--surface)); }
   .compare-pairs .s.wi { background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-top: 1px solid var(--line); }
   .compare-pairs .lbl { flex: none; width: 62px; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
-  .compare-pairs .s.wo .lbl { color: #b4432f; }
+  /* #b4432f was one hardcoded red for both themes: 4.95:1 in light, 2.97:1 in
+     dark — the only colour on the page with no dark variant. It is now the
+     --without-ink token, which docs/invariants.html already defined for this
+     exact pair UI; both pages take the same two values rather than a third red. */
+  .compare-pairs .s.wo .lbl { color: var(--without-ink); }
   .compare-pairs .s.wi .lbl { color: var(--accent-ink); }
   footer { padding: 44px 0 60px; }
   footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; color: var(--muted); font-size: 14px; }
@@ -260,14 +327,32 @@
 
   .footprint { margin-top: 40px; }
   .fp-label { color: var(--muted); font-size: 0.95rem; margin: 0 0 12px; }
+  /* The tree is ~718px of mono against .wrap's min(1080,vw) − 48, so it
+     overflowed below ~766px; at 375px half of every line was off-screen and
+     every comment was cut mid-word. It always scrolled — nothing SAID so, since
+     the overlay scrollbar stays hidden until you drag, so it read as broken
+     rather than scrollable.
+
+     Dressing the scroll up was the first fix here and it was the wrong one:
+     measured, a styled ::-webkit-scrollbar still claimed 0px of layout, so the
+     affordance could not be shown to exist; and even a perfect one would leave
+     a phone reader dragging back and forth once per line to read a list.
+     `pre-wrap` needs no breakpoint and no affordance — lines that fit are laid
+     out exactly as `pre` laid them out (identical at 768px and up, where the
+     block has never overflowed), and lines that do not fit wrap instead of
+     vanishing. Leading indentation survives, so it still reads as a tree, and
+     comments are the only lines long enough to wrap. overflow-x stays as a
+     backstop for a future unbreakable token; nothing overflows today. */
   .fp-code {
-    margin: 0; background: var(--code-bg); color: var(--code-text); border: 1px solid #ffffff10;
+    margin: 0; background: var(--code-bg); color: var(--code-text); border: 1px solid var(--code-line);
     border-radius: 12px; padding: 20px; overflow-x: auto; font-family: var(--mono);
     font-size: 13.5px; line-height: 1.75;
+    white-space: pre-wrap; overflow-wrap: break-word;
   }
+  @media (max-width: 560px) { .fp-code { font-size: 12px; padding: 16px 14px; } }
   .fp-code .fp-c { color: #82bfa6; }
   .fp-code .fp-a { color: var(--code-accent); }
-  .fp-code .fp-m { color: #ffffff8c; } /* was #ffffff44 — 2.38:1, under AA */
+  .fp-code .fp-m { color: var(--code-dim); } /* was #ffffff44 — 2.38:1, under AA */
 
   @media (prefers-reduced-motion: no-preference) {
     .btn, .toggle, .copy, .tab { transition: all 0.15s ease; }
@@ -279,8 +364,12 @@
   <header class="bar">
     <div class="wrap">
       <div class="brand">
+        <!-- No <title> here on purpose: it used to carry "trellis mark — woven",
+             which was inert inside aria-hidden="true" — the element is removed
+             from the a11y tree, title and all. The mark is decorative and the
+             wordmark beside it already names the brand, so aria-hidden is the
+             right call and the title was the thing to drop. -->
         <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="color:var(--accent)">
-          <title>trellis mark — woven</title>
           <path d="M4 21V10.2M4 7.8V5M12 21V16.2M12 13.8V3M20 21V10.2M20 7.8V5" stroke="currentColor" stroke-width="1.7" stroke-linecap="butt"/>
           <path d="M4 21L4 21M12 21L12 21M20 21L20 21M4 5L4 5M12 3L12 3M20 5L20 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
           <path d="M2 9H10.8M13.2 9H22M2 15H2.8M5.2 15H18.8M21.2 15H22" style="stroke:var(--accent-soft, color-mix(in srgb, currentColor 58%, #fff))" stroke-width="1.7" stroke-linecap="butt"/>
@@ -293,10 +382,25 @@
         <a href="invariants.html">Invariants</a>
         <a href="#open">Free &amp; open</a>
         <a href="https://github.com/kodhama/trellis">GitHub</a>
-        <button class="toggle" id="themeToggle" aria-label="Toggle color theme">theme</button>
+        <!-- Three states, not two. The old control had aria-label="Toggle color
+             theme" over a visible label that syncToggle() rewrote to "dark" or
+             "light" — so the accessible name never contained the visible text
+             (WCAG 2.5.3, Label in Name), and the visible word read as an action
+             when it was reporting a state. It also wrote localStorage on first
+             click and never cleared it, making "follow my system" a one-way door.
+             Now: the label is a state and says so ("theme: auto"), the accessible
+             name IS that visible text — no aria-label to diverge from it — and
+             "auto" clears the pin. No aria-pressed: it expresses two states, and
+             this control has three; aria-pressed="false" on "auto" would be a
+             lie. The title carries the affordance instead. -->
+        <button class="toggle" id="themeToggle" title="Change the color theme — follows your system until you pick one">theme: auto</button>
       </nav>
     </div>
   </header>
+  <!-- One shared polite live region. The copy button used to confirm by
+       rewriting its own label, which assistive tech has no reason to speak. -->
+  <p class="sr-only" id="srStatus" role="status" aria-live="polite"></p>
+  <main>
 
   <div class="hero">
     <div class="lattice" aria-hidden="true"></div>
@@ -309,25 +413,38 @@
         invariants — so a process glitch never has to happen twice.
       </p>
 
-      <div class="terminal" role="group" aria-label="Install, then set up Trellis">
+      <!-- The box had two framings of itself: this group said "Install, then set
+           up Trellis" while the tablist inside said "Install method". The "then"
+           read as a sequence, but the three tabs are alternatives — you pick one.
+           One framing now, and the tabs carry the choice. -->
+      <div class="terminal" role="group" aria-label="Install Trellis">
         <div class="tt">
-          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <i class="dot" aria-hidden="true"></i><i class="dot" aria-hidden="true"></i><i class="dot" aria-hidden="true"></i>
+          <!-- role/aria-selected were already right; the wiring was not. Tabs had
+               no aria-controls and panels no role or id, so a screen reader heard
+               "tab, 1 of 3" and had no way to reach what it controlled. All three
+               tabs were also separate Tab stops (focus positions 6, 7, 8) with no
+               arrow-key handling — the APG asks for the reverse: one stop for the
+               set, arrows to move within it. -->
           <div class="tabs" role="tablist" aria-label="Install method">
-            <button class="tab active" role="tab" aria-selected="true" data-tab="cc">Claude Code</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="manual">manual copy</button>
+            <button class="tab active" role="tab" id="tab-cc" aria-selected="true" aria-controls="panel-cc" tabindex="0" data-tab="cc">Claude Code</button>
+            <button class="tab" role="tab" id="tab-curl" aria-selected="false" aria-controls="panel-curl" tabindex="-1" data-tab="curl">curl</button>
+            <button class="tab" role="tab" id="tab-manual" aria-selected="false" aria-controls="panel-manual" tabindex="-1" data-tab="manual">manual copy</button>
           </div>
           <button class="copy" id="copyBtn" aria-label="Copy commands">copy</button>
         </div>
-        <div class="panel active" data-panel="cc">
+        <!-- tabindex="0" is load-bearing, not decoration: these panels scroll
+             horizontally, and a scrollable region that cannot take focus cannot
+             be scrolled without a pointer at all (WCAG 2.1.1). -->
+        <div class="panel active" data-panel="cc" role="tabpanel" id="panel-cc" aria-labelledby="tab-cc" tabindex="0">
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin marketplace add kodhama/kodhama</code></div>
           <div class="cmd"><code><span class="prompt">&gt; </span>/plugin install trellis@kodhama</code></div>
         </div>
-        <div class="panel" data-panel="curl">
+        <div class="panel" data-panel="curl" role="tabpanel" id="panel-curl" aria-labelledby="tab-curl" tabindex="0">
           <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
           <div class="cmd"><code><span class="cmt"># that's it — all 15 rules active, adaptive posture</span></code></div>
         </div>
-        <div class="panel" data-panel="manual">
+        <div class="panel" data-panel="manual" role="tabpanel" id="panel-manual" aria-labelledby="tab-manual" tabindex="0">
           <div class="cmd"><code><span class="prompt">$ </span>git clone --depth 1 https://github.com/kodhama/trellis</code></div>
           <div class="cmd"><code><span class="cmt"># then follow the copy recipe in the README — this path is</span></code></div>
           <div class="cmd"><code><span class="cmt"># for harnesses the plugin does not cover.</span></code></div>
@@ -430,15 +547,21 @@
         <h2>One command. It reads your project, you choose the fit.</h2>
         <p>Trellis rides your existing harness — Claude Code today. The rules land as plain instructions your agents read, and one small config file you own says how strictly they apply. No runtime, no lock-in.</p>
       </div>
+      <!-- The four titles were not parallel: 01/02 were imperatives aimed at the
+           reader, 03 a statement about the system, 04 a statement about the
+           reader. All four are subject-verb declaratives now. The subject still
+           changes at 03 — that step really is the one where nothing is asked of
+           you — but the grammar no longer changes with it. The h4s are h3s: this
+           section ran h2 → h4 with no h3 between, a level skip. -->
       <div class="flow">
-        <div class="step"><p class="k">01 · install</p><h4>Add the plugin</h4><p>From the kodhama family marketplace — or, for a harness the plugin does not cover, copy the pre-rendered bundle by hand.</p></div>
-        <div class="step"><p class="k">02 · posture</p><h4>A posture you can change</h4><p>Every rule active, adaptive posture — the shipped default, seeded as explicit rows in your <code>rules.toml</code>. No file yet? Copy a complete preset — <code>reference/rules-a.toml</code> for firm, <code>rules-b.toml</code> for adaptive. Already have one? Edit <code>strictness</code> in place; copying a preset over it re-enables every row you turned off. Unless it is the <code>governed = false</code> opt-out — that one is a replace, not an edit. Rows govern at read time, and the set has to stay whole.</p></div>
-        <div class="step"><p class="k">03 · deliver</p><h4>The rules arrive on their own</h4><p>On the plugin path a session hook injects them; on the curl path they are rendered into <code>.claude/rules/</code>. Never both — the hook stands down when it finds the rendered file, and says so if it ever sees both.</p></div>
-        <div class="step"><p class="k">04 · verify</p><h4>You approve</h4><p>The curl path checks every byte against a shipped checksum manifest before it writes one, and never overwrites rows you already have — <code>.trellis/rules.toml</code> is seeded only when it is absent. Trellis proposes; the merge is yours.</p></div>
+        <div class="step"><p class="k">01 · install</p><h3>You add the plugin</h3><p>From the kodhama family marketplace — or, for a harness the plugin does not cover, copy the pre-rendered bundle by hand.</p></div>
+        <div class="step"><p class="k">02 · posture</p><h3>You set the posture</h3><p>Every rule active, adaptive posture — the shipped default, seeded as explicit rows in your <code>rules.toml</code>. No file yet? Copy a complete preset — <code>reference/rules-a.toml</code> for firm, <code>rules-b.toml</code> for adaptive. Already have one? Edit <code>strictness</code> in place; copying a preset over it re-enables every row you turned off. Unless it is the <code>governed = false</code> opt-out — that one is a replace, not an edit. Rows govern at read time, and the set has to stay whole.</p></div>
+        <div class="step"><p class="k">03 · deliver</p><h3>The rules arrive on their own</h3><p>On the plugin path a session hook injects them; on the curl path they are rendered into <code>.claude/rules/</code>. Never both — the hook stands down when it finds the rendered file, and says so if it ever sees both.</p></div>
+        <div class="step"><p class="k">04 · verify</p><h3>You approve the merge</h3><p>The curl path checks every byte against a shipped checksum manifest before it writes one, and never overwrites rows you already have — <code>.trellis/rules.toml</code> is seeded only when it is absent. Trellis proposes; the merge is yours.</p></div>
       </div>
 
       <div class="footprint">
-        <p class="fp-label">What it leaves in your repo — small, yours to edit where it says so, and yours to remove:</p>
+        <p class="fp-label" id="fp-label">What it leaves in your repo — small, yours to edit where it says so, and yours to remove:</p>
         <pre class="fp-code"><span class="fp-c">.trellis/</span>
   <span class="fp-c">rules.toml</span>       <span class="fp-m"># which rules are active, how strictly — yours to edit.</span>
                    <span class="fp-m">#   Seeded by the installer, all 15 on (decision-0070)</span>
@@ -456,7 +579,7 @@
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">The core</p>
-        <h2>A small set of invariants, expressed at your strength.</h2>
+        <h2>A small set of invariants, held as firmly as you choose.</h2>
         <p>Not a process — the layer above it. Fifteen load-bearing invariants (directional flow, ratifiable artifacts, gate-at-handover, independent judgment, transparency…), each set along two dials: how strictly it applies, and who gates it. Everything else, Trellis respects.</p>
       </div>
       <div class="grid cols-2">
@@ -485,6 +608,7 @@
       </div>
     </div>
   </section>
+  </main>
 
   <footer>
     <div class="wrap">
@@ -496,21 +620,43 @@
 <script>
   (function () {
     var root = document.documentElement;
+    var status = document.getElementById("srStatus");
+    function announce(msg) { if (status) { status.textContent = ""; status.textContent = msg; } }
+
+    /* ── theme: auto → light → dark → auto ───────────────────────────────
+       "auto" is a real state, not the absence of one: it REMOVES the pin so
+       the page follows prefers-color-scheme again. The old control could
+       only write the pin, never clear it, so one click was a one-way door
+       out of "follow my system" for the life of the origin's localStorage. */
+    var THEMES = ["auto", "light", "dark"];
     var toggle = document.getElementById("themeToggle");
-    var saved = null;
-    try { saved = localStorage.getItem("trellis-theme"); } catch (e) {}
-    if (saved) root.setAttribute("data-theme", saved);
-    function themeNow() {
-      return root.getAttribute("data-theme") ||
-        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var pinned = null;
+    try { pinned = localStorage.getItem("trellis-theme"); } catch (e) {}
+    if (THEMES.indexOf(pinned) < 1) pinned = "auto";   // absent, "auto", or junk
+    // The current mode lives here, not in the button's text. Parsing it back out
+    // of the label would couple behaviour to copy — retitle the button and the
+    // cycle silently breaks.
+    var mode = pinned;
+    function applyTheme(m, speak) {
+      mode = m;
+      if (mode === "auto") root.removeAttribute("data-theme");
+      else root.setAttribute("data-theme", mode);
+      try {
+        if (mode === "auto") localStorage.removeItem("trellis-theme");
+        else localStorage.setItem("trellis-theme", mode);
+      } catch (e) {}
+      // The visible text IS the accessible name — there is deliberately no
+      // aria-label to drift out of sync with it (WCAG 2.5.3).
+      toggle.textContent = "theme: " + mode;
+      if (speak) {
+        announce(mode === "auto"
+          ? "Color theme now follows your system setting."
+          : "Color theme set to " + mode + ".");
+      }
     }
-    function syncToggle() { toggle.textContent = themeNow(); }
-    syncToggle();
+    applyTheme(pinned, false);
     toggle.addEventListener("click", function () {
-      var next = themeNow() === "dark" ? "light" : "dark";
-      root.setAttribute("data-theme", next);
-      try { localStorage.setItem("trellis-theme", next); } catch (e) {}
-      syncToggle();
+      applyTheme(THEMES[(THEMES.indexOf(mode) + 1) % THEMES.length], true);
     });
 
     var commands = {
@@ -519,27 +665,78 @@
       manual: "git clone --depth 1 https://github.com/kodhama/trellis"
     };
     var activeTab = "cc";
-    var tabs = document.querySelectorAll(".tab");
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
     var panels = document.querySelectorAll(".terminal .panel");
-    tabs.forEach(function (t) {
-      t.addEventListener("click", function () {
-        activeTab = t.getAttribute("data-tab");
-        tabs.forEach(function (x) {
-          var on = x === t;
-          x.classList.toggle("active", on);
-          x.setAttribute("aria-selected", on ? "true" : "false");
-        });
-        panels.forEach(function (p) {
-          p.classList.toggle("active", p.getAttribute("data-panel") === activeTab);
-        });
+
+    /* Roving tabindex: the tab SET is one stop, arrows move within it. Before
+       this, each of the three tabs was its own stop and Left/Right did nothing. */
+    function select(tab, moveFocus) {
+      activeTab = tab.getAttribute("data-tab");
+      tabs.forEach(function (x) {
+        var on = x === tab;
+        x.classList.toggle("active", on);
+        x.setAttribute("aria-selected", on ? "true" : "false");
+        x.setAttribute("tabindex", on ? "0" : "-1");
+      });
+      panels.forEach(function (p) {
+        p.classList.toggle("active", p.getAttribute("data-panel") === activeTab);
+      });
+      if (moveFocus) tab.focus();
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener("click", function () { select(t, false); });
+      t.addEventListener("keydown", function (e) {
+        var to = e.key === "ArrowRight" ? (i + 1) % tabs.length
+               : e.key === "ArrowLeft"  ? (i - 1 + tabs.length) % tabs.length
+               : e.key === "Home"       ? 0
+               : e.key === "End"        ? tabs.length - 1
+               : -1;
+        if (to < 0) return;
+        e.preventDefault();
+        select(tabs[to], true);
       });
     });
+
     var btn = document.getElementById("copyBtn");
+    /* Fallback first, then the modern path. navigator.clipboard is undefined on
+       any non-secure origin — open this file over file:// or plain http and the
+       old handler threw on the first property access, so the button did nothing
+       at all and said nothing about it. Failure is now visible in the label AND
+       spoken, rather than swallowed. */
+    function legacyCopy(text) {
+      // ta.select() takes focus, and removing the focused node drops
+      // activeElement to <body> — which would bounce a keyboard user to the top
+      // of the tab order as their reward for pressing the copy button. Put them
+      // back where they were.
+      var prev = document.activeElement;
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:absolute;left:-9999px;top:0";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (prev && prev.focus) prev.focus();
+      return ok;
+    }
+    function settle(ok) {
+      btn.textContent = ok ? "copied ✓" : "copy failed";
+      announce(ok ? "Commands copied to the clipboard."
+                  : "Copy failed — select the commands and copy them manually.");
+      setTimeout(function () { btn.textContent = "copy"; }, 1600);
+    }
     btn.addEventListener("click", function () {
-      navigator.clipboard.writeText(commands[activeTab]).then(function () {
-        btn.textContent = "copied ✓";
-        setTimeout(function () { btn.textContent = "copy"; }, 1600);
-      });
+      var text = commands[activeTab];
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { settle(true); },
+          function () { settle(legacyCopy(text)); }
+        );
+      } else {
+        settle(legacyCopy(text));
+      }
     });
   })();
 </script>

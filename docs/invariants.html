@@ -9,35 +9,48 @@
   :root {
     --bg: #f5f7f4; --surface: #ffffff; --text: #16201b; --muted: #5a6b62;
     --accent: #1f9d68; --accent-ink: #0c5d3c; --line: #e0e7e1;
-    --with-bg: #eaf6f0; --with-line: #b7e0cc; --with-ink: #0c5d3c;
-    --without-bg: #f7ece9; --without-line: #e6c3ba; --without-ink: #a23f2c;
+    --with-bg: #eaf6f0; --with-ink: #0c5d3c;
+    --without-bg: #f7ece9; --without-ink: #a23f2c;
     --chip: #eef2ee; --chip-ink: #55665d;
     --maxw: 1000px;
     --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   }
+  /* Dark surface ramp — kept byte-identical to docs/index.html, which carries
+     the reasoning in full. Short version: --surface sat 3.6 L* above --bg, so
+     the cards barely read as cards. The page lifts, the cards lift further,
+     and the pair fills come with them. Those sit inside a .card, so --surface
+     is the backdrop that matters, and against the OLD --surface the old
+     --without-bg was L* 9.28 against L* 9.28 — a dead-flat zero, not merely
+     close. The pair now straddles the card it sits in: "without" −4.9 L*,
+     "with" +4.6 L*. (An earlier pass lifted --with-bg only to #163023, which
+     put it +0.4 L* — flush with the card, and asymmetric against a "without"
+     already 4.9 below it. Caught in review.) --with-line/--without-line are
+     gone: their only consumers were the .pane rules deleted below, so the
+     ramp is no longer maintaining values nothing reads.
+     These two files share this block and have to move together. */
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0d1411; --surface: #131c18; --text: #e2eae5; --muted: #91a59b;
-      --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #223029;
-      --with-bg: #12231b; --with-line: #2c5340; --with-ink: #7fdcae;
-      --without-bg: #241713; --without-line: #543229; --without-ink: #e79b86;
-      --chip: #1a251f; --chip-ink: #93a89d;
+      --bg: #141f1a; --surface: #1f2d27; --text: #e2eae5; --muted: #91a59b;
+      --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #33443c;
+      --with-bg: #1a3a2a; --with-ink: #7fdcae;
+      --without-bg: #2c1c17; --without-ink: #e79b86;
+      --chip: #25332c; --chip-ink: #9db2a7;
     }
   }
   :root[data-theme="light"] {
     --bg: #f5f7f4; --surface: #ffffff; --text: #16201b; --muted: #5a6b62;
     --accent: #1f9d68; --accent-ink: #0c5d3c; --line: #e0e7e1;
-    --with-bg: #eaf6f0; --with-line: #b7e0cc; --with-ink: #0c5d3c;
-    --without-bg: #f7ece9; --without-line: #e6c3ba; --without-ink: #a23f2c;
+    --with-bg: #eaf6f0; --with-ink: #0c5d3c;
+    --without-bg: #f7ece9; --without-ink: #a23f2c;
     --chip: #eef2ee; --chip-ink: #55665d;
   }
   :root[data-theme="dark"] {
-    --bg: #0d1411; --surface: #131c18; --text: #e2eae5; --muted: #91a59b;
-    --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #223029;
-    --with-bg: #12231b; --with-line: #2c5340; --with-ink: #7fdcae;
-    --without-bg: #241713; --without-line: #543229; --without-ink: #e79b86;
-    --chip: #1a251f; --chip-ink: #93a89d;
+    --bg: #141f1a; --surface: #1f2d27; --text: #e2eae5; --muted: #91a59b;
+    --accent: #4ccb90; --accent-ink: #9fe9c4; --line: #33443c;
+    --with-bg: #1a3a2a; --with-ink: #7fdcae;
+    --without-bg: #2c1c17; --without-ink: #e79b86;
+    --chip: #25332c; --chip-ink: #9db2a7;
   }
 
   * { box-sizing: border-box; }
@@ -57,6 +70,20 @@
   .bar nav a:hover { color: var(--accent-ink); }
   .toggle { font-family: var(--mono); font-size: 12px; cursor: pointer; background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; }
   .toggle:hover { color: var(--text); border-color: var(--accent); }
+  /* This header had no responsive treatment at all — a fixed 58px sticky bar
+     with a nav that could not wrap, so on a phone the row simply overflowed and
+     the toggle was sliced by the right edge, on every screen the reader scrolled
+     past. docs/index.html grew its own version of this block in #216; this page
+     was left behind. Both anchors here are cross-page and both earn their place
+     (there is no same-page nav to drop), so the row wraps rather than hides. */
+  @media (max-width: 640px) {
+    .bar .wrap { height: auto; min-height: 56px; padding-top: 8px; padding-bottom: 8px; gap: 12px; flex-wrap: wrap; }
+    .bar nav { gap: 14px; font-size: 14px; flex-wrap: wrap; justify-content: flex-end; }
+  }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
 
   .head { padding: 64px 0 34px; border-bottom: 1px solid var(--line); }
   .head h1 { font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700; margin-top: 14px; max-width: 20ch; }
@@ -65,7 +92,7 @@
   .head .legend span { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
   .swatch { width: 12px; height: 12px; border-radius: 3px; }
   .sw-with { background: var(--accent); }
-  .sw-without { background: #c0553f; }
+  .sw-without { background: var(--without-ink); } /* was #c0553f — a third hardcoded red, and the only one with no dark variant */
 
   .group { padding: 50px 0 8px; }
   .group h2 { font-size: 1.5rem; display: flex; align-items: baseline; gap: 12px; }
@@ -81,16 +108,15 @@
   .why { margin: 16px 0 0; padding-left: 16px; border-left: 3px solid var(--accent); font-size: 1.05rem; }
   .why b { color: var(--accent-ink); }
 
-  .wo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
-  @media (max-width: 720px) { .wo { grid-template-columns: 1fr; } }
-  .pane { border-radius: 12px; padding: 15px 16px; border: 1px solid; }
-  .pane.with { background: var(--with-bg); border-color: var(--with-line); }
-  .pane.without { background: var(--without-bg); border-color: var(--without-line); }
-  .pane .tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
-  .pane.with .tag { color: var(--with-ink); }
-  .pane.without .tag { color: var(--without-ink); }
-  .ex { margin-top: 11px; font-size: 0.92rem; }
-  .ex:first-of-type { margin-top: 12px; }
+  /* The side-by-side `.pane` layout this page used before the stacked pairs is
+     gone from the markup (zero `.pane`, zero `.ex`), so `.pane`/`.ex` were dead
+     rules — but `.wo` was not. The class survived the redesign on every
+     "without" row (`<div class="s wo">`, 36 of them), so the old layout rule
+     kept matching them: `display:grid` and `gap` lost to `.stack .s` on
+     specificity, but `margin-top: 20px` was unopposed and `.stack`'s
+     `overflow: hidden` makes it a BFC, so it could not collapse away either.
+     Every without-row was pushed 20px off the case label above it. Deleting the
+     dead block is the fix; nothing in the markup wanted any of it. */
   .pairs{margin-top:20px;display:grid;gap:12px}
   .stack{border:1px solid var(--line);border-radius:11px;overflow:hidden}
   .stack .case{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--chip-ink);background:var(--chip);padding:7px 13px}
@@ -123,11 +149,18 @@
       <nav>
         <a href="index.html">← Landing</a>
         <a href="https://github.com/kodhama/trellis">GitHub</a>
-        <button class="toggle" id="themeToggle" aria-label="Toggle color theme">theme</button>
+        <!-- Three states, matching docs/index.html — see the comment there for
+             why (WCAG 2.5.3, and a localStorage pin that was a one-way door out
+             of "follow my system"). This page's copy of the control had drifted
+             further still: its label was the literal string "theme" and never
+             changed, so it reported nothing at all. -->
+        <button class="toggle" id="themeToggle" title="Change the color theme — follows your system until you pick one">theme: auto</button>
       </nav>
     </div>
   </header>
+  <p class="sr-only" id="srStatus" role="status" aria-live="polite"></p>
 
+  <main>
   <div class="head">
     <div class="wrap">
       <p class="eyebrow">The catalog, made readable</p>
@@ -149,7 +182,7 @@
   <div class="wrap"><div class="cards">
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-directional-flow</span><span class="name">Directional flow</span></div>
+      <div class="card-top"><span class="code">inv-directional-flow</span><h3 class="name">Directional flow</h3></div>
       <p class="what">One-way stages of decreasing ambiguity (research → decisions → contracts → implementation → validation); downstream never consumes a draft.</p>
       <p class="why"><b>Why:</b> agents always build on <b>settled</b> ground — ambiguity only decreases, so no one codes against a spec that is still moving.</p>
       <div class="pairs">
@@ -167,7 +200,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-handover-points</span><span class="name">Handover points</span></div>
+      <div class="card-top"><span class="code">inv-handover-points</span><h3 class="name">Handover points</h3></div>
       <p class="what">Defined transitions between stages, each a place a gate can attach. (Directional flow is which way work moves; this is that it moves in steps.)</p>
       <p class="why"><b>Why:</b> development moves in <b>discrete</b> steps with boundaries, not one fluid blur — the seams are where work can be stopped, inspected, and handed on.</p>
       <div class="pairs">
@@ -185,7 +218,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-intent-locus</span><span class="name">Intent locus</span></div>
+      <div class="card-top"><span class="code">inv-intent-locus</span><h3 class="name">Intent locus</h3></div>
       <p class="what">Humans own intent and values somewhere identifiable — a process with no human intent locus can't be held accountable.</p>
       <p class="why"><b>Why:</b> an <b>accountable human owns the goal</b>, so a wrong <em>direction</em> gets caught before it's built.</p>
       <div class="pairs">
@@ -203,7 +236,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-ratifiable-artifacts</span><span class="name">Ratifiable artifacts</span></div>
+      <div class="card-top"><span class="code">inv-ratifiable-artifacts</span><h3 class="name">Ratifiable artifacts</h3></div>
       <p class="what">Upstream can reach an approved state downstream consumes; outputs are checkable against it.</p>
       <p class="why"><b>Why:</b> you build against a <b>stable, approved target with a real pass/fail criterion</b> — not a moving one, and not "looks done to me."</p>
       <div class="pairs">
@@ -230,7 +263,7 @@
   <div class="wrap"><div class="cards">
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-graph-maintenance</span><span class="name">Graph maintenance</span></div>
+      <div class="card-top"><span class="code">inv-graph-maintenance</span><h3 class="name">Graph maintenance</h3></div>
       <p class="what">The dependency graph of artifacts and rules kept consistent and minimal; append-only records superseded, never edited in substance.</p>
       <p class="why"><b>Why:</b> the knowledge base <b>stays coherent for the agents reading it</b>, and a discovery deep in the code <b>repairs the decision that should have known it</b> (backprop).</p>
       <div class="pairs">
@@ -258,7 +291,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-gate-at-handover</span><span class="name">Gate at handover</span></div>
+      <div class="card-top"><span class="code">inv-gate-at-handover</span><h3 class="name">Gate at handover</h3></div>
       <p class="what">Apply the verification gate at every handover; any skip is surfaced.</p>
       <p class="why"><b>Why:</b> the review <b>actually fires</b> (not quietly skipped under deadline) — and if it is skipped, you can <em>see</em> it was.</p>
       <div class="pairs">
@@ -276,7 +309,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-independent-judgment</span><span class="name">Independent judgment</span></div>
+      <div class="card-top"><span class="code">inv-independent-judgment</span><h3 class="name">Independent judgment</h3></div>
       <p class="what">The assessor is independent of what it assesses — the builder doesn't grade itself, and the agent doesn't flatter the human.</p>
       <p class="why"><b>Why:</b> the <b>builder doesn't grade its own homework</b>, and the agent <b>names the risk</b> instead of flattering the plan — so verification and the intent gate are real, not decorative.</p>
       <div class="pairs">
@@ -299,7 +332,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-auditable-archive</span><span class="name">Auditable archive</span></div>
+      <div class="card-top"><span class="code">inv-auditable-archive</span><h3 class="name">Auditable archive</h3></div>
       <p class="what">Provenance + immutable decision history + a consolidated current-truth.</p>
       <p class="why"><b>Why:</b> you can always answer <b>"why is it this way?"</b> — decisions are not lost or quietly rewritten.</p>
       <div class="pairs">
@@ -317,7 +350,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-bounded-context</span><span class="name">Bounded context</span></div>
+      <div class="card-top"><span class="code">inv-bounded-context</span><h3 class="name">Bounded context</h3></div>
       <p class="what">Each operation reads only its declared inputs, never the whole archive.</p>
       <p class="why"><b>Why:</b> agents decide on <b>sharp, relevant context</b> instead of drowning in everything — better calls, and it scales as the archive grows.</p>
       <div class="pairs">
@@ -335,7 +368,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-self-improvement</span><span class="name">Self-improvement</span></div>
+      <div class="card-top"><span class="code">inv-self-improvement</span><h3 class="name">Self-improvement</h3></div>
       <p class="what">The process learns from friction and gets better — improvement signals are surfaced and acted on, so a glitch doesn't happen twice.</p>
       <p class="why"><b>Why:</b> <b>a process glitch never happens twice</b> — friction becomes a fix, not a recurring tax.</p>
       <div class="pairs">
@@ -353,7 +386,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-deliberate-succession</span><span class="name">Deliberate succession</span></div>
+      <div class="card-top"><span class="code">inv-deliberate-succession</span><h3 class="name">Deliberate succession</h3></div>
       <p class="what">Wherever new work meets an existing base, the boundary is decided out loud in both directions — what the new pattern leaves outside it, and what the old base quietly supplies to a gap in the new design.</p>
       <p class="why"><b>Why:</b> <b>the new thing is actually new, and the old thing is actually decided</b> — otherwise a superseded convention lingers beside its replacement, and an inherited constant smuggles in the model it was calibrated for.</p>
       <div class="pairs">
@@ -381,7 +414,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-minimal-first</span><span class="name">Minimal first</span></div>
+      <div class="card-top"><span class="code">inv-minimal-first</span><h3 class="name">Minimal first</h3></div>
       <p class="what">The smallest process that works; add a step only when friction reveals the boundary; bias to retire over add.</p>
       <p class="why"><b>Why:</b> <b>no ceremony for its own sake</b> — every step has earned its place, so the process stays light.</p>
       <div class="pairs">
@@ -399,7 +432,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">inv-clarify-before-commit</span><span class="name">Clarify before commit</span></div>
+      <div class="card-top"><span class="code">inv-clarify-before-commit</span><h3 class="name">Clarify before commit</h3></div>
       <p class="what">Ambiguity in an upstream is surfaced and resolved (usually by asking a human) before downstream consumes it — never silently guessed.</p>
       <p class="why"><b>Why:</b> <b>agents ask instead of guessing</b> — you don't discover three files later that they took the wrong reading of a vague spec.</p>
       <div class="pairs">
@@ -426,7 +459,7 @@
   <div class="wrap"><div class="cards">
 
     <div class="card">
-      <div class="card-top"><span class="code">floor-transparency</span><span class="name">Transparency</span></div>
+      <div class="card-top"><span class="code">floor-transparency</span><h3 class="name">Transparency</h3></div>
       <p class="what">Every consequential choice is surfaced — a skipped gate, a missing capability, a degraded result, a divergence from a framework you claim to follow. Drift is allowed, but never silent.</p>
       <p class="why"><b>Why:</b> <b>nothing consequential happens silently</b> — you learn about the shortcut <em>when it's taken</em>, not when it breaks in production.</p>
       <div class="pairs">
@@ -449,7 +482,7 @@
     </div>
 
     <div class="card">
-      <div class="card-top"><span class="code">floor-intent-gate</span><span class="name">The intent gate</span></div>
+      <div class="card-top"><span class="code">floor-intent-gate</span><h3 class="name">The intent gate</h3></div>
       <p class="what">The intent gate never fully opens — at the intent locus, a human (or a human-authorized independent check) is always mandatory. The one place an upstream that is itself wrong gets caught.</p>
       <p class="why"><b>Why:</b> <b>"is this the right thing to build?" always has a human behind it</b> — the one call you never hand fully to the machine.</p>
       <div class="pairs">
@@ -467,6 +500,7 @@
     </div>
 
   </div></div>
+  </main>
 
   <footer>
     <div class="wrap">
@@ -477,15 +511,39 @@
 
 <script>
   (function () {
-    var root = document.documentElement, saved = null;
-    try { saved = localStorage.getItem("trellis-theme"); } catch (e) {}
-    if (saved) root.setAttribute("data-theme", saved);
-    document.getElementById("themeToggle").addEventListener("click", function () {
-      var cur = root.getAttribute("data-theme");
-      if (!cur) cur = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      var next = cur === "dark" ? "light" : "dark";
-      root.setAttribute("data-theme", next);
-      try { localStorage.setItem("trellis-theme", next); } catch (e) {}
+    /* Kept in step with docs/index.html: auto → light → dark → auto, where
+       "auto" clears the localStorage pin rather than writing another one. The
+       two pages share the `trellis-theme` key, so a reader who picks dark on
+       one arrives in dark on the other — which is exactly why they could not
+       be left on different cycles. */
+    var root = document.documentElement;
+    var status = document.getElementById("srStatus");
+    var THEMES = ["auto", "light", "dark"];
+    var toggle = document.getElementById("themeToggle");
+    var pinned = null;
+    try { pinned = localStorage.getItem("trellis-theme"); } catch (e) {}
+    if (THEMES.indexOf(pinned) < 1) pinned = "auto";
+    // State lives here, not in the button's label — see docs/index.html.
+    var mode = pinned;
+    function applyTheme(m, speak) {
+      mode = m;
+      if (mode === "auto") root.removeAttribute("data-theme");
+      else root.setAttribute("data-theme", mode);
+      try {
+        if (mode === "auto") localStorage.removeItem("trellis-theme");
+        else localStorage.setItem("trellis-theme", mode);
+      } catch (e) {}
+      toggle.textContent = "theme: " + mode;
+      if (speak && status) {
+        status.textContent = "";
+        status.textContent = mode === "auto"
+          ? "Color theme now follows your system setting."
+          : "Color theme set to " + mode + ".";
+      }
+    }
+    applyTheme(pinned, false);
+    toggle.addEventListener("click", function () {
+      applyTheme(THEMES[(THEMES.indexOf(mode) + 1) % THEMES.length], true);
     });
   })();
 </script>
