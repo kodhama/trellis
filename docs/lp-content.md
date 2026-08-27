@@ -46,6 +46,7 @@ framing, which is why this copy changed):
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
+  # macOS, Linux, WSL — a POSIX shell; not cmd or PowerShell
   # that's it — all 15 rules active, adaptive posture
   ```
 - `manual` (harnesses the plugin does not cover — **not** Claude Code,
@@ -59,7 +60,9 @@ framing, which is why this copy changed):
 **Note under the terminal:** The curl path is **Claude Code, project
 scope**: it vends the plugin *and* renders the rules to
 `.claude/rules/`. `--scope personal` vends the plugin but delivers no
-rules. No
+rules. It runs on **macOS, Linux and WSL**: `install.sh` is a POSIX
+`sh` script, so native Windows (cmd, PowerShell) cannot run this path
+at all — use WSL there. No
 binary, no runtime — the bundle is pre-rendered plain files with a
 checksum manifest, verified before anything is written. Clean exits: `/trellis:remove` clears the rules and config
 from a project — on the curl path the vendored bundle under

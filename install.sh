@@ -104,6 +104,15 @@
 # detect whether one is available at all when scope is otherwise ambiguous — an
 # explicit `--scope personal` (or $TRELLIS_SKILLS_SCOPE=personal) never shells out to
 # git at all. No binary, no network beyond the bundle fetch.
+#
+# PLATFORM: macOS, Linux, WSL (decision-0068 §8; #210). That dependency list is the
+# whole of the boundary, and the first entry is the binding one: this is a POSIX `sh`
+# script, so cmd and PowerShell cannot run it at all. A Windows user needs WSL — or
+# some other POSIX environment; Git Bash/MSYS does run it, but sits outside the stated
+# boundary and no check here covers it. Nothing narrows that slice further: the script
+# creates no symlink, so no filesystem or developer-mode question rides on top of the
+# shell one. Running natively on Windows would take a separate installer — §8 names "a
+# future PowerShell or Go installer" — not a change to this file.
 
 set -eu
 
@@ -116,6 +125,10 @@ install.sh — vendor the Trellis Claude Code plugin onto disk (skills-directory
 
   curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
   sh install.sh [--scope personal|project] [--non-interactive]
+
+Platform: macOS, Linux, WSL. A POSIX sh script — cmd and PowerShell cannot run
+it at all, so use WSL there. The dependency list at the top of this file is the
+whole of the boundary, and POSIX sh is the binding entry in it.
 
 This is the ONLY decision this script makes. The posture ships as a constant
 (the adaptive preset) and is yours to change afterwards by editing
@@ -309,7 +322,7 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 f84637b2d59c87d355aea10b62a1b2bc08e24a49f997bc8a240af6d652fa8896  .claude-plugin/plugin.json
 99fd827cdff29d3d83943d2c593b09a95c5bdacb025a489205ab340ec58308d3  .codex-plugin/plugin.json
-c0969885035d5229c9ecd58ef2c9bdebc3bc5e9cd75c98a86966a3e21781f759  README.md
+1c26bc0294c6ff52ec9237abd5cd4d43ff2234606121246e42b7b4f6e4a6b069  README.md
 a0ad50640139a524f86591157145bf1d4674ea9c065bfea21558f0f7b04430c8  VERSION
 4cf7f3a7eb4d0a517e2b4c35a600870a831fc2d83f9c087d4228bd5741f187e8  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
