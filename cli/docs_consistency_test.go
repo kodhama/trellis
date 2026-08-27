@@ -31,7 +31,8 @@ import (
 func docSurfaces(t *testing.T) []string {
 	t.Helper()
 	skipDirs := map[string]bool{
-		".git": true, ".github": true, ".grove": true, ".claude": true,
+		// .grove dropped by decision-0076, which deleted the directory.
+		".git": true, ".github": true, ".claude": true,
 		"decisions": true, "specs": true, "research": true, "eval": true,
 		"fixtures": true, "testdata": true,
 	}

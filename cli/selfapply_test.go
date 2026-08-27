@@ -99,20 +99,34 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 		"shared-rule edits":   "Edit new shared rules here, outside managed blocks",
 		"Claude adapter":      "`CLAUDE.md` is the Claude adapter, not a shared-rule edit surface",
 		"Claude-only rules":   "Genuinely Claude-only rules belong in `.claude/rules/`",
-		"project choices":     "Grove and Trellis project choices remain in `.grove/` and `.trellis/` configuration files",
+		"project choices":     "Trellis project choices remain in `.trellis/` configuration files",
 		"managed-block edits": "Do not hand-edit managed blocks",
 	} {
 		if !strings.Contains(normalizedAgents, statement) {
 			t.Errorf("AGENTS.md is missing the %s routing statement %q", label, statement)
 		}
 	}
+	// decision-0076 removed the ordering half of this check along with the grove
+	// managed block it ordered against: AGENTS.md now carries no managed block at
+	// all, so "before its managed blocks" has nothing left to compare and
+	// strings.Index would return -1 for the absent marker, inverting the test.
 	maintainingSection := "## Maintaining project instructions"
-	if strings.Count(agents, maintainingSection) != 1 || strings.Index(agents, maintainingSection) > strings.Index(agents, "<!-- grove:begin") {
-		t.Error("AGENTS.md must contain one Maintaining project instructions section before its managed blocks")
+	if strings.Count(agents, maintainingSection) != 1 {
+		t.Error("AGENTS.md must contain exactly one Maintaining project instructions section")
 	}
-	for _, sharedContent := range []string{"# Trellis — operating method", "## Operating method", "<!-- grove:begin", "<!-- grove:end -->"} {
+	for _, sharedContent := range []string{"# Trellis — operating method", "## Operating method"} {
 		if !strings.Contains(agents, sharedContent) {
-			t.Errorf("AGENTS.md is missing moved Layer-B/Grove content %q", sharedContent)
+			t.Errorf("AGENTS.md is missing moved Layer-B content %q", sharedContent)
+		}
+	}
+	// decision-0076: grove is retired. These are asserted ABSENT for the same reason
+	// decision-0071 asserts the Trellis block absent from CLAUDE.md — no /grove:refresh
+	// exists to regenerate the block, so one that reappeared (a stray branch merge, a
+	// revert) would reinstate an operating model nobody chose, routing work to
+	// grove:<role> subagents that cannot load, and would do it against a green suite.
+	for _, retired := range []string{"<!-- grove:begin", "<!-- grove:end -->", "grove plugin@"} {
+		if strings.Contains(agents, retired) {
+			t.Errorf("AGENTS.md carries retired Grove content %q — decision-0076 removed the managed block along with the plugin it routed to", retired)
 		}
 	}
 	// decision-0071: the Codex bootstrap is gone with the overlay it read from.
@@ -161,9 +175,14 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	}{
 		"README.md":                         {wantAGENTS: true, allowClaude: true},
 		"profiles/trellis-self.md":          {wantAGENTS: true},
-		".grove/config.toml":                {wantAGENTS: true},
-		".grove/README.md":                  {wantAGENTS: true},
 		".claude/agents/corpus-reviewer.md": {wantAGENTS: true},
+	}
+	// decision-0076: .grove/config.toml and .grove/README.md left this map because the
+	// directory is gone. Asserted absent rather than merely dropped — a bounded
+	// current-truth surface that returns unnoticed is the drift spec-0006 §3 exists to
+	// catch, and .grove/ returning would bring back dials for a plugin that cannot load.
+	if _, err := os.Stat(filepath.Join("..", ".grove")); !os.IsNotExist(err) {
+		t.Error(".grove/ exists — decision-0076 retired grove and deleted it; its return means configuration for an uninstalled plugin is back in the tree")
 	}
 	for name, expectation := range boundedReferences {
 		content := readRepoFile(name)

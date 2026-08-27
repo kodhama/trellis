@@ -1,7 +1,0 @@
-schema = 1
-run = "20260730-174931-install-path-records"
-opened = "2026-07-30T17:49:31Z"
-intent = "record the owed review verdicts for the install-path change as out-of-band reviews"
-subjects = [ "decisions/0068-install-path-delivers-rules-through-claude-rules.md", "specs/0005-curl-install-mechanical-vendoring.md", "plugins/trellis/skills/remove/SKILL.md" ]
-status = "closed"
-closed = "2026-08-03T10:55:00Z"
