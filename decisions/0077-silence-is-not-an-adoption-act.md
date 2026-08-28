@@ -136,13 +136,15 @@ the consequence to a user are textual pins, as before.
 ## Self-check
 
 Sections present and per-type correct (`Context` / `Decision` / `Consequences`).
-Every load-bearing code claim is either quoted from source with a line cite or
-measured this session by a test that goes red under mutation.
+Every load-bearing code claim is either quoted verbatim from the source it names
+or measured this session by a test that goes red under mutation.
 
 **No claim in this record cites a line number in a file this change edits.**
-That is a repair, not a style preference: three separate review rounds — a
-corpus review and two automated passes — each found stale line citations here,
-because every edit this change made shifted the lines its own prose pointed at.
+That is a repair, not a style preference: two of this record's three review
+rounds — the corpus review and the last automated pass — found stale line
+citations here, because every edit this change made shifted the lines its own
+prose pointed at. (The middle round found a different pair: an `id` collision
+with `decision-0076` and two claims overgeneralized from Claude to both hosts.)
 The citations now anchor on content that moves with the text it names (a quoted
 phrase, a decision point, a named branch, `git log -S` over a distinctive
 string) rather than on a coordinate the next edit invalidates. Line numbers into
