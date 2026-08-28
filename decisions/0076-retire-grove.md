@@ -182,11 +182,19 @@ forbids. Declaring it is the fix; the rule itself stands.
   fourteen role charters, against eleven at install. The block's count tracked its upstream
   correctly. Retracted rather than deleted — a false disciplinary finding about oneself is worth
   showing the correction for.
-- **An `approved` spec now carries a supersession mark from a `gated` record.** No rule forbids it —
-  `superseded_in_part_by` is a forward pointer of the `superseded_by` class, explicitly not walked
-  as a flow edge, and resolution requires only that the entry resolve. But if this record never
-  reaches `approved`, `spec-0006` carries a live mark whose authority never ratified. Surfaced by
-  the corpus review and stated here because it is a conscious call at merge, not an oversight.
+- **`spec-0006`'s supersession mark is ratified, and for a window it was not.** The corpus review
+  surfaced the exposure while this record stood at `gated`: an `approved` spec carrying a
+  `superseded_in_part_by` pointer to an unratified record would have had a live mark whose authority
+  never ratified. No rule forbade it — `superseded_in_part_by` is a forward pointer of the
+  `superseded_by` class, not walked as a flow edge, and resolution needs only that the entry resolve
+  — but the exposure was real until the maintainer's second act closed it. **Recorded rather than
+  deleted:** the risk was live for the length of the review, and a reader asking why the mark was
+  safe deserves the answer, not its absence.
+
+  *This bullet described the record as `gated` for one commit after the frontmatter said `approved` —
+  caught by the automated review. It is the third un-propagated correction in this file, after the
+  "unhomed semantics" retraction and the corpus-reviewer bullet. The pattern is now the finding: this
+  record corrects itself in one place and leaves the claim standing in another, every time.*
 
 ## Open questions
 
@@ -247,18 +255,27 @@ fact while recorded as discarded. A new merge-gate rule had entered `AGENTS.md` 
 precise shape Decision point 5 forbids, committed by the record that forbids it. And the parked
 owed-set named one stale pointer where there are four.
 
-**A third review — `decision-0007`'s automated PR check — returned three more, after two rounds had
-already run.** It caught the record calling four test changes "inversions" when two are a reword and
-a deletion; it caught the corpus-reviewer bullet still carrying the "degraded / unreachable" framing
-this same commit retracts two sections above, un-propagated; and it caught the harvested
-branch-naming claim being **disproved by this PR's own branch name**.
+**`decision-0007`'s automated PR check ran twice and returned four more, after two rounds had already
+run.** On the diff: the record called four test changes "inversions" when two are a reword and a
+deletion; the corpus-reviewer bullet still carried the "degraded / unreachable" framing the same
+commit retracts two sections above; and the harvested branch-naming claim was **disproved by this
+PR's own branch name**. Then on the approval flip itself: a Consequences bullet still called the
+record `gated` one commit after the frontmatter said `approved`.
 
-**None of the fifteen was self-caught** — three from the corpus review, nine from the diff review,
-three from the automated one. The author caught two arithmetic errors and no substantive defect. A
-record about a repo that let an operating model arrive and depart without a decision needed three
+**None of the sixteen was self-caught** — three from the corpus review, nine from the diff review,
+four from the automated one. The author caught two arithmetic errors and no substantive defect. A
+record about a repo that let an operating model arrive and depart without a decision needed four
 rounds of independent review to stop it departing wrongly, and each round found things the previous
 one had read past. The count stays in rather than being smoothed away; it is the strongest available
 argument for Decision point 6, and a caution against reading any single green review as sufficient.
+
+**Three of the sixteen are the same defect, and that is the more useful finding than the count.** The
+"unhomed semantics" retraction, the corpus-reviewer bullet, and the `gated`/`approved` bullet were
+each a correction applied in one place and left standing in another, in a record whose stated method
+is naming its own overstatements. Self-correction here reliably reached the paragraph being edited
+and reliably missed its siblings. A future session editing a long record in this corpus should treat
+"where else does this claim appear?" as the check, not a courtesy — the author ran it only after
+being told, three times.
 
 A fourth leg failed and is named rather than passed over (`floor-transparency`): cross-family (Codex)
 review was attempted twice — once via CLI, once via the PR connector — and both died on usage limits,
