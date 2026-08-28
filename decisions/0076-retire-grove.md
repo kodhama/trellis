@@ -1,7 +1,7 @@
 ---
 id: decision-0076
 type: decision
-status: gated  # maintainer's intent act 2026-08-27, in-session ("Deliberately retired") on being shown the plugin is absent — that settles the retirement itself. Author (agent) != approver (maintainer). Held at `gated` rather than flipped to `approved`: the act covered the *fact* of retirement, not this record's consequence set — the `spec-0006` AC1 partial supersession, the `.grove/` deletion, and the parked owed-set below are the maintainer's to accept at merge (`decision-0046`, `decision-0022`)
+status: approved  # TWO maintainer intent acts. 2026-08-27, in-session ("Deliberately retired") on being shown the plugin is absent — that settled the *fact* of retirement, and the record was held at `gated` on it. 2026-08-28, after the PR was put up for review ("check if it has comments to fix something, otherwise merge it") — that accepts this record's consequence set: the `spec-0006` AC1 partial supersession, the `.grove/` deletion, the new standing rule in Decision 6, and the parked owed-set. This flip records the second act; it is not the author's judgement (`decision-0046`, `decision-0022`). Author (agent) != approver (maintainer)
 depends_on: [spec-0001, spec-0006, decision-0044, decision-0057]  # spec-0001 and decision-0044 moved in / up after an independent corpus review: Decision points 2 and 5 rest on spec-0001's registry and its versioning delegation, and point 2's correctness is contingent on decision-0044's qualified <repo>/<id> form standing — that is coupling under decision-0047's test, not provenance
 informed_by: [decision-0005, decision-0045, decision-0051, decision-0071, decision-0074]
 owner: agent
@@ -265,7 +265,10 @@ review was attempted twice — once via CLI, once via the PR connector — and b
 returning no findings. No cross-family perspective was obtained for this change.
 
 Two things this record deliberately does **not** do, declared so their absence is not read as
-completeness: it does not repair the two ratified carrier-pointers, and it does not settle
-superpowers. Both are named above with what they are waiting on. Held at `gated`, not flipped to
-`approved`, because the maintainer's act covered the retirement and not this consequence set
-(`decision-0046`).
+completeness: it does not repair the ratified carrier-pointers, and it does not settle superpowers.
+Both are named above with what they are waiting on, and neither is tracked anywhere but here — the
+follow-ups are owed as Linear issues (`decision-0075`), not as prose in this section.
+
+The record stood at `gated` through review and was flipped only after the maintainer read the PR and
+accepted the consequence set on 2026-08-28. The flip records that act rather than the author's
+judgement (`decision-0046`), which is the distinction `floor-intent-gate` turns on.
