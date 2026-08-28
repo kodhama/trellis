@@ -1426,7 +1426,7 @@ func TestProjectScopedPluginGovernsWithoutRulesToml(t *testing.T) {
 	}
 }
 
-// decision-0076. decision-0070 D4 said an ignored announcement adopts ("accept,
+// decision-0077. decision-0070 D4 said an ignored announcement adopts ("accept,
 // or no objection → seed … governed at 14/14 from the next turn"), and
 // decision-0073 D3 restated it as "one ignored prompt re-governs". The hook has
 // never done that: it names two actions — decline, or an explicit accept that
@@ -1501,11 +1501,11 @@ func TestSilenceNeverAdoptsAfterTheDeclineIsDeleted(t *testing.T) {
 	}
 	for i, out := range []string{declined, first, second} {
 		if got := injected(out); len(got) > 0 {
-			t.Errorf("run %d injected rules with no recorded acceptance — silence is not an adoption act (decision-0076): %v", i+1, got)
+			t.Errorf("run %d injected rules with no recorded acceptance — silence is not an adoption act (decision-0077): %v", i+1, got)
 		}
 	}
 	// The sentence that makes the corrected claim true, and the one both
-	// decision-0076 and the remove skill's preflight rest on. Pinned because a
+	// decision-0077 and the remove skill's preflight rest on. Pinned because a
 	// rewrite that dropped it would restore the behaviour the records described.
 	if !strings.Contains(second, "the project is never governed") {
 		t.Errorf("the announcement must say that no file means no governance, or an ignored prompt reads as consent:\n%s", second)

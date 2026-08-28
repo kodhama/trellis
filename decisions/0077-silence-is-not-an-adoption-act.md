@@ -1,15 +1,15 @@
 ---
-id: decision-0076
+id: decision-0077
 type: decision
 status: approved  # maintainer's intent act 2026-08-28, in session, on this text: "Approved… the damn gating again." An in-PR flip recording that act (decision-0046, decision-0022); author (agent) != approver (maintainer). Two earlier acts the same session settled the forks this record turns on — the direction ("The record — correct 0070 D4", over fixing the hook) and the mechanism ("Superseding-in-part decision", over an appended correction block). The intervening `gated` landing was the agent's over-caution, not the rule: decision-0074 set the precedent for flipping on an in-conversation act with the details accepted at merge. Recorded because the round-trip it cost is friction, and friction here is product research (AGENTS.md)
 depends_on: [decision-0070, decision-0073]
 informed_by: [decision-0008, decision-0040, decision-0046, spec-0001]
 owner: agent
 date: 2026-08-28
-provenance: filed as TRL-8 against `decision-0073` D3. The finding is older — the global cross-cutting review of run `20260803-093000-delivery-shapes-closed-set` recorded it as L3 ("routes to the MAINTAINER at ship") and it rode the ledger without being closed. Both the run record and the issue indicted `decision-0073`; the session that discharged them found the claim originates one record upstream, in `decision-0070` D4, which `0073` restated faithfully
+provenance: filed as TRL-8 against `decision-0073` D3. The finding is older — the global cross-cutting review of run `20260803-093000-delivery-shapes-closed-set` recorded it as L3 ("routes to the MAINTAINER at ship") and it rode the ledger without being closed. That ledger lived in `.grove/`, deleted by `decision-0076` on grove's retirement, so the run citation is historical and no longer resolves in-tree — the verdict text is quoted here rather than pointed at. Both the run record and the issue indicted `decision-0073`; the session that discharged them found the claim originates one record upstream, in `decision-0070` D4, which `0073` restated faithfully
 ---
 
-# 0076 — silence is not an adoption act
+# 0077 — silence is not an adoption act
 
 ## Context
 
@@ -101,7 +101,7 @@ the consequence to a user are textual pins, as before.
 
 ## Consequences
 
-- **`decision-0070` gains `superseded_in_part_by: [decision-0076]`** and an
+- **`decision-0070` gains `superseded_in_part_by: [decision-0077]`** and an
   append-only forward pointer. `spec-0001` §2 and `decision-0040` point 5 class
   that marking as *"a marking, not an edit-in-substance"*; D1–D3 and D5–D7 are
   untouched, and D4 keeps everything point 2 above names.

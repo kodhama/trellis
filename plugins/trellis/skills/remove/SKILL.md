@@ -42,7 +42,7 @@ Also inspect, without writing:
     with a user-scope plugin, deleting the recorded decline re-arms the adoption announcement, so
     the project returns to **unadopted** and every future session asks again until someone answers.
     Answering yes governs it at 15/15. Ignoring the prompt does not:
-    **silence is not an adoption act** (`decision-0076`), so the project stays ungoverned and is
+    **silence is not an adoption act** (`decision-0077`), so the project stays ungoverned and is
     asked again next session. Deleting it is legitimate — removal is removal — but doing it
     unnamed is not;
   - **the consumer's own rows** — `rules.toml` is the consumer's file, and deleting `.trellis/`

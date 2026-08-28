@@ -3,7 +3,7 @@ id: decision-0070
 type: decision
 status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age. Design supplied by the maintainer in session 2026-07-31 ("bring the user the choice"); this record works it through and flags the two places it had to change to survive contact with the code.
 depends_on: [decision-0008, decision-0053, decision-0065, decision-0068]
-superseded_in_part_by: [decision-0076]  # 2026-08-28 — D4's silence disposition only: the "accept, or no objection → seed … governed at 14/14 from the next turn" bullet and the "silence never reads as refusal" rationale, which the hook never implemented (it names decline and explicit-accept, and says "the project is never governed" without the file). What stands: the announcement, that it injects no rules on that turn, the decline bullet, and "the hook never writes". D1-D3 and D5-D7 untouched
+superseded_in_part_by: [decision-0077]  # 2026-08-28 — D4's silence disposition only: the "accept, or no objection → seed … governed at 14/14 from the next turn" bullet and the "silence never reads as refusal" rationale, which the hook never implemented (it names decline and explicit-accept, and says "the project is never governed" without the file). What stands: the announcement, that it injects no rules on that turn, the decline bullet, and "the hook never writes". D1-D3 and D5-D7 untouched
 owner: agent
 date: 2026-07-31
 ---
@@ -236,7 +236,7 @@ decision, with Codex's own scope model measured rather than assumed by analogy.
 ---
 
 > **Superseded in part (2026-08-28, append-only pointer).**
-> `decision-0076` supersedes **D4's disposition of silence**: the *"accept, or no
+> `decision-0077` supersedes **D4's disposition of silence**: the *"accept, or no
 > objection → seed"* bullet and the *"silence never reads as refusal"* rationale.
 > `staleness.sh` never implemented them — it has instructed decline-or-explicit-accept
 > since #218, the commit that built this record, and tells the reader that without the
