@@ -222,6 +222,34 @@ clears it if it carries the shape, not only if it names stages.*
   decides the boundary when new work meets old. *(Evidence: trellis PR #165, forward direction;
   math-quest's phase-1 architecture, backward direction — four recurrences in one session with the
   forward rendering loaded, recorded on trellis#166.)*
+- **`inv-no-orphan-followups` — a deferral with no consumer is not tracked work** — *provisional*
+  (**new**, `decision-0078`). A recorded next-step is only *recorded* if something will
+  **re-present** it. Naming the consumer is the whole act:
+  - **The address test:** a deferral lands where a *named consumer* reads it — a queue an executor
+    works, a tracker someone triages, a failing or skipped test, a scheduled sweep that is switched
+    on. *"Someone reading this file later"* is not a consumer, and neither is a sweep that was
+    designed but never turned on.
+  - **The three legitimate outcomes:** do it now · **drop it, on the record, with the reason** ·
+    escalate it. Recording it is a fourth only when the address test passes. **Dropping is
+    first-class, not a failure** — without that, the rule merely moves the pile into a tracker, and a
+    graveyard of never-to-be-done issues is more expensive to prune than a markdown file.
+  - **Why a plausible ledger is worse than none:** it converts an unsolved problem into the *feeling*
+    of a tracked one, and it is trusted *because* it looks like bookkeeping. Agents produce deferrals
+    far faster than humans consume them, so the ratio only worsens with agent throughput.
+  - Surfacing rides **SI-1**'s channel discipline (the consumer is asked or inferred, never assumed)
+    and **SI-2**'s existing rituals — the deferral is addressed in the change that creates it. It
+    shares **SI-3**'s prune-bias: sinks are drained and retired, never grown monotonically.
+  **Neighbor to `inv-self-improvement`:** that one turns friction into a fix so it cannot recur; this
+  one governs the work you decide **not** to do now — planned work with no address, not a glitch. It
+  is not `inv-graph-maintenance`, which is about *coherence*: a ledger entry with no dependents is
+  perfectly coherent and still lost. It is not `inv-handover-points` / `inv-gate-at-handover`, which
+  govern moments work changes hands; this is work that never changes hands at all. *(Evidence:
+  `kodhama/math-quest`, measured 2026-08-28 — `deferred-work.md` at 61 entries against 3 lines
+  marking anything resolved, all three written that day while auditing it; filed there as MQ-77. Two
+  instructions, each correct alone, manufactured the orphans between them: tracking lives in the
+  tracker, and the build workflow appends every `defer` finding to a markdown file it is explicitly
+  told not to deduplicate. A designed consumer existed — a sweep that partitions the ledger — and had
+  never been switched on.)*
 - **`inv-minimal-first` — minimal-first** — *strong, less settled.* Smallest process that
   works; add a step only when friction reveals the boundary. *(v0's "reference-not-adoption"
   split out to `inv-reference-relationship` — strict single-framework adoption is legitimate,
@@ -326,7 +354,10 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 - **Minimal-first, applied to v1 itself (resolved this round):** the epistemic-integrity
   candidate merged into `inv-independent-judgment` (intent face); the bounded-correction
   candidate dropped (durable half into `floor-transparency`). Operating layer trimmed back
-  **11 → 9**; the set is now 4 structural + 9 operating + dials + floors.
+  **11 → 9** *in that round*; two entries have since been minted (`inv-deliberate-succession`,
+  `decision-0074`; `inv-no-orphan-followups`, `decision-0078`), so the set is now 4 structural +
+  10 operating + dials + floors. *(The trim is the v1 history; the total is current truth and moves
+  with the set — it read 9 until `decision-0078` re-derived it.)*
 - **Adherence (`decision-0002`):** working stance is two coarse modes — *adopt* (one
   framework) vs *adapt* (synthesize from several); deliberately **not** formalized into the
   invariant model until instance #2 can test it. v1 encodes only the durable part

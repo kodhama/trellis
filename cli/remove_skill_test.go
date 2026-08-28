@@ -11,6 +11,7 @@ package main
 // about the right one.
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -161,7 +162,7 @@ func TestRemoveSkillBundleTransactionPosition(t *testing.T) {
 // recorded governed = false decline is surfaced BY NAME before any deletion,
 // with its consequence (deleting it re-arms the adoption announcement on a
 // user-scope machine and returns the project to unadopted; an explicit accept
-// governs at 15/15, an ignored prompt does not) — and the consumer's own
+// governs at 16/16, an ignored prompt does not) — and the consumer's own
 // rules.toml rows are shown before the directory holding them is destroyed,
 // closing the consent asymmetry where lesser artifacts got consent and the
 // consumer's rows did not.
@@ -172,7 +173,11 @@ func TestRemoveSkillSurfacesDeclineAndConsumerRows(t *testing.T) {
 	// The count needle tracks LIVE behaviour, not decision-0073's wording: 0073 D3 is
 	// append-only and correctly frozen at "14/14", but this skill text tells a user what
 	// will happen in their repo now, so it moves with the rule count (decision-0074).
-	for _, needle := range []string{"governed = false", "re-arms", "15/15"} {
+	// Derived from assessableSlugs rather than written out, so the next row addition
+	// FAILS here instead of passing on a stale literal that matches a stale skill
+	// (decision-0078 — the same root cause as the count sweep it replaced).
+	governedCount := fmt.Sprintf("%d/%d", len(assessableSlugs), len(assessableSlugs))
+	for _, needle := range []string{"governed = false", "re-arms", governedCount} {
 		if !strings.Contains(preflight, needle) {
 			t.Errorf("§1 does not carry %q — the decline artifact must be surfaced by name, with its consequence, before any write (decision-0073 D3)", needle)
 		}

@@ -17,6 +17,7 @@ const SLUGS = [
   "inv-graph-maintenance",
   "inv-self-improvement",
   "inv-deliberate-succession",
+  "inv-no-orphan-followups",
   "inv-gate-at-handover",
   "inv-independent-judgment",
   "inv-auditable-archive",
@@ -360,7 +361,7 @@ try {
   // Only the region BEFORE the first table header. `governed = false` appended
   // under `[rules]` is not a top-level key and must not opt out — D5 defines it
   // as top-level, and a raw multiline match honoured it anywhere in the file, so
-  // a misplaced line silently disabled all fifteen rules instead of reaching
+  // a misplaced line silently disabled all sixteen rules instead of reaching
   // parseRulesToml and surfacing as invalid-rules.
   const raw = fs
     .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")

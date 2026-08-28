@@ -471,13 +471,13 @@ func renderedFile(files map[string]string, stamp string) string {
 // decision-0072's first draft said the replacement was "one sentence: edit
 // .trellis/rules.toml — strictness = \"firm\"". But the hook validates the row
 // set against the shipped catalog and injects NOTHING when a slug is missing, so
-// a project-scope install sitting at a governed 15/15 goes to ZERO the moment
+// a project-scope install sitting at a governed full row set goes to ZERO the moment
 // someone hand-writes a file containing strictness alone. The retired skill's §1
 // copied a whole preset first; that step was the part that had to survive, and
 // the record had described it away.
 //
 // This test pins the recipe end to end, in both directions: the partial file
-// must fail loudly, and the documented copy-then-edit must deliver all fifteen
+// must fail loudly, and the documented copy-then-edit must deliver every rule
 // rules at the requested posture.
 // TestEveryDestructiveInstructionIsGated: a Codex P2 on #227, and then a Codex
 // P2 on the GUARD ITSELF, which is the more useful of the two.
@@ -555,14 +555,14 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 // decision-0072's first draft said the replacement was "one sentence: edit
 // .trellis/rules.toml — strictness = \"firm\"". But the hook validates the row
 // set against the shipped catalog and injects NOTHING when a slug is missing, so
-// a project-scope install sitting at a governed 15/15 goes to ZERO the moment
+// a project-scope install sitting at a governed full row set goes to ZERO the moment
 // someone hand-writes a file containing strictness alone. The retired skill's §1
 // copied a whole preset first; that step was the part that had to survive, and
 // the record had described it away.
 //
 // This test pins the recipe end to end, in both directions: the partial file
-// must fail loudly, and the documented copy-then-edit must deliver all fifteen
-// rules at the requested posture.
+// must fail loudly, and the documented copy-then-edit must deliver every rule
+// at the requested posture.
 // TestEveryDeletionInstructionIsGated: a Codex P2 on #227, and the SIXTH
 // appearance of one class on this PR — every finding here has been a remedy that
 // told an agent to do something destructive or shape-wrong without a gate.
@@ -763,7 +763,7 @@ func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
 		}
 	})
 
-	t.Run("copy the firm preset, then edit: fifteen rules at the firm posture", func(t *testing.T) {
+	t.Run("copy the firm preset, then edit: the full rule set at the firm posture", func(t *testing.T) {
 		out := run(t, files["rules-a.toml"])
 		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
 			t.Fatalf("the DOCUMENTED recipe must produce a governed project; got:\n%s", out)
@@ -772,8 +772,8 @@ func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
 		for _, m := range regexp.MustCompile(`(?:inv|floor)-[a-z-]+`).FindAllString(out, -1) {
 			slugs[m] = true
 		}
-		if len(slugs) < 15 {
-			t.Errorf("want all 15 rules delivered from the copied preset, got %d (%v)", len(slugs), keysOfBool(slugs))
+		if len(slugs) < len(assessableSlugs) {
+			t.Errorf("want all %d rules delivered from the copied preset, got %d (%v)", len(assessableSlugs), len(slugs), keysOfBool(slugs))
 		}
 	})
 
@@ -784,7 +784,7 @@ func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
 		}
 	})
 
-	t.Run("copy a preset then disable one row: the other thirteen still arrive", func(t *testing.T) {
+	t.Run("copy a preset then disable one row: every other rule still arrives", func(t *testing.T) {
 		edited := strings.Replace(files["rules-b.toml"], "inv-minimal-first         = { active = true }", "inv-minimal-first         = { active = false }", 1)
 		if edited == files["rules-b.toml"] {
 			t.Fatal("fixture did not contain the row it claims to edit — the case would prove nothing")
@@ -1414,8 +1414,8 @@ func TestProjectScopedPluginGovernsWithoutRulesToml(t *testing.T) {
 	for _, m := range regexp.MustCompile(`(inv|floor)-[a-z-]+`).FindAllString(got, -1) {
 		slugs[m] = true
 	}
-	if len(slugs) < 15 {
-		t.Errorf("decision-0070 D3: want all 15 rules delivered with no rules.toml, got %d (%v)", len(slugs), keysOfBool(slugs))
+	if len(slugs) < len(assessableSlugs) {
+		t.Errorf("decision-0070 D3: want all %d rules delivered with no rules.toml, got %d (%v)", len(assessableSlugs), len(slugs), keysOfBool(slugs))
 	}
 	// Posture B — the lenient one, and the same default install.sh renders.
 	if !strings.Contains(got, "By default") {
@@ -1570,15 +1570,15 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 	// every refusal/stand-down message.
 	const ruleSlug = "inv-directional-flow"
 
-	// AC3's count discipline, stated once: the payload ships 15 slugs — 13
-	// `inv-` rules plus 2 `floor-` rules — derived from the payload itself so
-	// the premise checks below cannot drift from what actually ships.
+	// AC3's count discipline, stated once: the payload ships the assessable slug
+	// set, two of them `floor-` rules — counted against assessableSlugs, the one
+	// pin, so the premise checks below cannot drift from what actually ships.
 	slugSet := map[string]bool{}
 	for _, m := range regexp.MustCompile(`(?:inv|floor)-[a-z-]+`).FindAllString(files["rules.md"], -1) {
 		slugSet[m] = true
 	}
-	if len(slugSet) != 15 {
-		t.Fatalf("premise: the payload ships 15 rule slugs (13 inv- + 2 floor-), found %d — every embedded-block premise check below would prove nothing", len(slugSet))
+	if len(slugSet) != len(assessableSlugs) {
+		t.Fatalf("premise: the payload ships %d rule slugs (the assessable set, 2 of them floors), found %d — every embedded-block premise check below would prove nothing", len(assessableSlugs), len(slugSet))
 	}
 
 	colZeroBegin := regexp.MustCompile(`(?m)^<!-- trellis:begin`)

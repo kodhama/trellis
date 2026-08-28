@@ -753,7 +753,7 @@ func TestVendorZeroDecisionLogicAcrossInstructionFileVariants(t *testing.T) {
 	// install.sh never created .trellis/ at all; the script now seeds
 	// .trellis/rules.toml there, because running an installer inside a repository
 	// is the adoption act, and without the rows the curl path shipped all
-	// fifteen rules into context while only two of them applied. What AC2 still
+	// the whole rule set into context while only two of them applied. What AC2 still
 	// forbids — and what this now checks — is anything BEYOND that one file: no
 	// overlay, no internal/, no posture detection.
 	seeded := filepath.Join(repoB, ".trellis", "rules.toml")

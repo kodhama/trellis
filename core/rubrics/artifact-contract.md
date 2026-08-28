@@ -69,7 +69,7 @@ scope: trellis-product
 *Apply only when a `signature-catalog` / `expression-profile` is in the corpus.*
 
 8. **Catalog coverage + examples (`decision-0020`).** A `signature-catalog` has an entry for every
-   **assessable** `invariants-v1` slug (structural + operating + floors — all fifteen, **excluding** the two dials; a collapsed
+   **assessable** `invariants-v1` slug (structural + operating + floors — all sixteen, **excluding** the two dials; a collapsed
    slug is covered by its successor). Each entry carries `what` / **`directive`** / **`why`** /
    `signature` / **`honored`** / **`violated`** / `class` / `mechanizable` / `default_C1` / `default_C2`, and
    **`honored`/`violated` are ≥2 matched pairs** — `violated[i]` and `honored[i]` share a use-case tag,
