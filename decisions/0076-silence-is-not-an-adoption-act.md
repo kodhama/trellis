@@ -1,7 +1,7 @@
 ---
 id: decision-0076
 type: decision
-status: gated  # self-check below. The maintainer's intent act 2026-08-28, in session, settled both forks this record turns on — the direction ("The record — correct 0070 D4", chosen over fixing the hook) and the mechanism ("Superseding-in-part decision", chosen over an appended correction block) — but not this text, which they had not seen. `approved` remains theirs to record, at merge or in review (decision-0046, decision-0022). Author (agent) != approver (maintainer)
+status: approved  # maintainer's intent act 2026-08-28, in session, on this text: "Approved… the damn gating again." An in-PR flip recording that act (decision-0046, decision-0022); author (agent) != approver (maintainer). Two earlier acts the same session settled the forks this record turns on — the direction ("The record — correct 0070 D4", over fixing the hook) and the mechanism ("Superseding-in-part decision", over an appended correction block). The intervening `gated` landing was the agent's over-caution, not the rule: decision-0074 set the precedent for flipping on an in-conversation act with the details accepted at merge. Recorded because the round-trip it cost is friction, and friction here is product research (AGENTS.md)
 depends_on: [decision-0070, decision-0073]
 informed_by: [decision-0008, decision-0040, decision-0046, spec-0001]
 owner: agent
@@ -143,7 +143,11 @@ record's own edits had shifted three of its line citations — those are correct
 against the post-change files. `depends_on` names
 both records this supersedes in part, and both receive their forward marking in
 this change, so no reader lands on an outgrown half without a link. The
-direction and the mechanism were the maintainer's intent acts, recorded in the
-frontmatter with the wording they used; the drafting is the agent's and is not
-claimed as theirs. Status stays `gated` rather than `approved` because the
-maintainer settled the two forks, not this text.
+direction, the mechanism and the approval were all the maintainer's intent acts,
+recorded in the frontmatter with the wording they used; the drafting is the
+agent's and is not claimed as theirs. This record landed `gated` first and was
+flipped on the maintainer's act minutes later — an avoidable round-trip, since
+`decision-0074` had already established that an in-conversation act carries a
+flip with the details accepted at merge. Noted here rather than smoothed over,
+because a gate that fires when no one asked for it is a cost the methodology
+pays without buying anything.
