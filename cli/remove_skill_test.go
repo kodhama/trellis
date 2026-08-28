@@ -157,13 +157,14 @@ func TestRemoveSkillBundleTransactionPosition(t *testing.T) {
 }
 
 // TestRemoveSkillSurfacesDeclineAndConsumerRows guards decision-0073 D3
-// (second bullet) and code-review F6: the recorded governed = false decline is
-// surfaced BY NAME before any deletion, with its consequence (deleting the
-// recorded decline re-arms the adoption announcement on a user-scope machine;
-// one ignored prompt re-governs at 15/15) — and the consumer's own rules.toml
-// rows are shown before the directory holding them is destroyed, closing the
-// consent asymmetry where lesser artifacts got consent and the consumer's rows
-// did not.
+// (second bullet, as corrected by decision-0077) and code-review F6: the
+// recorded governed = false decline is surfaced BY NAME before any deletion,
+// with its consequence (deleting it re-arms the adoption announcement on a
+// user-scope machine and returns the project to unadopted; an explicit accept
+// governs at 15/15, an ignored prompt does not) — and the consumer's own
+// rules.toml rows are shown before the directory holding them is destroyed,
+// closing the consent asymmetry where lesser artifacts got consent and the
+// consumer's rows did not.
 func TestRemoveSkillSurfacesDeclineAndConsumerRows(t *testing.T) {
 	body := readFileT(t, removeSkillPath)
 	preflight := removeSkillSection(t, body, "## 1.", "## 2.")
@@ -175,6 +176,21 @@ func TestRemoveSkillSurfacesDeclineAndConsumerRows(t *testing.T) {
 		if !strings.Contains(preflight, needle) {
 			t.Errorf("§1 does not carry %q — the decline artifact must be surfaced by name, with its consequence, before any write (decision-0073 D3)", needle)
 		}
+	}
+	// decision-0077. The count needles above pass either way, so they cannot tell
+	// the corrected consequence from the one it replaced. These can: the surviving
+	// half is that the announcement RETURNS, and what governs is an answer, never
+	// silence. A surface that promises re-governing on an ignored prompt overstates
+	// the risk of deleting a decline, which is a consent warning telling a user
+	// something untrue about their own repository.
+	if !strings.Contains(preflight, "unadopted") {
+		t.Errorf("§1 must say deleting the decline returns the project to the UNADOPTED state — the announcement returns, governance does not (decision-0077)")
+	}
+	if !strings.Contains(preflight, "silence is not an adoption act") {
+		t.Errorf("§1 must state that ignoring the re-armed announcement does not govern the project (decision-0077)")
+	}
+	if strings.Contains(preflight, "one ignored prompt re-governs") {
+		t.Errorf("§1 still carries decision-0070 D4's superseded silence-adopts claim, which staleness.sh never implemented (decision-0077)")
 	}
 	if !strings.Contains(preflight, "Show them the rows") {
 		t.Errorf("§1 does not surface the consumer's own rules.toml rows before .trellis/ is deleted — the consent asymmetry of code-review F6")

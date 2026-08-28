@@ -17,7 +17,12 @@ keeps its separate content identity in
 Since `decision-0065` both hosts deliver the same way: a `SessionStart` hook injects the rules
 from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. On the plugin
 path nothing writes that config file — the hook reads it, and applies the shipped defaults when it
-is absent (`decision-0070` D3). No `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
+is absent **at project scope**, where the bundle vendored inside the repository is itself the
+adoption act (`decision-0070` D3). A **user-scope** install has no such act to read, so **on
+Claude** it announces instead and governs nothing until someone writes the file; an ignored
+announcement leaves the project ungoverned and returns next session (`decision-0077`). Codex has
+no announcement branch — see the Codex note below. No `CLAUDE.md` block, no `AGENTS.md` receipt,
+no vendored overlay.
 
 **Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
 the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
@@ -79,7 +84,9 @@ Until it is, Codex is carried rather than maintained: its behaviour is not kept 
 Claude path, and a difference between them is expected rather than a defect to file. `#220` holds
 what a supported Codex distribution would require. Its adoption signal also differs —
 `codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
-when there is none, so the project-scope default above is Claude-only (`decision-0070` D7).
+when there is none, so both the project-scope default and the user-scope announcement above are
+Claude-only (`decision-0070` D7). On Codex the config file is the only adoption signal there is,
+which is where `decision-0077` leaves the Claude path too.
 
 On Claude, changing the posture has two shapes. **With no `.trellis/rules.toml` yet**, copy a
 **complete** preset — `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — then set

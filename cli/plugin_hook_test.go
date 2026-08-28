@@ -1426,6 +1426,96 @@ func TestProjectScopedPluginGovernsWithoutRulesToml(t *testing.T) {
 	}
 }
 
+// decision-0077. decision-0070 D4 said an ignored announcement adopts ("accept,
+// or no objection → seed … governed at 14/14 from the next turn"), and
+// decision-0073 D3 restated it as "one ignored prompt re-governs". The hook has
+// never done that: it names two actions — decline, or an explicit accept that
+// copies the preset — and governs on neither silence nor its own repetition.
+// This test pins the measured behaviour those records were corrected to match,
+// and it is the evidence that made the correction run toward the records rather
+// than toward the code.
+//
+// The scenario is the one /trellis:remove's preflight warns about: a project
+// that recorded a decline and then had it deleted. Two runs, because the claim
+// under correction was specifically about what the SECOND session does.
+func TestSilenceNeverAdoptsAfterTheDeclineIsDeleted(t *testing.T) {
+	proj := t.TempDir()
+	// User scope by construction: the plugin lives outside the project, which is
+	// every location except <repo>/.claude/skills/ (staleness.sh's D6 test).
+	pluginRoot := vendoredBundleAbs(t)
+
+	runHook := func(t *testing.T) string {
+		t.Helper()
+		cmd := exec.Command(filepath.Join(pluginRoot, "hooks", "staleness.sh"))
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
+		}
+		return string(out)
+	}
+	injected := func(out string) []string {
+		slugs := map[string]bool{}
+		for _, m := range regexp.MustCompile(`(inv|floor)-[a-z-]+`).FindAllString(out, -1) {
+			slugs[m] = true
+		}
+		return keysOfBool(slugs)
+	}
+
+	// 1. The recorded decline is honoured — the precondition, so a later "not
+	//    governed" cannot pass for the wrong reason.
+	toml := filepath.Join(proj, ".trellis", "rules.toml")
+	if err := os.MkdirAll(filepath.Dir(toml), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(toml, []byte("governed = false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// With no static shape present there is nothing already in context to
+	// disregard, so the decline is honoured by silence — the DISREGARD message
+	// is reserved for projects that loaded rules at launch (the two
+	// TRELLIS_NOT_GOVERNING emits, both guarded on a static shape existing).
+	// What matters here is the precondition: not announcing, and not governing.
+	declined := runHook(t)
+	if strings.Contains(declined, "TRELLIS_NOT_YET_GOVERNING") {
+		t.Fatalf("a project that recorded governed = false must not be asked to adopt:\n%s", declined)
+	}
+
+	// 2. Deleting it re-arms the announcement — the half of decision-0073 D3
+	//    that was always true. There is no persisted "already announced" state;
+	//    the branch is a bare file-existence test (staleness.sh path B).
+	if err := os.Remove(toml); err != nil {
+		t.Fatal(err)
+	}
+	first := runHook(t)
+	if !strings.Contains(first, "TRELLIS_NOT_YET_GOVERNING") {
+		t.Fatalf("deleting the recorded decline must re-arm the adoption announcement:\n%s", first)
+	}
+
+	// 3. The prompt is IGNORED — nothing is written, which is exactly what "one
+	//    ignored prompt" meant. decision-0070 D4 predicted governance from the
+	//    next turn; the next turn announces again and governs nothing.
+	second := runHook(t)
+	if !strings.Contains(second, "TRELLIS_NOT_YET_GOVERNING") {
+		t.Fatalf("an ignored announcement must repeat, not lapse into governing silently:\n%s", second)
+	}
+	for i, out := range []string{declined, first, second} {
+		if got := injected(out); len(got) > 0 {
+			t.Errorf("run %d injected rules with no recorded acceptance — silence is not an adoption act (decision-0077): %v", i+1, got)
+		}
+	}
+	// The sentence that makes the corrected claim true, and the one both
+	// decision-0077 and the remove skill's preflight rest on. Pinned because a
+	// rewrite that dropped it would restore the behaviour the records described.
+	if !strings.Contains(second, "the project is never governed") {
+		t.Errorf("the announcement must say that no file means no governance, or an ignored prompt reads as consent:\n%s", second)
+	}
+	if _, err := os.Stat(toml); !os.IsNotExist(err) {
+		t.Error("the hook wrote .trellis/rules.toml — \"the hook never writes\" is the half of decision-0070 D4 that stands")
+	}
+}
+
 func keysOfBool(m map[string]bool) []string {
 	var out []string
 	for k := range m {

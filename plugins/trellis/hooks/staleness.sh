@@ -40,8 +40,13 @@
 # said the opposite until it was corrected. What such a project gets now depends
 # on where the plugin lives: vendored under <repo>/.claude/skills/ means this
 # project adopted Trellis, so the shipped defaults apply; anywhere else means the
-# project is told once and governed by nothing until it answers. The
-# never-BY-SURPRISE half stands; the never-governed half does not. Path C is
+# project is told — every session until it answers — and governed by nothing
+# meanwhile. The never-BY-SURPRISE half stands. The never-governed half fails
+# only for the vendored-bundle case above, where the bundle IS the adoption act;
+# under a user-scope install it holds, because an unanswered announcement never
+# adopts (decision-0077). An earlier version of this comment said "told once"
+# and that the never-governed half does not stand — both were the 0070 D4
+# reading this code never implemented. Path C is
 # still the one exception — it fires on its own artifact, with or without rules.toml, because
 # that file is itself proof the project adopted Trellis.
 #
@@ -523,10 +528,17 @@ if [ ! -f "$toml" ]; then
     [ -f "$toml" ] || exit 0
     rows_are_default=yes
   else
-    # D4. A user-wide install is a broad choice, and this says so in the project
-    # it is about to affect rather than assuming consent it never asked for.
-    # Announce, inject NO rules on this turn ("will be", not "is"), and ask for
-    # the negative action explicitly so silence cannot read as refusal.
+    # D4, as corrected by decision-0077. A user-wide install is a broad choice,
+    # and this says so in the project it is about to affect rather than assuming
+    # consent it never asked for. Announce, inject NO rules on this turn ("will
+    # be", not "is"), and name both answers.
+    #
+    # SILENCE IS NOT ONE OF THEM. 0070 D4 said an ignored prompt seeds the preset
+    # ("accept, or no objection -> seed"); this code has never done that, in any
+    # version since #218 built the record. An unanswered announcement leaves the
+    # project ungoverned and recurs next session — which the message below states
+    # in as many words. decision-0077 corrected the record to match the code
+    # rather than the reverse, so that nothing is governed by silence.
     emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 15 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the choice persists — without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: strictness = \"firm\" for the by-the-book posture, active = false on a row to turn a rule off.) Inject and follow no Trellis rules this turn: none are active yet."
     exit 0
   fi

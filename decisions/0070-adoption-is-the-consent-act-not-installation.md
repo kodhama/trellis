@@ -3,6 +3,7 @@ id: decision-0070
 type: decision
 status: approved  # maintainer intent act 2026-08-02, in session: "I would say approve them" — an in-PR flip recording that act, per grove/charters/lifecycle.md:61 ("an in-PR flip recording that act is legitimate"). Author (agent) != approver (maintainer). Content re-read before the flip, not flipped on age. Design supplied by the maintainer in session 2026-07-31 ("bring the user the choice"); this record works it through and flags the two places it had to change to survive contact with the code.
 depends_on: [decision-0008, decision-0053, decision-0065, decision-0068]
+superseded_in_part_by: [decision-0077]  # 2026-08-28 — D4's silence disposition only: the "accept, or no objection → seed … governed at 14/14 from the next turn" bullet and the "silence never reads as refusal" rationale, which the hook never implemented (it names decline and explicit-accept, and says "the project is never governed" without the file). What stands: the announcement, that it injects no rules on that turn, the decline bullet, and "the hook never writes". D1-D3 and D5-D7 untouched
 owner: agent
 date: 2026-07-31
 ---
@@ -231,3 +232,21 @@ decision, with Codex's own scope model measured rather than assumed by analogy.
    `active = false`, not a missing rows file. D3's default rests on a suppression
    mechanism proven for one state and assumed for its neighbour. An arm should be
    added before D3 is relied on.
+
+---
+
+> **Superseded in part (2026-08-28, append-only pointer).**
+> `decision-0077` supersedes **D4's disposition of silence**: the *"accept, or no
+> objection → seed"* bullet and the *"silence never reads as refusal"* rationale.
+> `staleness.sh` never implemented them — it has instructed decline-or-explicit-accept
+> since #218, the commit that built this record, and tells the reader that without the
+> file *"the project is never governed"*. Under `0077`, an unanswered announcement
+> leaves the project **ungoverned** and recurs next session; only an explicit act
+> adopts. D4's opt-OUT self-description goes with it — the mechanism is
+> announce-then-accept.
+>
+> **What stands here:** the announcement and its wording, that it names the project,
+> that it **injects no rules on that turn**, the decline bullet writing
+> `governed = false`, and **"the hook never writes."** D1–D3 and D5–D7 are untouched.
+> The correction ran toward this record rather than toward the hook on this record's
+> own argument — adoption is the consent *act*, and silence is not an act.
