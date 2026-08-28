@@ -14,16 +14,17 @@ provenance: filed as TRL-8 against `decision-0073` D3. The finding is older — 
 ## Context
 
 **`decision-0070` D4 describes a hook that has never existed.** Its second
-bullet (`0070:114`) reads:
+bullet reads:
 
 > **accept, or no objection** → seed `.trellis/rules.toml` from `rules-b.toml`.
 > From the next turn the project is governed at 14/14, posture B.
 
-and its rationale (`0070:117`) that *"silence never reads as refusal — a user
+and its rationale that *"silence never reads as refusal — a user
 who ignores it gets what the announcement said would happen"*.
 
 The shipped hook names two actions and neither of them is silence. The
-`TRELLIS_NOT_YET_GOVERNING` announcement (`staleness.sh:537`) instructs the
+`TRELLIS_NOT_YET_GOVERNING` announcement — path B's user-scope branch, the
+`else` arm of the project-scope containment test — instructs the
 agent to write `governed = false` if the user declines, to copy the preset
 *"If they ACCEPT"*, and then says the opposite of D4 outright:
 
@@ -79,7 +80,7 @@ writes stay agent-mediated and human-consented. Only the disposition of
 
 **3. The mechanism's honest name is announce-then-accept.** D4 called itself
 *"an opt-OUT, chosen deliberately over the opt-in an earlier draft carried"*
-(`0070:97`). That characterisation does not survive point 1: a project that
+(D4's opening). That characterisation does not survive point 1: a project that
 never answers is never governed, which is opt-in per project. What remains true
 is the reasoning underneath it — a user-scope install *is* a broad choice
 already made, so the honest surface announces it rather than asking permission
@@ -136,11 +137,18 @@ the consequence to a user are textual pins, as before.
 
 Sections present and per-type correct (`Context` / `Decision` / `Consequences`).
 Every load-bearing code claim is either quoted from source with a line cite or
-measured this session by a test that goes red under mutation; the `git log`
-provenance for "never implemented" was run, not recalled, and is stated in a
-line-independent form after an independent corpus review caught that this
-record's own edits had shifted three of its line citations — those are corrected
-against the post-change files. `depends_on` names
+measured this session by a test that goes red under mutation.
+
+**No claim in this record cites a line number in a file this change edits.**
+That is a repair, not a style preference: three separate review rounds — a
+corpus review and two automated passes — each found stale line citations here,
+because every edit this change made shifted the lines its own prose pointed at.
+The citations now anchor on content that moves with the text it names (a quoted
+phrase, a decision point, a named branch, `git log -S` over a distinctive
+string) rather than on a coordinate the next edit invalidates. Line numbers into
+*unedited* files remain fine; the defect is self-reference across an edit.
+
+`depends_on` names
 both records this supersedes in part, and both receive their forward marking in
 this change, so no reader lands on an outgrown half without a link. The
 direction, the mechanism and the approval were all the maintainer's intent acts,

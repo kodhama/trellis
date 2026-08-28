@@ -240,7 +240,7 @@ decision, with Codex's own scope model measured rather than assumed by analogy.
 > objection → seed"* bullet and the *"silence never reads as refusal"* rationale.
 > `staleness.sh` never implemented them — it has instructed decline-or-explicit-accept
 > since #218, the commit that built this record, and tells the reader that without the
-> file *"the project is never governed"*. Under `0076`, an unanswered announcement
+> file *"the project is never governed"*. Under `0077`, an unanswered announcement
 > leaves the project **ungoverned** and recurs next session; only an explicit act
 > adopts. D4's opt-OUT self-description goes with it — the mechanism is
 > announce-then-accept.

@@ -1474,7 +1474,8 @@ func TestSilenceNeverAdoptsAfterTheDeclineIsDeleted(t *testing.T) {
 	}
 	// With no static shape present there is nothing already in context to
 	// disregard, so the decline is honoured by silence — the DISREGARD message
-	// is reserved for projects that loaded rules at launch (staleness.sh:256).
+	// is reserved for projects that loaded rules at launch (the two
+	// TRELLIS_NOT_GOVERNING emits, both guarded on a static shape existing).
 	// What matters here is the precondition: not announcing, and not governing.
 	declined := runHook(t)
 	if strings.Contains(declined, "TRELLIS_NOT_YET_GOVERNING") {
