@@ -1,8 +1,0 @@
-schema = 1
-record_type = "conformance"
-subject = "plugins/trellis/hooks/staleness.sh"
-subject_state = "present"
-subject_sha256 = "5140ab79180395a9f3afa1dc1c623aa1d246e0b3db578f411622f180a47f437a"
-verdict = "PASS, round 3 — scoped shallow by declared rationale: the round-2 PASS is digest-bound to the exact pre-reword bytes and the delta proven one line by diff (1 insertion, 1 deletion, all inside the S4 emit literal). Ten-item table all PASS: the reword keeps D2's three message requirements and the honesty rule; the new clause is factually accurate against D3 and the remove skill's own description, and corrects the M3 defect (the old text scoped remove under 'move onto plugin-delivered rules'; the absent old clause verified gone); the explicit-confirmation gate survives inside the literal and the destructive guard still sees it; the two disregard literals remain byte-identical apart from the inline clause (programmatic comparison); manifest advanced to the reviewer's independently computed digest; all four S4 fixtures still pin the reworded message. Round-2's proleptic-wording note carries forward unchanged. Gates fresh: go test -count=1 ok 13.3s, bash -n clean. [Reviewer plain sha256 9362d10fcf3c…]"
-by = "grove:conformance-reviewer (subagent, round 3); recorded by dispatcher"
-date = "2026-08-03T18:45:00Z"

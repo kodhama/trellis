@@ -1,8 +1,0 @@
-schema = 1
-record_type = "decision-adversary"
-subject = "plugins/trellis/skills/remove/SKILL.md"
-subject_state = "present"
-subject_sha256 = "9bf5fa4b428b79687b0aec3949fd4f33aec4dcc5f912190ed0d8f853770507b2"
-verdict = "SOUND — re-review of the full rewrite at commit 5247cd6 (fresh report; prior NEEDS-REVISION was on the old bytes). All five prior findings resolved with quoted evidence: F1 the curl sentence now states two co-occurring artifacts per 0070 D2; F2 the no-op predicate enumerates every removable D1 artifact exactly as 0073 AC1 requires; F3 the decline artifact is surfaced with its re-arm consequence near-verbatim from 0073 D3; F4 the ordering argument's false universal is replaced by the correct narrow 0068 D11 property, re-derived and confirmed against the 5-step transaction, with the concession stated; F5 resolved by ratification (0072 approved 2026-08-03). New text implements 0073 D1/D3/AC1 with no contradiction against 0070/0068/0069/spec-0004; marker families, ignore-tool list and branch name verified against product source. Four operational extensions no record orders, flagged non-conflicting (consent-gating beyond surfacing, the generalized provenance rule, the third rollback option, the never-.claude/skills/-itself boundary). Two non-blocking wording notes (the shapes/artifacts vocabulary blur; a report clause rhetorically ahead of its step). Type unclaimed; owed fail-closed per 0073 Parked 2 / grove#200. [Reviewer plain sha256 b5d651e2ad4a…]"
-by = "grove:decision-adversary (subagent, re-review); recorded by dispatcher"
-date = "2026-08-03T14:20:00Z"

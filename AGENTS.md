@@ -132,28 +132,31 @@ new GitHub issues here.**
 - **Resolve a Linear team by id, not by name.** A rename breaks name resolution silently — an
   unmatched team yields nothing found rather than an error.
 
+## Checks and review
+
+- **Tests / typecheck:** `cd cli && go test ./...` · `cd cli && go build ./... && go vet ./...`
+  (build + vet are Go's typecheck; the `cli-ci` workflow runs the same). No dedicated linter is
+  configured; `gofmt -l cli/` is available locally but is not CI-enforced.
+- **Artifact conformance is agent-applied, not CI-applied** (`decision-0010` — the contract and
+  its conformance check ship as agent instructions with no runtime). Invoke the repo-owned
+  `corpus-reviewer` (`.claude/agents/`) before merging a change to `decisions/`, `specs/`,
+  `research/` or `core/`. It checks the corpus against `spec-0001` and
+  `core/rubrics/artifact-contract.md`, and is read-only by charter — it reports, never fixes.
+- **Branch names are `<category>/<slug>`** — `decision/0075-linear-tracks-the-work`, `research/…`,
+  `fix/…`. Since the Linear migration, `feature/*` branches also carry the issue key
+  (`feature/trl-22-…`), so **whether a branch is findable by issue number depends on its category**:
+  all three current `feature/*` branches are, no `decision/*` branch is.
+- **Grove is retired** (`decision-0076`). The plugin, its `grove:<role>` subagents and the
+  `/grove:*` commands are gone, and `.grove/` with them. Citations to **grove-the-repo**
+  (`grove/adr-00NN`) are a different thing and remain live and load-bearing — `spec-0001`
+  depends on `grove/adr-0010`, and `decision-0045` is superseded in part by it. Do not "clean
+  up" those.
+
 ## Maintaining project instructions
 
 `AGENTS.md` is the canonical home for shared project instructions. Edit new shared rules
 here, outside managed blocks. `CLAUDE.md` is the Claude adapter, not a shared-rule edit
 surface. Genuinely Claude-only rules belong in `.claude/rules/`.
 
-Grove and Trellis project choices remain in `.grove/` and `.trellis/` configuration files.
-Do not hand-edit managed blocks.
-
-<!-- grove:begin (managed by grove — dials live in .grove/, not this block) -->
-trellis is a **grove consumer** ([grove](https://github.com/kodhama/grove) adr-0026, the
-thin-vendor boundary): work items matching a grove workflow (W1–W6 — e.g. a bug report → the
-bug pipeline, a research ask → divergent research) run as grove runs, sequenced through
-grove's chartered agent roles, loaded from the grove plugin as `grove:<role>` subagents (all
-thirteen — never vendored into `.claude/agents/`). Anything else — conversation, trivial
-asks, out-of-scope questions — proceeds normally. This repo's dials live in `.grove/` (see
-its README). trellis keeps its own `corpus-reviewer` in `.claude/agents/` — a repo-owned role
-that coexists with the plugin's `grove:corpus-reviewer` by namespacing (adr-0026 D5; the
-corpus-reviewer lineage originated in trellis, grove adr-0001). Telemetry (`grove-status`) is
-not installed — wisp is not vendored here, and telemetry is optional by construction. Version
-skew (adr-0026 D4): at role start, if the installed grove plugin's version differs from the
-stamp below, disclose the divergence loudly in your report and continue — the stamp is the
-in-repo ratified record, never a lock; grove never enforces it.
-grove plugin@0.1.0
-<!-- grove:end -->
+Trellis project choices remain in `.trellis/` configuration files. Do not hand-edit
+managed blocks.

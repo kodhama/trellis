@@ -1,8 +1,0 @@
-schema = 1
-record_type = "code-review"
-subject = "README.md"
-subject_state = "present"
-subject_sha256 = "17e668b752a82d573761eb129cb22bc872925f108b4e6d9edaf14791426ba778"
-verdict = "CORRECTIVE RECORD — withdraws one finding from code-review.global-sweep.2.toml on this same subject. That record carried a new low claiming the README's inline newline guard 'aborts under sh -e in two benign states'. It is FALSE, and it contradicted an earlier empirically-verified record in this same run (code-review.staleness.3.toml, which probed the identical line under set -e and found it safe because a failing non-final AND-OR command is exempt by POSIX). The contradiction was caught by the Claude PR reviewer on trellis#231, which re-ran the line across shells and file states and confirmed the earlier record. The dispatcher then re-verified independently: sh -e across all four file states (missing, empty, newline-ending, no-newline) returns rc=0 with the subsequent append reached in every case. THE LOW IS WITHDRAWN. Everything else in global-sweep.2 stands. Process note recorded rather than buried: the dispatcher transcribed a reviewer's claim into a record without cross-checking it against an existing record on the same line in the same run — records are the tokens, so a false one is a real defect, and reconciling contradictions between records is the dispatcher's job, not the reader's."
-by = "dispatcher (correction on the Claude PR reviewer's finding; independently re-verified)"
-date = "2026-08-03T23:40:00Z"

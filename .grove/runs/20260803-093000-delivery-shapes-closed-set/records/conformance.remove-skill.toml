@@ -1,8 +1,0 @@
-schema = 1
-record_type = "conformance"
-subject = "plugins/trellis/skills/remove/SKILL.md"
-subject_state = "present"
-subject_sha256 = "9bf5fa4b428b79687b0aec3949fd4f33aec4dcc5f912190ed0d8f853770507b2"
-verdict = "PASS — fidelity to decision-0073 D3/AC1/D4 composed with spec-0004, 0068 D11/D12, 0070. Eleven-item verdict table all PASS with quoted evidence. The three recorded false sentences are gone with replacements verified TRUE against the code they describe: the curl two-shapes sentence against install.sh's D2 seed; the interruption-window replacement checked hardest, sentence by sentence against staleness.sh's actual paths, including the honest admission the old sentence manufactured away (after step 2 an S2 project sits ungoverned until step 5 — path A never injects and exits silently on a current overlay). Reviewer ran the gates fresh (go test ok 12.2s, build+vet clean) and the mutation itself: pre-build SKILL.md in a scratch copy turns all seven new guards red. Three would-be scope-creep items verified as derived, not invented (per-file cardinality forced by D1 S4's multi-file signature; separator rule from spec-0004 AC5; rows consent from D3's surfacing duty). One advisory: 'governed, if redundantly' is loose for the post-step-1 window. NOTE for the routing layer: this fidelity PASS coexists with the spec-adversary's intrinsic NEEDS-REVISION on the same digest — different lenses; the intrinsic revision must preserve what this record verified. [Reviewer plain sha256 b5d651e2ad4a…]"
-by = "grove:conformance-reviewer (subagent); recorded by dispatcher"
-date = "2026-08-03T14:55:00Z"

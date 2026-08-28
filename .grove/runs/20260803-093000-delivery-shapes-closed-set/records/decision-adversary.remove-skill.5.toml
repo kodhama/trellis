@@ -1,8 +1,0 @@
-schema = 1
-record_type = "decision-adversary"
-subject = "plugins/trellis/skills/remove/SKILL.md"
-subject_state = "present"
-subject_sha256 = "0c9d2f476909c2f59d1b6cc4914142fd5e4004361ae515c892e9e7187d6d682a"
-verdict = "SOUND, round 5 (combined-lens re-bind) — no conflict with any standing ratified record on either edit. M1 checked against spec-0004 section 3's reporting obligation: excluding a mid-transaction mismatch from the wrong summary bucket is a strengthening of 'surfaces exactly what it did', not a departure, and no decision-0073 clause names that sentence's wording. M2 is a test addition against already-ratified prose introducing no new claim — and is squarely what decision-0073 D4's assertion-mode split calls for on model-interpreted prose, not a deviation from it. Round-4 SOUND stands for unchanged text; the F4-flagged stale-tag/AC4 tension is untouched by these hunks and continues to ride to the maintainer. Digest note: the reviewing agent's own tagged-digest computation was malformed (it concatenated the tag prefix with the plain HEX rather than hashing prefix+bytes), which produced a false 'chain does not match' caveat in its report; the dispatcher recomputed independently — b827b25 tagged = c8fde0db... (matching every round-4/5 record) and df68fb8 tagged = 0c9d2f47... The chain is intact; the caveat is withdrawn. SUPERSEDED BY ROUND 7."
-by = "grove:decision-adversary (subagent, combined re-bind); recorded by dispatcher"
-date = "2026-08-03T21:45:00Z"

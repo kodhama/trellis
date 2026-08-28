@@ -1,8 +1,0 @@
-schema = 1
-record_type = "decision-adversary"
-subject = "decisions/0073-the-delivery-shapes-are-a-closed-set.md"
-subject_state = "present"
-subject_sha256 = "ca3daea1cf2ac60f9a18b9011fb179f557062208112e14bed1fdd9b2a23ab0e1"
-verdict = "SOUND — [binding note: the only byte delta between the reviewed revision-4 file (guard-tagged 43bbaec4…) and this digest is the status-line flip performing the maintainer's recorded intent act — the sanctioned lifecycle channel, not a content change.] SOUND at revision 4: revision 4, after four rounds (6 findings round 1, 6 round 2, 3 round 3, 0 round 4; the record's Revision record locates every fold). Round 4 verified all three round-3 items resolved at their locations: the Parked OQ5 restatement is accurate against decision-0068's own text; the S6 stale-tag clause is supported by spec-0004 (remove never auto-reverses; a git rollback does not delete tags) and its interaction with the no-op predicate is internally consistent end-to-end; D2's probe-comment locus now matches D1's say-it-where-you-do-it clause exactly. No new corpus conflict; Open(0) honest. Two non-blocking notes recorded and deliberately NOT edited under the bound digest: the self-check body lags the round-3/4 folds (omission, not contradiction — the Revision record covers them), and one Context clause's 'skills half' phrasing is an infelicity whose intended reading the same sentence makes unambiguous. Ready for the intent gate, subject to the record's own sequencing consequence: 0073's intent act lands with or after 0072's. [Reviewer-reported plain sha256 f9ec5c698ffe…; digest above is the guard's grove:file-bytes tag over the same bytes.]"
-by = "grove:decision-adversary (subagent, round 4); recorded by dispatcher"
-date = "2026-08-03T12:05:00Z"

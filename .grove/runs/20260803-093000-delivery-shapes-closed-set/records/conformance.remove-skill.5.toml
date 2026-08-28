@@ -1,8 +1,0 @@
-schema = 1
-record_type = "conformance"
-subject = "plugins/trellis/skills/remove/SKILL.md"
-subject_state = "present"
-subject_sha256 = "0c9d2f476909c2f59d1b6cc4914142fd5e4004361ae515c892e9e7187d6d682a"
-verdict = "PASS, round 5 (combined-lens re-bind) — bound to df68fb8, discharging the round-4 record's loud disclosure that the drifted bytes were unreviewed. Nine-item table all PASS: both diff hunks are confined to section 4's verification-timing sentence and section 5's stop-category sentence, neither intersecting any decision-0073 D3/AC1 obligation (transaction order, bundle gate, decline surfacing, morph preflight, predicate discipline, marker-as-marker — all in untouched text, each located and cited). The protected 'one ignored prompt re-governs at 14/14' clause verified byte-identical to decision-0073 D3's own wording and untouched by the diff. spec-0004 section 3: M1's report-category fix SHARPENS fidelity to 'surfaces exactly what it did' rather than weakening it. decision-0070 untouched. Gates fresh: go test -count=1 ok 12.0s. Digest note: the reviewing agent's own tagged-digest computation was malformed (it concatenated the tag prefix with the plain HEX rather than hashing prefix+bytes), which produced a false 'chain does not match' caveat in its report; the dispatcher recomputed independently — b827b25 tagged = c8fde0db... (matching every round-4/5 record) and df68fb8 tagged = 0c9d2f47... The chain is intact; the caveat is withdrawn. SUPERSEDED BY ROUND 7."
-by = "grove:conformance-reviewer (subagent, combined re-bind); recorded by dispatcher"
-date = "2026-08-03T21:45:00Z"

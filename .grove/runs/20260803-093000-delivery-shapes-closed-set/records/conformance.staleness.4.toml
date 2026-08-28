@@ -1,8 +1,0 @@
-schema = 1
-record_type = "conformance"
-subject = "plugins/trellis/hooks/staleness.sh"
-subject_state = "present"
-subject_sha256 = "d5ec708f62d5d50ad679820030a62cac97b0683f7472c0cea4ee84d1bc598fc7"
-verdict = "PASS — seven-item table all PASS on the Codex P1 fix from trellis#231. The probe now collects every match instead of breaking at the first, restoring agreement with skills/remove/SKILL.md, which declares the multi-file state legitimate in terms; all three messages interpolate the full list and each remedy says to delete from EACH file, naming what leaving one behind costs. D2's honesty rule verified intact — the embedded-vs-dangling framing is unedited, only the file-naming clauses were pluralized. The two-file subset scope and its 0073-pointer comment are unchanged. Guard mutation-proven by the reviewer: restoring the break turns the new subtest red on the missing file. No scope creep in install.sh (manifest hash only). Gates fresh, run twice: go test -count=1 ok 12.1s. The reviewer's one style nit (the plural 'each of' reading awkwardly against a single-file list) was fixed after its pass and the manifest re-advanced; these bytes carry that fix. [Reviewer plain sha256 cb2aac31f72b… on the pre-nit bytes; current plain e0ac42259c202df8d5b7281f03fed740826cb4608a2a80e98b9843acdf56b3c6]"
-by = "grove:conformance-reviewer (subagent, round 4); recorded by dispatcher"
-date = "2026-08-03T23:55:00Z"
