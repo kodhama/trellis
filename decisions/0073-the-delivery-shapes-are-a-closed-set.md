@@ -3,6 +3,7 @@ id: decision-0073
 type: decision
 status: approved  # maintainer intent act 2026-08-03, in session, at the governed run's batched intent gate: "Approve both, in order (0072 then 0073)" — recorded AFTER decision-0072's flip, satisfying this record's own sequencing consequence. An in-PR flip recording the act; author (agent) != approver (maintainer). Decision-adversary SOUND at revision 4 (record: decision-adversary.d0073.toml). Originally: drafted by agent; revision 4 after three decision-adversary rounds (6+6+3 findings, all folded; the revision record locates every one); awaiting fresh adversary convergence, then the maintainer intent act at this run's intent gate
 depends_on: [decision-0068, decision-0070, decision-0072]
+superseded_in_part_by: [decision-0076]  # 2026-08-28 — D3's second bullet only, and only its "one ignored prompt re-governs at 14/14" half, which restated decision-0070 D4 faithfully and inherited its error. The surviving half — deleting the recorded decline re-arms the announcement — is verified true. Everything else in this record stands: the closed set, the transaction ordering, the morph preflight, the predicate discipline
 informed_by: [spec-0006]
 owner: agent
 date: 2026-08-03
@@ -283,3 +284,22 @@ silently-decided enumerations are now explicitly decided in the text, which is
 the remedy the adversary's Part 4 asked for. Promoted to `gated` on this
 self-check; `approved` remains the maintainer's intent act, after the fresh
 adversary pass on this revision.
+
+---
+
+> **Superseded in part (2026-08-28, append-only pointer).**
+> `decision-0076` supersedes **half of D3's second bullet**. *"One ignored prompt
+> re-governs at 14/14"* was a faithful restatement of `decision-0070` D4, which the
+> hook never implemented; an unanswered announcement leaves the project **ungoverned**
+> and recurs next session. The other half — *"deleting the recorded decline re-arms
+> the adoption announcement"* — is **verified true** and stands: the branch is a bare
+> file-existence test with no persisted already-announced state.
+>
+> The surfacing obligation D3 creates is unchanged; only the consequence it states
+> changes. Deleting a decline returns the project to the **unadopted** state — the
+> announcement returns, and the project is governed only if someone then accepts.
+> `skills/remove/SKILL.md` carries the corrected wording, as the live surface.
+>
+> **Everything else in this record stands**, including the closed set itself. The
+> global sweep on this record's own run flagged the clause as L3 and routed it to the
+> maintainer; it is closed here rather than left riding.

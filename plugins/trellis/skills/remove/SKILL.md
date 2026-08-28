@@ -39,9 +39,12 @@ Also inspect, without writing:
   inside it need surfacing **by name** before any deletion:
   - **the decline artifact** — a `rules.toml` carrying top-level `governed = false` is the
     project's recorded decline (`decision-0070` D4). State the consequence out loud: on a machine
-    with a user-scope plugin, deleting the recorded decline re-arms the adoption announcement, and
-    one ignored prompt re-governs at 15/15. Deleting it is legitimate — removal is removal — but
-    doing it unnamed is not;
+    with a user-scope plugin, deleting the recorded decline re-arms the adoption announcement, so
+    the project returns to **unadopted** and every future session asks again until someone answers.
+    Answering yes governs it at 15/15. Ignoring the prompt does not:
+    **silence is not an adoption act** (`decision-0076`), so the project stays ungoverned and is
+    asked again next session. Deleting it is legitimate — removal is removal — but doing it
+    unnamed is not;
   - **the consumer's own rows** — `rules.toml` is the consumer's file, and deleting `.trellis/`
     deletes every row they edited. Show them the rows that will go, as part of the consent below;
   - **anything unrecognized** — a file in `.trellis/` this document does not name (not

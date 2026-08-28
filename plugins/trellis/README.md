@@ -17,7 +17,11 @@ keeps its separate content identity in
 Since `decision-0065` both hosts deliver the same way: a `SessionStart` hook injects the rules
 from the plugin's `reference/` payload plus the project's `.trellis/rules.toml`. On the plugin
 path nothing writes that config file — the hook reads it, and applies the shipped defaults when it
-is absent (`decision-0070` D3). No `CLAUDE.md` block, no `AGENTS.md` receipt, no vendored overlay.
+is absent **at project scope**, where the bundle vendored inside the repository is itself the
+adoption act (`decision-0070` D3). A **user-scope** install has no such act to read, so it
+announces instead and governs nothing until someone writes the file; an ignored announcement
+leaves the project ungoverned and returns next session (`decision-0076`). No `CLAUDE.md` block,
+no `AGENTS.md` receipt, no vendored overlay.
 
 **Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
 the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
