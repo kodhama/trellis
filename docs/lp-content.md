@@ -47,7 +47,7 @@ framing, which is why this copy changed):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
   # macOS, Linux, WSL — a POSIX shell; not cmd or PowerShell
-  # that's it — all 15 rules active, adaptive posture
+  # that's it — all 16 rules active, adaptive posture
   ```
 - `manual` (harnesses the plugin does not cover — **not** Claude Code,
   which the tabs above serve; `decision-0069`):
@@ -157,7 +157,7 @@ pattern — this is a file-tree illustration, not a shell session):
 ```
 .trellis/
   rules.toml       # which rules are active, how strictly — yours to edit.
-                   #   Seeded by the installer, all 15 on (decision-0070)
+                   #   Seeded by the installer, all 16 on (decision-0070)
 .claude/           # curl path only — the plugin path writes neither:
   rules/
     trellis.md     #   the rules readout, loaded every session — Trellis owns
@@ -175,7 +175,7 @@ longer true.)*
 
 **Eyebrow:** The core
 **Heading:** A small set of invariants, held as firmly as you choose.
-**Lede:** Not a process — the layer above it. Fifteen load-bearing
+**Lede:** Not a process — the layer above it. Sixteen load-bearing
 invariants (directional flow, ratifiable artifacts, gate-at-handover,
 independent judgment, transparency…), each set along two dials: how
 strictly it applies, and who gates it. Everything else, Trellis
@@ -193,7 +193,7 @@ Two cards:
    on the invariants and gets out of the way of your methodology.
 
 Secondary CTA below the cards: ghost → `invariants.html` — "See all
-fifteen, with why + examples →"
+sixteen, with why + examples →"
 
 ## Section: Free & open
 
@@ -256,7 +256,7 @@ The TRL-11 accessibility pass changed it substantially: the two pages share
 the dark token block byte-for-byte, so the surface ramp had to move in both
 at once, and the theme toggle had to stay on the same three-state cycle
 because both read the same `trellis-theme` key. It also picked up a
-responsive header breakpoint, real headings for the fifteen invariant
+responsive header breakpoint, real headings for the invariant
 titles, and the removal of a dead CSS block. None of that makes it a DS
 derivative; it does mean the two pages now have shared state that has to be
 edited together, which is a stronger coupling than "out of scope" implies.

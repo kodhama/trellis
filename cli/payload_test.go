@@ -50,9 +50,15 @@ import (
 // vendoredPayloadDir is the payload home named by #117: plugins/trellis/reference/.
 const vendoredPayloadDir = "../plugins/trellis/reference"
 
-// assessableSlugs is the pinned catalog slug set (signature-catalog-v1: the 15
+// assessableSlugs is the pinned catalog slug set (signature-catalog-v1: the 16
 // assessable invariants), alphabetical — the complete readout must carry one
 // slug-tagged rule per slug (decision-0053 point 1).
+//
+// This literal is the ONE pin for the row set. Every other count in the suite
+// derives from len(assessableSlugs) rather than repeating the number, because
+// decision-0074's self-check named the repeated literal as the root cause of the
+// misses on the previous row addition — "a sweep that matched only some of the
+// shapes a count takes" (decision-0078).
 var assessableSlugs = []string{
 	"floor-intent-gate",
 	"floor-transparency",
@@ -67,6 +73,7 @@ var assessableSlugs = []string{
 	"inv-independent-judgment",
 	"inv-intent-locus",
 	"inv-minimal-first",
+	"inv-no-orphan-followups",
 	"inv-ratifiable-artifacts",
 	"inv-self-improvement",
 }
@@ -273,7 +280,7 @@ func TestPayloadHeaderImportsSiblingRules(t *testing.T) {
 }
 
 // TestPayloadReadoutIsCompleteWithAuthorityHeader: decision-0053 point 2 — the
-// readout ships complete (all 15 rules, every install) and opens with the authority
+// readout ships complete (every assessable rule, every install) and opens with the authority
 // header: research-0012's eval-tested AUTHORITY_HEADER wording, adapted in exactly
 // one word ("inlined" → "loaded") so one shared readout is true on both channels
 // (the inline block inlines the rows below the rules; the import block loads them

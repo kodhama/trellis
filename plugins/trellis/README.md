@@ -74,7 +74,7 @@ resolved):
 ```
 
 That is the whole install **on Claude Code**, where installing at project scope is the adoption
-act — the shipped defaults apply immediately, all fifteen rules at the adaptive posture, with no
+act — the shipped defaults apply immediately, all sixteen rules at the adaptive posture, with no
 further command and no file required (`decision-0070` D3).
 
 **Codex is not supported yet.** It remains a delivery target (`kodhama-0013`) with **no date

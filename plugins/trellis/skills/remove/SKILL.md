@@ -41,7 +41,7 @@ Also inspect, without writing:
     project's recorded decline (`decision-0070` D4). State the consequence out loud: on a machine
     with a user-scope plugin, deleting the recorded decline re-arms the adoption announcement, so
     the project returns to **unadopted** and every future session asks again until someone answers.
-    Answering yes governs it at 15/15. Ignoring the prompt does not:
+    Answering yes governs it at 16/16. Ignoring the prompt does not:
     **silence is not an adoption act** (`decision-0077`), so the project stays ungoverned and is
     asked again next session. Deleting it is legitimate — removal is removal — but doing it
     unnamed is not;

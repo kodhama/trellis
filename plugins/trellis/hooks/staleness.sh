@@ -395,7 +395,8 @@ if [ -f "$rendered" ]; then
   # file with the whole footer deleted between the sentinel and the import passed
   # (so the footer got its own marker), and a 167-byte file carrying one line of
   # `inv-x` passed the "at least one slug" test (so the count is five, against a
-  # payload that ships fifteen). A truncation severe enough to matter cannot keep
+  # payload that ships the whole assessable set). A truncation severe enough to
+  # matter cannot keep
   # five distinct rule lines. Trailing CR and whitespace are
   # tolerated: this file is committed, and a collaborator on core.autocrlf=true
   # otherwise gets told a complete file is incomplete.
@@ -423,7 +424,7 @@ if [ -f "$rendered" ]; then
       n = 0; for (k in rules) n++
       if (stage == 0) print "opening marker"
       else if (stage == 1) print "rules body (no trellis:rules-loaded sentinel)"
-      else if (n < 5) print "rule text (only " n " rule line(s) survived; the payload ships fifteen)"
+      else if (n < 5) print "rule text (only " n " rule line(s) survived; the payload ships the full rule set)"
       else if (stage == 2) print "fixed footer"
       else if (stage == 3) print "rule-activation import"
       else if (stage == 4) print "rendered-from stamp"
@@ -493,7 +494,7 @@ if [ ! -f "$toml" ]; then
   # NOT merely "inside the project" — that was wrong, and wrong in the direction
   # that governs. A dotfiles repo rooted at $HOME contains
   # ~/.claude/plugins/cache/..., the USER-scope location, so containment alone
-  # reported project scope and delivered all fifteen rules with no announcement.
+  # reported project scope and delivered the whole rule set with no announcement.
   # Measured before this fix: 12 slugs, zero announcements — exactly the shape
   # decision-0070 D6 promises never happens.
   #
@@ -523,7 +524,7 @@ if [ ! -f "$toml" ]; then
     # visibly, greppably, and revocably by deleting it. Absent rows therefore
     # mean the standard set, not none. Rather than invent a second activation
     # semantics, point at the shipped preset and let every check below run
-    # unchanged: same slugs, 15/15 active, strictness "adaptive" (posture B).
+    # unchanged: same slugs, every row active, strictness "adaptive" (posture B).
     toml="$plugin/reference/rules-b.toml"
     [ -f "$toml" ] || exit 0
     rows_are_default=yes
@@ -539,7 +540,7 @@ if [ ! -f "$toml" ]; then
     # project ungoverned and recurs next session — which the message below states
     # in as many words. decision-0077 corrected the record to match the code
     # rather than the reverse, so that nothing is governed by silence.
-    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 15 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the choice persists — without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: strictness = \"firm\" for the by-the-book posture, active = false on a row to turn a rule off.) Inject and follow no Trellis rules this turn: none are active yet."
+    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 16 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the choice persists — without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: strictness = \"firm\" for the by-the-book posture, active = false on a row to turn a rule off.) Inject and follow no Trellis rules this turn: none are active yet."
     exit 0
   fi
 fi

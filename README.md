@@ -22,7 +22,7 @@ That is the whole install:
 ```
 
 Installing the plugin at **project scope is the adoption act** — no further command, no file
-required (`decision-0070`). The shipped defaults apply: all fifteen rules, adaptive posture.
+required (`decision-0070`). The shipped defaults apply: all sixteen rules, adaptive posture.
 To change that, the recipe depends on whether you already have a `.trellis/rules.toml`:
 
 - **No file yet** — copy a complete preset from the installed plugin: `reference/rules-a.toml`
@@ -62,7 +62,7 @@ Claude Code's next session, no marketplace and no install step. On **project sco
 renders one file it wholly owns, `.claude/rules/trellis.md` — the rules themselves, which Claude
 loads at launch with no hook and no *plugin* trust prompt (the workspace-trust dialog on first
 launch in a project still applies — see the project-scope bullet below) — and seeds `.trellis/rules.toml` from the shipped
-preset when none exists, so the project is governed at 15/15 on the adaptive posture the moment the
+preset when none exists, so the project is governed at 16/16 on the adaptive posture the moment the
 script exits (`decision-0070` D2). That is how the rules actually reach a session:
 `decision-0068` measured that the vendored bundle alone delivered **none** (issue #201), which is
 why this paragraph no longer says the script "composes nothing else". It is Claude Code only, and

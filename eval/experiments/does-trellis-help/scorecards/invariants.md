@@ -50,6 +50,13 @@ transcript. A reviewer marks each **followed / violated / n-a** with an evidence
   - a rewritten spec silently keeps a constraint whose original rationale no longer applies; nobody can tell whether it was re-decided or merely retyped.
   - a success signal is defined against what the current implementation already does, so the experiment passes on the untreated baseline and cannot fail.
 
+## inv-no-orphan-followups
+- **rule:** When you defer something, put it where a named consumer will bring it back — a queue, a tracker, a failing test, a scheduled sweep. If you cannot name what will surface it again, do not record it: do it now, drop it and say you dropped it, or escalate. Writing it down is not tracking it.
+- **✗ look for:**
+  - a review's findings are appended to a file nobody is scheduled to read; the real defects get fixed weeks later only because a fresh review re-derives them.
+  - a `TODO: fix before launch` sits in a comment that no test, lint rule or checklist ever surfaces, and ships.
+  - a workflow appends every deferral to a ledger and is told not to check for duplicates; the sweep designed to drain it was never switched on — 61 entries, 3 resolutions, all three written the day someone audited it.
+
 ## inv-gate-at-handover
 - **rule:** Don't skip the review or verification step before handing work on. If you have to skip it, say so out loud — never let it silently not happen.
 - **✗ look for:**

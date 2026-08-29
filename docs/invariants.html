@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>The invariants — Trellis</title>
-<meta name="description" content="The fifteen Trellis invariants, each with why it earns its place and a with/without example — the catalog, made readable." />
+<meta name="description" content="The sixteen Trellis invariants, each with why it earns its place and a with/without example — the catalog, made readable." />
 <style>
   :root {
     --bg: #f5f7f4; --surface: #ffffff; --text: #16201b; --muted: #5a6b62;
@@ -164,7 +164,7 @@
   <div class="head">
     <div class="wrap">
       <p class="eyebrow">The catalog, made readable</p>
-      <h1>Fifteen invariants. Why each earns its place.</h1>
+      <h1>Sixteen invariants. Why each earns its place.</h1>
       <p class="lede">These are the load-bearing properties Trellis keeps true no matter how fast your agents move. For each: what it is, <strong>why</strong> it matters, and the same situation <em>with</em> it and <em>without</em>. Everything else about your process, Trellis leaves alone.</p>
       <div class="legend">
         <span><i class="swatch sw-with"></i> with the invariant</span>
@@ -409,6 +409,29 @@
         <div class="case">metrics</div>
         <div class="s wo"><span class="lbl wo">Without</span><span>a success signal is defined against what the current implementation already does, so the experiment passes on the untreated baseline and cannot fail.</span></div>
         <div class="s wi"><span class="lbl wi">With</span><span>a success signal is defined against the outcome the new model is meant to produce, so the current implementation's behaviour can fail it.</span></div>
+      </div>
+      </div><p class="dials"><b>default:</b> default-on-but-skippable · human</p>
+    </div>
+
+    <div class="card">
+      <div class="card-top"><span class="code">inv-no-orphan-followups</span><h3 class="name">No orphan follow-ups</h3></div>
+      <p class="what">A deferral is recorded only where a named consumer will re-present it. "Someone reading this file later" is not a consumer — so it is done now, dropped on the record, or escalated.</p>
+      <p class="why"><b>Why:</b> <b>a follow-up you wrote down actually comes back</b> — agents produce deferrals far faster than humans consume them, and a plausible ledger is worse than none: it converts an unsolved problem into the <em>feeling</em> of a tracked one, and it is trusted precisely because it looks like bookkeeping.</p>
+      <div class="pairs">
+      <div class="stack">
+        <div class="case">process</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a review's findings are appended to a file nobody is scheduled to read; the real defects get fixed weeks later only because a fresh review re-derives them.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a review's deferred findings go to the queue whose executor actually works it, and the ones nobody will work are dropped in the review itself, with the reason recorded.</span></div>
+      </div>
+      <div class="stack">
+        <div class="case">code</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a TODO: fix before launch sits in a comment that no test, lint rule or checklist ever surfaces, and ships.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a known-broken case ships as a skipped test naming the defect — every run re-presents it, so it cannot be forgotten.</span></div>
+      </div>
+      <div class="stack">
+        <div class="case">ops</div>
+        <div class="s wo"><span class="lbl wo">Without</span><span>a workflow appends every deferral to a ledger and is told not to check for duplicates; the sweep designed to drain it was never switched on — 61 entries, 3 resolutions, all three written the day someone audited it.</span></div>
+        <div class="s wi"><span class="lbl wi">With</span><span>a workflow step that appends findings to a ledger names the step that drains it, and that step runs on a stated cadence; the write→read pair is guarded like any other.</span></div>
       </div>
       </div><p class="dials"><b>default:</b> default-on-but-skippable · human</p>
     </div>

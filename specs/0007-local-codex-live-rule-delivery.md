@@ -6,7 +6,7 @@ depends_on: [decision-0058, spec-0004, spec-0006]
 implements: decision-0058
 owner: agent
 rubric: rubric-artifact-contract
-version: 2  # 2026-08-21 (decision-0074): the canonical inventory gained inv-deliberate-succession and the activation-row completeness predicate is now inventory-relative rather than a hard count — a testable-clause change, bumped per spec-0001's initialization precedent
+version: 3  # 2026-08-28 (decision-0078): the canonical inventory gained inv-no-orphan-followups — a testable-clause change, bumped on the same grounds as version 2 below. Version 2, 2026-08-21 (decision-0074): the inventory gained inv-deliberate-succession and the activation-row completeness predicate became inventory-relative rather than a hard count — a testable-clause change, bumped per spec-0001's initialization precedent
 date: 2026-07-24
 ---
 
@@ -238,7 +238,7 @@ The canonical inventory carried by the bootstrap is exactly:
 `inv-directional-flow`, `inv-handover-points`, `inv-intent-locus`,
 `inv-ratifiable-artifacts`, `inv-graph-maintenance`,
 `inv-self-improvement`, `inv-deliberate-succession`,
-`inv-gate-at-handover`, `inv-independent-judgment`,
+`inv-no-orphan-followups`, `inv-gate-at-handover`, `inv-independent-judgment`,
 `inv-auditable-archive`, `inv-bounded-context`,
 `inv-minimal-first`, `inv-clarify-before-commit`,
 `floor-transparency`, and `floor-intent-gate`.
