@@ -32,11 +32,10 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
    well-typed (`depends_on` a list, etc.). **`status` is not required** (`decision-0082`).
 2. `type` is declared and carries a `scope` + rubric (may be declared centrally). **There is no
    status check** — `decision-0082` retired the field for this repo; merging to `main` is the
-   acceptance, as `AGENTS.md` (the shared project-instruction authority, `decision-0057`) states in
-   its Artifacts bullet. A `status:` line on an artifact written before 2026-08-29 is **preserved
-   history**:
-   never flag it, never treat its value as a lifecycle claim, and never ask for its removal (many
-   carry the maintainer's intent act in a trailing comment).
+   acceptance, as `AGENTS.md` (the shared project-instruction authority, `decision-0057`) states
+   under `## Operating method`. A `status:` line on an artifact written before 2026-08-29 is
+   **preserved history**: never flag it, never treat its value as a lifecycle claim, and never ask
+   for its removal (many carry the maintainer's intent act in a trailing comment).
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id`, a declared external-ref prefix
    (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers

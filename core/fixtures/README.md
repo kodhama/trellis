@@ -18,7 +18,7 @@ The check, run against `known-bad.md`, **must report all four:**
 
 A run that *passes* `known-bad.md`, or reports vague/￼incomplete findings, **fails the check
 itself.** (Check 3 — id uniqueness — is exercised against the live corpus, where collisions can actually
-occur. There is no separate check-5 case to exercise: since `decision-0082` directional flow for
+occur. There is no separate check-5 case to exercise: since `decision-0082`, directional flow for
 trellis-self *is* the check-4 resolution test, which the dangling `depends_on` above already covers.)
 
 **The fixture carries no `status` field, and a run that asks for one is itself wrong**

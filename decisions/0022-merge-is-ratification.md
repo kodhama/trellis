@@ -2,7 +2,7 @@
 id: decision-0022
 type: decision
 status: ratified
-superseded_in_part_by: [decision-0042, decision-0082]  # decision-0082: D2 entirely (the in-PR `status: draft -> ratified` flip convention and the no-draft-on-main clause — merge = ratify itself is KEPT and promoted, not lost) AND D3 (who proposes the flip, and that the merge needs no automation) — both are wholly about a field that no longer exists — plus the Consequences answer to spec-0001's "two consumable states or one?", which 0077 reverses from `keep two` to `keep none`. STANDS: D1 — the ratified STATE is core while the workflow expressing it is instance-specific — which 0077 does not weaken but vindicates: trellis changed the workflow and kept the state, now carried by the merge
+superseded_in_part_by: [decision-0042, decision-0082]  # decision-0082: D2 entirely (the in-PR `status: draft -> ratified` flip convention and the no-draft-on-main clause — merge = ratify itself is KEPT and promoted, not lost) AND D3 (who proposes the flip, and that the merge needs no automation) — both are wholly about a field that no longer exists — plus the Consequences answer to spec-0001's "two consumable states or one?", which 0082 reverses from `keep two` to `keep none`. STANDS: D1 — the ratified STATE is core while the workflow expressing it is instance-specific — which 0082 does not weaken but vindicates: trellis changed the workflow and kept the state, now carried by the merge
 depends_on: [invariants-v1, spec-0001, decision-0005, brief-§7]
 owner: gundi
 date: 2026-07-04

@@ -2,7 +2,7 @@
 id: decision-0037
 type: decision
 status: ratified
-superseded_in_part_by: [decision-0042, decision-0082]  # decision-0082: D2 (trellis's own `draft -> ratified` default enum) entirely, and within D1 exactly ONE bullet — "an undeclared status is a conformance failure", which post-0077 would fail every trellis artifact. STANDS: D1's actual principle, that the status enum is methodology-defined — 0077 is its strongest instance, a methodology declaring NO enum rather than a different one — and D3's owner:/author mapping, untouched
+superseded_in_part_by: [decision-0042, decision-0082]  # decision-0082: D2 (trellis's own `draft -> ratified` default enum) entirely, and within D1 exactly ONE bullet — "an undeclared status is a conformance failure", which post-0077 would fail every trellis artifact. STANDS: D1's actual principle, that the status enum is methodology-defined — 0082 is its strongest instance, a methodology declaring NO enum rather than a different one — and D3's owner:/author mapping, untouched
 depends_on: [spec-0001, invariants-v1, decision-0003, research-0003]
 owner: gundi
 ratified: 2026-07-06

@@ -26,7 +26,7 @@ scope: trellis-product
 1. **Frontmatter present & required fields valid.** Every non-code `.md` artifact opens with
    YAML frontmatter carrying `id`, `type`, `depends_on`, `owner` — all present and
    well-typed (`depends_on` is a list; etc.). **`status` is NOT required and NOT expected**
-   (`decision-0077` retired it). *FAIL → name the missing/malformed field.*
+   (`decision-0082` retired it). *FAIL → name the missing/malformed field.*
 2. **`type` declared.** `type` is a non-empty string carrying a `scope`
    (`core-methodology` / `trellis-product` / `trellis-meta`) and a rubric *(scope/rubric may be
    declared centrally, not per-file)*. **No status check** — `decision-0082` retired the field for

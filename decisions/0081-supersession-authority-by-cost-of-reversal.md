@@ -17,6 +17,19 @@ date: 2026-08-28
 
 # 0081 — Supersession authority scaled by cost of reversal *(proposal, not a decision)*
 
+> **Evidence is as of 2026-08-28; line cites do not resolve against `main`.** This record was
+> authored on a branch cut before `decision-0079` (which deleted `specs/` and trimmed `AGENTS.md`
+> from 163 lines to 95) and before `decision-0082` (which retired the `status` field). Its block
+> quotes of `AGENTS.md` — the *Gates* bullet, *"in conversation, review, or by merging"*,
+> *"Downstream consumes only gated/approved upstream, never drafts"* — quoted the file **as it
+> stood that day**; several of those sentences no longer exist. Its `AGENTS.md:NN`,
+> `signature-catalog-v1.md:NN` and `trellis-invariants-v1.md:NN` line numbers are likewise
+> pre-trim and are off against `main`. The record is **not edited to chase them**
+> (`inv-auditable-archive`); read its quotes against the tree at `9d0675a`. Its `spec-0001` /
+> `spec-0002` citations resolve through `decision-0079`'s retired-artifacts registry, and the
+> forward edits it *recommends* to those files now land on `core/rubrics/artifact-contract.md`
+> and `core/schemas/typed-artifacts.md`.
+
 > **What this is — and what the maintainer accepted.** Written as a proposal for the maintainer to
 > rule on; **accepted in conversation on 2026-08-29** (*"So I accept the draft"*), which is the
 > intent act the frontmatter flip records (`decision-0046`).
@@ -418,7 +431,10 @@ supersession beyond any check — which `inv-independent-judgment` forbids. *Ope
    dimension along which entries could collapse. "Authority scaled by reversibility" is a candidate
    answer, and TRL-4 already takes `inv-deliberate-succession` as its starting corpus. If so, this
    proposal should be folded into that audit rather than landed ahead of it.
-7. **How does an agent-drafted supersession avoid consuming its own draft?** The successor is
+7. ~~**How does an agent-drafted supersession avoid consuming its own draft?**~~ **Dissolved by
+   `decision-0082`** (same change as this record's landing): there is no `status` field, so there
+   is no draft to consume and nothing to wait for. Retained below as the reasoning that led
+   there. The successor is
    `status: draft` while the same PR implements against it, and `AGENTS.md:36` forbids downstream
    consumption of drafts. Existing records dodge this by flipping in-PR to record a human act that
    already happened; an agent-initiated supersession has none at drafting time. Candidate answers:
@@ -491,5 +507,7 @@ the one call here that most needs the maintainer's independent judgment rather t
 
 The math-quest elicitation statistics were taken from the issue and could **not** be verified from this
 repo — flagged in-line rather than presented as established. The author is an agent and does not grade
-its own work (`inv-independent-judgment`); this record stays `draft` on a **draft PR** so the gate is
-the maintainer's.
+its own work (`inv-independent-judgment`). *(Authored intent: stay `draft` on a draft PR so the gate
+is the maintainer's. Superseded by events — the maintainer accepted it in conversation on
+2026-08-29, which the frontmatter records, and `decision-0082` retired the `status` field
+altogether in the change that lands this record.)*

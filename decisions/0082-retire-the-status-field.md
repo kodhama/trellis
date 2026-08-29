@@ -32,8 +32,11 @@ date: 2026-08-29
   the record and accepted it. The instruction generated the friction, not a lapse in following it.
 
 - **Empirically the working state was never used.** Before `decision-0081`, **not one** of the 73
-  decisions, 8 specs or 11 research notes carried `status: draft`. The corpus has 38 `ratified`,
-  31 `approved`, 4 `superseded`, and — until this session — **zero drafts**. `ratify-guard` has
+  decisions, 8 specs or 11 research notes carried `status: draft`. The corpus had 38 `ratified`,
+  31 `approved`, 4 `superseded`, and — until this session — **zero drafts**. *(Counts as measured
+  2026-08-28. At landing the corpus is 80 decisions, **no** specs — `decision-0079` deleted them —
+  and 11 research notes: 53 `ratified`, 38 `approved`, 5 `superseded`, still **zero drafts**. The
+  argument is unchanged and strengthened; the printed numbers are the as-of figures.)* `ratify-guard` has
   been guarding a state that does not occur. That is the strongest evidence for the maintainer's
   read, and it is measured, not asserted.
 
@@ -81,7 +84,7 @@ What is retired is the **record-keeping ceremony around** that act, not the act.
 exactly where the maintainer already exercises it — the merge — instead of being mirrored into a
 field he must also maintain.
 
-**6. Existing artifacts keep their `status:` lines, untouched.** All 99 of them. **34 carry a
+**6. Existing artifacts keep their `status:` lines, untouched.** All 97 of them (99 as counted 2026-08-28, before `decision-0079` deleted `specs/`). **34 carry a
 trailing comment recording a specific maintainer intent act** (`decisions/0046`: *"the first
 decision ratified under its own rule"*; `research/0012`: *"ok to merge!"*). Those comments are the
 audit trail `inv-auditable-archive` exists to protect. Stripping them would destroy real history to
@@ -103,8 +106,11 @@ family follows is the family's call, and no other repo is touched by this change
   field and adding `.github/workflows/ratify-flip.yml` to flip `gated → approved` automatically.
   Neither session could see the other. **This record wins on the maintainer's own stated ground:**
   he named the gate machinery as friction he wanted gone, and `0080`'s answer was a better sensor
-  where this record's is no sensor to need. `ratify-flip.yml` is deleted with `ratify-guard.yml` —
-  with no `status` field both are dead code. `0080`'s one surviving finding is recorded rather than
+  where this record's is no sensor to need. **Both `ratify-guard.yml` and `ratify-flip.yml` are
+  deleted here** — with no `status` field both are dead code, and `ratify-flip.yml` was the more
+  urgent of the two: it is `pull_request_target` with `contents: write`, and its stamp *writes
+  back* a `status:` line, so leaving it would have let a future `gated` record reintroduce the
+  retired field by automation. `0080`'s one surviving finding is recorded rather than
   lost: **an agent merging with the maintainer's token is indistinguishable from the maintainer**,
   so "the merge is the human act" holds only while the maintainer's account is his alone. That is
   now the load-bearing assumption of this decision, and the reason point 2 keeps
@@ -133,11 +139,11 @@ family follows is the family's call, and no other repo is touched by this change
     concept and the field it introduced both stand.
 - **Contract surface edited in this change:** `core/rubrics/artifact-contract.md` (checks 1, 2,
   5, 7), `.claude/agents/corpus-reviewer.md` (same four), `AGENTS.md`, and
-  `core/fixtures/known-bad.md` + its README. *(This record was authored against `spec-0001`
-  §1/§2/§3 and `.grove/config.toml`; both retired underneath it — `decision-0079` deleted `specs/`
-  and `decision-0076` retired grove — so the same edits land on the surviving homes.)* — the fixture's check-2 violation is an invalid status,
+  `core/fixtures/known-bad.md` + its README — the fixture's check-2 violation is an invalid status,
   which stops being a violation class, so the fixture is re-cut rather than left asserting a check
-  that no longer exists.
+  that no longer exists. *(This record was authored against `spec-0001` §1/§2/§3 and
+  `.grove/config.toml`; both retired underneath it — `decision-0079` deleted `specs/` and
+  `decision-0076` retired grove — so the same edits land on the surviving homes.)*
 - **The typed-artifact schema's `draft → ratified` profile/catalog lifecycle**
   (`core/schemas/typed-artifacts.md` §3, formerly `spec-0002` §3) is product-layer, not
   trellis-self, and is **left standing in this change.** It describes the Assess→Apply gate for a
