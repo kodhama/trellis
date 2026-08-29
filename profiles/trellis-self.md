@@ -48,10 +48,10 @@ ratified: 2026-07-04
 
 | slug | active | C1 | C2 | basis | confidence | evidence |
 |---|---|---|---|---|---|---|
-| `inv-directional-flow` | true | enforced | independent-agent | honored-implicitly | verified | `research/ → decisions/ → specs/` staging; conformance run this session confirms no ratified→draft edge |
+| `inv-directional-flow` | true | enforced | independent-agent | honored-implicitly | verified | `research/ → decisions/ → specs/` staging; the merge carries the flow since `decision-0082` (everything on `main` is settled), so the check is that every `depends_on` resolves in-corpus — conformance run confirms it does |
 | `inv-handover-points` | true | enforced | independent-agent | honored-implicitly | verified | one-change-per-PR; `AGENTS.md` "Gates" (intent approval + execution verification) |
 | `inv-intent-locus` | true | enforced | human | honored-implicitly | verified | `owner:` on every artifact; ratification is a recorded human act (this session) |
-| `inv-ratifiable-artifacts` | true | enforced | independent-agent | honored-implicitly | verified | `status: draft→ratified` lifecycle; `spec-0001/0002` carry `## Acceptance criteria` |
+| `inv-ratifiable-artifacts` | true | enforced | independent-agent | honored-implicitly | verified | the ratifiable state is **merged on `main`**, reached by the maintainer's merge (`decision-0082` retired the status field; the lifecycle moved to VCS, it did not disappear); `spec-0001/0002` carry `## Acceptance criteria` |
 | `inv-graph-maintenance` | true | enforced | independent-agent | honored-implicitly | verified | `depends_on` graph; `invariants-v1` supersede registry; v0 retirement resolved this session |
 | `inv-gate-at-handover` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | automated PR review (`decision-0007`) + `conformance-reviewer` fire at the PR handover |
 | `inv-independent-judgment` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | `conformance-reviewer` is read-only + distinct from producer; ran independently this session |

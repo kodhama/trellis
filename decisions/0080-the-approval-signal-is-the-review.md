@@ -1,7 +1,7 @@
 ---
 id: decision-0080
 type: decision
-status: gated  # authored + self-checked by agent; the approved flip is the maintainer's intent act (decision-0046)
+superseded_by: [decision-0082]  # status field retired by decision-0082; supersession is the pointer now
 depends_on: [decision-0046]
 informed_by: [decision-0022, decision-0076, decision-0078]
 owner: agent
@@ -9,6 +9,14 @@ date: 2026-08-29
 ---
 
 # 0080 — The approval signal is the review, not the merge
+
+> **Superseded by `decision-0082`** (2026-08-29). That record retires the `status` field entirely
+> and makes merging to `main` the acceptance, so there is no `gated → approved` flip for this
+> workflow to record; `ratify-flip.yml` is deleted with `ratify-guard.yml`. The two were written
+> hours apart by sessions that could not see each other — this one landed at 17:31, `0082` was
+> drafted on a machine with no network. **What survives and is carried forward into `0082`:** an
+> agent merging with the maintainer's token is indistinguishable from the maintainer, so "the
+> merge is the human act" holds only while that account is his alone.
 
 ## Context
 

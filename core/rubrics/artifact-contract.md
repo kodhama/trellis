@@ -24,15 +24,15 @@ scope: trellis-product
 ## Checks
 
 1. **Frontmatter present & required fields valid.** Every non-code `.md` artifact opens with
-   YAML frontmatter carrying `id`, `type`, `status`, `depends_on`, `owner` — all present and
-   well-typed (`depends_on` is a list; `status` a string; etc.). *FAIL → name the missing/
-   malformed field.*
-2. **`type` declared; `status` allowed.** `type` is a non-empty string carrying a `scope`
+   YAML frontmatter carrying `id`, `type`, `depends_on`, `owner` — all present and
+   well-typed (`depends_on` is a list; etc.). **`status` is NOT required and NOT expected**
+   (`decision-0077` retired it). *FAIL → name the missing/malformed field.*
+2. **`type` declared.** `type` is a non-empty string carrying a `scope`
    (`core-methodology` / `trellis-product` / `trellis-meta`) and a rubric *(scope/rubric may be
-   declared centrally, not per-file)*; `status` belongs to the methodology's **declared
-   lifecycle** (`decision-0037`; adopted family-wide by
-   `decision-0042` — for this repo: `{draft, gated, approved, superseded}`,
-   with pre-0042 artifacts reading `ratified` = `approved`). Recognized typed artifacts include `signature-catalog`
+   declared centrally, not per-file)*. **No status check** — `decision-0082` retired the field for
+   trellis-self; merging is the acceptance. A legacy `status:` on an artifact written before
+   2026-08-29 is **preserved history and never a violation**; do not flag it, and do not ask for it
+   to be removed. Recognized typed artifacts include `signature-catalog`
    (`trellis-product`), `expression-profile` (`core-methodology`) — `schema-typed-artifacts` — and `lexicon`
    (`trellis-product`) — `decision-0017`.
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*
@@ -50,8 +50,11 @@ scope: trellis-product
    semantics methodology-defined, `grove/adr-0010`); resolve it on **shape + the bare
    `id`/`<repo>/<id>`'s membership only** (v0, no-fetch) — the pin-vs-upstream-current *sync*
    comparison is **not** this check's (it is the operational chain's, grove `adr-0006`). *FAIL → name the dangling reference.*
-5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** No `gated`/`approved` (or legacy
-   `ratified`) artifact `depends_on` a `draft` artifact. A decision's **`changes:`** relation
+5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** For
+   trellis-self the merge carries this (`decision-0082`): everything on `main` is settled, so the
+   structural check is that every `depends_on` resolves within the corpus (check 4) — there is no
+   status to compare. *(Where a methodology declares a status lifecycle, the original form applies:
+   no gated/approved artifact `depends_on` a draft one.)* A decision's **`changes:`** relation
    (shape only) is a **forward-pointer of the `superseded_by` class,
    not a `depends_on`-class edge** — do **not** walk it as a flow edge; a spec both depending on
    its authorizing decision and named in that decision's `changes:` is a benign pair, not a cycle.
@@ -61,11 +64,11 @@ scope: trellis-product
    `research-note` → Open questions (+ sources); `signature-catalog` → Entries + Acceptance
    criteria + Open questions; `expression-profile` → Delivery + Profile + Assessment notes +
    Open questions; `lexicon` → Canonical terms + Open questions; `feedback` → exempt. *FAIL → name the missing section.*
-7. **Supersede integrity.** A `superseded` artifact carries `superseded_by`; **revise-in-place**
-   docs (specs, invariants, research, rubrics) re-point to the successor. A **partially
-   superseded** artifact keeps its pre-supersession status (`approved`, or legacy
-   `ratified`) and carries `superseded_in_part_by`, whose
-   entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
+7. **Supersede integrity.** **Supersession is identified by the forward pointer** (`decision-0082`;
+   formerly by `status: superseded`): an artifact carrying `superseded_by` is superseded, and its
+   entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point
+   to the successor. A **partially superseded** artifact stays current for its remainder and carries
+   `superseded_in_part_by`, whose entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.* *FAIL → name the offender.*

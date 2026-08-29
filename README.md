@@ -311,9 +311,11 @@ retired for consumers, and with no second copy there is nothing left to drift. W
 recorded in `decision-0071` — a marketplace plugin is the last released version, so this repo now
 dogfoods shipped Trellis rather than the working tree.
 
-Every non-code artifact carries frontmatter and a lifecycle (`draft → ratified`); decisions are
-append-only; **intent is human-gated and execution is independently verified** (the builder never grades
-itself); friction we hit becomes product research rather than something to route around. See
+Every non-code artifact carries frontmatter, and its lifecycle is the repository's own: **merging to
+`main` is the acceptance** (`decision-0082`) — there is no status field to maintain. Decisions are
+append-only, superseded by a forward pointer rather than edited; **intent is human-gated and
+execution is independently verified** (the builder never grades itself); friction we hit becomes
+product research rather than something to route around. See
 [`AGENTS.md`](AGENTS.md).
 
 ## License
