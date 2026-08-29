@@ -28,11 +28,14 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
 
 ## The checks
 
-1. Frontmatter present; `id` / `type` / `status` / `depends_on` / `owner` present and
-   well-typed (`depends_on` a list, etc.).
-2. `status` ∈ the methodology's declared lifecycle (`AGENTS.md`, `decision-0037`,
-   `decision-0042`) — for this repo the family enum: `{draft, gated, approved, superseded}`;
-   historical `ratified` reads as `approved` under `decision-0037`'s declared equivalence.
+1. Frontmatter present; `id` / `type` / `depends_on` / `owner` present and
+   well-typed (`depends_on` a list, etc.). **`status` is not required** (`decision-0082`).
+2. `type` is declared and carries a `scope` + rubric (may be declared centrally). **There is no
+   status check** — `decision-0082` retired the field for this repo; merging to `main` is the
+   acceptance, as `AGENTS.md` (the shared project-instruction authority, `decision-0057`) states
+   under `## Operating method`. A `status:` line on any artifact predating `decision-0082` is
+   **preserved history**: never flag it, never treat its value as a lifecycle claim, and never ask
+   for its removal (many carry the maintainer's intent act in a trailing comment).
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id`, a declared external-ref prefix
    (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
@@ -45,20 +48,22 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
    before stripping and resolving, flag a `@version` pin on any `informed_by` entry as a
    **category error** (`informed_by` is non-drift; a version pin has nothing to compare
    against and would otherwise be silently swallowed by the strip-and-resolve step).
-5. **Directional flow (load-bearing):** no `gated`/`approved` (or legacy `ratified`)
-   artifact `depends_on` a `draft` artifact. `informed_by` is **non-flow**
-   (`decision-0047`; fuller taxonomy in grove's relations charter, linked in check 4): a draft `informed_by` referent does NOT trip this
-   check. Instead, flag an `informed_by → draft` edge as a **flag** for the
-   `conformance-reviewer`'s honesty judgment (a coupling relabeled as `informed_by` to
-   dodge this very gate is non-conformant, `decision-0047`) — never a silent structural
-   pass.
+5. **Directional flow (load-bearing):** the merge carries this now (`decision-0082`) — everything
+   on `main` is settled, so there is no status to compare. What remains structural: every
+   `depends_on` resolves **within the corpus** (check 4), so nothing merged points at something
+   that is not there. `informed_by` is **non-flow** (`decision-0047`; fuller taxonomy in grove's
+   relations charter, linked in check 4). The honesty judgment survives the status retirement: a
+   genuine **coupling relabeled as `informed_by`** — a source the artifact's correctness is
+   contingent on — is non-conformant (`decision-0047`); flag it for the `conformance-reviewer`
+   rather than passing it silently.
 6. Required body sections per type (`decision-0042`): `decision` → Context/Decision/
    Consequences; `spec`/`invariant-set` → Acceptance criteria/Open questions; `research-note`
    → Open questions; `feedback` → exempt.
-7. Supersede integrity: a `superseded` artifact carries `superseded_by`; **revise-in-place**
-   docs (specs, invariants, research, rubrics) re-point to the successor. A **partially
-   superseded** artifact keeps its pre-supersession status (`approved`, or legacy `ratified`) and carries `superseded_in_part_by`, whose
-   entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
+7. Supersede integrity: **supersession is identified by the forward pointer** (`decision-0082`;
+   formerly by `status: superseded`) — an artifact carrying `superseded_by` is superseded and its
+   entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point
+   to the successor. A **partially superseded** artifact stays current for its remainder and carries
+   `superseded_in_part_by`, whose entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.*

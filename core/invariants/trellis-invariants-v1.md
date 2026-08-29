@@ -340,7 +340,13 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   v1 elevated it on the strength of `0008`; ratification should confirm or fold it back.
 - **Does `inv-ratifiable-artifacts` over-constrain pattern-level methodologies** (e.g. Agent
   SDK) that have no explicit "approved" state — or is a loose/implicit ratification enough to
-  clear the gate?
+  clear the gate? **First real instance, 2026-08-29 (`decision-0082`):** trellis-self retired its
+  own `status` field, so this repo is now a methodology with no explicit "approved" state — its
+  ratifiable state is *merged on `main`*, reached by a human act, and it still clears the gate. The
+  evidence points at the **`signature`, not the invariant**: the catalog's tell reads *"a `status`
+  lifecycle (draft → approved/ratified)"*, which would score this repo as failing an invariant it
+  honors. **Not changed in the catalog** — a signature edit rewrites the shipped payload, so it is
+  recorded here as evidence rather than smuggled into a change that was not about it.
 - **Provenance (`inv-auditable-archive`): trellis-design or sometimes structural?** OpenSpec
   shows it can be a framework's *strength* — the v0 contested call, still open.
 - **The dials need a second instance.** They are `provisional` from one evidence round;

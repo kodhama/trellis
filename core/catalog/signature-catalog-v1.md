@@ -9,7 +9,9 @@ ratified: 2026-07-04
 ---
 
 > **Ratified via merge (`decision-0022`).** The agent authored this; the maintainer's **merge of this
-> PR is the ratification** (`floor-intent-gate`) — the `draft → ratified` flip rides the reviewed diff. Coverage is
+> PR is the ratification** (`floor-intent-gate`). *(As of `decision-0082` the merge is the whole
+> mechanic — there is no `draft → ratified` flip; this banner formerly said the flip rode the
+> reviewed diff.)* Coverage is
 > independently checked (AC1); the `signature` / `why` / example / dial calls embody judgment the
 > maintainer accepts by merging.
 >

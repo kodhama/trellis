@@ -30,10 +30,23 @@ The method lives in `decisions/`, **not restated here** — a decision is the cu
 summary in this file only goes stale against it. Read the record before relying on a rule.
 `decisions/` is append-only: you *supersede* with a forward pointer, never edit.
 
+**There is no `status` field** (`decision-0082`). **Merging to `main` is the acceptance:** an
+artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
+flip, ever. **Supersession is marked by the forward pointer** — `superseded_by`, or
+`superseded_in_part_by` when the remainder is live. *Artifacts predating `decision-0082` keep
+their `status:` lines as history — several carry the maintainer's intent act in a trailing
+comment. Read them as accepted; do not add the field to anything new, and do not strip it from
+anything old.*
+
+**Never tell the maintainer a change is blocked on an artifact's recorded state.** If he has
+asked for a PR, open it. An agent still may not merge on his behalf without his act
+(`floor-intent-gate`) — the gate did not move; only the bookkeeping around it went away.
+
 | Before you… | Read |
 |---|---|
-| write or change an artifact — frontmatter, statuses, per-type body sections | `decision-0042` (family lifecycle) · `decision-0037` (statuses are methodology-defined; `owner: agent` carries *authorship*, not accountability — that stays with the maintainer) |
-| approve, ratify, or flip a status | `decision-0046` (approval is a human intent act; an agent writing `approved` with no human act is forbidden) · `decision-0080` (the automated signal is an **approving review by a non-author**, never the merge — an agent merges with the maintainer's token) · `decision-0022`. **No draft lands on `main`** past the PR that introduced it — `ratify-guard` enforces it |
+| write or change an artifact — frontmatter, per-type body sections | `decision-0082` (no `status`; the merge is the acceptance) · `decision-0042` (family lifecycle) · `decision-0037` (`owner: agent` carries *authorship*, not accountability — that stays with the maintainer) |
+| supersede a record | `decision-0082` — the forward pointer *is* the mark; `decision-0040` for the partial form |
+| retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal) · `decision-0074` |
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
 | record a significant choice | append to `decisions/` — the four strategic forks are `0001–0004` |
 | plan a build between a decision and the code | the **superpowers** skills (`brainstorming`, `writing-plans`, `executing-plans`) — the spec stage retired in `decision-0079`, and `specs/` with it |
