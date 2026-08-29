@@ -33,7 +33,7 @@ summary in this file only goes stale against it. Read the record before relying 
 | Before you… | Read |
 |---|---|
 | write or change an artifact — frontmatter, statuses, per-type body sections | `decision-0042` (family lifecycle) · `decision-0037` (statuses are methodology-defined; `owner: agent` carries *authorship*, not accountability — that stays with the maintainer) |
-| approve, ratify, or flip a status | `decision-0046` (approval is a human intent act; an agent writing `approved` with no human act is forbidden) · `decision-0022`. **No draft lands on `main`** past the PR that introduced it — `ratify-guard` enforces it |
+| approve, ratify, or flip a status | `decision-0046` (approval is a human intent act; an agent writing `approved` with no human act is forbidden) · `decision-0080` (the automated signal is an **approving review by a non-author**, never the merge — an agent merges with the maintainer's token) · `decision-0022`. **No draft lands on `main`** past the PR that introduced it — `ratify-guard` enforces it |
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
 | record a significant choice | append to `decisions/` — the four strategic forks are `0001–0004` |
 | plan a build between a decision and the code | the **superpowers** skills (`brainstorming`, `writing-plans`, `executing-plans`) — the spec stage retired in `decision-0079`, and `specs/` with it |
