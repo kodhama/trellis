@@ -269,7 +269,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
   payload** (`kodhama-0007`: render once at release, writers only copy and verify), plus the
   documented **manual copy path** for any other harness. It stands on the *spine* + an
   **independent conformance check** (`core/rubrics/artifact-contract.md`, running on this repo),
-  the expression-profile + catalog **schema** (`decision-0016`), the populated catalog and
+  the expression-profile + catalog **schema** (`core/schemas/typed-artifacts.md`), the populated catalog and
   the first per-project **profile** (instance #1), and the cross-lens **lexicon**. The v0 setup **CLI** (the retired binary, unrelated to the retired setup skill) shipped first (`v0.1.0`–`v0.2.29`) and its end-user channel retired in favor of the above
   (`kodhama-0007` rule 5, `decision-0043`); the Go code survives as the release-time payload
   generator.

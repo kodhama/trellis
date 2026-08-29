@@ -3,7 +3,7 @@ id: rubric-artifact-contract
 type: rubric
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, decision-0037, decision-0042]
+depends_on: [invariants-v1, decision-0037, decision-0042, schema-typed-artifacts]
 owner: gundi
 scope: trellis-product
 ---
@@ -33,7 +33,7 @@ scope: trellis-product
    lifecycle** (`decision-0037`; adopted family-wide by
    `decision-0042` — for this repo: `{draft, gated, approved, superseded}`,
    with pre-0042 artifacts reading `ratified` = `approved`). Recognized typed artifacts include `signature-catalog`
-   (`trellis-product`), `expression-profile` (`core-methodology`) — `decision-0016` — and `lexicon`
+   (`trellis-product`), `expression-profile` (`core-methodology`) — `schema-typed-artifacts` — and `lexicon`
    (`trellis-product`) — `decision-0017`.
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*
 4. **`depends_on` resolves.** Each entry is an existing artifact `id`, a declared external-ref
@@ -42,7 +42,11 @@ scope: trellis-product
    homebrew-tap, math-quest) (`decision-0044`; shape + registry-membership
    only — not verified against the referent's actual home corpus, same treatment as
    `brief-§…`) — **or** a **retired id** in the invariant-set's Identifiers registry (mapping to
-   a successor). A referent may carry a **`@version` pin** (shape only;
+   a successor) — **or** a **retired artifact id** in `decision-0079`'s retired-artifacts
+   registry (`spec-0001`–`spec-0008`). That last clause is the same historical-reference
+   exemption the Identifiers registry grants (`decision-0013`): a retirement does not reach back
+   and edit the append-only records that cite it, so the registry — not the file's existence —
+   is what makes those references resolve. A referent may carry a **`@version` pin** (shape only;
    semantics methodology-defined, `grove/adr-0010`); resolve it on **shape + the bare
    `id`/`<repo>/<id>`'s membership only** (v0, no-fetch) — the pin-vs-upstream-current *sync*
    comparison is **not** this check's (it is the operational chain's, grove `adr-0006`). *FAIL → name the dangling reference.*
@@ -52,7 +56,7 @@ scope: trellis-product
    not a `depends_on`-class edge** — do **not** walk it as a flow edge; a spec both depending on
    its authorizing decision and named in that decision's `changes:` is a benign pair, not a cycle.
    *FAIL → name the edge.*
-6. **Required body sections per type** (`decision-0016`, `decision-0042`): `spec`/`invariant-set` →
+6. **Required body sections per type** (`schema-typed-artifacts`, `decision-0042`): `spec`/`invariant-set` →
    Acceptance criteria + Open questions; `decision` → Context/Decision/Consequences;
    `research-note` → Open questions (+ sources); `signature-catalog` → Entries + Acceptance
    criteria + Open questions; `expression-profile` → Delivery + Profile + Assessment notes +
@@ -66,7 +70,7 @@ scope: trellis-product
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.* *FAIL → name the offender.*
 
-## Checks — the two typed artifacts (`decision-0016`)
+## Checks — the two typed artifacts (`schema-typed-artifacts`)
 
 *Apply only when a `signature-catalog` / `expression-profile` is in the corpus.*
 

@@ -22,7 +22,7 @@ from whoever produced the artifacts. Then check the target corpus.
 `core/catalog/`, `core/lexicon.md`, `profiles/`. **Exclude** `core/fixtures/` (deliberately-broken
 test data) unless explicitly asked to run the positive control against it.
 
-Recognized typed artifacts: `signature-catalog`, `expression-profile` (`decision-0016`), `lexicon`
+Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-typed-artifacts`), `lexicon`
 (`decision-0017`, sections: Canonical terms + Open questions).
 
 ## The checks
@@ -35,7 +35,8 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`decision
 3. `id` unique across the corpus.
 4. Every `depends_on` resolves to an existing artifact `id`, a declared external-ref prefix
    (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
-   registry (mapping to a successor). Flag dangling references. `informed_by` entries
+   registry (mapping to a successor), **or** a **retired artifact id** in `decision-0079`'s
+   retired-artifacts registry (`spec-0001`–`spec-0008`). Flag dangling references. `informed_by` entries
    resolve the same way (edge taxonomy: **`decision-0047` is the trellis-side rule and is
    sufficient here**; the fuller taxonomy is grove's relations charter,
    `https://github.com/kodhama/grove/blob/main/charters/relations.md` — read it from the repo, not

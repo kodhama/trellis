@@ -2,7 +2,7 @@
 id: signature-catalog-v1
 type: signature-catalog
 status: ratified
-depends_on: [invariants-v1, decision-0016]
+depends_on: [invariants-v1, schema-typed-artifacts]
 owner: gundi
 scope: trellis-product
 ratified: 2026-07-04
@@ -28,7 +28,7 @@ ratified: 2026-07-04
 > project is seen to honor it, **≥2 matched `without → with` pairs** — the same use case shown failing
 > then fixed (`violated[i]` and `honored[i]` are one pair, same layer tag; `decision-0027`), spanning
 > different layers (CI / spec / research / code / ops …) — and its **default dials**. Schema +
-> lifecycle: `decision-0016`. Slugs: the
+> lifecycle: `schema-typed-artifacts`. Slugs: the
 > `invariants-v1` registry. **The benefits page derives from the `why` + honored/violated here** — no
 > claim on the page without a rule behind it (`decision-0020`). `trellis-product` scope — one, shipped.
 

@@ -8,6 +8,7 @@ agent surface (decision `0010`/`0012`). It is distinct from the repo root, which
 Contents:
 - `invariants/` — the ratified invariant set (`trellis-product` scope; the load-bearing core).
 - `rubrics/` — checkable quality gates (e.g. the artifact contract).
+- `schemas/` — the authoring contract for the two typed artifacts (catalog, expression profile).
 - `fixtures/` — known-bad inputs that the checks must reject (positive controls).
 
 The conformance **sub-agent** that applies these has **no home in this repo right now**
