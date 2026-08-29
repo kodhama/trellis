@@ -1,7 +1,7 @@
 ---
 id: decision-0079
 type: decision
-status: gated  # authored + self-checked by agent; the approved flip is the maintainer's intent act (decision-0046)
+status: approved  # maintainer's intent act 2026-08-29, in conversation ("Approve approve approve") — this flip RECORDS that act, it does not perform it (decision-0046). Author (agent) != approver (maintainer)
 depends_on: [decision-0011]
 changes: [decision-0011]
 informed_by: [decision-0075, decision-0076, decision-0078]
