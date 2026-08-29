@@ -33,7 +33,7 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
 2. `type` is declared and carries a `scope` + rubric (may be declared centrally). **There is no
    status check** — `decision-0082` retired the field for this repo; merging to `main` is the
    acceptance, as `AGENTS.md` (the shared project-instruction authority, `decision-0057`) states
-   under `## Operating method`. A `status:` line on an artifact written before 2026-08-29 is
+   under `## Operating method`. A `status:` line on any artifact predating `decision-0082` is
    **preserved history**: never flag it, never treat its value as a lifecycle claim, and never ask
    for its removal (many carry the maintainer's intent act in a trailing comment).
 3. `id` unique across the corpus.

@@ -33,7 +33,7 @@ summary in this file only goes stale against it. Read the record before relying 
 **There is no `status` field** (`decision-0082`). **Merging to `main` is the acceptance:** an
 artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
 flip, ever. **Supersession is marked by the forward pointer** — `superseded_by`, or
-`superseded_in_part_by` when the remainder is live. *Artifacts written before 2026-08-29 keep
+`superseded_in_part_by` when the remainder is live. *Artifacts predating `decision-0082` keep
 their `status:` lines as history — several carry the maintainer's intent act in a trailing
 comment. Read them as accepted; do not add the field to anything new, and do not strip it from
 anything old.*

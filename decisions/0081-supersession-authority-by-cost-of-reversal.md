@@ -1,7 +1,6 @@
 ---
 id: decision-0081
 type: decision
-status: approved  # maintainer's intent act 2026-08-29, in-conversation on the PR ("So I accept the draft") after reading the drafted record — this flip records it (decision-0046, decision-0022). Author (agent) != approver (maintainer). Scope of the acceptance: this record's answers and recommendations as the basis for the catalog change, which is a SEPARATE change still owed. The in-PR approved flip is legitimate here because it records a human act (decision-0046 point 2; 0042's no-in-diff-approved rule is superseded in part by 0046)
 depends_on: [invariants-v1, signature-catalog-v1, decision-0022, decision-0046, decision-0074]
 informed_by: [decision-0008, decision-0021, decision-0024, decision-0027, decision-0040, decision-0052]
 owner: agent

@@ -1,7 +1,7 @@
 ---
 id: decision-0080
 type: decision
-status: gated  # authored + self-checked by agent; never human-approved. PRESERVED as history under decision-0082 — the field is retired, not stripped from existing records
+status: gated  # authored + self-checked by agent; the approved flip is the maintainer's intent act (decision-0046)
 superseded_by: [decision-0082]  # decision-0082 retires the status field and makes the merge the acceptance; supersession is the pointer now
 depends_on: [decision-0046]
 informed_by: [decision-0022, decision-0076, decision-0078]

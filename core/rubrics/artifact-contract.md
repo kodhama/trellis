@@ -30,8 +30,8 @@ scope: trellis-product
 2. **`type` declared.** `type` is a non-empty string carrying a `scope`
    (`core-methodology` / `trellis-product` / `trellis-meta`) and a rubric *(scope/rubric may be
    declared centrally, not per-file)*. **No status check** — `decision-0082` retired the field for
-   trellis-self; merging is the acceptance. A legacy `status:` on an artifact written before
-   2026-08-29 is **preserved history and never a violation**; do not flag it, and do not ask for it
+   trellis-self; merging is the acceptance. A legacy `status:` on any artifact predating
+   `decision-0082` is **preserved history and never a violation**; do not flag it, and do not ask for it
    to be removed. Recognized typed artifacts include `signature-catalog`
    (`trellis-product`), `expression-profile` (`core-methodology`) — `schema-typed-artifacts` — and `lexicon`
    (`trellis-product`) — `decision-0017`.
