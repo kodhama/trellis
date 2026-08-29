@@ -145,7 +145,7 @@ clears it if it carries the shape, not only if it names stages.*
   - **Forward — re-propagate on change:** when an upstream changes, its **direct dependents**
     are flagged for re-review; recursion emerges (each review may flag *its* dependents).
     *(e.g. a repaired ADR → re-review its specs → plans → tests → code, in turn.)* *(Full
-    content-consistency enforcement is the deferred conformance-to-upstream check, `spec-0001`.)*
+    content-consistency enforcement is the deferred conformance-to-upstream check, `rubric-artifact-contract`.)*
   - **Backward — repair (backprop):** downstream reveals an upstream is missing/incomplete/
     contradicted → suggest **updating or creating** it, never a silent downstream patch, so
     downstream never forks from upstream. *(e.g. build uncovers a missing architectural

@@ -5,14 +5,16 @@ instructions** (rubrics, sub-agents, conventions) that get installed into a host
 agent surface (decision `0010`/`0012`). It is distinct from the repo root, which is the
 **build methodology** (Layer B) we use to build Trellis (instance #1).
 
-Contents grow with the spine (`spec-0001`):
+Contents:
 - `invariants/` — the ratified invariant set (`trellis-product` scope; the load-bearing core).
 - `rubrics/` — checkable quality gates (e.g. the artifact contract).
+- `schemas/` — the authoring contract for the two typed artifacts (catalog, expression profile).
 - `fixtures/` — known-bad inputs that the checks must reject (positive controls).
 
 The conformance **sub-agent** that applies these has **no home in this repo right now**
 (`decision-0076`). It ran as the plugin-carried `grove:conformance-reviewer` until grove was
 retired, and the vendored `.claude/agents/` copy had already been dropped before that
 (`grove/adr-0026` D1). What still runs is the repo-owned `corpus-reviewer`, which covers
-**artifact-contract** conformance; **code-to-spec** conformance is currently uncovered. The
+**artifact-contract** conformance; conformance of code to its authorizing decision is currently
+uncovered (the spec stage it used to check against retired with `decision-0079`). The
 product home is `core/agents/`, which the delivery slice (`0012`) will package and install.

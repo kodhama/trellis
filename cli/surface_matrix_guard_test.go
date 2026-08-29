@@ -5,7 +5,8 @@ package main
 //
 // Two parts, because a single repo-wide content grep is not implementable. The
 // matrix's names legitimately survive in the append-only archive — decisions 0059,
-// 0061, 0063, 0064, specs/0005 and specs/0008 all carry them, and must keep them.
+// 0061, 0063 and 0064 all carry them, and must keep them (specs/0005 and
+// specs/0008 did too, until decision-0079 deleted specs/).
 // A whole-repo content guard would be red on its first run against this
 // repository's own history and would degenerate into an exclusion list
 // (decision-0066 AC6).
@@ -66,7 +67,7 @@ func retiredFieldNames() []string {
 }
 
 // TestNoMatrixFieldsInCode is AC6 part 2: code-scoped — cli/, plugins/ and
-// install.sh only. decisions/ and specs/ are deliberately out of scope; the
+// install.sh only. decisions/ is deliberately out of scope; the
 // archive keeps its words.
 func TestNoMatrixFieldsInCode(t *testing.T) {
 	needles := retiredFieldNames()

@@ -1,6 +1,9 @@
 #!/bin/sh
 # install.sh — vendor the Trellis Claude Code plugin onto disk as a skills-directory
-# plugin (kodhama/trellis#124, corrected design per spec-0005; supersedes the closed
+# plugin (corrected design per spec-0005 — that spec retired with `specs/` in
+# decision-0079, so the `spec-0005 AC#` markers below name requirements whose only
+# surviving statement is cli/install_script_test.go; the text is in git history.
+# Supersedes the closed
 # #128 attempt — see #128's own closing comment). This is NOT the retired end-user
 # binary installer (kodhama-0007 rule 5, decision-0043 §4 — see the note appended
 # there): it downloads no binary and, more importantly, makes exactly ONE decision
@@ -322,12 +325,12 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 9495a49543ea1218aac7423c277ff88440514f0640ecd78bb43225fbe238c93e  .claude-plugin/plugin.json
 0beadab1df0fa3bf5ad4be6854eba0472ab4ee8b02d76062acdbf4b061739bd0  .codex-plugin/plugin.json
-396b1c54d1c3059cbd3c98d0a79c0ea8690bcc0be7ad6ce98d02e4e45eb0c19d  README.md
+1c2aaa210aff87fe8201f5515fb5c5fe7d35982bea8e5fc6f43453ccd86589e8  README.md
 97a5d6e540a6120d09c39ddb667e0e8e2bac7fcc2ffef813b82e08fd60365bce  VERSION
-69a8cdb2c9bcfa9a6b8b52af3248ab1818b176d0c699b2380a6c89f59425ba39  hooks/codex-context.mjs
+9dbc8f20f35db7f2a3d0797e69169fea965e267400a35ecfdc511e2dc7c3af68  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-5780b4954912da9670816aeb7bdecb0d8225052009bb4e447a0a9b9793d90e13  hooks/staleness.sh
+facdadc3fd24ef777f10dbd2921c77e186a1ed4b8d8004ac2fb7caaa6a2c2de1  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 979d825724f8467513b4e8e7a50b3fbfbd7a3124825239599673e18fdcf202e3  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -335,15 +338,15 @@ c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/bloc
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-b-head.md
 7cde807909b863bfdea4e5b29d15ffb0e842acf6a7a3dde2943eabcbae6e1755  reference/block-inline-b.md
 10892805ec9c8297e2385bf0c6a552ee64eca7491ca89862ee3941fe60833e32  reference/block-inline-tail.md
-cdb9608ba111096b557390c9bda1bedc53411178e857d935351b8d78a5a3cfd3  reference/checksums
-eb0b277d10ac4efd09510d60071130242d5da498d5e8f9b703f64c6a91f4774f  reference/invariants.md
+8ac8d42c5b32d4dff93a4e55f16d889c3bbd53de245f27ab71b9509552837708  reference/checksums
+5c068cf2e5592dab37c0820430166bc101e1725689a1e189abce821bed8b2f6e  reference/invariants.md
 dc01e98b476d66cc02557cf059ed12af2c13e94c2ab03311c594096574f8e893  reference/rules-a.toml
 6d8e3471644f79a6282b16f9c34ad5cb6248dfaa164caf4dcc439e849e829ad7  reference/rules-b.toml
 938fcf009476ff36e8775391cebe83aff3fe12316e445d6dbfbcfd64d82267dd  reference/rules.md
 d447439d5f393f8bbe2af31fea3f426c0e752f621b64b4262da0866bded15251  reference/trellis-a.md
 df6bfd11ce981c821eff612b6dfb0c95313edbf4222b9c01ace2fd2cd08baae4  reference/trellis-b.md
-c37a62dc59d037ead5f9508348921c0f41f2b0baf0fb9cb9a35ff36f3654bcd1  reference/version
-98d8d88d49d8b0f29b70b68c48d7f3103fd613e15f8b7e953a1072d67da4bc6b  skills/remove/SKILL.md
+60ef4a91b92cb740405dd665348476c162f59f6e400645ad7ca02062bd8972ba  reference/version
+247037659b91a1c4f0285c1e6b1c42637b18954f4e0b18a79647ef79d5f5d899  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 

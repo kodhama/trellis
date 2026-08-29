@@ -55,7 +55,8 @@ func TestRepoOverlayCarriesNoExpressionFile(t *testing.T) {
 	}
 }
 
-// TestSharedProjectInstructionEntrypoints guards spec-0006 AC1–AC6 and AC8:
+// TestSharedProjectInstructionEntrypoints guards what was spec-0006 AC1–AC6 and
+// AC8 (the spec stage retired in decision-0079; this test is now the contract):
 // AGENTS.md is the shared project-instruction authority, CLAUDE.md is the exact
 // Claude adapter plus the existing Trellis import block, and the bounded
 // current-truth surfaces point shared-method references at AGENTS.md.

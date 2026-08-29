@@ -1,6 +1,7 @@
 {
   "enabledPlugins": {
-    "trellis@kodhama": true
+    "trellis@kodhama": true,
+    "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "kodhama": {

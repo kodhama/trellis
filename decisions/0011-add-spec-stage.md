@@ -1,8 +1,9 @@
 ---
 id: decision-0011
 type: decision
-status: ratified
+status: superseded  # decision-0079 retired the spec stage this record introduced
 depends_on: [invariants-v1]
+superseded_by: [decision-0079]
 owner: gundi
 date: 2026-06-29
 ratified: 2026-06-29
@@ -43,4 +44,8 @@ build the spine with no contract) revealed the boundary (B7 / self-improvement l
 
 ## Supersedes / superseded by
 
-— (none)
+**Superseded by `decision-0079`** (2026-08-29) — the spec stage this record introduced is
+retired and `specs/` is deleted; planning between a decision and the build moves to the
+superpowers skills. The eight specs written under this stage (`spec-0001`–`spec-0008`) are
+listed in `decision-0079`'s retired-artifacts registry so that references to them still
+resolve. Nothing above is edited — this pointer is the whole amendment.

@@ -236,7 +236,7 @@ If the morph stands, show the user the options (`git reset --hard trellis-pre-mo
 `git revert`, or deleting the unmerged `trellis/morph` branch) and let them run the destructive
 step. If **both markers are absent** — no `.trellis/rollback` and no `trellis-pre-morph` tag,
 reachable here on the user's say-so — say you **cannot locate a rollback point** rather than
-guess (`spec-0004` §2): name what was searched, and leave the reversal to the user's own git
+guess: name what was searched, and leave the reversal to the user's own git
 history.
 
 After any reversal runs, **start over from the preflight (§1)**: the reversal rewrote the
