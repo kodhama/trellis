@@ -1,6 +1,13 @@
 package main
 
-// Production-contract tests for spec-0007@v1. The captured input shape is
+// Production-contract tests for the Codex live-rule delivery contract
+// (`decision-0058`). The `spec-0007@v1 R##` / `S##` markers below are the
+// requirement ids of the spec that recorded it; `decision-0079` retired the spec
+// stage and deleted `specs/`, so these markers now name requirements whose only
+// surviving statement is the tests themselves (the retired text remains in git
+// history). Kept rather than stripped: the mapping is the information.
+//
+// The captured input shape is
 // normalized from Codex's SessionStart request contract and decision-0058's live
 // local positive control; volatile session/model fields are intentionally omitted
 // because the handler contract consumes only hook_event_name, source, and cwd.

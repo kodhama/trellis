@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-// spec-0007@v1: trusted local Codex SessionStart(startup) transport.
+// Trusted local Codex SessionStart(startup) transport (`decision-0058`;
+// contract recorded as spec-0007@v1, retired with `specs/` by decision-0079 —
+// cli/codex_hook_test.go is now its executable statement).
 // The installed project overlay is the sole authority. This handler validates
 // every input before writing its one JSON response to stdout.
 

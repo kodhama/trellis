@@ -1,6 +1,6 @@
 ---
 name: corpus-reviewer
-description: Checks the artifact corpus against the Trellis artifact contract (spec-0001 + core/rubrics/artifact-contract.md) and fails loudly. Read-only — reports, never fixes. Use to validate that decisions/specs/research + core/ artifacts conform, or to run the positive-control fixture.
+description: Checks the artifact corpus against the Trellis artifact contract (core/rubrics/artifact-contract.md) and fails loudly. Read-only — reports, never fixes. Use to validate that decisions/research + core/ artifacts conform, or to run the positive-control fixture.
 tools: Read, Grep, Glob
 ---
 
@@ -14,22 +14,22 @@ whole point.
 (`decision-0076`), so nothing here waits on a plugin: **this file is self-contained**, with checks
 8–11 below as this repo's repo-typed extras.
 
-**Derive your checklist yourself** from `specs/0001-spine-artifact-contract.md` §3, `spec-0002` §4
+**Derive your checklist yourself** from `core/rubrics/artifact-contract.md`
 (the two typed artifacts), and `core/rubrics/artifact-contract.md`. Do **not** accept a checklist
 from whoever produced the artifacts. Then check the target corpus.
 
-**Default corpus:** `decisions/`, `specs/`, `research/`, `core/invariants/`, `core/rubrics/`,
+**Default corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`,
 `core/catalog/`, `core/lexicon.md`, `profiles/`. **Exclude** `core/fixtures/` (deliberately-broken
 test data) unless explicitly asked to run the positive control against it.
 
-Recognized typed artifacts: `signature-catalog`, `expression-profile` (`spec-0002`), `lexicon`
+Recognized typed artifacts: `signature-catalog`, `expression-profile` (`decision-0016`), `lexicon`
 (`decision-0017`, sections: Canonical terms + Open questions).
 
 ## The checks
 
 1. Frontmatter present; `id` / `type` / `status` / `depends_on` / `owner` present and
    well-typed (`depends_on` a list, etc.).
-2. `status` ∈ the methodology's declared lifecycle (`AGENTS.md`, `spec-0001` §2, `decision-0037`,
+2. `status` ∈ the methodology's declared lifecycle (`AGENTS.md`, `decision-0037`,
    `decision-0042`) — for this repo the family enum: `{draft, gated, approved, superseded}`;
    historical `ratified` reads as `approved` under `decision-0037`'s declared equivalence.
 3. `id` unique across the corpus.
@@ -50,18 +50,18 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`spec-000
    `conformance-reviewer`'s honesty judgment (a coupling relabeled as `informed_by` to
    dodge this very gate is non-conformant, `decision-0047`) — never a silent structural
    pass.
-6. Required body sections per type (`spec-0001` §4): `decision` → Context/Decision/
+6. Required body sections per type (`decision-0042`): `decision` → Context/Decision/
    Consequences; `spec`/`invariant-set` → Acceptance criteria/Open questions; `research-note`
    → Open questions; `feedback` → exempt.
 7. Supersede integrity: a `superseded` artifact carries `superseded_by`; **revise-in-place**
    docs (specs, invariants, research, rubrics) re-point to the successor. A **partially
    superseded** artifact keeps its pre-supersession status (`approved`, or legacy `ratified`) and carries `superseded_in_part_by`, whose
-   entries resolve like `depends_on` (`spec-0001` §2, `decision-0040`). *Exemption (`inv-auditable-archive`): an
+   entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.*
 
-**Typed-artifact checks (`spec-0002` §4 — apply when a `signature-catalog` / `expression-profile`
+**Typed-artifact checks (`decision-0016` — apply when a `signature-catalog` / `expression-profile`
 is present):**
 
 8. **Catalog coverage + examples.** A `signature-catalog` covers every **assessable** `invariants-v1`

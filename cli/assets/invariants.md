@@ -2,7 +2,7 @@
 id: signature-catalog-v1
 type: signature-catalog
 status: ratified
-depends_on: [invariants-v1, spec-0002]
+depends_on: [invariants-v1, decision-0016]
 owner: gundi
 scope: trellis-product
 ratified: 2026-07-04
@@ -28,12 +28,11 @@ ratified: 2026-07-04
 > project is seen to honor it, **≥2 matched `without → with` pairs** — the same use case shown failing
 > then fixed (`violated[i]` and `honored[i]` are one pair, same layer tag; `decision-0027`), spanning
 > different layers (CI / spec / research / code / ops …) — and its **default dials**. Schema +
-> lifecycle: `spec-0002`. Slugs: the
+> lifecycle: `decision-0016`. Slugs: the
 > `invariants-v1` registry. **The benefits page derives from the `why` + honored/violated here** — no
-> claim on the page without a rule behind it (`decision-0020`). Consumed by Assess (#23) and tutoring
-> (#27). `trellis-product` scope — one, shipped.
+> claim on the page without a rule behind it (`decision-0020`). `trellis-product` scope — one, shipped.
 
-> **Coverage (spec-0002 §1, AC1).** Covers the **16 assessable invariants** — the structural set, the
+> **Coverage (AC1).** Covers the **16 assessable invariants** — the structural set, the
 > operating set (incl. **`inv-self-improvement`**, `decision-0018`, **`inv-deliberate-succession`**,
 > `decision-0074`, and **`inv-no-orphan-followups`**, `decision-0078`), the floors. `inv-reference-relationship`
 > was **collapsed into `floor-transparency` + the adopt/adapt dial** (`decision-0021`) — its "divergence from a framework"
@@ -57,9 +56,8 @@ ratified: 2026-07-04
 > `invariants-v1` registry (a slug is a set amendment); the activation rows in
 > `plugins/trellis/reference/rules-a.toml` / `rules-b.toml` and this repo's own `.trellis/rules.toml`
 > (**without a row the rule ships but is inactive**); `plugins/trellis/hooks/codex-context.mjs`'s
-> hardcoded `SLUGS`; the contract layer that states the count — `spec-0002` §1 check 2 + AC1,
-> `spec-0007`'s canonical inventory (a testable clause: bump its `version`),
-> `core/rubrics/artifact-contract.md`, the `corpus-reviewer` checklist; `profiles/trellis-self.md`;
+> hardcoded `SLUGS`; the contract layer that states the count — this catalog's own Coverage note
+> and AC1, `core/rubrics/artifact-contract.md`, the `corpus-reviewer` checklist; `profiles/trellis-self.md`;
 > the prose counts in `README.md`, `plugins/trellis/README.md`, `install.sh`, `docs/index.html`,
 > `docs/lp-content.md` and `docs/invariants.html` (which also needs a new card);
 > `plugins/trellis/skills/remove/SKILL.md` and the needle pinning it; and the release stamp `plugins/trellis/VERSION` (**unguarded — trellis#245 is still open** — and
@@ -325,7 +323,7 @@ ratified: 2026-07-04
   - signature: append-only decision records; retained change history (git); a current-truth doc kept
     separate from its change log; **supersession can be partial** — a superseded-in-part pointer marks
     the outgrown half so the live remainder stays navigable and no reader lands on stale text without
-    a forward link (`spec-0001` §2, `decision-0040`).
+    a forward link (`decision-0040`).
   - honored:
     - *(ADR)* decisions are append-only and link their rationale; superseding writes a *new* record.
     - *(infra)* every prod change carries provenance — git history + a current-truth doc — so "why" is
@@ -462,6 +460,6 @@ ratified: 2026-07-04
 - **`why` audience.** One line serving agents-first *and* humans; revisit if the two registers pull
   apart.
 - **`mechanizable` breadth (an intent-gate judgment call).** This catalog marks `inv-handover-points` and
-  `inv-auditable-archive` `mechanizable: true` — *broader* than `spec-0002` §1's illustrative
+  `inv-auditable-archive` `mechanizable: true` — *broader* than the catalog's own illustrative
   fragment. The call: *presence* of handover points / an append-only archive is structurally
   detectable. Flagged, not silently conformed.

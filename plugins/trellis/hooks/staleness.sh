@@ -207,8 +207,8 @@ governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*g
 # That is the wrong-about-the-reader's-state class decision-0073 exists to end,
 # and D2's own recorded reason for the two-file subset is exactly this test:
 # refuse only over files this host actually loads.
-# ANCHORED, not a substring: spec-0006:57 defines the contract as "one
-# standalone @AGENTS.md line". An unanchored match set this to yes when
+# ANCHORED, not a substring: the adapter contract is "one standalone
+# @AGENTS.md line" (decision-0057). An unanchored match set this to yes when
 # CLAUDE.md merely MENTIONED the import in prose or inside a fenced example —
 # documentation about the import read as the import itself, recreating the very
 # mixed-host regression the gate exists to prevent. Same class as every other

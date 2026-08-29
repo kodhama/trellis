@@ -81,8 +81,8 @@ further command and no file required (`decision-0070` D3).
 attached**. The machinery is already here — `hooks/codex-context.mjs`, a `.codex-plugin/`
 manifest, a catalog entry — and none of it is claimed as a supported path (`kodhama-0021` §2).
 Until it is, Codex is carried rather than maintained: its behaviour is not kept in step with the
-Claude path, and a difference between them is expected rather than a defect to file. `#220` holds
-what a supported Codex distribution would require. Its adoption signal also differs —
+Claude path, and a difference between them is expected rather than a defect to file. What a
+supported Codex distribution would require is tracked in Linear. Its adoption signal also differs —
 `codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
 when there is none, so both the project-scope default and the user-scope announcement above are
 Claude-only (`decision-0070` D7). On Codex the config file is the only adoption signal there is,
@@ -134,7 +134,7 @@ and what to do about each yourself:
   body into your own instructions file, outside the managed block, then delete the file. Nothing
   reads it any more, so leaving it in place is harmless but inert.
 - **Hand-authored content in the generated readout** (the clobber target of
-  [#112](https://github.com/kodhama/trellis/issues/112)): moot on the plugin path since
+  the historical clobber target): moot on the plugin path since
   `decision-0065` — the setup skill no longer wrote generated files, so there was nothing to
   rewrite whole.
   It survives as a concern for `install.sh`, which does vendor them.

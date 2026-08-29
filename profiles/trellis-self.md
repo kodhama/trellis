@@ -10,6 +10,14 @@ ratified: 2026-07-04
 
 # Expression profile — Trellis-self (the self-hosting instance)
 
+> **Snapshot, 2026-07-04 — read as dated.** This is the assessment as it stood that day, kept
+> unedited. Two later changes are *not* reflected in the rows below: `decision-0079` retired the
+> spec stage and deleted `specs/` (so the `inv-directional-flow` evidence "`research/ →
+> decisions/ → specs/` staging" names a stage that is gone, and the `spec-0001`/`spec-0002`
+> citations point at retired records preserved in git history), and `decision-0076` retired
+> grove (so the `independent-agent` gatekeeper column names roles no longer installed here). The
+> assessment is not re-run; it is marked.
+
 > **Ratified via merge (`decision-0022`).** This is an **assessment** the agent produced; the
 > maintainer's **merge of this PR is the ratification** (`floor-intent-gate`) — the producer proposes, the merge accepts.
 > It is the **first worked instance** of the

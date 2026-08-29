@@ -256,7 +256,7 @@
   - signature: append-only decision records; retained change history (git); a current-truth doc kept
     separate from its change log; **supersession can be partial** — a superseded-in-part pointer marks
     the outgrown half so the live remainder stays navigable and no reader lands on stale text without
-    a forward link (`spec-0001` §2, `decision-0040`).
+    a forward link (`decision-0040`).
   - honored:
     - *(ADR)* decisions are append-only and link their rationale; superseding writes a *new* record.
     - *(infra)* every prod change carries provenance — git history + a current-truth doc — so "why" is

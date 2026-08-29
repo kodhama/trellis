@@ -1,8 +1,11 @@
 package main
 
-// Tests for install.sh — the curl-path plugin vendor script (kodhama/trellis#124,
-// corrected design per spec-0005-curl-install-mechanical-vendoring; see the script's
-// own header for why it supersedes the closed #128 attempt). Unlike #128's
+// Tests for install.sh — the curl-path plugin vendor script (corrected design per
+// spec-0005-curl-install-mechanical-vendoring, retired with `specs/` by
+// `decision-0079`; the `spec-0005 AC#` markers below name requirements whose only
+// surviving statement is these tests, with the retired text in git history. See the
+// script's own header for why it supersedes the earlier attempt). Unlike that
+// attempt's
 // install.sh, this script makes exactly one decision (scope) and composes nothing
 // else — so these tests check vendoring mechanics (fetch, verify, write, scope
 // resolution), never the setup skill's decision logic (that lives in

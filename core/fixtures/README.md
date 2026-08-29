@@ -1,7 +1,7 @@
 # `core/fixtures/` — positive controls
 
 Deliberately **broken** artifacts. Their job is to be **rejected**: the conformance check is
-trusted only after it flags every violation here (`spec-0001` AC2 — *the verifier must be
+trusted only after it flags every violation here (`rubric-artifact-contract` — *the verifier must be
 demonstrably able to fail*, the B3 positive-control lesson logged from our CI episode).
 
 **Excluded from normal corpus runs** — they are test data, not real artifacts.
