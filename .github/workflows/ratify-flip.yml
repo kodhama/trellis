@@ -1,0 +1,102 @@
+name: ratify-flip
+
+# decision-0080 — record the approval act; never perform it.
+#
+# decision-0046 left the `gated -> approved` flip as a hand edit, and named the
+# human's review-before-merge as the backstop against agent self-approval. It
+# considered a machine-checkable guard ("allow the flip iff a human PR-approval
+# review exists") and DEFERRED it to grove#38. decision-0076 then retired grove
+# from this repo, so that deferral lost its consumer — an orphan follow-up under
+# decision-0078. This workflow is that guard, finally built.
+#
+# THE SIGNAL IS THE REVIEW, NOT THE MERGE. An agent merging with the maintainer's
+# token produces a `merged_by` identical to the maintainer's, so "merged" cannot
+# carry the intent act. An APPROVED review from an account that is not the PR
+# author can, once those accounts differ.
+#
+# DORMANT BY DESIGN, TODAY. Agents here author, review and merge as the
+# maintainer, so "not the author" is never true and nothing is ever flipped: every
+# gated record is reported and left gated. That is the honest state — a guard that
+# flipped anyway would certify agent self-approval as the maintainer's. It starts
+# enforcing the day agents get their own GitHub identity, with no change to this
+# file.
+
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  flip:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Record approvals a human review authorizes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -euo pipefail
+
+          changed="$(gh pr diff "${PR}" --name-only | grep '^decisions/.*\.md$' || true)"
+          if [ -z "${changed}" ]; then
+            echo "no decision records touched by #${PR} — nothing to record"
+            exit 0
+          fi
+
+          gated=""
+          for f in ${changed}; do
+            [ -f "${f}" ] || continue
+            if grep -q '^status: gated' "${f}"; then gated="${gated} ${f}"; fi
+          done
+          if [ -z "${gated}" ]; then
+            echo "no gated records left by #${PR} — nothing to record"
+            exit 0
+          fi
+
+          # The authorizing act: an APPROVED review by someone other than the author.
+          approver="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
+            --jq '[.[] | select(.state == "APPROVED") | .user.login]
+                  | map(select(. != env.AUTHOR)) | first // ""')"
+
+          if [ -z "${approver}" ]; then
+            echo "::warning::#${PR} left decision records at 'gated' and carried no human approval review."
+            echo "::warning::They stay gated on purpose: a merge is not an approval act while an agent can perform it (decision-0080)."
+            for f in ${gated}; do echo "  · ${f}"; done
+            exit 0
+          fi
+
+          for f in ${gated}; do
+            STAMP="status: approved  # recorded by ratify-flip: #${PR} approved in review by @${approver} — the review is the intent act, this line records it (decision-0046, decision-0080)"
+            export STAMP
+            python3 - "${f}" <<'PY'
+import os, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+lines = p.read_text().split("\n")
+for i, line in enumerate(lines):
+    if line.startswith("status: gated"):
+        lines[i] = os.environ["STAMP"]
+        break
+p.write_text("\n".join(lines))
+PY
+            echo "recorded approval on ${f}"
+          done
+
+          git config user.name "ratify-flip"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ${gated}
+          git commit -m "ratify-flip: record @${approver}'s approval from #${PR}
+
+The intent act is the human approval review on #${PR}; this commit records it
+(decision-0046, decision-0080). Author of the records != approver."
+          git push origin main
