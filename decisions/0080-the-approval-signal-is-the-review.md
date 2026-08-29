@@ -49,6 +49,29 @@ left at `gated`, and flips them to `approved` **only** when such a review exists
 the approver and PR number into the record. With no qualifying review it flips nothing, warns
 on the run, and leaves the records `gated`.
 
+**2a. What "such a review" means, and why each clause is load-bearing.** Review of the first
+version of this workflow found *"`state == APPROVED` and `login != author`"* insufficient on
+three counts, each verified against this repo:
+
+- **Write access is required.** `kodhama/trellis` is **public**, and on a public repo *any*
+  GitHub account can submit an approving review. Without a permission test, a drive-by
+  approval from a stranger would have made a `contents: write` job push to `main` — precisely
+  the bypass this record exists to close. Reviews are filtered on `author_association`
+  (`OWNER`/`MEMBER`/`COLLABORATOR`) and the selected approver is re-checked against the
+  collaborator permission API.
+- **Only current reviews count.** `/pulls/{n}/reviews` returns the whole history, so an
+  approval of an early revision survives later pushes — including the push that adds the very
+  record being flipped — and a later `CHANGES_REQUESTED` does not erase it. Only reviews whose
+  `commit_id` is the merged head are considered, and only each reviewer's **latest** one.
+- **The listing must be paginated.** Unpaginated, the API returns 30 reviews; `#218` in this
+  repo already carries 33, and reviews come oldest-first, so a late human approval would be
+  dropped and reported as "no approval".
+
+A precedence bug in the first `author_association` filter — `["OWNER",…] | index(.author_association)`
+indexes the literal array, not the review — made the whole expression error out. It failed
+safe, but the guard would never have fired even after an identity split. Found by testing the
+filter against synthetic review sets rather than by reading it.
+
 **3. It is dormant today, on purpose, and that is the honest state.** Agents author, review
 and merge as the maintainer, so *"not the author"* is never satisfied and the workflow will
 never flip anything. It will report gated records and stop. **A guard that flipped anyway
@@ -70,5 +93,9 @@ neither is "someone reading this file later."
 - **Cost accepted:** until an agent identity exists, the flip stays manual for
   conversationally-approved records — unchanged from today. This buys a correct sensor, not
   less typing.
+- **The job pushes to `main`,** so it is serialised (`concurrency: ratify-flip-main`,
+  never cancelled) and retries `pull --rebase` + `push` three times. Merges 27 seconds apart
+  have happened here; a lost race would silently drop the approval record this workflow is
+  the sole writer of.
 - **`ratify-guard` is untouched.** It still fails a ready PR that leaves a `draft` record;
   this workflow governs `gated → approved` after merge. The two do not overlap.

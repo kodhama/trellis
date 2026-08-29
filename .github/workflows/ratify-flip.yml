@@ -11,8 +11,25 @@ name: ratify-flip
 #
 # THE SIGNAL IS THE REVIEW, NOT THE MERGE. An agent merging with the maintainer's
 # token produces a `merged_by` identical to the maintainer's, so "merged" cannot
-# carry the intent act. An APPROVED review from an account that is not the PR
-# author can, once those accounts differ.
+# carry the intent act.
+#
+# WHAT COUNTS AS THE SIGNAL. Every clause below was added because review of this
+# file found the naive version ("state == APPROVED and login != author") unsafe:
+#
+#   1. WRITE ACCESS REQUIRED. kodhama/trellis is PUBLIC, and on a public repo any
+#      GitHub account can submit an "Approve" review. Without a permission test, a
+#      drive-by approval from a stranger would make this `contents: write` job push
+#      to main — the bypass this guard exists to prevent. Reviews are filtered on
+#      author_association, and the selected approver is then re-checked against the
+#      collaborator permission API.
+#   2. CURRENT REVIEWS ONLY. /pulls/{n}/reviews returns the whole history, so an
+#      APPROVED review from an early revision survives later pushes — including a
+#      push that adds the very record being flipped — and a later
+#      CHANGES_REQUESTED does not erase it. Only reviews whose commit_id is the
+#      merged head count, and only each reviewer's LATEST review is considered.
+#   3. PAGINATION. Without --paginate the API returns 30 reviews; PR #218 in this
+#      repo already has 33 (the per-push review bot), and reviews come oldest
+#      first, so a late human approval would be silently dropped.
 #
 # DORMANT BY DESIGN, TODAY. Agents here author, review and merge as the
 # maintainer, so "not the author" is never true and nothing is ever flipped: every
@@ -30,6 +47,14 @@ permissions:
   contents: write
   pull-requests: read
 
+# Serialised because the job pushes to main. Two merges 27 seconds apart have
+# happened in this repo; without this the second push is rejected non-fast-forward
+# and the approval record is silently lost. Never cancel — a cancelled run drops
+# the record it was about to write.
+concurrency:
+  group: ratify-flip-main
+  cancel-in-progress: false
+
 jobs:
   flip:
     if: github.event.pull_request.merged == true
@@ -45,6 +70,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
 
@@ -64,13 +90,38 @@ jobs:
             exit 0
           fi
 
-          # The authorizing act: an APPROVED review by someone other than the author.
-          approver="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
-            --jq '[.[] | select(.state == "APPROVED") | .user.login]
-                  | map(select(. != env.AUTHOR)) | first // ""')"
+          # The authorizing act, under every clause in the header above.
+          approver="$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" -q '.[]' \
+            | jq -rs --arg head "${HEAD_SHA}" --arg author "${AUTHOR}" '
+                [ .[] | select(.commit_id == $head) ]
+                | group_by(.user.login)
+                | map(max_by(.submitted_at))
+                | map(select(
+                    .state == "APPROVED"
+                    and .user.login != $author
+                    and (.author_association == "OWNER"
+                         or .author_association == "MEMBER"
+                         or .author_association == "COLLABORATOR")
+                  ))
+                | .[0].user.login // ""')"
+
+          # Defence in depth: author_association is a label on the review; this is
+          # the repository's own answer about push access.
+          if [ -n "${approver}" ]; then
+            perm="$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${approver}/permission" \
+              -q '.permission' 2>/dev/null || echo "none")"
+            case "${perm}" in
+              admin|maintain|write) ;;
+              *)
+                echo "::warning::@${approver} approved #${PR} but has '${perm}' access — not an authorizing review."
+                approver=""
+                ;;
+            esac
+          fi
 
           if [ -z "${approver}" ]; then
-            echo "::warning::#${PR} left decision records at 'gated' and carried no human approval review."
+            echo "::warning::#${PR} left decision records at 'gated' and carried no authorizing review."
             echo "::warning::They stay gated on purpose: a merge is not an approval act while an agent can perform it (decision-0080)."
             for f in ${gated}; do echo "  · ${f}"; done
             exit 0
@@ -99,4 +150,19 @@ PY
 
 The intent act is the human approval review on #${PR}; this commit records it
 (decision-0046, decision-0080). Author of the records != approver."
-          git push origin main
+
+          # concurrency: above serialises runs, but a human push can still land
+          # between checkout and push. Losing the race must not lose the record.
+          pushed=""
+          for attempt in 1 2 3; do
+            if git pull --rebase --quiet origin main && git push --quiet origin main; then
+              pushed="yes"; break
+            fi
+            echo "push attempt ${attempt} failed; retrying"
+            sleep 5
+          done
+          if [ -z "${pushed}" ]; then
+            echo "::error::could not push the approval record for #${PR} after 3 attempts — it is still 'gated'."
+            exit 1
+          fi
+          echo "recorded @${approver}'s approval from #${PR}"
