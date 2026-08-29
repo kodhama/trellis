@@ -14,8 +14,9 @@ whole point.
 (`decision-0076`), so nothing here waits on a plugin: **this file is self-contained**, with checks
 8–11 below as this repo's repo-typed extras.
 
-**Derive your checklist yourself** from `core/rubrics/artifact-contract.md`
-(the two typed artifacts), and `core/rubrics/artifact-contract.md`. Do **not** accept a checklist
+**Derive your checklist yourself** from `core/rubrics/artifact-contract.md` (the contract
+checks, 1–7 plus the typed-artifact checks 8–11) and `core/schemas/typed-artifacts.md` (the
+field schema those typed checks read). Do **not** accept a checklist
 from whoever produced the artifacts. Then check the target corpus.
 
 **Default corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`,
@@ -62,7 +63,7 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.*
 
-**Typed-artifact checks (`decision-0016` — apply when a `signature-catalog` / `expression-profile`
+**Typed-artifact checks (`schema-typed-artifacts` — apply when a `signature-catalog` / `expression-profile`
 is present):**
 
 8. **Catalog coverage + examples.** A `signature-catalog` covers every **assessable** `invariants-v1`
