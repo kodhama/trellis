@@ -231,10 +231,22 @@ function parseQuotedTomlString(source) {
 // in rather than closed over. A hardcoded list here could not be repaired by a
 // plugin upgrade, and a stale one made a quarantine reason false: the agent would
 // quarantine a live row and cite a payload that ships it.
+//
+// Returns `{ rows, mismatch }` on any file this parser can make sense of, or
+// `null` only for a genuine syntax fault — a malformed row, an unknown top-level
+// key, a duplicate top-level key or section, or a `strictness` that is present
+// but neither "firm" nor "adaptive". `mismatch` is null when every row's slug
+// matched exactly once; otherwise it names the three ways a row can fail to
+// match the slug set — missing, unknown, duplicate — and the caller reconciles
+// rather than refusing (staleness.sh's TRL-20 fix, now mirrored here). This used
+// to be a pass/fail gate (`return null` on any of those three); the classifier
+// split is what lets a single bad row stop costing the other fifteen.
 function parseRulesToml(source, slugs) {
   const slugSet = new Set(slugs);
   const topLevel = new Map();
   const rows = new Map();
+  const unknown = [];
+  const duplicate = [];
   let rulesSectionSeen = false;
   let inRules = false;
 
@@ -283,23 +295,118 @@ function parseRulesToml(source, slugs) {
       continue;
     }
 
+    // A malformed row is still a genuine syntax fault and stays fatal — only
+    // the SLUG-SET checks (duplicate, unknown) move from `return null` to
+    // collection, so the scan continues and every row still gets classified.
     const row = line.match(
       /^([a-z][a-z-]*)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
     );
-    if (!row || rows.has(row[1]) || !slugSet.has(row[1])) return null;
+    if (!row) return null;
+    if (rows.has(row[1])) {
+      duplicate.push(row[1]);
+      continue;
+    }
+    if (!slugSet.has(row[1])) {
+      unknown.push(row[1]);
+      continue;
+    }
     rows.set(row[1], row[2] === "true");
   }
 
+  // A missing strictness is no longer fatal (it used to fold into the same
+  // `rows.size !== slugs.length` style all-or-nothing check this function
+  // replaces): left unset here, it is the caller's job to default it — which
+  // codex-context.mjs's posture selection already does (`strictness !== "firm"`
+  // falls to adaptive), matching staleness.sh:558-560's `case "$strictness" in
+  // firm) ... ; *) ... ;; esac`. A strictness that IS present but invalid still
+  // fails closed: a typo must not silently pick a posture.
   const strictness = topLevel.get("strictness");
   if (
     !rulesSectionSeen ||
-    (strictness !== "firm" && strictness !== "adaptive") ||
-    rows.size !== slugs.length ||
-    slugs.some((slug) => !rows.has(slug))
+    (strictness !== undefined && strictness !== "firm" && strictness !== "adaptive")
   ) {
     return null;
   }
-  return rows;
+
+  const missing = slugs.filter((slug) => !rows.has(slug));
+  const mismatch =
+    missing.length === 0 && unknown.length === 0 && duplicate.length === 0
+      ? null
+      : { missing, unknown, duplicate };
+  return { rows, mismatch };
+}
+
+// reconcileRows mirrors staleness.sh's reconciliation awk block byte-for-byte in
+// its provenance strings (both hosts govern from the same rules.toml, so an agent
+// reading the repair notice must see identical wording regardless of which host
+// wrote it). Quarantine, never delete: an unknown or duplicate row is commented
+// out with a dated note rather than dropped, so nothing a project chose is ever
+// lost, and a payload upgrade that later re-recognises the slug is a one-line
+// uncomment. Missing rows are appended, defaulted to `active = true`, under one
+// shared header comment rather than one note per row (Ruling 6, TRL-20 task 3 —
+// per-row notes on a firm, all-sixteen-missing file blew Codex's own
+// MAX_CONTEXT_BYTES and reintroduced the blackout this exists to remove).
+//
+// `stamp` is the installed payload's own version stamp (`payload@<hash>`, no
+// trailing newline) — what the note calls "not in <stamp>" / "missing from
+// <stamp>". `today` is the caller's `YYYY-MM-DD` for the same reason
+// staleness.sh takes one `date +%Y-%m-%d` call up front rather than one per row:
+// every note in a single reconciliation shares one date.
+function reconcileRows(source, slugs, stamp, today) {
+  const want = new Set(slugs);
+  const note =
+    `  # quarantined ${today}: not in ${stamp}. If a newer Trellis` +
+    " ships this slug, run `claude plugin update trellis@kodhama` and uncomment.";
+
+  // Mirrors parseRulesToml's own newline handling: `\r?\n` consumes a CRLF pair
+  // as one delimiter, so a raw line here never carries a trailing `\r`. Both
+  // functions read the same source string and must agree on what a "line" is.
+  const hadTrailingNewline = /\r?\n$/u.test(source);
+  const rawLines = source.split(/\r?\n/u);
+  if (hadTrailingNewline) rawLines.pop(); // a terminal newline is not an extra blank record — matches awk's own line semantics
+
+  const rulesHeader = /^[ \t]*\[rules\][ \t]*(?:#.*)?$/u;
+  const rowLead = /^[ \t]*(?:inv|floor)-[a-z-]+[ \t]*=/u;
+
+  const seen = new Set();
+  let hasRules = false;
+  let quarantined = 0;
+  const out = [];
+
+  for (const line of rawLines) {
+    if (rulesHeader.test(line)) hasRules = true;
+
+    if (rowLead.test(line)) {
+      // The slug is the row's first whitespace-delimited field, trimmed to its
+      // leading [a-z-]+ run — mirrors the awk's `row = $1; sub(/[^a-z-].*$/, ""
+      // , row)` exactly, so a row with no space before `=` still classifies
+      // correctly.
+      const field = line.replace(/^[ \t]+/u, "").match(/^\S+/u)?.[0] ?? "";
+      const slug = field.match(/^[a-z-]+/u)?.[0] ?? field;
+      if (!want.has(slug) || seen.has(slug)) {
+        out.push(`# ${line}${note}`);
+        quarantined += 1;
+        continue;
+      }
+      seen.add(slug);
+      out.push(line);
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  const missing = slugs.filter((slug) => !seen.has(slug));
+  if (missing.length > 0) {
+    if (!hasRules) {
+      out.push("[rules]");
+      hasRules = true;
+    }
+    out.push(`# added ${missing.length} row(s) below on ${today} (missing from ${stamp})`);
+    for (const slug of missing) out.push(`${slug} = { active = true }`);
+  }
+
+  return { text: `${out.join("\n")}\n`, added: missing.length, quarantined };
 }
 
 // The slugs the payload actually ships, read from the same rules.md the Claude
@@ -507,18 +614,31 @@ if (slugs.length === 0) {
   fail(sources.rules, "no-slugs-in-payload");
   process.exit(0);
 }
-const rows = parseRulesToml(rulesToml, slugs);
-if (rows === null) {
+const parsed = parseRulesToml(rulesToml, slugs);
+if (parsed === null) {
   fail(PROJECT_CONFIG, "invalid-rules");
   process.exit(0);
 }
+const { rows, mismatch } = parsed;
 
 const stamp = version.endsWith("\n") ? version.slice(0, -1) : version;
+// Reconcile rather than refuse (TRL-20, mirroring staleness.sh): a missing,
+// unknown or duplicate row used to fail the whole file closed, so one bad row
+// cost all sixteen rules every session until a human edited it by hand. The
+// rows the payload ships are still the authority; what changes is that an
+// unmatched row is quarantined instead of blocking delivery. `rows` (used below
+// for the false-floor check) is unaffected either way: it already carries only
+// the recognised, first-occurrence rows parseRulesToml collected.
+let effectiveRulesToml = rulesToml;
+if (mismatch !== null) {
+  const today = new Date().toISOString().slice(0, 10);
+  effectiveRulesToml = reconcileRows(rulesToml, slugs, stamp, today).text;
+}
 const context =
   trellis.replace("@rules.md", rules) +
   "\n" +
-  rulesToml +
-  (rulesToml.endsWith("\n") ? "" : "\n") +
+  effectiveRulesToml +
+  (effectiveRulesToml.endsWith("\n") ? "" : "\n") +
   `Trellis hook loaded installed overlay: ${stamp}\n`;
 
 if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {

@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -297,9 +298,13 @@ func TestCodexHookFailureVocabularyAndIsolation(t *testing.T) {
 	}
 	mutateAndFail(t, ".trellis/internal/version", "payload@ABCDEF123456\n", "invalid-version")
 	mutateAndFail(t, ".trellis/rules.toml", "strictness = \"loose\"\n[rules]\n", "invalid-rules")
-	mutateAndFail(t, ".trellis/rules.toml", strings.Replace(payloadFiles()["rules-a.toml"], "inv-minimal-first", "inv-unknown-rule", 1), "invalid-rules")
-	mutateAndFail(t, ".trellis/rules.toml", strings.Replace(payloadFiles()["rules-a.toml"], "inv-minimal-first         = { active = true }\n", "", 1), "invalid-rules")
-	mutateAndFail(t, ".trellis/rules.toml", payloadFiles()["rules-a.toml"]+"inv-minimal-first = { active = true }\n", "invalid-rules")
+	// A renamed/missing/duplicate slug used to fail this file closed too (three
+	// deleted assertions: rename, missing row, duplicate row). TRL-20 moved that
+	// slug-set mismatch off the fail-closed path entirely — it now reconciles
+	// instead of refusing, exactly as staleness.sh already did. See
+	// TestCodexReconcilesInsteadOfFailingClosed for the reconciled behaviour
+	// these three cases now exercise; only a genuine syntax fault (this test's
+	// remaining assertions) still lands here.
 
 	largeRules := strings.TrimSuffix(payloadFiles()["rules.md"], rulesLoadedSentinel+"\n") +
 		strings.Repeat("é", 8001) + "\n" + rulesLoadedSentinel + "\n"
@@ -459,7 +464,7 @@ func TestCodexHookStrictRulesTomlSchema(t *testing.T) {
 		raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
 		want := `{"systemMessage":"Trellis hook did not load rules: .trellis/rules.toml: invalid-rules. The AGENTS.md bootstrap must attempt the installed overlay."}`
 		if raw != want || got.HookSpecificOutput != nil {
-			t.Errorf("malformed/duplicate Trellis TOML must fail exactly\n got: %s\nwant: %s", raw, want)
+			t.Errorf("malformed Trellis TOML must fail exactly\n got: %s\nwant: %s", raw, want)
 		}
 	}
 
@@ -470,7 +475,11 @@ func TestCodexHookStrictRulesTomlSchema(t *testing.T) {
 	assertInvalid(t, canonical+"\n[rules]\n")
 	assertInvalid(t, canonical+"\n[other]\n")
 	assertInvalid(t, strings.Replace(canonical, "[rules]", "unexpected = 'value'\n\n[rules]", 1))
-	assertInvalid(t, canonical+"inv-minimal-first = { active = true }\n")
+	// A duplicate ROW (as opposed to the duplicate top-level keys/sections
+	// above, which stay fatal) used to fail closed here too; TRL-20 moved it
+	// onto the reconcile path instead — see
+	// TestCodexReconcilesInsteadOfFailingClosed's "a duplicate keeps the first
+	// occurrence" case.
 	assertInvalid(t, strings.Replace(canonical,
 		`seeded_from = "conductor"`, `seeded_from = "\/"`, 1))
 	assertInvalid(t, strings.Replace(canonical,
@@ -484,6 +493,158 @@ func TestCodexHookStrictRulesTomlSchema(t *testing.T) {
 		assertInvalid(t, strings.Replace(canonical,
 			`seeded_from = "conductor"`, invalidValue, 1))
 	}
+}
+
+// stripTOMLLine deletes an entire top-level assignment line (its trailing
+// inline comment included) from a rendered rules.toml fixture, matching-and-
+// removing rather than requiring the caller to spell out the payload's exact
+// comment text (which carries a literal "·" the generator emits, easy to
+// transcribe wrong). Used below to build a "no strictness line at all"
+// fixture from the real firm/adaptive presets.
+func stripTOMLLine(t *testing.T, source, key string) string {
+	t.Helper()
+	re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(key) + `[ \t]*=.*\n`)
+	out := re.ReplaceAllString(source, "")
+	if out == source {
+		t.Fatalf("fixture removed nothing — %q was not found as a top-level line", key)
+	}
+	return out
+}
+
+// Codex used to fail closed on ANY mismatch, so a single bad row cost all
+// sixteen rules — the TRL-20 blackout, still live on this host after the Claude
+// side was fixed. It now reconciles, exactly as staleness.sh does.
+func TestCodexReconcilesInsteadOfFailingClosed(t *testing.T) {
+	pluginRoot := writeCodexPluginRoot(t)
+	files := payloadFiles()
+
+	run := func(t *testing.T, toml string) (string, codexHookResult) {
+		t.Helper()
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		p := filepath.Join(project, ".trellis", "rules.toml")
+		if err := os.WriteFile(p, []byte(toml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return runCodexHook(t, pluginRoot, startupInput(t, project))
+	}
+
+	t.Run("a missing row no longer blacks out delivery", func(t *testing.T) {
+		short := strings.Replace(files["rules-a.toml"],
+			"inv-minimal-first         = { active = true }\n", "", 1)
+		if short == files["rules-a.toml"] {
+			t.Fatal("fixture removed nothing — the case would prove nothing")
+		}
+		raw, got := run(t, short)
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a missing row must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !regexp.MustCompile(`(?m)^inv-minimal-first[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*true`).MatchString(ctx) {
+			t.Errorf("the missing row must be reconciled to active = true:\n%s", ctx)
+		}
+	})
+
+	t.Run("an unknown row is quarantined, never dropped", func(t *testing.T) {
+		bogus := files["rules-a.toml"] + "inv-not-a-real-rule       = { active = false }\n"
+		_, got := run(t, bogus)
+		if got.HookSpecificOutput == nil {
+			t.Fatal("an unknown row must reconcile, not fail closed")
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "# inv-not-a-real-rule") {
+			t.Errorf("the unknown row must survive as a commented row:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "quarantined") {
+			t.Errorf("the quarantine must be labelled:\n%s", ctx)
+		}
+	})
+
+	t.Run("a duplicate keeps the first occurrence", func(t *testing.T) {
+		dup := files["rules-a.toml"] + "inv-minimal-first         = { active = false }\n"
+		_, got := run(t, dup)
+		if got.HookSpecificOutput == nil {
+			t.Fatal("a duplicate must reconcile, not fail closed")
+		}
+		if !strings.Contains(got.HookSpecificOutput.AdditionalContext,
+			"# inv-minimal-first         = { active = false }") {
+			t.Errorf("the extra occurrence must be quarantined verbatim:\n%s",
+				got.HookSpecificOutput.AdditionalContext)
+		}
+	})
+
+	// Ruling 1(a) on the task-1 brief: the original single subtest here
+	// asserted the adaptive header ("**By default**") on the fixture
+	// writeValidCodexOverlay builds, but that fixture creates
+	// .trellis/internal/, so codex-context.mjs:424 takes the VENDORED branch —
+	// prose comes from the overlay's own trellis.md, which
+	// writeValidCodexOverlay hardcodes to trellis-a.md (firm). Posture
+	// selection is bypassed entirely on that path, so the header assertion
+	// could never pass. Split in two: non-fatality on the vendored fixture
+	// here, posture selection on a plugin-native fixture below.
+	t.Run("a missing strictness is not fatal — vendored path", func(t *testing.T) {
+		noStrict := stripTOMLLine(t, files["rules-a.toml"], "strictness")
+		raw, got := run(t, noStrict)
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a missing strictness must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("a missing strictness must not be fatal — Claude defaults it:\n%s", raw)
+		}
+	})
+
+	// Ruling 1(b): codex-context.mjs:421-423 already defaults posture to "b"
+	// (adaptive) whenever strictness is not literally "firm" — that selection
+	// logic is untouched by this task; the only change is that parseRulesToml
+	// no longer treats an absent strictness as a syntax fault. This subtest
+	// pins the existing default reaching a project on the PLUGIN-NATIVE path
+	// (no .trellis/internal/, so codex-context.mjs:424 selects
+	// reference/trellis-${posture}.md from PLUGIN_ROOT), which a missing
+	// strictness could not reach before this task — parseRulesToml refused the
+	// whole file first.
+	t.Run("a missing strictness falls back to adaptive, as Claude does — posture", func(t *testing.T) {
+		project := newGitProject(t)
+		noStrict := stripTOMLLine(t, files["rules-b.toml"], "strictness")
+		p := filepath.Join(project, ".trellis", "rules.toml")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(noStrict), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, vendoredBundleAbs(t), startupInput(t, project))
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("a missing strictness must not be fatal — Claude defaults it:\n%s", raw)
+		}
+		if !strings.Contains(got.HookSpecificOutput.AdditionalContext, "**By default**") {
+			t.Errorf("the adaptive header must be selected:\n%s",
+				got.HookSpecificOutput.AdditionalContext)
+		}
+	})
+
+	// The permissive direction is the dangerous one: reconciliation must never
+	// paper over a file it cannot parse.
+	t.Run("genuine syntax faults still fail closed", func(t *testing.T) {
+		for name, toml := range map[string]string{
+			"invalid strictness value": strings.Replace(files["rules-a.toml"],
+				`strictness  = "firm"`, `strictness  = "bogus"`, 1),
+			"unknown top-level key": "nonsense = \"x\"\n" + files["rules-a.toml"],
+			"malformed row":         files["rules-a.toml"] + "inv-broken = notatable\n",
+		} {
+			t.Run(name, func(t *testing.T) {
+				raw, got := run(t, toml)
+				if got.HookSpecificOutput != nil {
+					t.Errorf("a syntax fault must fail closed, not reconcile:\n%s", raw)
+				}
+				if !strings.Contains(raw, "invalid-rules") {
+					t.Errorf("want invalid-rules, got:\n%s", raw)
+				}
+			})
+		}
+	})
 }
 
 // guards spec-0007@v1 R11-R16, R26, R35, S3-S5, S7, S17, S23
