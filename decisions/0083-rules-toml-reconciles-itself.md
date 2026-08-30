@@ -2,7 +2,7 @@
 id: decision-0083
 type: decision
 depends_on: [decision-0051, decision-0070, decision-0072, decision-0074]
-informed_by: [decision-0008, decision-0028, decision-0053, decision-0065, decision-0078, decision-0080]
+informed_by: [decision-0008, decision-0028, decision-0053, decision-0065, decision-0078, decision-0082]
 owner: agent
 date: 2026-08-30
 ---
@@ -290,13 +290,19 @@ Ungating a write to a consumer-owned file is the shape `floor-intent-gate` exist
 rests entirely on quarantine being non-destructive — stated as a load-bearing premise above, not
 as a passing remark — and it is enforced by two widened guards rather than by intent.
 
+**The boundary with what came before is drawn in both directions** (`decision-0074`): what
+`decision-0072` loses is enumerated in §4, what it keeps is enumerated beside it, and the one
+obligation this change retires from the catalog's row-set list is migrated in the same commit
+rather than left to be discovered.
+
 **Where the plan and execution disagree, execution is recorded.** The byte cap was to be designed
 around; it was investigated instead, and the ruling that told this task to compress was withdrawn
 by the maintainer's own instruction to investigate rather than choose. Three test pins retired, not
 the two the plan named. Both are stated as changes, not smoothed into the plan's shape.
 
 **Author is an agent.** The maintainer directed the work and ruled on the byte cap; he has not
-reviewed this record. His review is the approval act (`decision-0080`), and the judgment calls made
+reviewed this record. **His merge is the acceptance** (`decision-0082`) — there is nothing here for
+him to flip, and no agent may merge on his behalf (`floor-intent-gate`). The judgment calls made
 without him — retiring the third pin, correcting the catalog's obligation list here rather than in
 TRL-28, keeping the provenance compression after the cap moved — are named above and each is
 reversible.
