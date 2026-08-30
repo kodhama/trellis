@@ -260,11 +260,29 @@ changed.
   *Hosts* matrix bullet) and the plan's now-superseded exact provenance string were closed the same
   way — both were the same class, and leaving them would have reproduced the failure the close-out
   exists to prevent.
-- **`plugins/trellis/reference/block-codex.md` still teaches the retired all-or-nothing predicate.**
-  `decision-0083` named it as a stale surface deliberately left alone, on the ground that the
-  vendored-overlay fallback path is *carried rather than maintained*. That ground is now weaker —
-  the hook it describes no longer behaves that way — but it is **still not fixed here**, and it is
-  named again rather than quietly inherited.
+- **`plugins/trellis/reference/block-codex.md` still teaches the retired all-or-nothing predicate —
+  deferred to [TRL-31](https://linear.app/kodhama/issue/TRL-31), not left open.** The defect stated
+  plainly: on the vendored-overlay fallback path that bootstrap tells a Codex agent activation TOML
+  is complete only when *"every canonical slug below occurs exactly once, no unknown or duplicate
+  slug occurs"*, and to say exactly *"Trellis was not loaded"* when it is not. **An agent following
+  it refuses a file this hook now reconciles.** The instruction and the hook disagree about the same
+  file, and the instruction is the stale side.
+
+  **Why it is not fixed here.** `block-codex.md` is a **generated payload artifact**. Changing it
+  moves `reference/checksums`, the `reference/version` payload stamp and `install.sh`'s baked
+  bundle manifest with it — release-shaped work, and wrong inside a governance-only commit whose
+  whole value is a diff a reviewer can read end to end.
+
+  **Why it kept being scoped out — and why that argument only ever covered half the question.**
+  `decision-0083` left it alone on the ground that this path is *carried rather than maintained*,
+  and this record was about to repeat that. **That ground justifies deferring the work; it never
+  justified leaving the deferral untracked.** Two consecutive records raising one question with
+  nothing to re-present it is exactly the shape `inv-no-orphan-followups` was minted against
+  (`decision-0078`) — whose own analysis names this case in `inv-self-improvement`'s violated
+  example, *"a PR raises the same open question every time, with no follow-up, and it rots
+  unowned"* (`decisions/0078:47`), while ruling that a deferral is not a glitch but **planned work
+  with no address**. It now has one: **TRL-31** (Medium, Bug, related to TRL-30 and TRL-20) is the
+  named consumer that will re-present it.
 
 ## What execution found that the design did not
 
@@ -325,9 +343,9 @@ an open question rather than left as a habit.
 - **When does the third host arrive, and does anything watch for it?** §5's expiry is stated but
   nothing enforces it — the guard will keep passing at three implementations while quietly being
   the wrong shape.
-- **`block-codex.md`'s retired predicate.** Inherited from `decision-0083`'s open questions and
-  still open; the justification for leaving it (a fallback path carried rather than maintained) is
-  weaker now than when it was made.
+- **`block-codex.md`'s retired predicate is *not* an open question here.** `decision-0083` carried
+  it as one, with no consumer. It is filed as **TRL-31** and recorded as a tracked deferral under
+  *Consequences* above — deliberately moved out of this list so a third record does not inherit it.
 - **Should the byte proxy be replaced by a token estimate?** Inherited unchanged from
   `decision-0083`. Degradation makes the consequence of guessing wrong smaller, not absent.
 - **Should the Claude hook warn on a false floor row, as Codex does?** Inherited unchanged from
@@ -348,13 +366,23 @@ stayed fatal, rather than reporting only what was gained.
 
 **The boundary with what came before is drawn in both directions** (`decision-0074`): §7 enumerates
 what `decision-0083` loses and what it keeps, §5 states the guard's expiry before anyone hits it,
-and the surface this change does **not** fix (`block-codex.md`) is named twice rather than inherited
-silently.
+and the surface this change does **not** fix (`block-codex.md`) is **filed as TRL-31** rather than
+carried forward as a second record's unowned open question.
 
 **Where the plan and execution disagree, execution is recorded.** The brief said keep
 `!rulesSectionSeen` fatal; §2 records that this was wrong and why. The brief's own fixtures produced
 three of the four defects in the method section above, and each is recorded as the controller's
 error rather than smoothed away.
+
+**The two supersession acts were taken in the work rather than raised as blocking questions, and the
+ground for that is named.** Both are frontmatter lines — `decision-0083`'s forward pointer and the
+extension of `decision-0072`'s — cheap to undo, quick to notice, and low-stakes while they stand,
+with the prior rationale surfaced and the pointers intact. That is the shape `decision-0081`
+describes (*"supersession is weighed by cost of reversal rather than by the seniority of the
+record"*), which `AGENTS.md` routes to for exactly this call. **Cited honestly: `decision-0081` is a
+proposal, not a taken decision** — its own heading says so — so it is the reasoning relied on, not
+an authority claimed. Either pointer can be reverted in one line if the maintainer reads the scoping
+differently.
 
 **Author is an agent.** The maintainer directed the work and ruled on host-neutral provenance; he has
 not reviewed this record. **His merge is the acceptance** (`decision-0082`) — there is nothing here
