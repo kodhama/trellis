@@ -862,6 +862,18 @@ if [ "$slug_report" != "ok" ]; then
         note = "  # quarantined " today ": not in " stamp ". If a newer Trellis" \
                " ships this slug, run `claude plugin update trellis@kodhama` and uncomment."
       }
+      # The default record separator here is "\n" alone, so a CRLF-terminated
+      # line arrives with its "\r" still attached to $0 -- stripped BEFORE any
+      # other rule reads $0, so every rule below (the header check, the row
+      # check, the bare passthrough) sees the same CR-free line the Codex
+      # hook reconciler produces (it splits on /\r?\n/, which consumes a CRLF
+      # pair as one delimiter and never leaves a trailing \r on a line). Left
+      # unstripped, `print "# " $0 note` on a quarantined CRLF row emitted a
+      # bare CR MID-LINE, before the note -- measured directly against this
+      # block. This is host parity, not a cosmetic fix: the two reconcilers
+      # must produce the same bytes from the same input, and only one of them
+      # was doing that.
+      { sub(/\r$/, "") }
       # A row can be appended below with no `[rules]` table preceding it in the
       # file at all (the hand-written-partial shape: just strictness, no rows).
       # parseRulesToml in codex-context.mjs only accepts inv-/floor- keys INSIDE

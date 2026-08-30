@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 )
 
 const rulesLoadedSentinel = "<!-- trellis:rules-loaded -->"
@@ -464,7 +465,7 @@ func TestCodexHookStrictRulesTomlSchema(t *testing.T) {
 		raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
 		want := `{"systemMessage":"Trellis hook did not load rules: .trellis/rules.toml: invalid-rules. The AGENTS.md bootstrap must attempt the installed overlay."}`
 		if raw != want || got.HookSpecificOutput != nil {
-			t.Errorf("malformed Trellis TOML must fail exactly\n got: %s\nwant: %s", raw, want)
+			t.Errorf("malformed or duplicate top-level Trellis TOML must fail exactly\n got: %s\nwant: %s", raw, want)
 		}
 	}
 
@@ -576,6 +577,105 @@ func TestCodexReconcilesInsteadOfFailingClosed(t *testing.T) {
 		}
 	})
 
+	// Fix round 1, minor: the mutation this covered used to live as a
+	// fail-closed assertion in TestCodexHookFailureVocabularyAndIsolation
+	// (deleted there in the same round, since a rename is exactly the
+	// missing+unknown mismatch this task makes reconcilable) — nothing
+	// otherwise pinned it after that deletion, though it already worked.
+	t.Run("a rename is both kinds at once and both are reconciled", func(t *testing.T) {
+		renamed := strings.Replace(files["rules-a.toml"],
+			"inv-minimal-first         = { active = true }",
+			"inv-renamed-first         = { active = true }", 1)
+		if renamed == files["rules-a.toml"] {
+			t.Fatal("fixture did not rename anything — the case would prove nothing")
+		}
+		raw, got := run(t, renamed)
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a rename must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "# inv-renamed-first") {
+			t.Errorf("the stale slug must be quarantined:\n%s", ctx)
+		}
+		if !regexp.MustCompile(`(?m)^inv-minimal-first[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*true`).MatchString(ctx) {
+			t.Errorf("the new slug must be added as active:\n%s", ctx)
+		}
+	})
+
+	// Fix round 1, IMPORTANT: parseRulesToml's row regex (matches any
+	// [a-z][a-z-]* slug before this fix) and reconcileRows' row-detection
+	// (always inv-/floor- only) disagreed. A row like this used to classify
+	// as "unknown" here (triggering reconciliation) but reconcileRows never
+	// recognised it as a row to quarantine — measured: context delivered,
+	// zero quarantine notes, the row passed through uncommented, so the
+	// mismatch never cleared and the hook re-reconciled every session to no
+	// effect. The two now share the same (?:inv|floor)-[a-z-]+ grammar, so
+	// this is a malformed row (fails closed) rather than a silent no-op.
+	t.Run("a row not shaped like a rule slug fails closed, not a silent no-op reconcile", func(t *testing.T) {
+		bogus := files["rules-a.toml"] + "bogus-rule = { active = true }\n"
+		raw, got := run(t, bogus)
+		if got.HookSpecificOutput != nil {
+			t.Errorf("a row not shaped (inv|floor)-... must fail closed, not reconcile:\n%s", raw)
+		}
+		if !strings.Contains(raw, "invalid-rules") {
+			t.Errorf("want invalid-rules, got:\n%s", raw)
+		}
+	})
+
+	// Fix round 1, RULING (correcting the brief, which told the implementer
+	// to keep !rulesSectionSeen fatal): a rules.toml with no [rules] table at
+	// all is not a syntax fault, it is a slug set that is entirely missing —
+	// reconcilable like any other slug-set mismatch. staleness.sh already
+	// repairs this exact hand-written-partial shape (strictness alone, no
+	// rows) into a full [rules] table plus every row; Codex must reach the
+	// same repair instead of refusing the file outright. This is also what
+	// makes reconcileRows' own `if (!hasRules)` insertion reachable at all —
+	// dead code before this fix.
+	t.Run("a rules.toml with no [rules] table at all reconciles, not fails closed", func(t *testing.T) {
+		raw, got := run(t, "strictness  = \"firm\"\n")
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a missing [rules] table must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "[rules]") {
+			t.Errorf("a [rules] table must be opened where none existed:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "added 16 row(s)") {
+			t.Errorf("all sixteen rows must be added — none had a table to belong to:\n%s", ctx)
+		}
+		for _, slug := range assessableSlugs {
+			re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*true`)
+			if !re.MatchString(ctx) {
+				t.Errorf("rule %s must be reconciled to active = true:\n%s", slug, ctx)
+			}
+		}
+	})
+
+	// Fix round 1, IMPORTANT: staleness.sh reads `date +%Y-%m-%d` — the
+	// process's LOCAL calendar date. Left as UTC (toISOString), this and the
+	// Claude hook would disagree by |UTC-offset| hours a day on any non-UTC
+	// machine, and Task 2's byte-identical comparison would go red for part
+	// of every day and green only on UTC CI — a mismatch that reads as flake.
+	t.Run("the reconciliation date is the local calendar date, not UTC", func(t *testing.T) {
+		short := strings.Replace(files["rules-a.toml"],
+			"inv-minimal-first         = { active = true }\n", "", 1)
+		raw, got := run(t, short)
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		wantDate := time.Now().Format("2006-01-02")
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "below on "+wantDate+" (missing from") {
+			t.Errorf("reconciliation date must be today's LOCAL calendar date (%s):\n%s", wantDate, ctx)
+		}
+	})
+
 	// Ruling 1(a) on the task-1 brief: the original single subtest here
 	// asserted the adaptive header ("**By default**") on the fixture
 	// writeValidCodexOverlay builds, but that fixture creates
@@ -645,6 +745,63 @@ func TestCodexReconcilesInsteadOfFailingClosed(t *testing.T) {
 			})
 		}
 	})
+}
+
+// Fix round 1, CRITICAL. The sentinel gate a few lines above where slugs is
+// derived (rules.split(SENTINEL).length - 1 !== 1 && rules.endsWith(...))
+// passes any rules.md carrying exactly one sentinel — it says nothing about
+// whether the file has any SLUG TAGS at all. If every backtick-wrapped
+// `inv-...`/`floor-...` tag is gone but the sentinel survives, slugsFromRules
+// returns an empty array, slugSet is empty, and every row in the project's
+// rules.toml classifies as "unknown" (nothing is ever in an empty set). That
+// used to trigger reconciliation, which quarantined all sixteen rows and
+// still emitted hookSpecificOutput with exit 0 — an ungoverned session that
+// LOOKED governed. staleness.sh:625-636 already names this exact failure
+// "no-slugs-in-payload" and refuses to reconcile against it; this pins the
+// equivalent Codex guard.
+func TestCodexRefusesToReconcileAgainstAnEmptySlugSet(t *testing.T) {
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	rulesMdPath := filepath.Join(project, ".trellis", "internal", "rules.md")
+	original := readFileT(t, rulesMdPath)
+	// Strip every backtick-wrapped slug tag but leave everything else —
+	// including the terminal sentinel line, which carries no such tag and so
+	// is untouched — so this exercises ONLY the empty-slug-set path, not the
+	// sentinel gate above it.
+	tagless := regexp.MustCompile("`(?:inv|floor)-[a-z-]+`").ReplaceAllString(original, "")
+	if tagless == original {
+		t.Fatal("fixture stripped nothing — the case would prove nothing")
+	}
+	if !strings.Contains(tagless, rulesLoadedSentinel) {
+		t.Fatal("fixture must still carry the sentinel — this pins the slug-set gate, not the sentinel gate")
+	}
+	if err := os.WriteFile(rulesMdPath, []byte(tagless), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A MINIMAL rules.toml (one row), not the real sixteen writeValidCodexOverlay
+	// wrote: without this guard, reconciling one row against an empty slug set
+	// stays well under MAX_CONTEXT_BYTES and delivers successfully — the exact
+	// silently-ungoverned-but-exit-0 shape the guard exists to prevent. Using
+	// the real sixteen-row preset here would let the UNRELATED byte-budget
+	// guard (sixteen quarantine notes together overrun MAX_CONTEXT_BYTES) catch
+	// the mutation by coincidence, which would mask whether this specific guard
+	// fired — confirmed by running this test against a build with the guard
+	// removed and the sixteen-row preset still in place: it failed for the
+	// wrong reason (context-over-budget, not no-slugs-in-payload).
+	minimal := "strictness  = \"firm\"\n\n[rules]\ninv-minimal-first         = { active = true }\n"
+	rulesTomlPath := filepath.Join(project, ".trellis", "rules.toml")
+	if err := os.WriteFile(rulesTomlPath, []byte(minimal), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput != nil {
+		t.Errorf("an empty derived slug set must fail closed, never reconcile:\n%s", raw)
+	}
+	if !strings.Contains(raw, "no-slugs-in-payload") {
+		t.Errorf("want no-slugs-in-payload, got:\n%s", raw)
+	}
 }
 
 // guards spec-0007@v1 R11-R16, R26, R35, S3-S5, S7, S17, S23

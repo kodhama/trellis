@@ -233,14 +233,17 @@ function parseQuotedTomlString(source) {
 // quarantine a live row and cite a payload that ships it.
 //
 // Returns `{ rows, mismatch }` on any file this parser can make sense of, or
-// `null` only for a genuine syntax fault — a malformed row, an unknown top-level
-// key, a duplicate top-level key or section, or a `strictness` that is present
-// but neither "firm" nor "adaptive". `mismatch` is null when every row's slug
-// matched exactly once; otherwise it names the three ways a row can fail to
-// match the slug set — missing, unknown, duplicate — and the caller reconciles
-// rather than refusing (staleness.sh's TRL-20 fix, now mirrored here). This used
-// to be a pass/fail gate (`return null` on any of those three); the classifier
-// split is what lets a single bad row stop costing the other fifteen.
+// `null` only for a genuine syntax fault — a malformed row (including one not
+// shaped `(inv|floor)-...`, the same prefix reconcileRows requires — see the
+// row regex below), an unknown top-level key, a duplicate top-level key or
+// section, or a `strictness` that is present but neither "firm" nor
+// "adaptive". `mismatch` is null when every row's slug matched exactly once;
+// otherwise it names the three ways a row can fail to match the slug set —
+// missing, unknown, duplicate — and the caller reconciles rather than
+// refusing (staleness.sh's TRL-20 fix, now mirrored here). This used to be a
+// pass/fail gate (`return null` on any of those three, PLUS a missing
+// `[rules]` table entirely); the classifier split is what lets a single bad
+// row — or a table that never existed — stop costing the other fifteen.
 function parseRulesToml(source, slugs) {
   const slugSet = new Set(slugs);
   const topLevel = new Map();
@@ -298,8 +301,22 @@ function parseRulesToml(source, slugs) {
     // A malformed row is still a genuine syntax fault and stays fatal — only
     // the SLUG-SET checks (duplicate, unknown) move from `return null` to
     // collection, so the scan continues and every row still gets classified.
+    //
+    // The prefix is `(?:inv|floor)-`, not the wider `[a-z][a-z-]*` this used
+    // to accept: reconcileRows' own row-detection (`rowLead`, below) has
+    // always been prefix-narrow, matching staleness.sh's awk, which has no
+    // other way to tell a row from a top-level key (no state tracking; a bare
+    // `[a-z][a-z-]*` would also match `strictness`). A row shaped like
+    // `bogus-rule = { active = true }` used to be classified `unknown` here
+    // and then trigger reconciliation, but reconcileRows' narrower regex
+    // never recognised it as a row to quarantine — measured: context
+    // delivered, zero quarantine notes, the row passed through uncommented,
+    // so the mismatch never cleared and the hook re-reconciled every session
+    // to no effect. Narrowing this regex to match reconcileRows exactly is
+    // what makes the two agree: such a line is now a malformed row (fails
+    // closed), not a silently no-op "unknown" one.
     const row = line.match(
-      /^([a-z][a-z-]*)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
+      /^((?:inv|floor)-[a-z-]+)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
     );
     if (!row) return null;
     if (rows.has(row[1])) {
@@ -321,12 +338,22 @@ function parseRulesToml(source, slugs) {
   // firm) ... ; *) ... ;; esac`. A strictness that IS present but invalid still
   // fails closed: a typo must not silently pick a posture.
   const strictness = topLevel.get("strictness");
-  if (
-    !rulesSectionSeen ||
-    (strictness !== undefined && strictness !== "firm" && strictness !== "adaptive")
-  ) {
+  if (strictness !== undefined && strictness !== "firm" && strictness !== "adaptive") {
     return null;
   }
+
+  // `!rulesSectionSeen` used to be fatal too (fix round 1 correction — the
+  // brief said keep it fatal, and that was the controller's error, not a
+  // reading of the code). A rules.toml with no `[rules]` table at all is not
+  // a syntax fault: it is a slug set that is entirely missing, reconcilable
+  // like any other slug-set mismatch. A hand-written partial file carrying
+  // only `strictness = "firm"` is the canonical shape — staleness.sh repairs
+  // it into a full `[rules]` table plus all sixteen rows, and this must reach
+  // the same repair rather than refusing the file outright. No special-casing
+  // is needed to get there: `rows` is simply empty when `[rules]` was never
+  // seen (the loop never entered the row-matching branch), which already
+  // makes every slug "missing" below — and it is what makes reconcileRows'
+  // own `if (!hasRules)` insertion below reachable at all.
 
   const missing = slugs.filter((slug) => !rows.has(slug));
   const mismatch =
@@ -420,6 +447,23 @@ function slugsFromRules(rulesMd) {
     if (m) found.push(m[1]);
   }
   return found;
+}
+
+// Local calendar date, YYYY-MM-DD — must match staleness.sh's `date
+// +%Y-%m-%d`, which reads the process's LOCAL timezone. `Date`'s un-prefixed
+// accessors (getFullYear/getMonth/getDate) are local-time; `toISOString` is
+// always UTC and disagreed with the shell by |UTC offset| hours a day on any
+// non-UTC machine. Measured at 2026-08-30T05:30:00Z:
+// `TZ=America/Los_Angeles date +%Y-%m-%d` says 2026-08-29,
+// `toISOString().slice(0, 10)` said 2026-08-30. Task 2 compares the two
+// hosts' reconciled output byte-for-byte; left as UTC, that comparison would
+// have gone red for |offset| hours a day on any non-UTC machine and green on
+// UTC CI — a mismatch that reads as flake, not as what it is.
+function localToday(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 let input;
@@ -631,8 +675,7 @@ const stamp = version.endsWith("\n") ? version.slice(0, -1) : version;
 // the recognised, first-occurrence rows parseRulesToml collected.
 let effectiveRulesToml = rulesToml;
 if (mismatch !== null) {
-  const today = new Date().toISOString().slice(0, 10);
-  effectiveRulesToml = reconcileRows(rulesToml, slugs, stamp, today).text;
+  effectiveRulesToml = reconcileRows(rulesToml, slugs, stamp, localToday()).text;
 }
 const context =
   trellis.replace("@rules.md", rules) +

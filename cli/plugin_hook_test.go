@@ -2474,6 +2474,41 @@ func TestSlugMismatchStillDeliversEveryRule(t *testing.T) {
 	})
 }
 
+// TestReconciliationStripsCRFromCRLFInput — codex-context.mjs's own
+// reconcileRows splits on /\r?\n/, which consumes a CRLF pair as one
+// delimiter and never leaves a trailing \r on a line it emits. The awk
+// reconciler here did not: its default record separator is "\n" alone, so a
+// CRLF-terminated line arrived with "\r" still attached to $0, and
+// `print "# " $0 note` on a quarantined row then emitted a bare CR MID-LINE,
+// before the note — a real host divergence review measured directly against
+// this block, not a hypothetical one. Fixed by stripping a trailing \r from
+// every record before any other rule reads $0 (see the `sub(/\r$/, "")` rule
+// above). Host parity is this branch's job, and CRLF is the shape a project
+// checked out with core.autocrlf=true actually produces — this pins it.
+func TestReconciliationStripsCRFromCRLFInput(t *testing.T) {
+	run := rulesTomlRun(t)
+	files := payloadFiles()
+
+	crlf := strings.ReplaceAll(files["rules-a.toml"], "\n", "\r\n")
+	bogus := crlf + "inv-not-a-real-rule       = { active = false }\r\n"
+	out := run(t, bogus)
+	context := nudgeContext(t, out)
+
+	if strings.Contains(context, "\r") {
+		t.Errorf("CRLF input must not leave a bare CR anywhere in the reconciled context:\n%q", context)
+	}
+	if !strings.Contains(context, "# inv-not-a-real-rule       = { active = false }  # quarantined") {
+		t.Errorf("the quarantined row must match the LF reconciler exactly, CR-free:\n%s", context)
+	}
+	// The real rows must still be delivered too, not merely CR-free — CR-
+	// stripping every record must not have knocked out row detection.
+	for _, slug := range assessableSlugs {
+		if !deliveredRow(context, slug) {
+			t.Errorf("rule %s must still be delivered from CRLF input:\n%s", slug, context)
+		}
+	}
+}
+
 // The repair is applied and REPORTED, not proposed and gated. decision-0072's
 // finding #6 — "retiring a confirm-gated writer silently retires the gate" —
 // is answered by quarantine semantics: no prior value is ever lost, so the
