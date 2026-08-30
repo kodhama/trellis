@@ -35,6 +35,12 @@ func docSurfaces(t *testing.T) []string {
 		".git": true, ".github": true, ".claude": true,
 		"decisions": true, "specs": true, "research": true, "eval": true,
 		"fixtures": true, "testdata": true,
+		// decision-0079 retired specs/ and moved planning to the superpowers
+		// skills; docs/superpowers/ (rendered plans/reports) and .superpowers/
+		// (working SDD state) are that directory's successor and inherit the
+		// same exemption: they legitimately name artifacts that later retired,
+		// e.g. /trellis:setup before decision-0072 retired it.
+		"superpowers": true, ".superpowers": true,
 	}
 	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}
 	var out []string
