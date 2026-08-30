@@ -621,9 +621,22 @@ slug_report="$(
 # commented row is correct under both readings and loses nothing either way.
 # It is also invisible to the validator above, which anchors rows at line
 # start, so a repaired file draws no second notice.
+# `no-slugs-in-payload` is a different failure than a project's rows not
+# matching a valid payload: it means the validator above found NOTHING to
+# check rows against (the payload's own rules.md is unreadable or malformed),
+# not that this project's rows are wrong. Reconciling against an empty want
+# set would quarantine every legitimate row and run the session ungoverned
+# with exit 0 — silently inverting the fail-loud invariant stated above
+# ("Fail loudly rather than govern silently on a partial payload"). This is
+# the same broken-plugin shape the header/rules file-existence check already
+# fails loudly on, just caught one step later.
+if [ "$slug_report" = "no-slugs-in-payload" ]; then
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own rules payload ($rules) carries no rule slugs for this hook to validate .trellis/rules.toml against. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned. This is a broken or unrecognisable plugin payload, not a problem with your rows — reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix, not editing .trellis/rules.toml. Tell the user before doing substantive work."
+  exit 0
+fi
 reconciled=""
 repair_summary=""
-if [ "$slug_report" != "ok" ]; then
+if [ "$slug_report" != "ok" ] && [ "$slug_report" != "no-slugs-in-payload" ]; then
   today="$(date +%Y-%m-%d)"
   reconciled="$(
     awk -v want_src="$rules" -v stamp="$current" -v today="$today" '
@@ -639,6 +652,14 @@ if [ "$slug_report" != "ok" ]; then
         note = "  # quarantined " today ": not in " stamp ". If a newer Trellis" \
                " ships this slug, run `claude plugin update trellis@kodhama` and uncomment."
       }
+      # A row can be appended below with no `[rules]` table preceding it in the
+      # file at all (the hand-written-partial shape: just strictness, no rows).
+      # parseRulesToml in codex-context.mjs only accepts inv-/floor- keys INSIDE
+      # `[rules]` — outside it, any key but seeded_from/strictness/governed is a
+      # fatal invalid-rules on Codex while Claude governs normally from the same
+      # file. Track whether the file already opens the table so the END block
+      # can open one itself before appending, rather than assume it is there.
+      /^\[rules\][[:space:]]*(#.*)?$/ { has_rules = 1 }
       /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
         row = $1
         sub(/[^a-z-].*$/, "", row)
@@ -655,7 +676,10 @@ if [ "$slug_report" != "ok" ]; then
       END {
         for (i = 1; i <= n; i++) {
           s = order[i]
-          if (!(s in seen)) print s " = { active = true }  # added " today " from " stamp
+          if (!(s in seen)) {
+            if (!has_rules) { print "[rules]"; has_rules = 1 }
+            print s " = { active = true }  # added " today " from " stamp
+          }
         }
       }
     ' "$toml"
