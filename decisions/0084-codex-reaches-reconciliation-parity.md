@@ -256,6 +256,15 @@ still governs** — and a 2.8 KB file Trellis itself told the agent to write is 
 persisted provenance comments in it are exactly what would be left to degrade; the gate, not a
 shortage of material, is what stops it.
 
+**The counterfactual, stated so the sentence above is not read as a regression — this is inference,
+not measurement.** It follows from the degrade flag plus the gate, not from re-running the old hook.
+Session 1 *degrades* at N = 9, and degradation fires only when the full-provenance assembly already
+exceeded the cap — so **the predecessor state refused session 1 too**, with `context-over-budget`
+and zero governed sessions; before TRL-30 entirely it refused earlier still, at `invalid-rules` on
+the mismatch alone. **This branch buys the project one governed session where it previously had
+none. It does not create the wall; it moves the project up to it and then stops.** The limitation
+is real and worth fixing — it is not a loss against what shipped before.
+
 **Not fixed here, and tracked rather than left open.** Degrading on the no-mismatch path is a
 behaviour change that needs its own tests and its own reviewable diff — the same argument that kept
 `block-codex.md` out of this commit. [TRL-29](https://linear.app/kodhama/issue/TRL-29) is **reopened
@@ -275,10 +284,18 @@ append-only and this record is not yet on `main`.
 
 **Standing, untouched:** the resolution table itself (missing → add `active = true`; unknown →
 quarantine; duplicate → keep the first, quarantine the extras), the ungated-write argument and its
-premise that quarantine is non-destructive, the quarantine semantics, §6's payload-derived slug set,
-the byte-cap investigation, and the `decision-0070` D4 re-reading. `decision-0072`'s forward pointer
-is extended for the same reason: it said the preset copy remains mandatory *on Codex*, which is no
-longer true.
+premise that quarantine is non-destructive, the quarantine semantics, **`decision-0083` §5's
+partial-file finding**, `decision-0083` §6's payload-derived slug set, the byte-cap investigation,
+and the `decision-0070` D4 re-reading. `decision-0072`'s forward pointer is extended for the same
+reason: it said the preset copy remains mandatory *on Codex*, which is no longer true.
+
+**Why the partial-file finding is named explicitly.** This list is a derivative of the same
+enumeration in `decision-0083`'s `superseded_in_part_by` comment, and it was a strict subset of it —
+seven items there, six here, with §5 the one missing (`decision-0028`: a source and its derivative
+disagree, and the derivative is the stale side). It stands: `decision-0083` §5 measured the
+partial-file shape on Claude, and §1 above **widens** that measurement to Codex rather than
+contradicting it. Corrected here rather than in a later record because neither record is on `main`
+yet, so append-only does not bite.
 
 **`decision-0070` D4's first two sentences still stand and are still pinned by test on both hosts.**
 *"The hook never writes"* is now enforced on Codex behaviourally as well as by construction —
