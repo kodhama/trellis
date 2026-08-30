@@ -886,7 +886,16 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 	msgs = append(msgs, codexMsgs...)
 	gated := 0
 	for _, msg := range msgs {
-		if !strings.Contains(msg, "delete") {
+		// Fix round 1 (TRL-30 task 3): case-insensitive, matching the same
+		// sibling scan in TestEveryDestructiveInstructionIsGated
+		// (plugin_hook_test.go:596) and the payload/codex-payload-specific
+		// loops below. Pre-existing hole, on the Claude emit channel, closed
+		// while here: a case-sensitive check here is exactly what let a
+		// capitalized "Delete the unknown rows..." land undetected on the
+		// payload channel before that was fixed (see the comment on the
+		// payload-loop check below) — this is the same defect class on the
+		// channel that scan didn't cover.
+		if !strings.Contains(strings.ToLower(msg), "delete") {
 			continue
 		}
 		gated++

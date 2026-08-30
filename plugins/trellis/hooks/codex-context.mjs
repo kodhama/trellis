@@ -383,7 +383,7 @@ function reconcileRows(source, slugs, stamp, today) {
   const want = new Set(slugs);
   const note =
     `  # quarantined ${today}: not in ${stamp}. If a newer Trellis` +
-    " ships this slug, run `claude plugin update trellis@kodhama` and uncomment.";
+    " release ships this slug, update the Trellis plugin and uncomment this row.";
 
   // Mirrors parseRulesToml's own newline handling: `\r?\n` consumes a CRLF pair
   // as one delimiter, so a raw line here never carries a trailing `\r`. Both
@@ -448,14 +448,35 @@ function reconcileRows(source, slugs, stamp, today) {
   return { text: `${out.join("\n")}\n`, added: missing.length, quarantined };
 }
 
+// mismatchReport mirrors staleness.sh's own $slug_report text (its awk block,
+// staleness.sh:594-609): which slugs were missing, unknown, or duplicate —
+// the WHICH an agent needs alongside repairMandate's HOW MUCH
+// (added/quarantined counts). mismatch is never null when this is called
+// (repairMandate only runs on the `mismatch !== null` branch), and
+// parseRulesToml only ever returns a non-null mismatch when at least one of
+// these three arrays is non-empty, so the result is never "".
+function mismatchReport(mismatch) {
+  const parts = [];
+  if (mismatch.missing.length > 0) parts.push(`missing: ${mismatch.missing.join(" ")}`);
+  if (mismatch.unknown.length > 0) parts.push(`unknown: ${mismatch.unknown.join(" ")}`);
+  if (mismatch.duplicate.length > 0) parts.push(`duplicate: ${mismatch.duplicate.join(" ")}`);
+  return parts.join("; ");
+}
+
 // repairMandate is TRL-30 task 3 (decision-0083 host parity): the Claude hook
 // (staleness.sh) does not just reconcile a mismatch in memory, it tells the
 // agent to write the repaired file back and report what changed — this hook
 // used to stop at "computed in memory," delivering the reconciled rows with
-// no instruction attached. Text below is the Claude mandate's substance,
-// host-adjusted (no `claude plugin update ...` remedy: plugins/trellis/
-// README.md says plainly "Codex is not supported yet" with no install/update
-// command of its own, so this uses neutral wording instead of inventing one).
+// no instruction attached. Text below is the Claude mandate's substance.
+//
+// Carries no stale-plugin remedy of its own (fix round 1): that used to live
+// here as its own sentence, but .trellis/rules.toml is one file read by both
+// hosts, and reconcileRows' own quarantine note — INSIDE the row block this
+// mandate follows — already carries a host-neutral "update the Trellis
+// plugin and uncomment this row" remedy per quarantined line. A second,
+// differently-worded remedy sentence here was redundant at best and, before
+// this fix, actively contradicted that note (naming a Claude-only command a
+// Codex agent cannot run).
 //
 // Safe to leave ungated (no floor-intent-gate confirmation), for the same
 // reason the Claude mandate is: reconcileRows only ever comments a row out or
@@ -470,16 +491,15 @@ function reconcileRows(source, slugs, stamp, today) {
 // This hook still never writes .trellis/rules.toml itself (decision-0070 D4,
 // pinned behaviourally by codexReconciledRows in cli/codex_hook_test.go) —
 // the mandate only tells the agent to.
-function repairMandate(stamp, repairSummary) {
+function repairMandate(mismatchText, repairSummary) {
   return (
     "\n## Rule activation was reconciled this session\n\n" +
-    `This project's .trellis/rules.toml did not match the rules this payload ships (${stamp}). ` +
+    `This project's .trellis/rules.toml did not match the rules this payload ships (${mismatchText}). ` +
     "The rows above are the reconciled set and are what governs this session; the file on disk still differs. " +
     `Reconciliation: ${repairSummary}.\n\n` +
     "Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. " +
     "Nothing is lost by this: a row the payload does not ship is commented out with its reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. " +
-    "Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent. " +
-    "If a quarantined slug is one a newer Trellis release added, the installed plugin may be the stale side; Codex has no supported update command yet, so update the plugin through whatever channel installed it, restart the session, and uncomment the row.\n"
+    "Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent.\n"
   );
 }
 
@@ -739,7 +759,7 @@ if (mismatch !== null) {
   // "the SPOKEN summary was not" note) — do not derive this from text length
   // or any other count that could see stale provenance.
   const repairSummary = `added ${reconciled.added} row(s); quarantined ${reconciled.quarantined} row(s)`;
-  repairMandateText = repairMandate(stamp, repairSummary);
+  repairMandateText = repairMandate(mismatchReport(mismatch), repairSummary);
 }
 const context =
   trellis.replace("@rules.md", rules) +
@@ -747,6 +767,13 @@ const context =
   effectiveRulesToml +
   (effectiveRulesToml.endsWith("\n") ? "" : "\n") +
   repairMandateText +
+  // Cosmetic parity, fix round 1: staleness.sh's footer printf always opens
+  // with its own leading "\n" (staleness.sh:793), so on the Claude side a
+  // blank line separates the mandate's last sentence from "Delivered by...".
+  // Scoped to the mandate-present branch only — the no-mismatch path (empty
+  // repairMandateText) is pre-existing behaviour this task did not touch and
+  // is left as is.
+  (repairMandateText === "" ? "" : "\n") +
   `Trellis hook loaded installed overlay: ${stamp}\n`;
 
 if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {

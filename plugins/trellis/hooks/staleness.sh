@@ -860,7 +860,7 @@ if [ "$slug_report" != "ok" ]; then
         }
         if (rc < 0 || n == 0) { no_want_set = 1; exit 1 }
         note = "  # quarantined " today ": not in " stamp ". If a newer Trellis" \
-               " ships this slug, run `claude plugin update trellis@kodhama` and uncomment."
+               " release ships this slug, update the Trellis plugin and uncomment this row."
       }
       # The default record separator here is "\n" alone, so a CRLF-terminated
       # line arrives with its "\r" still attached to $0 -- stripped BEFORE any
