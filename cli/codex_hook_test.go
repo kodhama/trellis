@@ -1064,6 +1064,57 @@ func assertReconciledFitsCodexBudget(t *testing.T, reconciled string) {
 	}
 }
 
+// TestCodexDegradesRatherThanRefusingOverBudget pins TRL-29: refusing to emit
+// is a self-inflicted blackout — Codex itself spills oversized context to
+// disk with a preview rather than rejecting it, so failing closed is
+// strictly worse than the host's own degradation. Governance survives; the
+// provenance comments are what give way, and the omission is announced.
+// Uses writeCodexPluginRoot/newGitProject (see codexReconciledRows above),
+// not the task brief's codexPluginRoot/t.TempDir(), which do not work here.
+func TestCodexDegradesRatherThanRefusingOverBudget(t *testing.T) {
+	pluginRoot := writeCodexPluginRoot(t)
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	// The worst case: every row foreign, so all 16 quarantine AND all 16 add.
+	// Letter suffixes, not the brief's zero-padded digits: parseRulesToml's row
+	// regex is `(?:inv|floor)-[a-z-]+` (codex-context.mjs:319) — no digits — so
+	// a slug like "inv-foreign-rule-00" fails to match a row at all and the
+	// whole file is rejected as malformed (invalid-rules) before reconciliation
+	// is ever reached. Measured: the brief's literal fixture never exercises
+	// this task's degradation path.
+	letters := "abcdefghijklmnop"
+	var b strings.Builder
+	b.WriteString("strictness  = \"firm\"\n\n[rules]\n")
+	for i := 0; i < 16; i++ {
+		fmt.Fprintf(&b, "inv-foreign-rule-%c = { active = true }\n", letters[i])
+	}
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"),
+		[]byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+
+	if strings.Contains(raw, "context-over-budget") {
+		t.Fatalf("the hook must degrade, not refuse — refusing is the blackout:\n%s", raw)
+	}
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("no context injected:\n%s", raw)
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+	for _, slug := range assessableSlugs {
+		if !regexp.MustCompile(`(?m)^`+regexp.QuoteMeta(slug)+`[ \t]*=`).MatchString(ctx) {
+			t.Errorf("rule %s must still be delivered when provenance is dropped", slug)
+		}
+	}
+	if !strings.Contains(ctx, "provenance") {
+		t.Errorf("the omission must be announced, not silent:\n%s", ctx)
+	}
+	if n := len([]byte(ctx)); n > 9500 {
+		t.Errorf("degraded context is %d bytes, still over the cap", n)
+	}
+}
+
 // TestCodexToleratesADuplicateSlugTagInRulesMd — round-1 fix 2. slugSet
 // (membership, inside parseRulesToml) already treated the derived slugs as a
 // set, but the completeness check (slugs.length / slugs.some) did not, so a
