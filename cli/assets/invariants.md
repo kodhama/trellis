@@ -57,8 +57,10 @@ ratified: 2026-07-04
 > sweep missed, three of them the same root cause. A **row-set change** additionally touches: the
 > `invariants-v1` registry (a slug is a set amendment); the activation rows in
 > `plugins/trellis/reference/rules-a.toml` / `rules-b.toml` and this repo's own `.trellis/rules.toml`
-> (**without a row the rule ships but is inactive**); `plugins/trellis/hooks/codex-context.mjs`'s
-> hardcoded `SLUGS`; the contract layer that states the count — this catalog's own Coverage note
+> (**without a row the rule ships but is inactive**); *(retired `decision-0083` — this list used to
+> name `plugins/trellis/hooks/codex-context.mjs`'s hardcoded `SLUGS` here; that array is gone, and
+> the Codex hook now derives its slug set from the generated `reference/rules.md` like the Claude
+> hook does, so a row-set change no longer touches it)*; the contract layer that states the count — this catalog's own Coverage note
 > and AC1, `core/rubrics/artifact-contract.md`, the `corpus-reviewer` checklist; `profiles/trellis-self.md`;
 > the prose counts in `README.md`, `plugins/trellis/README.md`, `install.sh`, `docs/index.html`,
 > `docs/lp-content.md` and `docs/invariants.html` (which also needs a new card);

@@ -90,9 +90,14 @@ which is where `decision-0077` leaves the Claude path too.
 
 On Claude, changing the posture has two shapes. **With no `.trellis/rules.toml` yet**, copy a
 **complete** preset — `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — then set
-`active = false` on any row you want off. The hook validates the row set against what the plugin
-ships and injects **nothing** when a slug is missing, so a hand-written partial file leaves the
-project ungoverned rather than firm. **With a file already there**, edit `strictness` in place:
+`active = false` on any row you want off. A hand-written partial file is no longer fatal: the hook
+validates the row set against what the plugin ships and, on a mismatch, **reconciles** it rather
+than injecting nothing — a missing slug is delivered `active = true`, a row the payload does not
+ship is **quarantined** (commented out with the date and the payload stamp, never deleted), the
+session is governed from the reconciled set, and the agent writes that set back and reports what it
+changed (`decision-0083`). A row starting with `#` is a quarantined row: inert, safe to leave, and
+one uncomment away if a newer release ships that slug. **With a file already there**, edit
+`strictness` in place:
 both presets set every row active, so copying one over your file silently re-enables every rule
 you disabled. **With the one-line `governed = false` opt-out**, re-enabling is a replace rather
 than an edit — editing `strictness` beside the opt-out leaves it in force and the hook stays

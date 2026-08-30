@@ -27,9 +27,11 @@ To change that, the recipe depends on whether you already have a `.trellis/rules
 
 - **No file yet** — copy a complete preset from the installed plugin: `reference/rules-a.toml`
   for the firm posture, `rules-b.toml` for adaptive. Then set `active = false` on any row you
-  want off (rows govern at read time, `decision-0053`). **Copy the whole file, never hand-write
-  a partial one:** the hook validates your rows against the shipped set and injects nothing if
-  any slug is missing, so a file containing `strictness` alone leaves the project ungoverned.
+  want off (rows govern at read time, `decision-0053`). Copying the whole file is still the clean
+  start, but a partial one is no longer fatal: the hook validates your rows against the shipped
+  set and, on a mismatch, **reconciles** instead of refusing — a missing slug is delivered
+  `active = true`, the session is governed from the reconciled set, and the agent writes that set
+  back to your file and tells you what it changed (`decision-0083`).
 - **File already there** — edit it **in place**: change `strictness` (and `seeded_from` to
   match), flip individual rows. **Do not copy a preset over it** — both presets set every row
   active, so a posture-only change made by copying silently re-enables every rule you turned
@@ -205,6 +207,10 @@ To deactivate a rule later, set its row in `.trellis/rules.toml` to `active = fa
 it (`decision-0053`): the readout ships complete and opens with an authority header, so agents
 apply a rule only where its row says `active = true`, and a row edit takes effect at the next
 host context-loading boundary.
+**A row starting with `#` is a quarantined row** — the hook found a slug the installed payload does
+not ship and commented it out, with the date and the payload stamp, rather than deleting it
+(`decision-0083`). It is inert and safe to leave. If a newer Trellis release ships that slug, update
+the plugin and uncomment the row; if the rule was retired, delete the line whenever you like.
 The two `floor-*` rows apply regardless of their value. On an **import** install the block loads
 your current `rules.toml` every session. On an **inline** install the block carries a copy of
 the rows inlined below the rules, so re-paste that copy after editing: replace everything
