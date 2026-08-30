@@ -513,6 +513,62 @@ var destructiveVerbs = []string{
 	"delete", "drop", "remove", "overwrite", "replace", "reset", "discard", "rm ",
 }
 
+// payloadAssembly returns the shell source of the payload="$( ... )" block in
+// body. Ruling B (TRL-20 Task 2) requires both destructive-instruction guards
+// below to scan it: the repair mandate rides into the agent's context through
+// a printf inside this block rather than through emit "...", so a guard that
+// reads only emit strings never saw it. The whole safety argument for leaving
+// the repair ungated is "no deletion verb reaches the agent" — that argument
+// only holds if every channel reaching the agent is enforced, not just one.
+func payloadAssembly(t *testing.T, body string) string {
+	t.Helper()
+	start := strings.Index(body, `payload="$(`)
+	if start < 0 {
+		t.Fatal("payload=\"$(...)\" assembly not found in staleness.sh — the scan is broken")
+	}
+	rest := body[start:]
+	end := strings.Index(rest, "\n)\"")
+	if end < 0 {
+		t.Fatal("payload=\"$(...)\" assembly has no closing )\" — the scan is broken")
+	}
+	return rest[:end]
+}
+
+// quotedSpanRe matches one bash-quoted span, single or double. staleness.sh's
+// payload printf strings sometimes carry a literal apostrophe by splitting
+// across three adjacent spans — 'This project'"'"'s ...' is the concatenation
+// 'This project' + "'" + 's ...', bash's standard trick for embedding a
+// single quote inside a single-quoted string. Concatenating every span's
+// inner text, in source order, reconstructs the literal message exactly,
+// that trick included.
+var quotedSpanRe = regexp.MustCompile(`'[^']*'|"[^"]*"`)
+
+// payloadPrintfMessages extracts the literal text of every `printf '...'`
+// call in block (normally payloadAssembly's output), reconstructed from its
+// quoted spans. A passthrough like `printf '%s\n' "$reconciled"` reconstructs
+// to something like "%s\n$reconciled" — inert for verb-scanning, so it is not
+// filtered out specially; the data it actually carries at runtime (TOML rows,
+// a slug report) is not English prose and cannot contain an instruction.
+func payloadPrintfMessages(block string) []string {
+	var msgs []string
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "printf ") {
+			continue
+		}
+		spans := quotedSpanRe.FindAllString(trimmed, -1)
+		if len(spans) == 0 {
+			continue
+		}
+		var sb strings.Builder
+		for _, s := range spans {
+			sb.WriteString(s[1 : len(s)-1])
+		}
+		msgs = append(msgs, sb.String())
+	}
+	return msgs
+}
+
 func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
@@ -522,9 +578,17 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	if len(emits) < 8 {
 		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
 	}
-	gated := 0
+	var msgs []string
 	for _, m := range emits {
-		msg := m[1]
+		msgs = append(msgs, m[1])
+	}
+	payloadMsgs := payloadPrintfMessages(payloadAssembly(t, string(body)))
+	if len(payloadMsgs) < 5 {
+		t.Fatalf("found only %d payload printf messages — the scan is broken, and a guard that reads nothing passes", len(payloadMsgs))
+	}
+	msgs = append(msgs, payloadMsgs...)
+	gated := 0
+	for _, msg := range msgs {
 		// Pointing at a slash command is not instructing a mutation: /trellis:remove
 		// is a skill that runs its own confirmation. Scanning the raw text matched
 		// its NAME and demanded a gate on a message that only names it, which would
@@ -555,13 +619,17 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	// those slugs; for unknown:, remove those rows; for duplicate:, delete the
 	// extra occurrences" — is GONE, not merely reworded; a mismatch is now
 	// reconciled in memory (add/quarantine, never delete) rather than refused, so
-	// there is nothing destructive left to gate on that path.
+	// there is nothing destructive left to gate on that path. Unmoved by adding
+	// the payload printf messages (Ruling B, TRL-20 Task 2): the repair mandate
+	// they carry is written to avoid every verb in the list, by construction —
+	// see TestReconciledRepairIsMandatedAndReported's "no deletion verb enters
+	// the emit" subtest for the behavioural half of that claim.
 	const known = 12
 	if gated < known {
 		t.Fatalf("matched %d destructive messages, expected at least %d — the filter broke; "+
 			"a guard that matches nothing passes silently", gated, known)
 	}
-	t.Logf("checked %d destructive messages of %d emits", gated, len(emits))
+	t.Logf("checked %d destructive messages of %d (emit + payload printf)", gated, len(msgs))
 }
 
 // TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
@@ -591,7 +659,9 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 //
 // This is a source-level check on purpose. A per-branch behavioural test would
 // pin the six remedies that exist today; the defect is that a SEVENTH can be
-// added without a gate, so the guard reads every emit string in the script.
+// added without a gate, so the guard reads every emit string in the script —
+// and, since Ruling B (TRL-20 Task 2), the payload="$( ... )" assembly's
+// printf strings too, the other channel that reaches the agent's context.
 func TestEveryDeletionInstructionIsGated(t *testing.T) {
 	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
@@ -602,9 +672,17 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 	if len(emits) < 8 {
 		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
 	}
-	gated := 0
+	var msgs []string
 	for _, m := range emits {
-		msg := m[1]
+		msgs = append(msgs, m[1])
+	}
+	payloadMsgs := payloadPrintfMessages(payloadAssembly(t, string(body)))
+	if len(payloadMsgs) < 5 {
+		t.Fatalf("found only %d payload printf messages — the scan is broken, and a guard that reads nothing passes", len(payloadMsgs))
+	}
+	msgs = append(msgs, payloadMsgs...)
+	gated := 0
+	for _, msg := range msgs {
 		if !strings.Contains(msg, "delete") {
 			continue
 		}
@@ -617,7 +695,17 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 	if gated == 0 {
 		t.Fatal("no deletion-instructing message was found at all — the filter is wrong, not the script")
 	}
-	t.Logf("checked %d deletion-instructing messages of %d emits", gated, len(emits))
+	// The repair mandate's printf messages must contribute ZERO deletion hits —
+	// that is Ruling B's whole point, enforced here rather than merely argued in
+	// a comment. If this ever fires, a deletion verb reached the agent through
+	// the one channel that must stay ungated; the fix is to reword the printf,
+	// never to weaken this guard.
+	for _, msg := range payloadMsgs {
+		if strings.Contains(msg, "delete") {
+			t.Errorf("the repair mandate's payload printf text must never instruct a deletion (the reconciliation is additive/commenting-only, which is what keeps it ungated):\n%s", msg)
+		}
+	}
+	t.Logf("checked %d deletion-instructing messages of %d (emit + payload printf)", gated, len(msgs))
 }
 
 // TestRepairRemedyCoversEveryMismatchKind and the opt-out shape: two Codex P2s
@@ -2282,6 +2370,56 @@ func TestSlugMismatchStillDeliversEveryRule(t *testing.T) {
 	})
 }
 
+// The repair is applied and REPORTED, not proposed and gated. decision-0072's
+// finding #6 — "retiring a confirm-gated writer silently retires the gate" —
+// is answered by quarantine semantics: no prior value is ever lost, so the
+// gate that guarded destructive writes is not engaged. What must never be
+// lost is the loudness.
+func TestReconciledRepairIsMandatedAndReported(t *testing.T) {
+	run := rulesTomlRun(t)
+	files := payloadFiles()
+	short := strings.Replace(files["rules-b.toml"],
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	out := run(t, short)
+
+	t.Run("the agent is told to write the file, not to ask", func(t *testing.T) {
+		if !strings.Contains(out, "Write .trellis/rules.toml") {
+			t.Errorf("the emit must mandate the write:\n%s", out)
+		}
+		if strings.Contains(out, "get explicit confirmation before writing") {
+			t.Errorf("the confirm-first remedy is retired by this change:\n%s", out)
+		}
+	})
+
+	t.Run("the agent must report what changed, before other work", func(t *testing.T) {
+		if !strings.Contains(out, "Tell the user") {
+			t.Errorf("a silent repair is the failure this design exists to prevent:\n%s", out)
+		}
+		if !strings.Contains(out, "added 1 row(s)") {
+			t.Errorf("the emit must state what it reconciled, per row:\n%s", out)
+		}
+	})
+
+	t.Run("the emit carries the literal file content to write", func(t *testing.T) {
+		// The agent re-deriving the repair is how a wrong one lands. The hook
+		// computes it once and shows exactly the bytes to save.
+		if !strings.Contains(out, "inv-minimal-first = { active = true }  # added") {
+			t.Errorf("the emit must quote the exact reconciled file:\n%s", out)
+		}
+	})
+
+	t.Run("no deletion verb enters the emit", func(t *testing.T) {
+		// Keeping the repair non-destructive is what keeps it ungated —
+		// TestEveryDeletionInstructionIsGated would otherwise demand a
+		// confirmation clause and re-impose the gate this change removes.
+		for _, verb := range []string{"delete those rows", "remove those rows", "drop the unknown"} {
+			if strings.Contains(out, verb) {
+				t.Errorf("the reconciled remedy must never instruct a deletion, found %q:\n%s", verb, out)
+			}
+		}
+	})
+}
+
 // TestNoSlugsInPayloadFailsLoudly pins the invariant staleness.sh states 40
 // lines above the reconciler ("Fail loudly rather than govern silently on a
 // partial payload") against the one verdict the reconciler must NEVER touch.
@@ -2345,13 +2483,18 @@ func TestNoSlugsInPayloadFailsLoudly(t *testing.T) {
 
 // reconciledRowsFromContext extracts the reconciled `.trellis/rules.toml` text
 // from a decoded additionalContext (see nudgeContext) — the block between the
-// "Project rule activation" preamble's fixed trailing sentence and the fixed
-// "Delivered by the Trellis plugin" footer. This is exactly what a preamble
-// carrying RECONCILED describes as "the file on disk still differs": what an
-// agent applying the repair would write to .trellis/rules.toml.
+// "Project rule activation" preamble's fixed trailing sentence and whichever
+// comes first: the repair mandate's "## Rule activation was reconciled this
+// session" heading (Ruling B / Task 2 — present whenever $reconciled is, which
+// is the only case this helper is called for), or the fixed "Delivered by the
+// Trellis plugin" footer, for a payload with no reconciliation at all. This is
+// exactly what a preamble carrying RECONCILED describes as "the file on disk
+// still differs": what an agent applying the repair would write to
+// .trellis/rules.toml — the row block only, not the mandate prose that follows
+// it and is never valid TOML.
 func reconciledRowsFromContext(t *testing.T, context string) string {
 	t.Helper()
-	m := regexp.MustCompile(`(?s)apply regardless of their row\.\n\n(.*)\n\nDelivered by the Trellis plugin`).
+	m := regexp.MustCompile(`(?s)apply regardless of their row\.\n\n(.*?)\n\n(?:## Rule activation was reconciled this session|Delivered by the Trellis plugin)`).
 		FindStringSubmatch(context)
 	if m == nil {
 		t.Fatalf("could not find the row block in the hook's decoded context:\n%s", context)

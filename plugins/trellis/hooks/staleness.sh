@@ -718,6 +718,11 @@ payload="$(
   else
     cat "$toml"
   fi
+  if [ -n "$reconciled" ]; then
+    printf '\n## Rule activation was reconciled this session\n\n'
+    printf 'This project'"'"'s .trellis/rules.toml did not match the rules this payload ships (%s). The rows above are the reconciled set and are what governs this session; the file on disk still differs. Reconciliation: %s.\n\n' "$slug_report" "$repair_summary"
+    printf 'Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. Nothing is lost by this: a row the payload does not ship is commented out with the reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent. If a quarantined slug is one a newer Trellis release added, the installed plugin is the stale side: `claude plugin update trellis@kodhama`, restart the session, and uncomment the row.\n'
+  fi
   printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
 )"
 
