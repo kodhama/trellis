@@ -49,12 +49,23 @@ runtime** in config-only mode, which carries no version stamp to compare against
 
 ## Decision
 
-### 1. Reconciliation replaces refusal, in memory, for delivery
+### 1. Reconciliation replaces refusal on the **Claude** hook, in memory, for delivery
 
 On a mismatch the hook reconciles the project's rows against the shipped set and injects the
 **reconciled** block, labelled as reconciled, with the readout above it. It never `cat`s the raw
 file in this branch: delivered rows that disagree with the authority header would be worse than the
 blackout they replace.
+
+**This is `plugins/trellis/hooks/staleness.sh` and only that.** The design brief said of Codex's
+`parseRulesToml` that *"it adopts the reconcile semantics instead"*, and described the reconciled
+table as *"one table, applied identically by both hosts"*. **Neither shipped.**
+`codex-context.mjs` still returns `null` from `parseRulesToml` on any mismatch and calls
+`fail(PROJECT_CONFIG, "invalid-rules")`, injecting nothing — for a missing row, an unknown row and
+a duplicate alike. What the Codex hook gained in this change is §6 (its slug set derived from the
+payload rather than hardcoded) and a raised context cap; **the blackout this record retires is
+retired on Claude only.** Stated here rather than left to be inferred from §6's narrower title,
+because a reader who took the design's parity claim as shipped would believe a Codex project is
+covered when it is not. The gap is carried as an open question below, not as a silent remainder.
 
 | Kind | Resolution |
 |---|---|
@@ -232,7 +243,20 @@ destructive messages** across both channels. Counted, not argued.
   `codex-context.mjs` against the identical file. It exists because the first reconciler appended
   missing rows at EOF with no awareness of whether a `[rules]` table had been opened — on the
   hand-written-partial shape that put sixteen rows at top level, which Claude governs from normally
-  and Codex reads as `invalid-rules`.
+  and Codex reads as `invalid-rules`. **It carries a second case, from the final whole-branch
+  review, for the same class through the opposite mistake:** the table detection was anchored at
+  column 0 while `parseRulesToml` trims each line first, so an **indented** `[rules]` was the table
+  for Codex and not for Claude, and the repair appended a second one — a duplicate section, which
+  is exactly what that parser rejects. Not a regression (such a file was already Codex-invalid) but
+  the mandate promises the written file *matches what governs*, and a file Codex refuses does not.
+  The detection now matches Codex's own leniency, as the row match beside it already did.
+- **The repair summary counts this session, not every session before it.** The counts were read
+  back out of the reconciled text with `grep`; quarantine notes and the `# added N row(s)` header
+  are **persisted** provenance, so a partially repaired file made the summary cumulative — measured
+  at *"added 2 row(s); quarantined 1 row(s)"* for a session that added 1 and quarantined 0. The
+  in-file provenance was right either way, which is what made it easy to miss: only the **spoken**
+  summary inflated, and that summary is the whole loudness channel this record rests on. The
+  reconciler now states its own counts on a trailer line the shell strips before delivery.
 
 ## What execution found that the design did not
 
@@ -315,6 +339,26 @@ contract, not merely a habit that worked once here.
   the wrong unit at all is not answered here.
 - **Should the Claude hook warn on a false floor row, as Codex does?** Codex warns when a `floor-`
   row is `active = false`; Claude is silent. Named out of scope by the design and still open.
+- **Host parity is owed, and the Codex arm of TRL-20 is therefore still open.** The design
+  claimed *"one table, applied identically by both hosts"* and that Codex's `parseRulesToml`
+  *"adopts the reconcile semantics instead"*; §1 records that neither shipped. A Codex project
+  with a mismatched row set still gets `invalid-rules` and no rules — the exact blackout this
+  record retires on Claude — so the defect TRL-20 names is half-closed, not closed. Deferred
+  deliberately rather than half-implemented under a design that had not been re-thought for the
+  host: Codex refuses in a **parser**, not a delivery branch, so adopting reconciliation there is
+  a restructure, not an anchor change. **Tracked in Linear (Trellis team)**
+  (`inv-no-orphan-followups` — the named consumer that will re-present it, `decision-0078`).
+- **A file with no `strictness` key stays Codex-invalid after a repair, so the reconciler can
+  produce a file it has just promised is correct.** `parseRulesToml` requires `strictness` to be
+  exactly `"firm"` or `"adaptive"` and returns `null` otherwise; the reconciler adds rows and
+  quarantines rows, and never adds a `strictness` line. The shape is reachable from this record's
+  own §5 measurement: an empty `.trellis/rules.toml` reconciles to sixteen rows under a `[rules]`
+  table with no `strictness`, which Claude governs from at the adaptive posture and Codex rejects
+  outright. **Not changed here** — the repair is a strict improvement over the blackout either way
+  and adding a posture the consumer never wrote is a different act from adding a row the payload
+  ships, which is a call worth making deliberately. Named beside the parity question because the
+  same work closes both, and because a repaired file that one host still refuses is exactly what
+  the mandate's *"so the file matches what governs"* promises it is not.
 - **Two live surfaces still teach the retired behaviour, and neither is fixed here.** The inline
   managed block's frozen row copy (`cli/apply.go`, `README.md`) is the derivative that genuinely
   goes stale, and reconciliation does not reach it. Beside it,

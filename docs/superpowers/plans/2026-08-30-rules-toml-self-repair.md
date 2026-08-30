@@ -6,6 +6,8 @@
 
 **Architecture:** The hook gains one reconciler that turns the project's rows plus the payload's slug list into a single reconciled TOML text. That one text is used twice: injected as the activation rows so delivery never fails, and quoted in the emit as the literal content the agent writes back to disk. `missing:` rows are added `active = true`; `unknown:` and duplicate rows are commented out with dated provenance, never deleted. Because nothing is ever lost, the write needs no confirmation gate — only a report. Codex reaches the same semantics by deriving its slug set from `reference/rules.md` instead of a hardcoded array.
 
+> **2026-08-30, after execution — this last sentence overstates what Task 3 delivered.** Deriving the slug set removed the drift hazard and the false `unknown:` reason; it did **not** give Codex the reconcile semantics. `parseRulesToml` still returns `null` on any mismatch and the hook still fails closed with `invalid-rules`, so the blackout this plan retires is retired on Claude only. Recorded here rather than edited away: the deferral was deliberate. See `decision-0083` §1 and its open questions; tracked in Linear (Trellis team).
+
 **Tech Stack:** POSIX shell + awk (`staleness.sh`), Node ESM (`codex-context.mjs`), Go tests (`cli/`).
 
 **Spec:** `docs/superpowers/specs/2026-08-30-rules-toml-self-repair-design.md`

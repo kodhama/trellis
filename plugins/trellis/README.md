@@ -81,7 +81,11 @@ further command and no file required (`decision-0070` D3).
 attached**. The machinery is already here — `hooks/codex-context.mjs`, a `.codex-plugin/`
 manifest, a catalog entry — and none of it is claimed as a supported path (`kodhama-0021` §2).
 Until it is, Codex is carried rather than maintained: its behaviour is not kept in step with the
-Claude path, and a difference between them is expected rather than a defect to file. What a
+Claude path, and a difference between them is expected rather than a defect to file. **Row-set
+reconciliation is one such difference, named concretely because it is the largest one:**
+`codex-context.mjs` still refuses a mismatched or incomplete row set outright — `invalid-rules`,
+nothing injected — where the Claude hook described below reconciles and delivers. Parity is owed,
+not shipped (`decision-0083` §1 and its open questions). What a
 supported Codex distribution would require is tracked in Linear. Its adoption signal also differs —
 `codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
 when there is none, so both the project-scope default and the user-scope announcement above are

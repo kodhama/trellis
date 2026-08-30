@@ -42,6 +42,10 @@ is. All three mismatch kinds self-correct; the loudness is what gets engineered.
 
 One table, applied identically by both hosts, in memory (for delivery) and on disk (for repair):
 
+> **2026-08-30, after the branch shipped — "by both hosts" did not ship.** The table below is
+> applied by `staleness.sh` only; `codex-context.mjs` still fails closed on any mismatch. See the
+> note under *Codex parity* below, `decision-0083` §1, and the Linear follow-up (Trellis team).
+
 | Kind | Resolution | Rationale |
 |---|---|---|
 | `missing:` | add row, `active = true` | Matches both shipped presets and `decision-0070` D3, where a project-scope plugin with no file at all governs at full strength. A newly ratified invariant behaves the same in a project installed today or two releases ago. |
@@ -104,6 +108,15 @@ message is trustworthy, the array goes.
 **Change:** delete `SLUGS`/`SLUG_SET`; derive from `reference/rules.md` with the same match the
 Claude hook uses. `codex-context.mjs:412` already loads that file. `parseRulesToml` currently
 returns `null` → `invalid-rules` on any mismatch; it adopts the reconcile semantics instead.
+
+> **2026-08-30, after the branch shipped — the second half of that sentence did not happen, and
+> neither did §"One table, applied identically by both hosts" above.** What shipped is the slug
+> derivation and a raised context cap; `parseRulesToml` still returns `null` on any mismatch and
+> `codex-context.mjs` still calls `fail(PROJECT_CONFIG, "invalid-rules")`. Reconciliation is
+> **Claude-only**. This note records the divergence rather than editing the plan the design
+> actually made: adopting reconciliation in a parser is a restructure, not the reordering this
+> section scoped, and it was deliberately deferred. See `decision-0083` §1 and its open questions;
+> the follow-up is tracked in Linear (Trellis team).
 
 **Unconfirmed, to be settled in implementation, not planned around:** `parseRulesToml` runs at
 `:369` and the payload resolves at `:408`, so deriving the slug set needs that order swapped. It
