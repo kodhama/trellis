@@ -619,3 +619,80 @@ func TestCodexHookHonoursGovernedFalse(t *testing.T) {
 		t.Errorf("decision-0070 D5: a project declaring governed = false must get nothing on Codex either; got:\n%s", got)
 	}
 }
+
+// TestReconciledCodexPayloadFitsContextBudget pins Ruling 6 (TRL-20 task 3):
+// the worst case a reconciliation can produce — a hand-written partial file
+// (just strictness, no rows at all), firm posture, all sixteen rows missing —
+// must still fit inside Codex's own MAX_CONTEXT_BYTES once combined with the
+// REAL payload (reference/trellis-a.md + reference/rules.md, not the minimal
+// placeholders every other reconciliation test uses — see
+// TestReconciledRowsParseForCodexToo's doc comment for why those stay
+// minimal). Measured before this fix: trellis-a.md (670 bytes) + rules.md
+// (6012 bytes) + a normal firm rules.toml (1142 bytes) already left only
+// about 176 bytes of headroom, and the reconciler's old per-row provenance
+// comment (repeated on all sixteen added rows) blew past it — a reconciled
+// Codex session would hit its own budget and inject NOTHING, reintroducing on
+// Codex exactly the blackout this whole change removes on Claude. The fix
+// (staleness.sh) states an added row's provenance once, in a header above the
+// block, instead of once per row.
+func TestReconciledCodexPayloadFitsContextBudget(t *testing.T) {
+	run := rulesTomlRun(t)
+	out := run(t, "strictness  = \"firm\"\n")
+	if !strings.Contains(out, "added 16 row(s)") {
+		t.Fatalf("premise: all sixteen rows must be missing at firm posture, or this is not the worst case Ruling 6 names:\n%s", out)
+	}
+	context := nudgeContext(t, out)
+	reconciled := reconciledRowsFromContext(t, context)
+
+	project := newGitProject(t)
+	internal := filepath.Join(project, ".trellis", "internal")
+	if err := os.MkdirAll(internal, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+	// The REAL payload, not minimal placeholders: the byte budget is exactly
+	// what this test exists to prove, so the sizes must be the actual shipped
+	// content, as a real installed project would see it.
+	for rel, content := range map[string]string{
+		"trellis.md": files["trellis-a.md"],
+		"rules.md":   files["rules.md"],
+		"version":    files["version"],
+	} {
+		if err := os.WriteFile(filepath.Join(internal, rel), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// What an agent applying the repair actually writes to disk.
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(reconciled), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+		t.Fatalf("the worst-case reconciled payload must still fit and govern under Codex, not fail closed: %s", raw)
+	}
+	if n := len([]byte(got.HookSpecificOutput.AdditionalContext)); n > 8000 {
+		t.Errorf("reconciled worst case is %d bytes, exceeds Codex MAX_CONTEXT_BYTES (8000) — Ruling 6 is unresolved", n)
+	}
+}
+
+// The Codex hook validated rows against a hardcoded 16-slug array while the
+// Claude hook derived its set from the shipped rules.md, and nothing in CI
+// compared the two. A payload upgrade therefore could not repair drift on
+// Codex — worse, a stale array made an `unknown:` reason FALSE: the agent
+// would quarantine a live row and cite a payload that does ship it.
+func TestCodexDerivesItsSlugSetFromThePayload(t *testing.T) {
+	src, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(src)
+	for _, slug := range assessableSlugs {
+		if strings.Contains(body, `"`+slug+`"`) {
+			t.Errorf("codex-context.mjs still hardcodes %s; the slug set must come from reference/rules.md", slug)
+		}
+	}
+	if strings.Contains(body, "const SLUGS = [") {
+		t.Error("the hardcoded SLUGS array must be gone — it cannot be repaired by a payload upgrade")
+	}
+}

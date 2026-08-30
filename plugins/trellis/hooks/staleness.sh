@@ -673,20 +673,39 @@ if [ "$slug_report" != "ok" ] && [ "$slug_report" != "no-slugs-in-payload" ]; th
         next
       }
       { print }
+      # ONE header comment above the whole appended block, not one per row
+      # (Ruling 6, TRL-20 task 3). MAX_CONTEXT_BYTES on the Codex hook leaves
+      # only about 176 bytes of headroom over the plain firm preset, and the
+      # stamp-and-date note repeated on all sixteen rows -- the
+      # hand-written-partial worst case -- overran it: a reconciled Codex
+      # session hit its own budget and injected NOTHING, reintroducing on
+      # Codex exactly the blackout this whole change removes on Claude. The
+      # provenance (date, stamp, count) is unchanged; it is stated once
+      # instead of sixteen times. Quarantine notes stay per-row (unchanged):
+      # this is the shape review measured as the actual overrun.
+      # NO APOSTROPHES ABOVE OR BELOW, to the end of this awk program: it is
+      # single-quoted at the shell level, and one would close the quote early.
       END {
+        missing_n = 0
         for (i = 1; i <= n; i++) {
           s = order[i]
-          if (!(s in seen)) {
-            if (!has_rules) { print "[rules]"; has_rules = 1 }
-            print s " = { active = true }  # added " today " from " stamp
-          }
+          if (!(s in seen)) { missing[++missing_n] = s }
+        }
+        if (missing_n > 0) {
+          if (!has_rules) { print "[rules]"; has_rules = 1 }
+          print "# added " missing_n " row(s) below on " today " (missing from " stamp ")"
+          for (i = 1; i <= missing_n; i++) print missing[i] " = { active = true }"
         }
       }
     ' "$toml"
   )"
   # Counted from the reconciled text itself rather than passed out of awk — one
-  # source of truth, and no second channel to keep in step with the first.
-  added="$(printf '%s\n' "$reconciled" | grep -c '# added ' || true)"
+  # source of truth, and no second channel to keep in step with the first. The
+  # added count now comes from the single header's own stated number (summed,
+  # in the rare case a previously-reconciled file already carried one and this
+  # run adds another) rather than one grep hit per row, because the per-row
+  # marker that count used to key on is exactly what the header replaced.
+  added="$(printf '%s\n' "$reconciled" | sed -n 's/^# added \([0-9][0-9]*\) row(s).*/\1/p' | awk '{s+=$1} END{print s+0}')"
   quarantined="$(printf '%s\n' "$reconciled" | grep -c '# quarantined ' || true)"
   repair_summary="added ${added:-0} row(s); quarantined ${quarantined:-0} row(s)"
 fi

@@ -2492,8 +2492,16 @@ func TestReconciledRepairIsMandatedAndReported(t *testing.T) {
 
 	t.Run("the emit carries the literal file content to write", func(t *testing.T) {
 		// The agent re-deriving the repair is how a wrong one lands. The hook
-		// computes it once and shows exactly the bytes to save.
-		if !strings.Contains(out, "inv-minimal-first = { active = true }  # added") {
+		// computes it once and shows exactly the bytes to save. The added
+		// row's provenance (date, stamp, count) now sits in a single header
+		// above the block rather than repeated per row (Ruling 6, TRL-20 task
+		// 3 — Codex's own context budget left too little headroom for sixteen
+		// per-row copies), so the pin checks the header plus the bare row
+		// rather than a comment trailing the row itself.
+		if !strings.Contains(out, "# added 1 row(s) below on") {
+			t.Errorf("the emit must carry the single reconciliation header:\n%s", out)
+		}
+		if !strings.Contains(out, "inv-minimal-first = { active = true }") {
 			t.Errorf("the emit must quote the exact reconciled file:\n%s", out)
 		}
 	})
@@ -2619,19 +2627,28 @@ func reconciledRowsFromContext(t *testing.T, context string) string {
 // Codex's hook is run in VENDORED mode with minimal placeholder overlay
 // prose/rules/version files, not the real payload — deliberately, and unlike
 // every other codex_hook_test.go case. Reconciling all sixteen rows with this
-// reconciler's verbose per-row provenance comments assembles to roughly 1.4KB
+// reconciler's per-row provenance comments used to assemble to roughly 1.4KB
 // on its own; added to the REAL rules.md + trellis-a.md (~6.7KB), the total
-// clears Claude's 32768-byte budget comfortably but exceeds Codex's much
+// cleared Claude's 32768-byte budget comfortably but exceeded Codex's much
 // tighter 8000-byte one — confirmed separately: the plain firm preset alone
-// (no reconciliation comments) already assembles to 7876 bytes under Codex,
-// leaving under 200 bytes of headroom. That is a genuine, separate finding —
-// reported alongside this fix, not fixed by it, and its failure mode is
-// Codex's own loud, already-defined "context-over-budget" path, not a silent
-// one — but it is not what THIS test exists to prove, and letting the real
-// payload's size gate it would make it fail (or pass) for the wrong reason.
-// Minimal placeholders isolate the one property under test: does the
-// SAME .trellis/rules.toml Claude governs from parse under Codex's real,
-// unmodified parseRulesToml.
+// (no reconciliation comments) already assembled to 7876 bytes under Codex,
+// leaving under 200 bytes of headroom. That was a genuine, separate finding,
+// resolved by TRL-20 task 3 (Ruling 6): the reconciler now states an added
+// row's provenance once, in a header above the block, instead of once per
+// row — see TestReconciledCodexPayloadFitsContextBudget for the dedicated,
+// real-payload pin. It is still not what THIS test exists to prove, and
+// letting the real payload's size gate it would make it fail (or pass) for
+// the wrong reason. Minimal placeholders isolate the one property under
+// test: does the SAME .trellis/rules.toml Claude governs from parse under
+// Codex's real, unmodified parseRulesToml.
+//
+// The placeholder rules.md is no longer free to be arbitrarily short,
+// though: TRL-20 task 3 made Codex derive its slug set FROM this file's
+// content (parity with Claude's reconciler), so it must still carry a
+// slug-tag line for every slug the reconciled rules.toml below carries, or
+// parseRulesToml would reject every row as unknown for a reason unrelated
+// to the property this test checks. It stays minimal in every other way —
+// bare backticked slug lines, no rule prose.
 func TestReconciledRowsParseForCodexToo(t *testing.T) {
 	run := rulesTomlRun(t)
 	out := run(t, "strictness  = \"firm\"\n")
@@ -2661,11 +2678,18 @@ func TestReconciledRowsParseForCodexToo(t *testing.T) {
 	// Minimal, valid-shape placeholders — short on purpose (see doc comment):
 	// the property under test is .trellis/rules.toml, not rules.md/trellis.md
 	// content, and the real payload's size is exactly what must NOT gate this
-	// test.
+	// test. rules.md still needs one bare slug-tag line per assessable slug
+	// (see doc comment) so Codex's derived slug set matches the reconciled
+	// file's sixteen rows.
 	if err := os.WriteFile(filepath.Join(internal, "trellis.md"), []byte("@rules.md\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(internal, "rules.md"), []byte(rulesLoadedSentinel+"\n"), 0o644); err != nil {
+	var minimalRulesMd strings.Builder
+	for _, slug := range assessableSlugs {
+		minimalRulesMd.WriteString("`" + slug + "`\n")
+	}
+	minimalRulesMd.WriteString(rulesLoadedSentinel + "\n")
+	if err := os.WriteFile(filepath.Join(internal, "rules.md"), []byte(minimalRulesMd.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(internal, "version"), []byte("payload@000000000000\n"), 0o644); err != nil {

@@ -11,25 +11,6 @@ import path from "node:path";
 
 const SENTINEL = "<!-- trellis:rules-loaded -->";
 const MAX_CONTEXT_BYTES = 8000;
-const SLUGS = [
-  "inv-directional-flow",
-  "inv-handover-points",
-  "inv-intent-locus",
-  "inv-ratifiable-artifacts",
-  "inv-graph-maintenance",
-  "inv-self-improvement",
-  "inv-deliberate-succession",
-  "inv-no-orphan-followups",
-  "inv-gate-at-handover",
-  "inv-independent-judgment",
-  "inv-auditable-archive",
-  "inv-bounded-context",
-  "inv-minimal-first",
-  "inv-clarify-before-commit",
-  "floor-transparency",
-  "floor-intent-gate",
-];
-const SLUG_SET = new Set(SLUGS);
 // The project always owns its rows. The three payload files come from the
 // vendored overlay when one exists, and from the plugin's own payload when it
 // does not (decision-0065: the plugin path vendors nothing). Vendored projects
@@ -228,7 +209,13 @@ function parseQuotedTomlString(source) {
 // approximation that silently accepts unknown TOML. It supports the two TOML
 // string forms used by consumer edits (basic and literal), and rejects duplicate
 // keys, sections, and rows deterministically.
-function parseRulesToml(source) {
+//
+// slugs is the set the payload actually ships (see slugsFromRules below), passed
+// in rather than closed over. A hardcoded list here could not be repaired by a
+// plugin upgrade, and a stale one made a quarantine reason false: the agent would
+// quarantine a live row and cite a payload that ships it.
+function parseRulesToml(source, slugs) {
+  const slugSet = new Set(slugs);
   const topLevel = new Map();
   const rows = new Map();
   let rulesSectionSeen = false;
@@ -282,7 +269,7 @@ function parseRulesToml(source) {
     const row = line.match(
       /^([a-z][a-z-]*)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
     );
-    if (!row || rows.has(row[1]) || !SLUG_SET.has(row[1])) return null;
+    if (!row || rows.has(row[1]) || !slugSet.has(row[1])) return null;
     rows.set(row[1], row[2] === "true");
   }
 
@@ -290,12 +277,25 @@ function parseRulesToml(source) {
   if (
     !rulesSectionSeen ||
     (strictness !== "firm" && strictness !== "adaptive") ||
-    rows.size !== SLUGS.length ||
-    SLUGS.some((slug) => !rows.has(slug))
+    rows.size !== slugs.length ||
+    slugs.some((slug) => !rows.has(slug))
   ) {
     return null;
   }
   return rows;
+}
+
+// The slugs the payload actually ships, read from the same rules.md the Claude
+// hook validates against (staleness.sh's own `want[]` scan uses the identical
+// trailing-backtick anchor). A hardcoded list here could not be repaired by a
+// plugin upgrade, and a stale one made a quarantine reason false.
+function slugsFromRules(rulesMd) {
+  const found = [];
+  for (const line of rulesMd.split(/\r?\n/u)) {
+    const m = line.match(/`((?:inv|floor)-[a-z-]+)`[ \t]*$/u);
+    if (m) found.push(m[1]);
+  }
+  return found;
 }
 
 let input;
@@ -439,20 +439,32 @@ if (!/^payload@[0-9a-f]{12}\n?$/u.test(version)) {
   fail(sources.version, "invalid-version");
   process.exit(0);
 }
-const rows = parseRulesToml(rulesToml);
-if (rows === null) {
-  fail(PROJECT_CONFIG, "invalid-rules");
-  process.exit(0);
-}
 if (trellis.split("@rules.md").length - 1 !== 1) {
   fail(".trellis/internal/trellis.md", "invalid-placeholder-count");
   process.exit(0);
 }
+// The rules payload's own well-formedness (the sentinel gate) must be checked
+// BEFORE it is trusted enough to derive a slug set from it — moved ahead of
+// that derivation for exactly this reason. Deriving first and validating after
+// meant a broken rules.md (no sentinel, a truncated one, or a doubled one)
+// yielded an empty or malformed slug set, parseRulesToml then failed on the
+// PROJECT's .trellis/rules.toml, and the reported label blamed the project's
+// config for a defect that was actually in the plugin's own payload.
 if (
   rules.split(SENTINEL).length - 1 !== 1 ||
   !rules.endsWith(`${SENTINEL}\n`)
 ) {
   fail(".trellis/internal/rules.md", "invalid-rules");
+  process.exit(0);
+}
+// Derived from the payload actually resolved above (vendored or plugin-native,
+// whichever `sources` picked), not a hardcoded list — this is the row set a
+// payload upgrade CAN repair, and it is what the row-count/row-membership
+// checks inside parseRulesToml validate against.
+const slugs = slugsFromRules(rules);
+const rows = parseRulesToml(rulesToml, slugs);
+if (rows === null) {
+  fail(PROJECT_CONFIG, "invalid-rules");
   process.exit(0);
 }
 
@@ -475,8 +487,12 @@ const response = {
     additionalContext: context,
   },
 };
-const falseFloors = ["floor-intent-gate", "floor-transparency"]
-  .filter((slug) => rows.get(slug) === false)
+// Floors are the `floor-` half of the same derived slug set, not a second
+// hardcoded pair — the prefix is the product's own classification (matched the
+// same way everywhere else this file and staleness.sh distinguish inv- from
+// floor-), so a payload that ever ships a third floor picks it up here too.
+const falseFloors = slugs
+  .filter((slug) => slug.startsWith("floor-") && rows.get(slug) === false)
   .sort();
 if (falseFloors.length > 0) {
   response.systemMessage =
