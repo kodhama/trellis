@@ -81,9 +81,12 @@ and CI (`decision-0075`).
 
 ## Checks and review
 
-- **Tests / typecheck:** `cd cli && go test ./...` · `cd cli && go build ./... && go vet ./...`
-  (build + vet are Go's typecheck; the `cli-ci` workflow runs the same). No dedicated linter is
-  configured; `gofmt -l cli/` is available locally but is not CI-enforced.
+- **Tests / typecheck:** `cd cli && go test -count=1 ./...` · `cd cli && go build ./... && go vet ./...`
+  (build + vet are Go's typecheck; the `cli-ci` workflow runs the same). **`-count=1` is not
+  optional here:** the hook tests execute `plugins/trellis/hooks/*` as external files, which Go's
+  test cache does not track — edit a hook with no `.go` change and a cached PASS replays over the
+  mutation. No dedicated linter is configured; `gofmt -l cli/` is available locally but is not
+  CI-enforced.
 - **Artifact conformance is agent-applied, not CI-applied** (`decision-0010` — the contract and
   its conformance check ship as agent instructions with no runtime). Invoke the repo-owned
   `corpus-reviewer` (`.claude/agents/`) before merging a change to `decisions/`, `research/`

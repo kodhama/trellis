@@ -930,9 +930,18 @@ func TestCliCIProvidesNode20BeforeGoTests(t *testing.T) {
 	workflow := readFileT(t, "../.github/workflows/cli-ci.yml")
 	setupNode := strings.Index(workflow, "uses: actions/setup-node@v5")
 	node20 := strings.Index(workflow, `node-version: "20"`)
-	goTests := strings.Index(workflow, "run: go test ./...")
+	goTests := strings.Index(workflow, "run: go test -count=1 ./...")
 	if setupNode < 0 || node20 < setupNode || goTests < node20 {
 		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node@v5 before Go tests execute the Codex hook")
+	}
+	// -count=1 is matched, not just `go test`, because the cache hazard this
+	// suite lives inside is real: these tests execute the production hooks as
+	// EXTERNAL files, which Go's test cache cannot see, so a hook mutation with
+	// no .go change replays a stale `ok (cached)`. Reproduced by deleting
+	// codex-context.mjs's empty-slug-set guard. Pinned here so dropping the flag
+	// from the workflow is a red test rather than a silent loss of coverage.
+	if !strings.Contains(workflow, "run: go test -count=1 ./...") {
+		t.Error("cli-ci must run tests with -count=1 — the hook tests exec external files the Go test cache does not track")
 	}
 }
 
@@ -1103,7 +1112,7 @@ func TestCodexDegradesRatherThanRefusingOverBudget(t *testing.T) {
 	}
 	ctx := got.HookSpecificOutput.AdditionalContext
 	for _, slug := range assessableSlugs {
-		if !regexp.MustCompile(`(?m)^`+regexp.QuoteMeta(slug)+`[ \t]*=`).MatchString(ctx) {
+		if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
 			t.Errorf("rule %s must still be delivered when provenance is dropped", slug)
 		}
 	}
@@ -1313,6 +1322,38 @@ func claudeReconciledRows(t *testing.T, toml string) string {
 // instead.
 func codexReconciledRows(t *testing.T, toml string) string {
 	t.Helper()
+	rows, degraded := codexReconciledRowsAllowingDegraded(t, toml)
+	// The byte-for-byte comparison is only about host parity while BOTH hosts
+	// are on the full-provenance path. Over MAX_CONTEXT_BYTES (9500) the Codex
+	// hook re-reconciles without provenance and injects that instead, so its
+	// rows lose the `# added N row(s)` header and every quarantine note while
+	// staleness.sh keeps them — a guaranteed, expected difference that has
+	// nothing to do with the resolution table decision-0083 pins. The headroom
+	// is thin enough for this to matter: the `rename` fixture already assembles
+	// to 8939 B. Without this check, the first fixture to cross 9500 B fails
+	// with "the two hosts reconciled the same file differently", which blames
+	// the wrong thing and sends the next reader after a parity bug that is not
+	// there.
+	if degraded {
+		t.Fatalf("this fixture crossed MAX_CONTEXT_BYTES, so the Codex hook degraded to " +
+			"provenance-free rows — the two row blocks are expected to differ and comparing " +
+			"them proves nothing about host parity. Shrink the fixture, or move it to " +
+			"TestCROnlyLineEndingsAreTheOneKnownDivergence, which asserts the degraded shape " +
+			"on purpose.")
+	}
+	return rows
+}
+
+// codexDegradedMarker is the one sentence only repairMandate's degraded branch
+// emits (codex-context.mjs). Matched rather than recomputing the byte budget
+// here: the budget lives in the hook, and a test that re-derives it drifts.
+const codexDegradedMarker = "Provenance was omitted above to fit the context budget"
+
+// codexReconciledRowsAllowingDegraded is codexReconciledRows without the
+// full-provenance assertion, reporting instead whether the hook degraded, so
+// the one test that expects degradation can say so explicitly.
+func codexReconciledRowsAllowingDegraded(t *testing.T, toml string) (string, bool) {
+	t.Helper()
 	project := newGitProject(t)
 	writeValidCodexOverlay(t, project)
 	tomlPath := filepath.Join(project, ".trellis", "rules.toml")
@@ -1340,7 +1381,69 @@ func codexReconciledRows(t *testing.T, toml string) string {
 	} else if string(after) != toml {
 		t.Errorf("the codex hook wrote .trellis/rules.toml — \"the hook never writes\" is the half of decision-0070 D4 that stands:\nbefore:\n%s\nafter:\n%s", toml, after)
 	}
-	return codexReconciledRowsFromContext(t, got.HookSpecificOutput.AdditionalContext)
+	ctx := got.HookSpecificOutput.AdditionalContext
+	return codexReconciledRowsFromContext(t, ctx), strings.Contains(ctx, codexDegradedMarker)
+}
+
+// The one divergence class decision-0083's byte-identity claim does not cover,
+// pinned here rather than left to be rediscovered.
+//
+// A CR-only file (classic-Mac line endings) is ONE line to both reconcilers —
+// staleness.sh's awk has RS="\n", and codex-context.mjs splits on /\r?\n/ —
+// so neither finds a single row, both classify all sixteen slugs as missing,
+// and both reconcile by appending all sixteen. They then differ in two ways,
+// measured, not assumed:
+//
+//  1. staleness.sh:665's `sub(/\r$/, "")` strips the record's trailing CR;
+//     the Codex splitter leaves it, so Codex emits `...this row\r\n[rules]`
+//     where Claude emits `...this row\n[rules]`.
+//  2. Sixteen added rows on top of an intact sixteen-row file assembles to
+//     9481 B degraded — over MAX_CONTEXT_BYTES — so Codex silently takes the
+//     provenance-free path and omits the `# added 16 row(s) below on <date>`
+//     header that Claude writes.
+//
+// Both hosts still deliver and still govern; what diverges is the text of the
+// repair. This test exists so that closing either divergence is a deliberate
+// act with a red test to update, not a silent change — and so the claim in
+// decision-0084 §"What this supersedes" has a fixture behind it.
+func TestCROnlyLineEndingsAreTheOneKnownDivergence(t *testing.T) {
+	base := payloadFiles()["rules-a.toml"]
+	crOnly := strings.ReplaceAll(base, "\n", "\r")
+	if crOnly == base || strings.Contains(crOnly, "\n") {
+		t.Fatal("fixture is not CR-only — the case would prove nothing")
+	}
+
+	claude := claudeReconciledRows(t, crOnly)
+	codex, degraded := codexReconciledRowsAllowingDegraded(t, crOnly)
+
+	if !degraded {
+		t.Errorf("Codex no longer degrades on the CR-only fixture — the byte budget or the " +
+			"reconciler changed. Re-measure and update this test and decision-0084's " +
+			"qualification of the byte-identity claim.")
+	}
+	for _, slug := range []string{"inv-minimal-first", "floor-intent-gate"} {
+		for host, rows := range map[string]string{"claude": claude, "codex": codex} {
+			if !strings.Contains(rows, slug+" = { active = true }") {
+				t.Errorf("%s did not reconcile the CR-only file — %s is missing; both hosts must still deliver every rule", host, slug)
+			}
+		}
+	}
+	if claude == codex {
+		t.Errorf("the CR-only divergence has closed. That is an improvement, not a failure — " +
+			"delete this test and drop decision-0084's qualification of the byte-identity claim.")
+	}
+	if !strings.Contains(codex, "this row\r\n[rules]") {
+		t.Errorf("expected Codex to keep the record's trailing CR before the appended table; got:\n%q", codex)
+	}
+	if strings.Contains(claude, "this row\r\n[rules]") {
+		t.Errorf("expected staleness.sh:665 to strip the trailing CR; got:\n%q", claude)
+	}
+	if strings.Contains(codex, "# added ") {
+		t.Errorf("Codex reported degraded but still emitted the added-rows header; got:\n%q", codex)
+	}
+	if !strings.Contains(claude, "# added 16 row(s) below on ") {
+		t.Errorf("expected staleness.sh to write the added-rows header; got:\n%q", claude)
+	}
 }
 
 // codexReconciledRowsFromContext extracts the reconciled `.trellis/rules.toml`
@@ -1364,7 +1467,7 @@ func codexReconciledRows(t *testing.T, toml string) string {
 // path, same asymmetry reconciledRowsFromContext already handles on Claude).
 func codexReconciledRowsFromContext(t *testing.T, context string) string {
 	t.Helper()
-	m := regexp.MustCompile(`(?s)`+regexp.QuoteMeta(invariantsTrigger)+
+	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(invariantsTrigger) +
 		`\n\n(.*?)(?:\n\n## Rule activation was reconciled this session|\nTrellis hook loaded installed overlay: )`).
 		FindStringSubmatch(context)
 	if m == nil {
