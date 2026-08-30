@@ -2,7 +2,7 @@
 id: decision-0083
 type: decision
 depends_on: [decision-0051, decision-0070, decision-0072, decision-0074]
-informed_by: [decision-0008, decision-0028, decision-0053, decision-0065, decision-0078, decision-0082]
+informed_by: [decision-0008, decision-0028, decision-0053, decision-0065, decision-0078, decision-0081, decision-0082]
 owner: agent
 date: 2026-08-30
 ---
