@@ -44,7 +44,7 @@ One table, applied identically by both hosts, in memory (for delivery) and on di
 
 > **2026-08-30, after the branch shipped — "by both hosts" did not ship.** The table below is
 > applied by `staleness.sh` only; `codex-context.mjs` still fails closed on any mismatch. See the
-> note under *Codex parity* below, `decision-0083` §1, and the Linear follow-up (Trellis team).
+> note under *Codex parity* below, `decision-0083` §1, and [TRL-30](https://linear.app/kodhama/issue/TRL-30).
 
 | Kind | Resolution | Rationale |
 |---|---|---|
@@ -116,7 +116,7 @@ returns `null` → `invalid-rules` on any mismatch; it adopts the reconcile sema
 > **Claude-only**. This note records the divergence rather than editing the plan the design
 > actually made: adopting reconciliation in a parser is a restructure, not the reordering this
 > section scoped, and it was deliberately deferred. See `decision-0083` §1 and its open questions;
-> the follow-up is tracked in Linear (Trellis team).
+> the follow-up is tracked as [TRL-30](https://linear.app/kodhama/issue/TRL-30).
 
 **Unconfirmed, to be settled in implementation, not planned around:** `parseRulesToml` runs at
 `:369` and the payload resolves at `:408`, so deriving the slug set needs that order swapped. It

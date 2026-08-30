@@ -339,26 +339,33 @@ contract, not merely a habit that worked once here.
   the wrong unit at all is not answered here.
 - **Should the Claude hook warn on a false floor row, as Codex does?** Codex warns when a `floor-`
   row is `active = false`; Claude is silent. Named out of scope by the design and still open.
-- **Host parity is owed, and the Codex arm of TRL-20 is therefore still open.** The design
-  claimed *"one table, applied identically by both hosts"* and that Codex's `parseRulesToml`
-  *"adopts the reconcile semantics instead"*; §1 records that neither shipped. A Codex project
-  with a mismatched row set still gets `invalid-rules` and no rules — the exact blackout this
-  record retires on Claude — so the defect TRL-20 names is half-closed, not closed. Deferred
-  deliberately rather than half-implemented under a design that had not been re-thought for the
-  host: Codex refuses in a **parser**, not a delivery branch, so adopting reconciliation there is
-  a restructure, not an anchor change. **Tracked in Linear (Trellis team)**
-  (`inv-no-orphan-followups` — the named consumer that will re-present it, `decision-0078`).
-- **A file with no `strictness` key stays Codex-invalid after a repair, so the reconciler can
-  produce a file it has just promised is correct.** `parseRulesToml` requires `strictness` to be
-  exactly `"firm"` or `"adaptive"` and returns `null` otherwise; the reconciler adds rows and
-  quarantines rows, and never adds a `strictness` line. The shape is reachable from this record's
-  own §5 measurement: an empty `.trellis/rules.toml` reconciles to sixteen rows under a `[rules]`
-  table with no `strictness`, which Claude governs from at the adaptive posture and Codex rejects
-  outright. **Not changed here** — the repair is a strict improvement over the blackout either way
-  and adding a posture the consumer never wrote is a different act from adding a row the payload
-  ships, which is a call worth making deliberately. Named beside the parity question because the
-  same work closes both, and because a repaired file that one host still refuses is exactly what
-  the mandate's *"so the file matches what governs"* promises it is not.
+- **Host parity is owed, and the Codex arm of TRL-20 is therefore still open — `TRL-30`.** The
+  design claimed *"one table, applied identically by both hosts"* and that Codex's
+  `parseRulesToml` *"adopts the reconcile semantics instead"*; §1 records that neither shipped. A
+  Codex project with a mismatched row set still gets `invalid-rules` and no rules — the exact
+  blackout this record retires on Claude — so the defect TRL-20 names is half-closed, not closed.
+  Deferred deliberately rather than half-implemented under a design that had not been re-thought
+  for the host: Codex refuses in a **parser**, not a delivery branch, so adopting reconciliation
+  there is a restructure, not an anchor change. Tracked as
+  **[TRL-30](https://linear.app/kodhama/issue/TRL-30)** — *"Codex still fails closed on a
+  rules.toml mismatch — host parity for reconciliation is owed"* (High; related to TRL-20 and
+  TRL-29), which is the named consumer that will re-present it (`inv-no-orphan-followups`,
+  `decision-0078`).
+
+  **The sharpest instance is reachable from this record's own headline example, and TRL-30 folds
+  it in as shape 1.** `parseRulesToml` requires `strictness` to be exactly `"firm"` or
+  `"adaptive"` and returns `null` otherwise; the reconciler adds rows and quarantines rows, and
+  **never adds a `strictness` line**. So the empty-file case §5 measures — sixteen rows delivered
+  under a `[rules]` table, which Claude governs from at the adaptive posture — produces a file
+  Codex rejects outright. Reproduced against the real hook, not read off the parser: with the
+  complete sixteen-row set and no `strictness`, `codex-context.mjs` emits
+  `.trellis/rules.toml: invalid-rules` and injects nothing; prepending `strictness = "adaptive"`
+  to the **identical** row set makes it load. **Behaviour is deliberately unchanged here** — the
+  repair is a strict improvement over the blackout either way, and adding a posture the consumer
+  never wrote is a different act from adding a row the payload ships, which is a call worth making
+  deliberately rather than as a side effect. It belongs to the same question because the same work
+  closes it, and because a repaired file that one host still refuses is exactly what the mandate's
+  *"so the file matches what governs"* promises it is not.
 - **Two live surfaces still teach the retired behaviour, and neither is fixed here.** The inline
   managed block's frozen row copy (`cli/apply.go`, `README.md`) is the derivative that genuinely
   goes stale, and reconciliation does not reach it. Beside it,
