@@ -325,7 +325,7 @@ bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
 d5a33271a243fb0b4d83dee3f9ef8045ea8678e31e0f7114e9b6067395fca7b5  .claude-plugin/plugin.json
 416c4ea8aab2d088bfd13c275dadf95d71ee29c213de77e72a181e36d092a30b  .codex-plugin/plugin.json
-1cfab9b59eb78e6d8bdd0b942605b07ec9ecd1a575a27df3e66ef9af85098150  README.md
+bb098a2417e289eaeffc84eeca8575b97958d41ab81dc35ea68d36adee4a4272  README.md
 967d9afb101346667166f2e76e81910bc190488d7d41d50ca0072e9d92f00e32  VERSION
 3a5c771cc440d3c6c8e42ae46110fbf4e896260925aeb9b33ec057f712e23cc6  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json

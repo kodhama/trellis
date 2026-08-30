@@ -126,9 +126,12 @@ shipping. The widening was proven by mutation (inject one; watch it fail), not b
 
 ### 4. What this supersedes — and what it does not
 
-**Superseded: `decision-0072`'s confirm-first row-repair remedy, and only that** — its point 2's
-three mismatch shapes and its reseed gate, insofar as they describe how a row mismatch is repaired.
-`decision-0072` carries `superseded_in_part_by: [decision-0083]`.
+**Superseded: `decision-0072`'s point 2, in two respects and no others** — its confirm-first
+row-repair remedy (the three mismatch shapes and the reseed gate, insofar as they describe how a row
+mismatch is repaired), and its *"a hand-written partial file leaves the project **ungoverned**"*
+premise, which is what made the preset copy mandatory. §5 below states the second in full, because
+retiring a hazard silently is worse than the hazard. `decision-0072` carries
+`superseded_in_part_by: [decision-0083]`.
 
 **Standing, untouched:** its retirement of `/trellis:setup` (point 1), its accounting of what was
 lost (point 3), the discoverability call (point 4) and the rejected `/trellis:migrate` (point 5).
@@ -137,7 +140,37 @@ this record argues is that the gate is not engaged here, not that the rule is wr
 `decision-0070` D4's *"the hook never writes"*, `decision-0053`'s live-rows authority, and
 `decision-0065`'s vendorless plugin path.
 
-### 5. Codex derives its slug set from the payload
+### 5. What a partial file now means — `decision-0072`'s hazard is retired, and inverted
+
+`decision-0072` finding #4 cost that record its first draft: *"a hand-written partial file leaves
+the project **ungoverned**"*. That is why its point 2 made the preset copy **mandatory** rather than
+advisory, and it was measured rather than reasoned — every one of the fourteen slugs came back
+`missing:` and no rule was injected.
+
+**Reconciliation retires that hazard by making a partial file self-complete.** Measured the same
+way on the current tree: an empty `.trellis/rules.toml` yields `RECONCILED … added 16 row(s);
+quarantined 0 row(s)`, with all sixteen rows delivered `active = true`.
+
+**The practical effect is the opposite of the old advice, and this record states it rather than
+leaving it to be inferred.** The old failure mode was **silent under-governance** — a stub file, and
+no rules. The new one is **immediate full governance** at the **adaptive** posture (an empty file
+carries no `strictness`, so the header falls to `trellis-b.md`) from a file its author may have
+meant as a stub.
+
+**The new mode is preferable, and not marginally.** Both are surprises; only one is silent.
+Under-governance fails closed on the user's expectations and open on the rules — a project that
+believes it is governed is not, and nothing says so. Over-governance is announced in the session it
+happens, names every row it added, and leaves those rows **visible in the file**, where any of them
+can be set `active = false`. A surprise you can see and edit is not the same class of defect as one
+you cannot detect.
+
+**What survives from point 2 is the advice, not the hazard.** Copy a complete preset when the
+posture or the row set matters — reconciliation defaults, it does not read minds. What does not
+survive is the reason: a partial file is no longer a governance blackout, so the copy is no longer
+mandatory in order to be governed at all. Both READMEs' `governed = false` bullets are corrected to
+match; they had kept the retired reason after the surrounding prose was updated.
+
+### 6. Codex derives its slug set from the payload
 
 `codex-context.mjs` validated against a **hardcoded sixteen-slug array**, while the Claude hook
 derived its set from the shipped `reference/rules.md`. Nothing in CI compared the two. The
@@ -156,7 +189,7 @@ reason: deriving first meant a broken plugin payload produced an empty slug set,
 then failed to parse, and the reported label blamed the project's config for a defect in the
 plugin.
 
-### 6. The three retired test pins, named
+### 7. The three retired test pins, named
 
 The design predicted three; execution retired exactly those three, one task earlier than planned
 (the blackout emit and its assertions had to move together or the task would have ended red).
@@ -282,9 +315,16 @@ contract, not merely a habit that worked once here.
   the wrong unit at all is not answered here.
 - **Should the Claude hook warn on a false floor row, as Codex does?** Codex warns when a `floor-`
   row is `active = false`; Claude is silent. Named out of scope by the design and still open.
-- **The inline managed block's frozen row copy** (`cli/apply.go`, `README.md`) is the one derivative
-  that genuinely goes stale, and reconciliation does not reach it. Not covered by any of the three
-  issues; owed.
+- **Two live surfaces still teach the retired behaviour, and neither is fixed here.** The inline
+  managed block's frozen row copy (`cli/apply.go`, `README.md`) is the derivative that genuinely
+  goes stale, and reconciliation does not reach it. Beside it,
+  `plugins/trellis/reference/block-codex.md:10,22` still states the all-or-nothing activation
+  predicate — *"every canonical slug below occurs exactly once, no unknown or duplicate slug
+  occurs"* — and instructs the agent to say exactly *"Trellis was not loaded"* when it fails. That
+  is the vendored-overlay fallback path, which `plugins/trellis/README.md:83-85` records as
+  **carried rather than maintained**, so it is deliberately left alone rather than half-updated.
+  Named here so the record does not claim one stale surface when there are two. Neither is covered
+  by any of the three issues; both owed.
 - **Do the hook's overlay branches still earn their keep?** Inherited unanswered from
   `decision-0072`'s open questions; this change does not touch them.
 

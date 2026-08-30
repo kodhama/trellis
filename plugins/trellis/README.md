@@ -99,9 +99,11 @@ changed (`decision-0083`). A row starting with `#` is a quarantined row: inert, 
 one uncomment away if a newer release ships that slug. **With a file already there**, edit
 `strictness` in place:
 both presets set every row active, so copying one over your file silently re-enables every rule
-you disabled. **With the one-line `governed = false` opt-out**, re-enabling is a replace rather
-than an edit — editing `strictness` beside the opt-out leaves it in force and the hook stays
-silent — so confirm the intent, then write a complete preset over it (`decision-0070` D5). Older projects still carry an
+you disabled. **With the one-line `governed = false` opt-out**, editing `strictness` beside the
+opt-out leaves it in force and the hook stays silent, so that is not re-enabling. Deleting the line
+alone does re-enable governance, but on an empty file that reconciles to all sixteen rows active at
+the adaptive posture — so confirm the intent, and write a complete preset over it if the posture or
+the row set matters (`decision-0070` D5, `decision-0083`). Older projects still carry an
 **overlay**, split by who owns what (`decision-0051`):
 
 - **`.trellis/` root — yours.** `rules.toml` alone (the machine-read config: one row per rule,
