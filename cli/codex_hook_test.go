@@ -1136,17 +1136,48 @@ func TestBothHostsReconcileIdentically(t *testing.T) {
 	files := payloadFiles()
 	base := files["rules-a.toml"]
 
+	// An indented `[rules]` ALONE never reaches the reconciler: parseRulesToml
+	// trims every line before matching its section regex (codex-context.mjs),
+	// so "  [rules]" parses as the identical table — zero mismatch — and
+	// reconcileRows is gated on `if (mismatch !== null)`. A fixture that only
+	// indents the header therefore proves nothing about reconciler parity:
+	// reviewer-verified by deleting `[ \t]*` from reconcileRows' own
+	// `rulesHeader` regex, which left an indent-only fixture green (it never
+	// runs the mutated code at all). Pairing the indent with a removed row
+	// forces a real slug-set mismatch, so the reconciler must actually find
+	// the indented header — to decide whether to open a second one — for this
+	// fixture to exercise anything.
+	indentedWithMissingRow := strings.Replace(base, "[rules]", "  [rules]", 1)
+	indentedWithMissingRow = strings.Replace(indentedWithMissingRow,
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	if indentedWithMissingRow == base {
+		t.Fatal("fixture changed nothing — the case would prove nothing")
+	}
+
 	fixtures := map[string]string{
+		// Reconciling fixtures: parseRulesToml finds a genuine slug-set
+		// mismatch, so reconcileRows actually runs and these five compare its
+		// real output byte for byte.
 		"rename (missing + unknown together)": strings.Replace(base,
 			"inv-minimal-first         = { active = true }",
 			"inv-renamed-first         = { active = true }", 1),
-		"indented [rules] table": strings.Replace(base, "[rules]", "  [rules]", 1),
-		"already quarantined": base +
-			"# inv-gone = { active = true }  # quarantined 2026-01-01: not in payload@old\n",
+		"indented [rules] table plus a missing row": indentedWithMissingRow,
 		"duplicate with a differing value": base +
 			"inv-minimal-first         = { active = false }\n",
 		"no [rules] table at all": "strictness  = \"firm\"\n",
 		"empty file":              "",
+
+		// Pass-through fixtures: parseRulesToml finds NO mismatch, so
+		// reconcileRows is never called on either host and the compared block
+		// is just the input verbatim (minus its own trailing newline — see
+		// reconciledRowsFromContext / codexReconciledRowsFromContext). Kept
+		// deliberately unreconciled, not upgraded to match the five above:
+		// "already quarantined" pins idempotency (an already-repaired file
+		// draws no second notice on either host); "missing strictness" pins
+		// non-fatality (an absent strictness must not block delivery on
+		// either host). Neither is meant to exercise reconcileRows itself.
+		"already quarantined": base +
+			"# inv-gone = { active = true }  # quarantined 2026-01-01: not in payload@old\n",
 		// The brief's literal `strings.Replace(base, "strictness  = \"firm\"\n",
 		// "", 1)` is a silent no-op: the real line carries a trailing comment
 		// ("strictness  = \"firm\"  # firm (a·conductor) | ..."), so that exact
@@ -1195,13 +1226,30 @@ func codexReconciledRows(t *testing.T, toml string) string {
 	t.Helper()
 	project := newGitProject(t)
 	writeValidCodexOverlay(t, project)
-	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"),
-		[]byte(toml), 0o644); err != nil {
+	tomlPath := filepath.Join(project, ".trellis", "rules.toml")
+	if err := os.WriteFile(tomlPath, []byte(toml), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	_, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
 	if got.HookSpecificOutput == nil {
 		t.Fatalf("codex injected nothing for this fixture — it must reconcile, not refuse")
+	}
+	// decision-0070 D4: the hook computes a repair in memory and reports it,
+	// but never writes it — the mirror of staleness.sh's own pin
+	// (plugin_hook_test.go:1704, "the hook wrote .trellis/rules.toml —
+	// \"the hook never writes\" is the half of decision-0070 D4 that stands").
+	// That Claude-side pin only covers a project with no rules.toml at all;
+	// every fixture through this helper already carries a genuine mismatch
+	// that gets reconciled in the response, so this is the stronger case —
+	// the file on disk must still read back as the UNRECONCILED fixture,
+	// byte for byte, after a run that just told the agent to write the
+	// reconciled text over it. Holds today by construction (no writeFile/
+	// appendFile call in codex-context.mjs); pinning it behaviourally so a
+	// regression is a red test, not a code-reading exercise.
+	if after, err := os.ReadFile(tomlPath); err != nil {
+		t.Fatalf("could not re-read .trellis/rules.toml after the hook ran: %v", err)
+	} else if string(after) != toml {
+		t.Errorf("the codex hook wrote .trellis/rules.toml — \"the hook never writes\" is the half of decision-0070 D4 that stands:\nbefore:\n%s\nafter:\n%s", toml, after)
 	}
 	return codexReconciledRowsFromContext(t, got.HookSpecificOutput.AdditionalContext)
 }
