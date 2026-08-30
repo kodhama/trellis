@@ -609,9 +609,62 @@ slug_report="$(
     }
   ' "$rules" "$toml"
 )"
+# Reconcile rather than refuse. A mismatch used to inject nothing at all, so a
+# single bad row cost all sixteen rules every session until a human edited the
+# file (TRL-20). The rules the payload ships are still the authority; what
+# changes is that an unmatched row is quarantined instead of blocking delivery.
+#
+# Quarantine — commenting the row out rather than deleting it — is what makes
+# an ungated repair safe. `unknown:` has two causes with opposite repairs (the
+# rule was retired, or the installed plugin is behind the project's config,
+# TRL-27) and config-only mode carries no version stamp to tell them apart. A
+# commented row is correct under both readings and loses nothing either way.
+# It is also invisible to the validator above, which anchors rows at line
+# start, so a repaired file draws no second notice.
+reconciled=""
+repair_summary=""
 if [ "$slug_report" != "ok" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml does not match the rules the installed plugin ships ($slug_report). Nothing was injected, because a partial or unknown row set cannot be applied honestly. Every repair below edits a file the consumer owns, so show them the exact rows you would add and the exact rows you would remove, and get explicit confirmation before writing anything (floor-intent-gate). The minimal repair keeps their choices, and the report above lists EVERY defect found, not just the first — fix all of them in one pass or validation fails again next session: for missing:, add those slugs; for unknown:, remove those rows; for duplicate:, delete the extra occurrences and keep the one whose value they intend. Leave strictness and every other existing active value exactly as they are. A reseed from a preset — $plugin/reference/rules-a.toml for strictness = \"firm\", rules-b.toml for adaptive — is the bigger hammer and resets every row they chose, so name it as that when you offer it. Tell the user before doing substantive work."
-  exit 0
+  today="$(date +%Y-%m-%d)"
+  reconciled="$(
+    awk -v want_src="$rules" -v stamp="$current" -v today="$today" '
+      BEGIN {
+        while ((getline line < want_src) > 0) {
+          if (match(line, /`(inv|floor)-[a-z-]+`[[:space:]]*$/)) {
+            s = substr(line, RSTART + 1, RLENGTH - 2)
+            sub(/`[[:space:]]*$/, "", s)
+            want[s] = 1
+            order[++n] = s
+          }
+        }
+        note = "  # quarantined " today ": not in " stamp ". If a newer Trellis" \
+               " ships this slug, run `claude plugin update trellis@kodhama` and uncomment."
+      }
+      /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
+        row = $1
+        sub(/[^a-z-].*$/, "", row)
+        if (!(row in want) || (row in seen)) {
+          print "# " $0 note
+          quarantined++
+          next
+        }
+        seen[row] = 1
+        print
+        next
+      }
+      { print }
+      END {
+        for (i = 1; i <= n; i++) {
+          s = order[i]
+          if (!(s in seen)) print s " = { active = true }  # added " today " from " stamp
+        }
+      }
+    ' "$toml"
+  )"
+  # Counted from the reconciled text itself rather than passed out of awk — one
+  # source of truth, and no second channel to keep in step with the first.
+  added="$(printf '%s\n' "$reconciled" | grep -c '# added ' || true)"
+  quarantined="$(printf '%s\n' "$reconciled" | grep -c '# quarantined ' || true)"
+  repair_summary="added ${added:-0} row(s); quarantined ${quarantined:-0} row(s)"
 fi
 
 # The header carries `@rules.md`, an import the hook resolves itself, and a
@@ -629,12 +682,18 @@ payload="$(
     { gsub(/`\.trellis\/internal\/invariants\.md`/, "`" inv "`"); print }
   ' "$header"
   printf '\n## Project rule activation\n\n'
-  if [ "${rows_are_default:-no}" = yes ]; then
+  if [ -n "$reconciled" ]; then
+    printf 'Rows from this project'"'"'s .trellis/rules.toml, RECONCILED against the rules this payload ships (%s) — the file on disk still differs. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n' "$repair_summary"
+  elif [ "${rows_are_default:-no}" = yes ]; then
     printf 'Rows: this project has no .trellis/rules.toml, so these are the shipped defaults — every rule active, adaptive posture (decision-0070). Write .trellis/rules.toml to change them. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
   else
     printf 'Rows from this project'"'"'s .trellis/rules.toml. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
   fi
-  cat "$toml"
+  if [ -n "$reconciled" ]; then
+    printf '%s\n' "$reconciled"
+  else
+    cat "$toml"
+  fi
   printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
 )"
 

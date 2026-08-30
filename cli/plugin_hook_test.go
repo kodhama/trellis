@@ -479,6 +479,16 @@ func renderedFile(files map[string]string, stamp string) string {
 // This test pins the recipe end to end, in both directions: the partial file
 // must fail loudly, and the documented copy-then-edit must deliver every rule
 // rules at the requested posture.
+//
+// Narrowed by the reconciliation change (TRL-20/TRL-2/TRL-27, same as
+// TestRepairRemedyCoversEveryMismatchKind above): "the partial file must fail
+// loudly" no longer holds — a hand-written partial file is exactly a `missing:`
+// mismatch, and that is now reconciled rather than refused. Its half of this
+// pin is retired; the surviving subtests (copy-then-edit, at both postures,
+// and disabling a row) are unaffected, since none of them exercises a
+// mismatch. The retired half's intent survives in
+// TestSlugMismatchStillDeliversEveryRule's "a missing row does not black out
+// the other rules".
 // TestEveryDestructiveInstructionIsGated: a Codex P2 on #227, and then a Codex
 // P2 on the GUARD ITSELF, which is the more useful of the two.
 //
@@ -540,7 +550,13 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	// a drop means the regex or the verb list stopped matching, not that the
 	// script got safer. Advanced 11 → 13 when decision-0073 D2 added the two
 	// inline-shape messages (the S4 refusal and the inline+rendered conflict).
-	const known = 13
+	// Retreated 13 → 12 for the reconciliation change (TRL-20): the gated
+	// TRELLIS_RULES_NOT_LOADED mismatch remedy this counted — "for missing:, add
+	// those slugs; for unknown:, remove those rows; for duplicate:, delete the
+	// extra occurrences" — is GONE, not merely reworded; a mismatch is now
+	// reconciled in memory (add/quarantine, never delete) rather than refused, so
+	// there is nothing destructive left to gate on that path.
+	const known = 12
 	if gated < known {
 		t.Fatalf("matched %d destructive messages, expected at least %d — the filter broke; "+
 			"a guard that matches nothing passes silently", gated, known)
@@ -617,6 +633,14 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 // legal, supported one-line file, and the documented "edit strictness in place"
 // branch is WRONG for it — the opt-out wins and the hook goes silent, so the
 // consumer who asked for the firm posture gets no rules and no message either.
+//
+// Narrowed by the reconciliation change (TRL-20/TRL-2/TRL-27): the remedy this
+// guarded — "for missing:, add those slugs; for unknown:, remove those rows;
+// for duplicate:, delete the extra occurrences" — no longer exists, because a
+// mismatch is now reconciled rather than refused. Its intent survives in
+// TestSlugMismatchStillDeliversEveryRule, which asserts every mismatch kind is
+// RESOLVED rather than merely explained. The `governed = false` subtest below
+// is unrelated to the remedy and stays.
 func TestRepairRemedyCoversEveryMismatchKind(t *testing.T) {
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
@@ -647,45 +671,6 @@ func TestRepairRemedyCoversEveryMismatchKind(t *testing.T) {
 		out, _ := cmd.CombinedOutput()
 		return string(out)
 	}
-
-	t.Run("a renamed slug reports BOTH categories, not the first", func(t *testing.T) {
-		// A plugin update that renames a slug leaves the config simultaneously
-		// missing the new row and carrying the old one as unknown. The report was
-		// an else-if chain, so it named only `missing:` — the agent added the new
-		// row, and validation failed again next session on the unknown row it was
-		// never told about. Each repair round looked like progress and delivered
-		// none.
-		renamed := strings.Replace(files["rules-b.toml"],
-			"inv-minimal-first         = { active = true }",
-			"inv-renamed-first         = { active = true }", 1)
-		if renamed == files["rules-b.toml"] {
-			t.Fatal("fixture did not rename anything — the case would prove nothing")
-		}
-		out := run(t, renamed)
-		// Scope the assertion to the REPORT — the parenthesised list after "ships".
-		// The remedy text that follows it explains what to do "for missing:", "for
-		// unknown:" and "for duplicate:", so a whole-output Contains check is
-		// satisfied by the ADVICE and passes against a report that names one
-		// category. That is exactly how this assertion first shipped, and the
-		// mutation caught it.
-		report := reportSection(t, out)
-		if !strings.Contains(report, "missing:") || !strings.Contains(report, "unknown:") {
-			t.Errorf("a renamed slug is BOTH missing and unknown; reporting one sends the agent "+
-				"back for another round that also fails. report was %q, full output:\n%s", report, out)
-		}
-	})
-
-	t.Run("a duplicated slug is reported AND its repair is explained", func(t *testing.T) {
-		dup := files["rules-b.toml"] + "inv-minimal-first         = { active = true }\n"
-		out := run(t, dup)
-		if !strings.Contains(reportSection(t, out), "duplicate:") {
-			t.Fatalf("fixture did not produce the condition it names — the case would prove nothing:\n%s", out)
-		}
-		if !strings.Contains(out, "duplicate:, delete the extra occurrences") {
-			t.Errorf("the remedy explains missing and unknown but not duplicate, so following it on this "+
-				"report leaves the project ungoverned; got:\n%s", out)
-		}
-	})
 
 	t.Run("the governed = false opt-out is silent, so 'edit in place' cannot re-enable", func(t *testing.T) {
 		// This pins the hazard the docs now describe as a third shape. It is NOT a
@@ -749,20 +734,6 @@ func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
 		return string(out)
 	}
 
-	t.Run("hand-written partial file governs nothing", func(t *testing.T) {
-		out := run(t, "strictness  = \"firm\"\n")
-		if !strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
-			t.Fatalf("a partial row set must fail loudly, not govern partially; got:\n%s", out)
-		}
-		// The hazard this whole test exists for: it is not a warning ON TOP of
-		// delivery, it is delivery replaced by a warning. Asserting on a slug would
-		// be useless here — the error message ENUMERATES every missing slug — so the
-		// discriminator is the readout body, which only a delivery carries.
-		if strings.Contains(out, "The rules — do these") {
-			t.Errorf("rules were injected over an invalid row set; got:\n%s", out)
-		}
-	})
-
 	t.Run("copy the firm preset, then edit: the full rule set at the firm posture", func(t *testing.T) {
 		out := run(t, files["rules-a.toml"])
 		if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
@@ -796,6 +767,19 @@ func TestDocumentedPostureRecipeActuallyGoverns(t *testing.T) {
 	})
 }
 
+// TestRowMismatchRemedyIsNotDestructive originally pinned the retired
+// blackout-and-explain remedy's non-destructive INSTRUCTIONS — preserve
+// strictness, gate any reseed behind confirmation. Narrowed by the
+// reconciliation change (TRL-20/TRL-2/TRL-27, same as
+// TestRepairRemedyCoversEveryMismatchKind above): there is no remedy text to
+// instruct an agent through any more, because the hook reconciles the
+// mismatch itself rather than refusing and explaining. What this test still
+// proves, on the same fixture, is the property its name promises: the repair
+// is non-destructive by construction, not merely by instruction. Every row
+// the consumer wrote — including the unknown one — survives verbatim; the
+// unknown row is quarantined (commented out), never deleted, matching this
+// task's binding constraint that a repair is additive or commenting and no
+// row's value is ever lost.
 func TestRowMismatchRemedyIsNotDestructive(t *testing.T) {
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
@@ -830,24 +814,22 @@ func TestRowMismatchRemedyIsNotDestructive(t *testing.T) {
 	out, _ := cmd.CombinedOutput()
 	ctx := string(out)
 
-	if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
-		t.Fatalf("an unknown slug must be reported, not delivered over; got:\n%s", ctx)
-	}
-	// The remedy must preserve what the consumer chose.
-	for _, want := range []string{"strictness", "active"} {
+	// What the consumer chose must survive verbatim — nothing reseeded, nothing
+	// dropped. ctx is the hook's raw JSON stdout, so the fixture's own quote
+	// characters come back \"-escaped; match that form, not the unescaped one.
+	for _, want := range []string{`seeded_from = \"conductor\"`, `strictness  = \"firm\"`} {
 		if !strings.Contains(ctx, want) {
-			t.Errorf("the remedy must tell the agent to preserve %q rather than reseed blindly; got:\n%s", want, ctx)
+			t.Errorf("the repair must preserve %q verbatim rather than reseed or drop it; got:\n%s", want, ctx)
 		}
 	}
-	// If a reseed IS offered, it must be gated and must name the firm preset.
-	if strings.Contains(ctx, "rules-b.toml") {
-		if !strings.Contains(ctx, "confirmation") {
-			t.Errorf("a reseed resets every row the consumer chose; it must require explicit "+
-				"confirmation first (floor-intent-gate); got:\n%s", ctx)
-		}
-		if !strings.Contains(ctx, "rules-a.toml") {
-			t.Errorf("offering only the adaptive preset silently converts a firm project; got:\n%s", ctx)
-		}
+	// The unknown row is quarantined, not deleted: its original text survives,
+	// commented out, with dated provenance a reader can tell it was not simply
+	// removed.
+	if !strings.Contains(ctx, "# inv-not-a-real-rule = true") {
+		t.Errorf("the unknown row must be quarantined by commenting, not deleted; got:\n%s", ctx)
+	}
+	if !strings.Contains(ctx, "quarantined") {
+		t.Errorf("the quarantine must be labelled so a reader can tell why; got:\n%s", ctx)
 	}
 }
 
@@ -2099,6 +2081,137 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		premiseAbsent(t, proj, "CLAUDE.md", "AGENTS.md", ".trellis/internal", ".claude/rules/trellis.md", ".trellis/trellis.md")
 		if out := runIn(t, proj); !strings.Contains(out, ruleSlug) {
 			t.Fatalf("S6 with a rules.toml is path B today — this pin exists so any change to that is a decision, not a drive-by; got:\n%s", out)
+		}
+	})
+}
+
+// rulesTomlRun builds a plugin root from the shipped payload and returns a
+// runner that writes `rows` to .trellis/rules.toml in a fresh project, then
+// returns the hook's raw stdout.
+func rulesTomlRun(t *testing.T) func(*testing.T, string) string {
+	t.Helper()
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range payloadFiles() {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return func(t *testing.T, rows string) string {
+		t.Helper()
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		out, _ := cmd.CombinedOutput()
+		return string(out)
+	}
+}
+
+// hookSlugs returns every distinct rule slug appearing anywhere in the hook's
+// output — the same shape as the `injected` closure at plugin_hook_test.go:1458.
+func hookSlugs(out string) map[string]bool {
+	slugs := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(inv|floor)-[a-z-]+`).FindAllString(out, -1) {
+		slugs[m] = true
+	}
+	return slugs
+}
+
+// A slug mismatch used to inject NOTHING — one bad row cost all sixteen rules,
+// every session, until a human edited the file (TRL-20). Delivery now
+// reconciles in memory, so a mismatch degrades to a repair notice rather than
+// a blackout.
+func TestSlugMismatchStillDeliversEveryRule(t *testing.T) {
+	run := rulesTomlRun(t)
+	files := payloadFiles()
+
+	t.Run("a missing row does not black out the other rules", func(t *testing.T) {
+		short := strings.Replace(files["rules-b.toml"],
+			"inv-minimal-first         = { active = true }\n", "", 1)
+		if short == files["rules-b.toml"] {
+			t.Fatal("fixture removed nothing — the case would prove nothing")
+		}
+		out := run(t, short)
+		if strings.Contains(out, "Nothing was injected") {
+			t.Errorf("a missing row must not black out delivery:\n%s", out)
+		}
+		got := hookSlugs(out)
+		for _, slug := range assessableSlugs {
+			if !got[slug] {
+				t.Errorf("rule %s was not delivered after reconciliation; got %v", slug, keysOfBool(got))
+			}
+		}
+	})
+
+	t.Run("the missing row is reconciled to active = true", func(t *testing.T) {
+		short := strings.Replace(files["rules-b.toml"],
+			"inv-minimal-first         = { active = true }\n", "", 1)
+		out := run(t, short)
+		if !strings.Contains(out, "inv-minimal-first = { active = true }") {
+			t.Errorf("the reconciled rows must add the missing slug as active:\n%s", out)
+		}
+	})
+
+	t.Run("an unknown row is quarantined, never dropped", func(t *testing.T) {
+		bogus := files["rules-b.toml"] + "inv-not-a-real-rule       = { active = false }\n"
+		out := run(t, bogus)
+		if !strings.Contains(out, "# inv-not-a-real-rule") {
+			t.Errorf("an unknown row must survive as a commented-out row:\n%s", out)
+		}
+		if !strings.Contains(out, "quarantined") {
+			t.Errorf("the quarantine must be labelled so a reader can tell why:\n%s", out)
+		}
+		if !strings.Contains(out, "claude plugin update trellis@kodhama") {
+			t.Errorf("quarantine provenance must name the stale-plugin cause (TRL-27):\n%s", out)
+		}
+	})
+
+	t.Run("a duplicate keeps the first occurrence and quarantines the extra", func(t *testing.T) {
+		dup := files["rules-b.toml"] + "inv-minimal-first         = { active = false }\n"
+		out := run(t, dup)
+		if !strings.Contains(out, "# inv-minimal-first         = { active = false }") {
+			t.Errorf("the extra occurrence must be quarantined, not deleted:\n%s", out)
+		}
+		if !strings.Contains(out, "inv-minimal-first         = { active = true }") {
+			t.Errorf("the FIRST occurrence must survive verbatim:\n%s", out)
+		}
+	})
+
+	t.Run("a rename is both kinds at once and both are reconciled", func(t *testing.T) {
+		renamed := strings.Replace(files["rules-b.toml"],
+			"inv-minimal-first         = { active = true }",
+			"inv-renamed-first         = { active = true }", 1)
+		if renamed == files["rules-b.toml"] {
+			t.Fatal("fixture did not rename anything — the case would prove nothing")
+		}
+		out := run(t, renamed)
+		if !strings.Contains(out, "# inv-renamed-first") {
+			t.Errorf("the stale slug must be quarantined:\n%s", out)
+		}
+		if !strings.Contains(out, "inv-minimal-first = { active = true }") {
+			t.Errorf("the new slug must be added:\n%s", out)
+		}
+	})
+
+	t.Run("a quarantined row is invisible next session — the repair is idempotent", func(t *testing.T) {
+		quarantined := files["rules-b.toml"] +
+			"# inv-not-a-real-rule = { active = false }  # quarantined 2026-08-30: not in payload@test\n"
+		out := run(t, quarantined)
+		if strings.Contains(out, "does not match the rules the installed plugin ships") {
+			t.Errorf("an already-repaired file must draw no repair notice at all:\n%s", out)
 		}
 	})
 }
