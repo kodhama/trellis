@@ -569,25 +569,18 @@ func payloadPrintfMessages(block string) []string {
 	return msgs
 }
 
-func TestEveryDestructiveInstructionIsGated(t *testing.T) {
-	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
-	if err != nil {
-		t.Fatal(err)
-	}
-	emits := regexp.MustCompile(`(?m)^\s*emit "((?:[^"\\]|\\.)*)"`).FindAllStringSubmatch(string(body), -1)
-	if len(emits) < 8 {
-		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
-	}
-	var msgs []string
-	for _, m := range emits {
-		msgs = append(msgs, m[1])
-	}
-	payloadMsgs := payloadPrintfMessages(payloadAssembly(t, string(body)))
-	if len(payloadMsgs) < 5 {
-		t.Fatalf("found only %d payload printf messages — the scan is broken, and a guard that reads nothing passes", len(payloadMsgs))
-	}
-	msgs = append(msgs, payloadMsgs...)
-	gated := 0
+// ungatedDestructiveMessages scans msgs against destructiveVerbs and reports,
+// for each message that instructs one, whether it carries the confirmation
+// gate the message is required to. gated is every message that hit a verb
+// (the running total TestEveryDestructiveInstructionIsGated's `known` floor
+// pins); violations is the subset of those missing "explicit confirmation".
+// Factored out so the same scan the real script runs through can also run
+// against a deliberately mutated copy of it — see
+// TestEveryDestructiveInstructionIsGated's "the payload channel is actually
+// enforced" subtest, which proves this scan catches an ungated destructive
+// message injected into the payload printf channel, not merely counts
+// messages that channel happens to contribute today.
+func ungatedDestructiveMessages(msgs []string) (violations []string, gated int) {
 	for _, msg := range msgs {
 		// Pointing at a slash command is not instructing a mutation: /trellis:remove
 		// is a skill that runs its own confirmation. Scanning the raw text matched
@@ -606,9 +599,34 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		}
 		gated++
 		if !strings.Contains(msg, "explicit confirmation") {
-			t.Errorf("this message instructs a mutation (%q) with no confirmation gate — an autonomous "+
-				"agent can act on it against files the consumer owns (floor-intent-gate):\n%s", hit, msg)
+			violations = append(violations, msg)
 		}
+	}
+	return violations, gated
+}
+
+func TestEveryDestructiveInstructionIsGated(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	emits := regexp.MustCompile(`(?m)^\s*emit "((?:[^"\\]|\\.)*)"`).FindAllStringSubmatch(string(body), -1)
+	if len(emits) < 8 {
+		t.Fatalf("found only %d emit strings — the scan is broken, and a guard that reads nothing passes", len(emits))
+	}
+	var msgs []string
+	for _, m := range emits {
+		msgs = append(msgs, m[1])
+	}
+	payloadMsgs := payloadPrintfMessages(payloadAssembly(t, string(body)))
+	if len(payloadMsgs) < 5 {
+		t.Fatalf("found only %d payload printf messages — the scan is broken, and a guard that reads nothing passes", len(payloadMsgs))
+	}
+	msgs = append(msgs, payloadMsgs...)
+	violations, gated := ungatedDestructiveMessages(msgs)
+	for _, msg := range violations {
+		t.Errorf("this message instructs a mutation with no confirmation gate — an autonomous "+
+			"agent can act on it against files the consumer owns (floor-intent-gate):\n%s", msg)
 	}
 	// A floor, not a ceiling: the count only ever grows as remedies are added, so
 	// a drop means the regex or the verb list stopped matching, not that the
@@ -630,6 +648,43 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 			"a guard that matches nothing passes silently", gated, known)
 	}
 	t.Logf("checked %d destructive messages of %d (emit + payload printf)", gated, len(msgs))
+
+	// Fix round 1, finding 2: `known` above never moves on the payload
+	// channel's account, because every real message there is clean by design
+	// (Ruling B). That left this test unable to tell "the payload channel has
+	// nothing to gate" apart from "the payload channel stopped being scanned"
+	// — payloadAssembly binding the wrong region, or payloadMsgs silently
+	// dropping out of msgs, would both still leave `gated` at exactly `known`.
+	// This subtest gives the scan a positive case: inject a synthetic,
+	// UNGATED destructive instruction into a copy of the real script's
+	// mandate printf text and run it through the identical
+	// payloadAssembly -> payloadPrintfMessages -> ungatedDestructiveMessages
+	// pipeline the scan above uses. If that pipeline is broken in any of the
+	// ways above, this injected message is never reached and the subtest
+	// passes on nothing — the same failure mode this whole finding is about
+	// — so the premise check below is the load-bearing part: it fails loudly
+	// if the mutation itself did not land.
+	t.Run("the payload channel is actually enforced, not merely counted", func(t *testing.T) {
+		const marker = `printf 'Write .trellis/rules.toml with exactly the rows shown above`
+		mutated := strings.Replace(string(body), marker,
+			`printf 'Delete the unknown rows now, then write .trellis/rules.toml with exactly the rows shown above`, 1)
+		if mutated == string(body) {
+			t.Fatal("premise: the mandate printf text to mutate was not found in staleness.sh — the case would prove nothing")
+		}
+		mutatedMsgs := payloadPrintfMessages(payloadAssembly(t, mutated))
+		mutatedViolations, _ := ungatedDestructiveMessages(mutatedMsgs)
+		found := false
+		for _, v := range mutatedViolations {
+			if strings.Contains(v, "Delete the unknown rows now") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("an ungated deletion instruction injected into the payload printf channel was not caught — " +
+				"the payload channel is not actually being scanned, only its message count is being checked")
+		}
+	})
 }
 
 // TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
@@ -700,8 +755,18 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 	// a comment. If this ever fires, a deletion verb reached the agent through
 	// the one channel that must stay ungated; the fix is to reword the printf,
 	// never to weaken this guard.
+	//
+	// Lowercased before matching, same as the sibling scan in
+	// TestEveryDestructiveInstructionIsGated (plugin_hook_test.go:596): a
+	// case-sensitive check here was proven (by mutation, fix round 1) to let a
+	// capitalized "Delete the unknown rows once you get explicit confirmation,
+	// then write …" land in this channel undetected. Unlike the main loop
+	// above, there is no confirmation-clause exception — a gate phrase does
+	// not make a deletion verb acceptable HERE, because the payload is text
+	// injected into the session, not an interactive prompt a confirmation
+	// clause can actually stop.
 	for _, msg := range payloadMsgs {
-		if strings.Contains(msg, "delete") {
+		if strings.Contains(strings.ToLower(msg), "delete") {
 			t.Errorf("the repair mandate's payload printf text must never instruct a deletion (the reconciliation is additive/commenting-only, which is what keeps it ungated):\n%s", msg)
 		}
 	}
