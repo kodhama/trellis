@@ -20,6 +20,8 @@
 - **A hook must never fail the session** — always `exit 0`.
 - **Injection budget stays 32768 bytes** (`staleness.sh:645`).
 - **Both hosts, same semantics.** A behaviour added to `staleness.sh` is added to `codex-context.mjs` in Task 3.
+
+  > **2026-08-30, after execution — this constraint was not met, and the note at line 9 above says why.** Task 3 delivered the slug derivation and the raised context cap; it did **not** give `codex-context.mjs` the reconcile semantics. `parseRulesToml` still returns `null` on any mismatch — missing, unknown and duplicate alike — and the hook still fails closed with `invalid-rules`, so reconciliation is **Claude-only** and the constraint as written above is unsatisfied. Recorded rather than edited away: what this plan originally required is part of the story, and the deferral was deliberate. The gap is tracked as [TRL-30](https://linear.app/kodhama/issue/TRL-30); see `decision-0083` §1 and its open questions.
 - **Provenance format, exact:** `  # quarantined <YYYY-MM-DD>: not in <payload-stamp>. If a newer Trellis ships this slug, run \`claude plugin update trellis@kodhama\` and uncomment.`
 - **Run after every change:** `cd cli && go test ./...`
 

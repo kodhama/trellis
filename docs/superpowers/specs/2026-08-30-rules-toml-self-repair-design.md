@@ -131,7 +131,7 @@ this section exists to prevent. Enumerate the matrix as failing tests **before**
 - **Mismatch kinds:** `missing:`, `unknown:`, `duplicate:`, and the **rename** case (missing +
   unknown simultaneously — the shape `staleness.sh:598-603` documents).
 - **File shapes:** absent · complete · partial · `governed = false` · **already-quarantined**.
-- **Hosts:** Claude and Codex, same semantics.
+- **Hosts:** Claude and Codex, same semantics. *(2026-08-30, after the branch shipped: not met — reconciliation is Claude-only, so the matrix below was exercised against `staleness.sh`, and the Codex axis is a single cross-host regression that a Claude-reconciled file still parses. [TRL-30](https://linear.app/kodhama/issue/TRL-30); see the notes at the two parity claims above.)*
 
 Two tests that carry most of the risk:
 
