@@ -101,11 +101,21 @@ before substantive work. So the repair is **announced, not asked**.
 > than merely resemble compliance.
 
 The first two sentences are untouched and still pinned by test — the hook reconciles in memory and
-instructs; the *agent* writes. On the third, this record is explicit rather than quiet: the write is
-agent-mediated, and the consent for it is the adoption act plus the announcement, **because the
-write is non-destructive and self-reversible**. If a repair class ever becomes destructive again,
-D4's clause re-engages and so does the confirm gate. The safety argument is a property of
-quarantine, not a general licence.
+instructs; the *agent* writes. **The third is materially re-read, and is marked rather than
+narrowed in prose.** Consent for a reconciliation write moves from a per-write confirmation to
+**the adoption act plus the session announcement**, because the write is non-destructive and
+self-reversible. A reader of `decision-0070` who was not told that would believe per-write consent
+still governs row repair — the silent divergence `inv-graph-maintenance` and `inv-auditable-archive`
+exist to prevent — and under `decision-0082` the forward pointer is the only mark there is. So
+`decision-0070` carries `superseded_in_part_by: [decision-0077, decision-0083]`, scoped in its
+frontmatter comment to that clause **as it applies to row repair only**; *"the hook never writes"*,
+the announcement, the decline bullet and D1–D3, D5–D7 all stand.
+
+**This was the maintainer's call to make, not the author's** (`decision-0081` — supersession
+authority scales with cost of reversal; a frontmatter line is cheap to reverse, so it is his and it
+is reversible). The agent escalated it rather than deciding it. If a repair class ever becomes
+destructive again, D4's clause re-engages in full and so does the confirm gate: the safety argument
+is a property of quarantine, not a general licence.
 
 **The argument is enforced by construction, not by care.** `TestEveryDeletionInstructionIsGated`
 and `TestEveryDestructiveInstructionIsGated` scan hook messages for destructive verbs and require a
