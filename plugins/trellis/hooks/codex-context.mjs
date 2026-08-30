@@ -448,6 +448,41 @@ function reconcileRows(source, slugs, stamp, today) {
   return { text: `${out.join("\n")}\n`, added: missing.length, quarantined };
 }
 
+// repairMandate is TRL-30 task 3 (decision-0083 host parity): the Claude hook
+// (staleness.sh) does not just reconcile a mismatch in memory, it tells the
+// agent to write the repaired file back and report what changed — this hook
+// used to stop at "computed in memory," delivering the reconciled rows with
+// no instruction attached. Text below is the Claude mandate's substance,
+// host-adjusted (no `claude plugin update ...` remedy: plugins/trellis/
+// README.md says plainly "Codex is not supported yet" with no install/update
+// command of its own, so this uses neutral wording instead of inventing one).
+//
+// Safe to leave ungated (no floor-intent-gate confirmation), for the same
+// reason the Claude mandate is: reconcileRows only ever comments a row out or
+// appends one, so nothing this text instructs the agent to write is
+// destructive. That argument is enforced by construction, not just argued in
+// this comment — cli/plugin_hook_test.go's TestEveryDeletionInstructionIsGated
+// and TestEveryDestructiveInstructionIsGated scan this function's literal
+// strings alongside staleness.sh's own payload assembly, specifically because
+// this is the first place codex-context.mjs puts an agent-facing instruction
+// into the Codex payload. No deletion verb may ever appear here.
+//
+// This hook still never writes .trellis/rules.toml itself (decision-0070 D4,
+// pinned behaviourally by codexReconciledRows in cli/codex_hook_test.go) —
+// the mandate only tells the agent to.
+function repairMandate(stamp, repairSummary) {
+  return (
+    "\n## Rule activation was reconciled this session\n\n" +
+    `This project's .trellis/rules.toml did not match the rules this payload ships (${stamp}). ` +
+    "The rows above are the reconciled set and are what governs this session; the file on disk still differs. " +
+    `Reconciliation: ${repairSummary}.\n\n` +
+    "Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. " +
+    "Nothing is lost by this: a row the payload does not ship is commented out with its reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. " +
+    "Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent. " +
+    "If a quarantined slug is one a newer Trellis release added, the installed plugin may be the stale side; Codex has no supported update command yet, so update the plugin through whatever channel installed it, restart the session, and uncomment the row.\n"
+  );
+}
+
 // The slugs the payload actually ships, read from the same rules.md the Claude
 // hook validates against (staleness.sh's own `want[]` scan uses the identical
 // trailing-backtick anchor). A hardcoded list here could not be repaired by a
@@ -686,14 +721,32 @@ const stamp = version.endsWith("\n") ? version.slice(0, -1) : version;
 // for the false-floor check) is unaffected either way: it already carries only
 // the recognised, first-occurrence rows parseRulesToml collected.
 let effectiveRulesToml = rulesToml;
+// repairMandateText stays "" on the no-mismatch path (below), so a session
+// that reconciled nothing gets no mandate — matching staleness.sh, which only
+// prints its own "## Rule activation was reconciled this session" section
+// when $reconciled is non-empty.
+let repairMandateText = "";
 if (mismatch !== null) {
-  effectiveRulesToml = reconcileRows(rulesToml, slugs, stamp, localToday()).text;
+  const reconciled = reconcileRows(rulesToml, slugs, stamp, localToday());
+  effectiveRulesToml = reconciled.text;
+  // `reconciled.added`/`.quarantined` describe THIS call only, against the
+  // file as it stands right now — never a running total. reconcileRows' row
+  // regex matches only an uncommented `(inv|floor)-... =` line, so an
+  // already-quarantined or already-added row from an earlier session is
+  // invisible to these counters; re-reconciling an already-repaired file
+  // reports 0/0, not yesterday's counts restated on top of today's. Mirrors
+  // staleness.sh's own fix for exactly this defect (staleness.sh:730-740's
+  // "the SPOKEN summary was not" note) — do not derive this from text length
+  // or any other count that could see stale provenance.
+  const repairSummary = `added ${reconciled.added} row(s); quarantined ${reconciled.quarantined} row(s)`;
+  repairMandateText = repairMandate(stamp, repairSummary);
 }
 const context =
   trellis.replace("@rules.md", rules) +
   "\n" +
   effectiveRulesToml +
   (effectiveRulesToml.endsWith("\n") ? "" : "\n") +
+  repairMandateText +
   `Trellis hook loaded installed overlay: ${stamp}\n`;
 
 if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {

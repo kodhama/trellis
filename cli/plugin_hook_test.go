@@ -606,6 +606,64 @@ func ungatedDestructiveMessages(msgs []string) (violations []string, gated int) 
 	return violations, gated
 }
 
+// codexQuotedSpanRe matches one JS-quoted span — single, double, or template
+// literal (backtick) — the JS counterpart of quotedSpanRe for
+// codex-context.mjs. JS template literals delimit with backticks (bash has
+// no such form), so a third alternative is needed here; repairMandate's own
+// text never contains a literal backtick, so this naive (no escape handling)
+// span is exact for that source.
+var codexQuotedSpanRe = regexp.MustCompile("'[^']*'|\"[^\"]*\"|`[^`]*`")
+
+// codexPayloadAssembly returns the JS source of codex-context.mjs's
+// repairMandate(...) function body in body — the Codex-side counterpart to
+// payloadAssembly's shell payload="$( ... )" region. TRL-30 task 3 is the
+// first place codex-context.mjs puts an agent-facing instruction into the
+// Codex payload, so the same "no deletion verb reaches the agent" safety
+// argument staleness.sh's guards already enforce must cover this channel too.
+func codexPayloadAssembly(t *testing.T, body string) string {
+	t.Helper()
+	const marker = "\nfunction repairMandate("
+	start := strings.Index(body, marker)
+	if start < 0 {
+		t.Fatal("repairMandate(...) not found in codex-context.mjs — the scan is broken")
+	}
+	rest := body[start:]
+	end := strings.Index(rest, "\n}\n")
+	if end < 0 {
+		t.Fatal("repairMandate(...) has no closing '}' — the scan is broken")
+	}
+	return rest[:end]
+}
+
+// codexPayloadMessages extracts the literal text of every quoted-string line
+// in block (normally codexPayloadAssembly's output), reconstructed from its
+// quoted spans — the JS counterpart of payloadPrintfMessages. A comment line
+// is skipped; every other line carrying a quoted span is a fragment of the
+// mandate text codex-context.mjs concatenates into the agent's context, so
+// each is scanned as its own message, the same granularity as one bash
+// printf call. An interpolation like `${stamp}` reconstructs literally (as
+// the text "${stamp}"), which is inert for verb-scanning — the same
+// treatment payloadPrintfMessages gives a bash `"$reconciled"` passthrough.
+func codexPayloadMessages(block string) []string {
+	var msgs []string
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "//") {
+			continue
+		}
+		spans := codexQuotedSpanRe.FindAllString(trimmed, -1)
+		if len(spans) == 0 {
+			continue
+		}
+		var sb strings.Builder
+		for _, s := range spans {
+			sb.WriteString(s[1 : len(s)-1])
+		}
+		msgs = append(msgs, sb.String())
+	}
+	return msgs
+}
+
 func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
@@ -647,6 +705,33 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		if !found {
 			t.Fatalf("a payload printf message was computed but never entered the scanned set (msgs) — "+
 				"the payload channel is computed but not wired into this guard's assertions:\n%s", pm)
+		}
+	}
+	// TRL-30 task 3: codex-context.mjs's repairMandate is the Codex counterpart
+	// of the payload="$( ... )" channel above — its own first agent-facing
+	// instruction into the Codex payload. Scanned the same way, wired the same
+	// way, for the same reason: the safety argument for shipping it ungated
+	// only holds if this channel is actually enforced, not merely present.
+	codexBody, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	codexMsgs := codexPayloadMessages(codexPayloadAssembly(t, string(codexBody)))
+	if len(codexMsgs) < 5 {
+		t.Fatalf("found only %d codex payload messages — the scan is broken, and a guard that reads nothing passes", len(codexMsgs))
+	}
+	msgs = append(msgs, codexMsgs...)
+	for _, cm := range codexMsgs {
+		found := false
+		for _, m := range msgs {
+			if m == cm {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("a codex payload message was computed but never entered the scanned set (msgs) — "+
+				"the codex payload channel is computed but not wired into this guard's assertions:\n%s", cm)
 		}
 	}
 	violations, gated := ungatedDestructiveMessages(msgs)
@@ -711,6 +796,32 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 				"the payload channel is not actually being scanned, only its message count is being checked")
 		}
 	})
+
+	// The Codex counterpart of the subtest above: proves codexPayloadAssembly ->
+	// codexPayloadMessages -> ungatedDestructiveMessages actually catches an
+	// injected ungated deletion, rather than merely counting codex-context.mjs's
+	// messages without scanning them.
+	t.Run("the codex payload channel is actually enforced, not merely counted", func(t *testing.T) {
+		const marker = `"Write .trellis/rules.toml with exactly the rows shown above`
+		mutated := strings.Replace(string(codexBody), marker,
+			`"Delete the unknown rows now, then write .trellis/rules.toml with exactly the rows shown above`, 1)
+		if mutated == string(codexBody) {
+			t.Fatal("premise: the mandate string to mutate was not found in codex-context.mjs — the case would prove nothing")
+		}
+		mutatedMsgs := codexPayloadMessages(codexPayloadAssembly(t, mutated))
+		mutatedViolations, _ := ungatedDestructiveMessages(mutatedMsgs)
+		found := false
+		for _, v := range mutatedViolations {
+			if strings.Contains(v, "Delete the unknown rows now") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("an ungated deletion instruction injected into the codex mandate channel was not caught — " +
+				"the codex payload channel is not actually being scanned, only its message count is being checked")
+		}
+	})
 }
 
 // TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
@@ -762,6 +873,17 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 		t.Fatalf("found only %d payload printf messages — the scan is broken, and a guard that reads nothing passes", len(payloadMsgs))
 	}
 	msgs = append(msgs, payloadMsgs...)
+	// TRL-30 task 3: scan codex-context.mjs's repairMandate the same way — see
+	// the sibling wiring in TestEveryDestructiveInstructionIsGated for why.
+	codexBody, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	codexMsgs := codexPayloadMessages(codexPayloadAssembly(t, string(codexBody)))
+	if len(codexMsgs) < 5 {
+		t.Fatalf("found only %d codex payload messages — the scan is broken, and a guard that reads nothing passes", len(codexMsgs))
+	}
+	msgs = append(msgs, codexMsgs...)
 	gated := 0
 	for _, msg := range msgs {
 		if !strings.Contains(msg, "delete") {
@@ -796,7 +918,12 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 			t.Errorf("the repair mandate's payload printf text must never instruct a deletion (the reconciliation is additive/commenting-only, which is what keeps it ungated):\n%s", msg)
 		}
 	}
-	t.Logf("checked %d deletion-instructing messages of %d (emit + payload printf)", gated, len(msgs))
+	for _, msg := range codexMsgs {
+		if strings.Contains(strings.ToLower(msg), "delete") {
+			t.Errorf("the codex repair mandate text must never instruct a deletion (the reconciliation is additive/commenting-only, which is what keeps it ungated):\n%s", msg)
+		}
+	}
+	t.Logf("checked %d deletion-instructing messages of %d (emit + payload printf + codex payload)", gated, len(msgs))
 }
 
 // TestRepairRemedyCoversEveryMismatchKind and the opt-out shape: two Codex P2s

@@ -747,6 +747,44 @@ func TestCodexReconcilesInsteadOfFailingClosed(t *testing.T) {
 	})
 }
 
+// TestCodexMandatesAndReportsTheRepair pins TRL-30 task 3 (decision-0083 host
+// parity): the repair is applied and REPORTED, not proposed and gated — safe
+// only because quarantine loses nothing. What must never be lost is the
+// loudness. Uses writeCodexPluginRoot/newGitProject (this file's actual
+// helpers), not the task brief's codexPluginRoot, which does not exist here.
+func TestCodexMandatesAndReportsTheRepair(t *testing.T) {
+	pluginRoot := writeCodexPluginRoot(t)
+	files := payloadFiles()
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	short := strings.Replace(files["rules-a.toml"],
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	if short == files["rules-a.toml"] {
+		t.Fatal("premise: fixture removed nothing — the case would prove nothing")
+	}
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"),
+		[]byte(short), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatal("no context injected")
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+
+	if !strings.Contains(ctx, "Write .trellis/rules.toml") {
+		t.Errorf("the mandate must instruct the write:\n%s", ctx)
+	}
+	if !strings.Contains(ctx, "added 1 row(s)") {
+		t.Errorf("the repair must be reported per row:\n%s", ctx)
+	}
+	for _, verb := range []string{"delete", "remove", "drop"} {
+		if strings.Contains(strings.ToLower(ctx), verb+" those rows") {
+			t.Errorf("no deletion instruction may reach the agent, found %q:\n%s", verb, ctx)
+		}
+	}
+}
+
 // Fix round 1, CRITICAL. The sentinel gate a few lines above where slugs is
 // derived (rules.split(SENTINEL).length - 1 !== 1 && rules.endsWith(...))
 // passes any rules.md carrying exactly one sentinel — it says nothing about
@@ -1259,23 +1297,24 @@ func codexReconciledRows(t *testing.T, toml string) string {
 // HookSpecificOutput.AdditionalContext is already decoded — real newlines,
 // no nudgeContext needed here).
 //
-// Unlike staleness.sh, codex-context.mjs prints no separate "## Rule
-// activation was reconciled this session" mandate section: the
-// quarantine/added-row provenance lives entirely as comments INSIDE the row
-// block the hook injects (see reconcileRows in codex-context.mjs), and the
-// context assembly (codex-context.mjs's `const context = ...`) is just
-// [prose with rules.md expanded] + effectiveRulesToml + the fixed
-// "Trellis hook loaded installed overlay: <stamp>" footer. So the block sits
-// between the prose's fixed tail — invariantsTrigger (apply.go), followed by
-// the one blank line the assembly inserts before the row text — and that
-// fixed footer string. This is the whole block whether or not this session
-// actually reconciled anything, which is what makes it comparable to
-// reconciledRowsFromContext's own "reconciled, or not — either boundary"
-// behaviour on the Claude side.
+// TRL-30 task 3 gave codex-context.mjs its own "## Rule activation was
+// reconciled this session" mandate section, appended after the row block and
+// before the fixed "Trellis hook loaded installed overlay: <stamp>" footer —
+// mirroring reconciledRowsFromContext's own two-way stop on the Claude side
+// (plugin_hook_test.go:2697, "apply regardless of their row\.\n\n(.*?)\n\n
+// (?:## Rule activation...|Delivered by...)"). Before that task the row block
+// ran straight into the footer with nothing between them, so a single
+// unconditional stop at the footer was correct; left unconditional now, it
+// would swallow the mandate text into the "row block" this function returns,
+// and TestBothHostsReconcileIdentically would compare Claude's bare rows
+// against Codex's rows-plus-mandate — a drift this extractor exists to catch,
+// not cause. The row block is the same whether or not this session
+// reconciled anything (the mandate section only exists on the reconciling
+// path, same asymmetry reconciledRowsFromContext already handles on Claude).
 func codexReconciledRowsFromContext(t *testing.T, context string) string {
 	t.Helper()
-	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(invariantsTrigger) +
-		`\n\n(.*?)\nTrellis hook loaded installed overlay: `).
+	m := regexp.MustCompile(`(?s)`+regexp.QuoteMeta(invariantsTrigger)+
+		`\n\n(.*?)(?:\n\n## Rule activation was reconciled this session|\nTrellis hook loaded installed overlay: )`).
 		FindStringSubmatch(context)
 	if m == nil {
 		t.Fatalf("could not find the row block in the codex hook's decoded context:\n%s", context)
