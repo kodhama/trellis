@@ -2322,7 +2322,20 @@ func rulesTomlRun(t *testing.T) func(*testing.T, string) string {
 		cmd := exec.Command(hook)
 		cmd.Dir = proj
 		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
-		out, _ := cmd.CombinedOutput()
+		out, err := cmd.CombinedOutput()
+		// A hook must never fail the session — every branch of this hook exits
+		// 0, loud message or not, because a non-zero SessionStart hook is a
+		// broken session rather than a governed one. That was true of every
+		// path here and verified only by READING the source: this runner
+		// discarded the exit code and no test in this file asserted one, so a
+		// branch that started exiting non-zero (a stray `set -e` interaction, a
+		// failing command at the end of a new branch) would have gone green.
+		// Pinned behaviourally instead, across every fixture that runs through
+		// this helper: missing rows, unknown rows, duplicates, an empty file
+		// and the broken-payload branch.
+		if err != nil {
+			t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); output:\n%s", err, out)
+		}
 		return string(out)
 	}
 }
