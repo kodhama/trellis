@@ -10,7 +10,24 @@ import fs from "node:fs";
 import path from "node:path";
 
 const SENTINEL = "<!-- trellis:rules-loaded -->";
-const MAX_CONTEXT_BYTES = 8000;
+// 8000 (this constant's prior value) had no recorded rationale — it entered in
+// commit 3490555 with none, and "8000" appears nowhere in decisions/, research/
+// or core/. Investigated for Ruling 6 (TRL-20 task 3, fix round 1): Codex's own
+// default per-hook-message limit is documented at
+// https://learn.chatgpt.com/docs/hooks as roughly 2,500 TOKENS, not bytes, and
+// Codex does not reject over that limit — it spills gracefully, saving the full
+// text under `<temp_dir>/hook_outputs/<session_id>/<uuid>.txt` and giving the
+// model a head-and-tail preview plus the saved-file path (the setting is
+// configurable per handler via `additionalContextLimit`, and the installed
+// codex-cli binary corroborates the setting exists). So the OLD 8000-byte cap
+// measured the wrong unit against a limit that does not even fail closed: at
+// ~4 bytes/token, 8000 B is ~2000 tokens, comfortably under Codex's 2500 —
+// this hook's own "context-over-budget" refusal was a SELF-INFLICTED blackout,
+// strictly worse than what Codex would have done on its own (spill and point at
+// the file, not lose the rules). 9500 B is ~2375 tokens: still under Codex's
+// ~10,000-byte-equivalent default, so this hook still never triggers Codex's
+// own spill path either — it only stops refusing at a limit nobody imposed.
+const MAX_CONTEXT_BYTES = 9500;
 // The project always owns its rows. The three payload files come from the
 // vendored overlay when one exists, and from the plugin's own payload when it
 // does not (decision-0065: the plugin path vendors nothing). Vendored projects
@@ -461,7 +478,17 @@ if (
 // whichever `sources` picked), not a hardcoded list — this is the row set a
 // payload upgrade CAN repair, and it is what the row-count/row-membership
 // checks inside parseRulesToml validate against.
-const slugs = slugsFromRules(rules);
+//
+// De-duplicated: parseRulesToml checks membership through a Set (slugSet) but
+// checks completeness against slugs.length/slugs.some, so a rules.md that ever
+// tagged one slug twice would make rows.size !== slugs.length permanently true
+// — every Codex project would read .trellis/rules.toml: invalid-rules while
+// Claude (whose want[] is already a set) kept governing normally from the same
+// file. Not reachable with the current payload (every tag occurs exactly
+// once), but it is the same blame-the-consumer mislabel this task exists to
+// close, so the array is deduplicated at the source rather than trusted to
+// stay duplicate-free forever.
+const slugs = [...new Set(slugsFromRules(rules))];
 const rows = parseRulesToml(rulesToml, slugs);
 if (rows === null) {
   fail(PROJECT_CONFIG, "invalid-rules");

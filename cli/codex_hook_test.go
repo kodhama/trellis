@@ -620,39 +620,72 @@ func TestCodexHookHonoursGovernedFalse(t *testing.T) {
 	}
 }
 
-// TestReconciledCodexPayloadFitsContextBudget pins Ruling 6 (TRL-20 task 3):
-// the worst case a reconciliation can produce — a hand-written partial file
-// (just strictness, no rows at all), firm posture, all sixteen rows missing —
-// must still fit inside Codex's own MAX_CONTEXT_BYTES once combined with the
-// REAL payload (reference/trellis-a.md + reference/rules.md, not the minimal
-// placeholders every other reconciliation test uses — see
-// TestReconciledRowsParseForCodexToo's doc comment for why those stay
-// minimal). Measured before this fix: trellis-a.md (670 bytes) + rules.md
-// (6012 bytes) + a normal firm rules.toml (1142 bytes) already left only
-// about 176 bytes of headroom, and the reconciler's old per-row provenance
-// comment (repeated on all sixteen added rows) blew past it — a reconciled
-// Codex session would hit its own budget and inject NOTHING, reintroducing on
-// Codex exactly the blackout this whole change removes on Claude. The fix
-// (staleness.sh) states an added row's provenance once, in a header above the
-// block, instead of once per row.
+// TestReconciledCodexPayloadFitsContextBudget pins Ruling 6 (TRL-20 task 3,
+// fix round 1): reconciled payloads must still fit inside Codex's own
+// MAX_CONTEXT_BYTES once combined with the REAL payload
+// (reference/trellis-a.md + reference/rules.md, not the minimal placeholders
+// every other reconciliation test uses — see TestReconciledRowsParseForCodexToo's
+// doc comment for why those stay minimal).
+//
+// The cap moved from 8000 to 9500 in fix round 1: 8000 had no recorded
+// rationale, and review established Codex's actual default is ~2500 TOKENS
+// (documented at https://learn.chatgpt.com/docs/hooks), not bytes, and Codex
+// does not even reject over that limit — it spills to a file and gives the
+// model a preview. 8000 B measured the wrong unit against a limit that fails
+// open, not closed; this hook's refusal at 8000 was self-inflicted. See
+// codex-context.mjs's MAX_CONTEXT_BYTES comment for the full accounting.
+//
+// Two cases, both real reachability review found, not just the one the
+// original round named:
+//   - the worst case named in the original ruling: a hand-written partial
+//     file (just strictness, no rows at all), firm posture, all sixteen rows
+//     missing — reconciliation adds all sixteen.
+//   - the case round-1 review actually found reachable at the OLD 8000 cap:
+//     one quarantined row on an otherwise untouched firm install (baseline
+//     7876 B, 124 B headroom at the old cap; one quarantine note adds ~191 B
+//     — enough on its own to blow an 8000 B budget, with no missing rows at
+//     all).
 func TestReconciledCodexPayloadFitsContextBudget(t *testing.T) {
-	run := rulesTomlRun(t)
-	out := run(t, "strictness  = \"firm\"\n")
-	if !strings.Contains(out, "added 16 row(s)") {
-		t.Fatalf("premise: all sixteen rows must be missing at firm posture, or this is not the worst case Ruling 6 names:\n%s", out)
-	}
-	context := nudgeContext(t, out)
-	reconciled := reconciledRowsFromContext(t, context)
+	t.Run("worst case: hand-written partial file, firm posture, all sixteen rows missing", func(t *testing.T) {
+		run := rulesTomlRun(t)
+		out := run(t, "strictness  = \"firm\"\n")
+		if !strings.Contains(out, "added 16 row(s)") {
+			t.Fatalf("premise: all sixteen rows must be missing at firm posture, or this is not the worst case Ruling 6 names:\n%s", out)
+		}
+		context := nudgeContext(t, out)
+		assertReconciledFitsCodexBudget(t, reconciledRowsFromContext(t, context))
+	})
 
+	t.Run("one quarantined row on an otherwise untouched firm install", func(t *testing.T) {
+		run := rulesTomlRun(t)
+		// The real, unmodified firm preset plus exactly one row it does not
+		// recognize — every real row survives untouched (added 0), and the
+		// extra row is the only thing quarantined (quarantined 1).
+		withExtraRow := payloadFiles()["rules-a.toml"] + "inv-bogus-extra-rule = { active = true }\n"
+		out := run(t, withExtraRow)
+		if !strings.Contains(out, "added 0 row(s)") || !strings.Contains(out, "quarantined 1 row(s)") {
+			t.Fatalf("premise: exactly one unrecognized row on an otherwise-untouched firm install, or this is not the case round-1 review found reachable:\n%s", out)
+		}
+		context := nudgeContext(t, out)
+		assertReconciledFitsCodexBudget(t, reconciledRowsFromContext(t, context))
+	})
+}
+
+// assertReconciledFitsCodexBudget writes reconciled — what an agent applying
+// the repair actually writes to .trellis/rules.toml — alongside the REAL
+// payload (not minimal placeholders: the byte budget is exactly what these
+// cases exist to prove) and requires the real Codex hook to govern from it
+// within MAX_CONTEXT_BYTES. The 9500 literal is deliberately not read from
+// codex-context.mjs's own constant — it must reflect the value review
+// actually intended, not silently track whatever the source happens to say.
+func assertReconciledFitsCodexBudget(t *testing.T, reconciled string) {
+	t.Helper()
 	project := newGitProject(t)
 	internal := filepath.Join(project, ".trellis", "internal")
 	if err := os.MkdirAll(internal, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	files := payloadFiles()
-	// The REAL payload, not minimal placeholders: the byte budget is exactly
-	// what this test exists to prove, so the sizes must be the actual shipped
-	// content, as a real installed project would see it.
 	for rel, content := range map[string]string{
 		"trellis.md": files["trellis-a.md"],
 		"rules.md":   files["rules.md"],
@@ -662,17 +695,52 @@ func TestReconciledCodexPayloadFitsContextBudget(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// What an agent applying the repair actually writes to disk.
 	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(reconciled), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
 	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
-		t.Fatalf("the worst-case reconciled payload must still fit and govern under Codex, not fail closed: %s", raw)
+		t.Fatalf("the reconciled payload must still fit and govern under Codex, not fail closed: %s", raw)
 	}
-	if n := len([]byte(got.HookSpecificOutput.AdditionalContext)); n > 8000 {
-		t.Errorf("reconciled worst case is %d bytes, exceeds Codex MAX_CONTEXT_BYTES (8000) — Ruling 6 is unresolved", n)
+	if n := len([]byte(got.HookSpecificOutput.AdditionalContext)); n > 9500 {
+		t.Errorf("reconciled payload is %d bytes, exceeds Codex MAX_CONTEXT_BYTES (9500) — Ruling 6 fix round 1 is unresolved", n)
+	}
+}
+
+// TestCodexToleratesADuplicateSlugTagInRulesMd — round-1 fix 2. slugSet
+// (membership, inside parseRulesToml) already treated the derived slugs as a
+// set, but the completeness check (slugs.length / slugs.some) did not, so a
+// rules.md that ever tagged one slug twice made rows.size !== slugs.length
+// permanently true: every Codex project would read
+// .trellis/rules.toml: invalid-rules while Claude — whose own want[] in
+// staleness.sh is already a set — kept governing normally from the identical
+// file. Not reachable with the current payload (every one of the sixteen
+// tags occurs exactly once); this guards the shape directly, by duplicating
+// one tag line in the payload rules.md itself, so a future catalog edit that
+// accidentally reused a slug tag does not turn into the same
+// blame-the-consumer mislabel this whole task exists to close.
+func TestCodexToleratesADuplicateSlugTagInRulesMd(t *testing.T) {
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	rulesMdPath := filepath.Join(project, ".trellis", "internal", "rules.md")
+	original := readFileT(t, rulesMdPath)
+	tagLine := "`inv-minimal-first`\n"
+	if !strings.Contains(original, tagLine) {
+		t.Fatalf("premise: fixture rules.md must carry the tag line this test duplicates: %q", tagLine)
+	}
+	duplicated := strings.Replace(original, tagLine, tagLine+tagLine, 1)
+	if strings.Count(duplicated, tagLine) != 2 {
+		t.Fatalf("premise: the duplication must actually produce two occurrences of the tag, got:\n%s", duplicated)
+	}
+	if err := os.WriteFile(rulesMdPath, []byte(duplicated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+		t.Fatalf("a duplicated slug tag in rules.md must not fail every row closed: %s", raw)
 	}
 }
 
