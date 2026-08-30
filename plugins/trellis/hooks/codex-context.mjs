@@ -556,13 +556,27 @@ function repairMandate(mismatchText, repairSummary, degraded) {
     ? "Provenance was omitted above to fit the context budget and remains in full in the file this mandate instructs writing next. " +
       "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above, so the file matches what governs. "
     : "Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. ";
+  // The no-loss sentence has to describe what the reader can SEE. On the
+  // degraded path the rows above carry no reason and no date — saying they do
+  // would contradict the very lines under it and invite the agent to copy the
+  // abbreviated rows back as if they were already complete. Same guarantee,
+  // stated as the property of the file being written rather than of the rows
+  // shown. Note also that `today` reaches the degraded context nowhere at all
+  // (the date lives only inside quarantineNote/addedHeader, which this path
+  // drops): the agent supplies its own date for the notes it writes. That is
+  // deliberate and harmless — the notes are comments, never re-parsed by
+  // either hook, so a date that differs by a day changes no decision and
+  // costs no idempotency; spending budget to carry the date back would.
+  const noLoss = degraded
+    ? "Nothing is lost by this: in the file you write, a row the payload does not ship keeps its line, commented out with its reason and the date, and every value the project chose is preserved verbatim. "
+    : "Nothing is lost by this: a row the payload does not ship is commented out with its reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. ";
   return (
     "\n## Rule activation was reconciled this session\n\n" +
     `This project's .trellis/rules.toml did not match the rules this payload ships (${mismatchText}). ` +
     "The rows above are the reconciled set and are what governs this session; the file on disk still differs. " +
     `Reconciliation: ${repairSummary}.\n\n` +
     writeInstruction +
-    "Nothing is lost by this: a row the payload does not ship is commented out with its reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. " +
+    noLoss +
     "Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent.\n"
   );
 }
@@ -856,11 +870,24 @@ if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
   // TRL-29: refusing outright here used to be a self-inflicted blackout —
   // Codex's own documented behaviour on oversized hook output is to spill,
   // not reject (MAX_CONTEXT_BYTES' own comment, above), so failing closed was
-  // strictly worse than the host's own degradation. Only reachable when a
-  // reconciliation actually ran (mismatch !== null): with no mismatch,
-  // effectiveRulesToml is the project's file verbatim and there is no
-  // provenance in it to give way, so the bloat is in the payload prose or the
-  // project's own file and the hard refusal below is the only option.
+  // strictly worse than the host's own degradation.
+  //
+  // KNOWN LIMITATION — the degradation is ONE-SHOT, and this gate is why.
+  // It runs only when a reconciliation ran this session (mismatch !== null).
+  // The session that follows the repair has NO mismatch: the file the mandate
+  // asked for already carries every row plus the persisted provenance
+  // comments, so this branch is skipped and the hard refusal below fires
+  // instead — permanently, because nothing about that file changes again.
+  // Measured against the real firm payload (rules-a.toml + N foreign rows):
+  // at N >= 9 session 1 degrades and delivers (9129 B), the file the mandate
+  // produces is 2816 B, and session 2 refuses with `context-over-budget` and
+  // injects nothing, while staleness.sh governs happily from the identical
+  // file (9833 B delivered). A 2.8 KB file Trellis itself authored is not
+  // pathological, and its quarantine comments are exactly the provenance
+  // there would be left to drop — the gate, not a shortage of material, is
+  // what stops it. Degrading on the no-mismatch path is a behaviour change
+  // with its own tests, so it is NOT done here; tracked as TRL-29 (reopened
+  // with this measurement).
   if (mismatch !== null) {
     const bare = reconcileRows(rulesToml, slugs, stamp, today, false);
     const repairSummary = `added ${bare.added} row(s); quarantined ${bare.quarantined} row(s)`;
@@ -868,12 +895,16 @@ if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
     context = buildContext(bare.text, repairMandateText);
   }
   if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
-    // A runaway guard, not a governance decision (unlike the refusal this
-    // task removes): reconcileRows' own output is small even at sixteen
-    // quarantined and sixteen added rows (Ruling 6, TRL-20 task 3), so
-    // reaching here means the payload's prose or the project's own
-    // .trellis/rules.toml is pathologically large on its own — nothing left
-    // to degrade, so this is the last resort rather than the default.
+    // The last resort rather than the default — but NOT, as this comment
+    // once claimed, a state with "nothing left to degrade". Two ways here:
+    // (a) after a degraded reassembly that still did not fit, where the claim
+    // holds — reconcileRows' own output is small even at sixteen quarantined
+    // and sixteen added rows (Ruling 6, TRL-20 task 3); and (b) the
+    // no-mismatch path, where the branch above was skipped and the file's own
+    // persisted provenance was never offered up. (b) is reachable from a file
+    // Trellis itself told the agent to write — see the gate's comment above —
+    // and is a real, permanent blackout on a project Claude still governs.
+    // TRL-29 (reopened) carries the fix.
     fail("assembled-context", "context-over-budget");
     process.exit(0);
   }

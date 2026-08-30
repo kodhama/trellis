@@ -184,6 +184,25 @@ Neither was findable by reading either implementation alone: both are properties
 That is the case for the guard — and the CRLF one is also the case for its coverage, since it took
 a human comparison to find what the fixture set did not yet reach.
 
+**The byte-identity claim is scoped, not absolute — one divergence class survives, and it is now
+covered.** This qualifies both the sentence above and the same claim in `decision-0083`'s
+`superseded_in_part_by` comment: byte identity holds **on the full-provenance path**, for LF and
+CRLF input. **CR-only** input (classic-Mac line endings) is the exception. Both reconcilers read
+such a file as a single line — awk's `RS` is `"\n"`, the JS splits on `/\r?\n/` — so both find no
+rows, both classify all sixteen slugs as missing, and both append all sixteen; **both hosts deliver
+and govern**. They then differ in two measured ways: `staleness.sh:665`'s `sub(/\r$/, "")` strips
+the record's trailing CR while the JS splitter keeps it, and the sixteen-row append assembles to
+9481 B, over `MAX_CONTEXT_BYTES`, so Codex silently takes §6's provenance-free path and omits the
+`# added 16 row(s) below on <date>` header Claude writes. What diverges is the *text of the repair*,
+not the governing set.
+
+`TestCROnlyLineEndingsAreTheOneKnownDivergence` pins both differences, so closing either is a
+deliberate act with a red test to update rather than a silent change. **A second, sharper guard was
+added with it:** `codexReconciledRows` now asserts the Codex side stayed on the full-provenance path
+before any byte comparison. Without it the first fixture to cross 9500 B — the `rename` fixture
+already assembles to 8939 B, 561 B of headroom — would have failed with *"the two hosts reconciled
+the same file differently"*, sending the next reader after a parity bug that is not there.
+
 **The expiry is stated now rather than discovered later** (`decision-0074`). Two implementations
 held in step by a byte-identity test is the right shape at two hosts: each hook is idiomatic in its
 own runtime, and the guard is cheap and total. **At a third host it stops being right** — three
@@ -213,10 +232,36 @@ session's context gave up**. That property is the whole point of the branch and 
 directly: forcing the flag back to `false` makes the mandate say *"write exactly the rows shown
 above"* and the test goes red.
 
-A hard refusal survives underneath as a **runaway guard**, not a governance decision: reconciler
-output is small even at sixteen added and sixteen quarantined rows, so reaching it means the
-payload's prose or the project's own file is pathologically large and there is nothing left to
-degrade.
+A hard refusal survives underneath. **An earlier draft of this record called it a runaway guard
+that could only be reached by a pathologically large file, with "nothing left to degrade." That was
+false, and it concealed the limitation stated below.**
+
+**The degradation is one-shot, because it is gated on `mismatch !== null`.** It runs only in a
+session that had something to reconcile. The session *after* the repair has no mismatch — the file
+the mandate asked for already carries every row plus the persisted quarantine comments — so the
+branch is skipped and the refusal fires instead. Nothing about that file changes again, so the
+refusal is **permanent**.
+
+Measured against the real firm payload (`rules-a.toml` plus N foreign rows), reproduced
+independently while fixing this record:
+
+| N foreign rows | session 1 | the file the mandate produces | session 2 |
+|---|---|---|---|
+| 5–8 | degrades, delivers | 2.1–2.6 KB | 8806–9364 B — delivered |
+| **≥ 9** | degrades, delivers (9129 B) | **2816 B** | **refuses, `context-over-budget`, nothing injected** |
+
+At N = 9 `staleness.sh` delivers 9833 B of context from the identical 2816 B file and governs
+normally. **So applying this branch's own mandate can black Codex out for good on a project Claude
+still governs** — and a 2.8 KB file Trellis itself told the agent to write is not pathological. The
+persisted provenance comments in it are exactly what would be left to degrade; the gate, not a
+shortage of material, is what stops it.
+
+**Not fixed here, and tracked rather than left open.** Degrading on the no-mismatch path is a
+behaviour change that needs its own tests and its own reviewable diff — the same argument that kept
+`block-codex.md` out of this commit. [TRL-29](https://linear.app/kodhama/issue/TRL-29) is **reopened
+with this measurement** and is the named consumer that will re-present it (`decision-0078`). The
+claim is corrected here, before merge, rather than superseded afterwards, because `decisions/` is
+append-only and this record is not yet on `main`.
 
 ### 7. What this supersedes
 
@@ -284,6 +329,12 @@ changed.
   with no address**. It now has one: **TRL-31** (Medium, Bug, related to TRL-30 and TRL-20) is the
   named consumer that will re-present it.
 
+- **The over-budget degradation is one-shot and can strand a Codex project permanently** —
+  §6 states the measurement and the mechanism. Reopened as
+  [TRL-29](https://linear.app/kodhama/issue/TRL-29) rather than carried as an open question, for the
+  same reason `block-codex.md` became TRL-31: a deferral with no address is the failure
+  `inv-no-orphan-followups` exists to catch.
+
 ## What execution found that the design did not
 
 ### A recurring defect class: fixtures that cannot produce the condition they name
@@ -330,16 +381,25 @@ branch showed a stale pass; re-run with `-count=1` it went correctly red.
 
 **Consequence: any mutation verified without `-count=1` is not a result.** It may show the mutation
 caught when it was not, or harmless when it was not. Every mutation from that point on this branch
-was re-run with `-count=1`. The durable fix — making the hook files cache inputs so the toolchain
-enforces this instead of the reviewer remembering it — is **not implemented here** and is named as
-an open question rather than left as a habit.
+was re-run with `-count=1`.
+
+**The flag moved out of the reviewer's memory and into the project's own instructions.**
+`.github/workflows/cli-ci.yml`'s test step and `AGENTS.md`'s documented command both carry
+`-count=1`, and `TestCliCIProvidesNode20BeforeGoTests` asserts the workflow still does — so anyone
+following the project's own instructions is safe by default, and dropping the flag is a red test.
+CI itself was never exposed (`cache: false`, and a fresh runner has nothing to restore); the hazard
+is entirely local, which is exactly why the *documented* command is the right place to close it.
+The durable fix — making the hook files cache inputs so the toolchain enforces this rather than the
+command line — is still **not implemented here**.
 
 ## Open questions
 
-- **Should the hook files be made `go test` cache inputs?** The hazard above is currently mitigated
-  by discipline (`-count=1`), which is exactly the shape that decays. A `//go:embed` of the hook
-  sources, or a checksum fixture the tests read, would make the toolchain enforce it. Not attempted
-  here; no consumer named yet, so under `decision-0078` this is a question, not a follow-up.
+- **Should the hook files be made `go test` cache inputs?** The hazard above is now mitigated by
+  the *default command* rather than by memory (`-count=1` in the workflow and in `AGENTS.md`), which
+  is better than discipline but still not the toolchain enforcing it — a run typed by hand without
+  the flag is still a lie. A `//go:embed` of the hook sources, or a checksum fixture the tests read,
+  would close it properly. Not attempted here; no consumer named yet, so under `decision-0078` this
+  is a question, not a follow-up.
 - **When does the third host arrive, and does anything watch for it?** §5's expiry is stated but
   nothing enforces it — the guard will keep passing at three implementations while quietly being
   the wrong shape.
@@ -368,6 +428,13 @@ stayed fatal, rather than reporting only what was gained.
 what `decision-0083` loses and what it keeps, §5 states the guard's expiry before anyone hits it,
 and the surface this change does **not** fix (`block-codex.md`) is **filed as TRL-31** rather than
 carried forward as a second record's unowned open question.
+
+**A false claim this record itself made is corrected in place, before merge, and named as false.**
+§6's original *"nothing left to degrade"* was measurably wrong and concealed a permanent-blackout
+path. `decisions/` is append-only once merged, so the cheap moment to fix it was while this record
+was still unmerged; the correction says what the earlier draft claimed rather than quietly
+substituting better prose, and the limitation now has a tracked consumer (TRL-29) instead of a
+reassuring sentence.
 
 **Where the plan and execution disagree, execution is recorded.** The brief said keep
 `!rulesSectionSeen` fatal; §2 records that this was wrong and why. The brief's own fixtures produced
