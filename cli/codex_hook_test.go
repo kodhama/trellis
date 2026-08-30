@@ -1127,3 +1127,110 @@ func TestCodexRejectsAnEmptyDerivedSlugSet(t *testing.T) {
 		t.Errorf("failure mismatch\n got: %s\nwant: %s", raw, want)
 	}
 }
+// Two implementations of one ratified semantic (decision-0083's table) are
+// only safe with a guard that makes drift a test failure rather than a field
+// report. This is decision-0028's "a guard per pair", applied to the
+// reconciler: both hosts reconcile the SAME fixture and their reconciled row
+// blocks must be byte-identical.
+func TestBothHostsReconcileIdentically(t *testing.T) {
+	files := payloadFiles()
+	base := files["rules-a.toml"]
+
+	fixtures := map[string]string{
+		"rename (missing + unknown together)": strings.Replace(base,
+			"inv-minimal-first         = { active = true }",
+			"inv-renamed-first         = { active = true }", 1),
+		"indented [rules] table": strings.Replace(base, "[rules]", "  [rules]", 1),
+		"already quarantined": base +
+			"# inv-gone = { active = true }  # quarantined 2026-01-01: not in payload@old\n",
+		"duplicate with a differing value": base +
+			"inv-minimal-first         = { active = false }\n",
+		"no [rules] table at all": "strictness  = \"firm\"\n",
+		"empty file":              "",
+		// The brief's literal `strings.Replace(base, "strictness  = \"firm\"\n",
+		// "", 1)` is a silent no-op: the real line carries a trailing comment
+		// ("strictness  = \"firm\"  # firm (a·conductor) | ..."), so that exact
+		// substring never occurs and Replace returns base unchanged, proving
+		// nothing. stripTOMLLine strips the whole logical line by key and
+		// fails loudly if it removed nothing.
+		"missing strictness": stripTOMLLine(t, base, "strictness"),
+	}
+
+	for name, toml := range fixtures {
+		t.Run(name, func(t *testing.T) {
+			claude := claudeReconciledRows(t, toml)
+			codex := codexReconciledRows(t, toml)
+			if claude != codex {
+				t.Errorf("the two hosts reconciled the same file differently — "+
+					"decision-0083's table must apply identically to both\n"+
+					"claude:\n%s\ncodex:\n%s", claude, codex)
+			}
+		})
+	}
+}
+
+// claudeReconciledRows runs staleness.sh against `toml` and returns the
+// reconciled row block it injected. rulesTomlRun returns raw hook stdout
+// (JSON with newlines escaped), and reconciledRowsFromContext's regex matches
+// against real newline bytes — so the raw output must go through nudgeContext
+// first, exactly as every other caller of reconciledRowsFromContext does.
+func claudeReconciledRows(t *testing.T, toml string) string {
+	t.Helper()
+	out := rulesTomlRun(t)(t, toml)
+	context := nudgeContext(t, out)
+	return reconciledRowsFromContext(t, context)
+}
+
+// codexReconciledRows runs codex-context.mjs against the same fixture and
+// returns the same block, so the two can be compared byte for byte.
+// writeCodexPluginRoot (not the brief's nonexistent codexPluginRoot) only
+// needs a syntactically valid .codex-plugin/plugin.json here: writeValidCodexOverlay
+// puts a full vendored overlay in `project`, so codex-context.mjs reads the
+// project's own .trellis/internal/* and never touches pluginRoot/reference.
+// The project must sit under a git boundary (nearestGitBoundary) or the hook
+// fails at project-root-not-found before ever reaching the reconciler — the
+// brief's plain t.TempDir() has no such boundary, so newGitProject is used
+// instead.
+func codexReconciledRows(t *testing.T, toml string) string {
+	t.Helper()
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"),
+		[]byte(toml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("codex injected nothing for this fixture — it must reconcile, not refuse")
+	}
+	return codexReconciledRowsFromContext(t, got.HookSpecificOutput.AdditionalContext)
+}
+
+// codexReconciledRowsFromContext extracts the reconciled `.trellis/rules.toml`
+// text from a decoded Codex additionalContext (runCodexHook's
+// HookSpecificOutput.AdditionalContext is already decoded — real newlines,
+// no nudgeContext needed here).
+//
+// Unlike staleness.sh, codex-context.mjs prints no separate "## Rule
+// activation was reconciled this session" mandate section: the
+// quarantine/added-row provenance lives entirely as comments INSIDE the row
+// block the hook injects (see reconcileRows in codex-context.mjs), and the
+// context assembly (codex-context.mjs's `const context = ...`) is just
+// [prose with rules.md expanded] + effectiveRulesToml + the fixed
+// "Trellis hook loaded installed overlay: <stamp>" footer. So the block sits
+// between the prose's fixed tail — invariantsTrigger (apply.go), followed by
+// the one blank line the assembly inserts before the row text — and that
+// fixed footer string. This is the whole block whether or not this session
+// actually reconciled anything, which is what makes it comparable to
+// reconciledRowsFromContext's own "reconciled, or not — either boundary"
+// behaviour on the Claude side.
+func codexReconciledRowsFromContext(t *testing.T, context string) string {
+	t.Helper()
+	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(invariantsTrigger) +
+		`\n\n(.*?)\nTrellis hook loaded installed overlay: `).
+		FindStringSubmatch(context)
+	if m == nil {
+		t.Fatalf("could not find the row block in the codex hook's decoded context:\n%s", context)
+	}
+	return m[1]
+}

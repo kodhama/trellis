@@ -388,8 +388,20 @@ function reconcileRows(source, slugs, stamp, today) {
   // Mirrors parseRulesToml's own newline handling: `\r?\n` consumes a CRLF pair
   // as one delimiter, so a raw line here never carries a trailing `\r`. Both
   // functions read the same source string and must agree on what a "line" is.
+  //
+  // A genuinely empty source (0 bytes) is the one case that split() cannot
+  // model directly: "".split(/\r?\n/u) returns [""], one phantom empty-string
+  // "line" that corresponds to no real line in a 0-byte file. awk has no such
+  // artifact — an empty input file is 0 records, not 1 — so unguarded this
+  // pushed a spurious leading blank line into the reconciled text ahead of
+  // `[rules]`, present on Codex and absent from staleness.sh's output for the
+  // identical empty-file fixture (found by Task 2's cross-host conformance
+  // guard, TestBothHostsReconcileIdentically, "empty file"). Every other
+  // shape (a lone "\n", any nonempty source with or without a trailing
+  // newline) already matches awk via hadTrailingNewline below; only the
+  // zero-byte case needs the explicit override.
   const hadTrailingNewline = /\r?\n$/u.test(source);
-  const rawLines = source.split(/\r?\n/u);
+  const rawLines = source.length === 0 ? [] : source.split(/\r?\n/u);
   if (hadTrailingNewline) rawLines.pop(); // a terminal newline is not an extra blank record — matches awk's own line semantics
 
   const rulesHeader = /^[ \t]*\[rules\][ \t]*(?:#.*)?$/u;
