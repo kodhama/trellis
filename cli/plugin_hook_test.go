@@ -2531,6 +2531,60 @@ func TestReconciledRepairIsMandatedAndReported(t *testing.T) {
 	})
 }
 
+// TestRepairSummaryCountsThisSessionOnly pins the spoken summary to the work
+// THIS run did. Quarantine notes and the `# added N row(s)` header are
+// persisted provenance — they stay in the file after a repair is applied, by
+// design — so counting them out of the reconciled text counts every earlier
+// session's repairs alongside this one. Measured on the pre-fix hook with the
+// fixture below: "added 2 row(s); quarantined 1 row(s)" for a session that
+// added exactly 1 and quarantined 0.
+//
+// It is only the summary that inflated; the in-file provenance was right
+// either way. That is precisely why it matters — the summary is the string the
+// agent reads back to the user, and this whole design rests on that report
+// being trustworthy. An inflated count tells the user rows were touched that
+// were not, in the one channel built to prevent silent repairs.
+func TestRepairSummaryCountsThisSessionOnly(t *testing.T) {
+	run := rulesTomlRun(t)
+	files := payloadFiles()
+
+	// A partially repaired file: an earlier session quarantined one row and
+	// added one, and both marks are still on disk (that is what "reversible
+	// from the file itself" means). One further row is missing now.
+	partiallyRepaired := strings.Replace(files["rules-b.toml"],
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	partiallyRepaired = strings.Replace(partiallyRepaired,
+		"[rules]  # one row per assessable catalog slug (signature-catalog-v1)\n",
+		"[rules]  # one row per assessable catalog slug (signature-catalog-v1)\n"+
+			"# inv-since-retired = { active = true }  # quarantined 2026-08-01: not in payload@aaaaaaaaaaaa. If a newer Trellis ships this slug, run `claude plugin update trellis@kodhama` and uncomment.\n"+
+			"# added 1 row(s) below on 2026-08-01 (missing from payload@aaaaaaaaaaaa)\n", 1)
+
+	out := run(t, partiallyRepaired)
+	if !strings.Contains(out, "RECONCILED") {
+		t.Fatalf("premise: this fixture must reconcile, or the case proves nothing:\n%s", out)
+	}
+	// Premise: the earlier session's marks must survive into the reconciled
+	// text. If they did not, this fixture could not distinguish a per-session
+	// count from a cumulative one and would pass for the wrong reason.
+	if !strings.Contains(out, "quarantined 2026-08-01") || !strings.Contains(out, "# added 1 row(s) below on 2026-08-01") {
+		t.Fatalf("premise: the prior session's provenance must be carried through unchanged (quarantine never deletes):\n%s", out)
+	}
+
+	if !strings.Contains(out, "added 1 row(s); quarantined 0 row(s)") {
+		t.Errorf("the summary must count only this session: this run added 1 row and quarantined 0, whatever earlier repairs the file already records:\n%s", out)
+	}
+	if strings.Contains(out, "added 2 row(s)") || strings.Contains(out, "quarantined 1 row(s)") {
+		t.Errorf("the summary is counting earlier sessions' marks as this session's work:\n%s", out)
+	}
+	// The counts reach the shell on a trailer line the reconciler prints; it
+	// must be stripped before delivery, or it lands in the rows the agent is
+	// told to write verbatim — a top-level comment is harmless TOML but it is
+	// still hook bookkeeping leaking into a consumer-owned file.
+	if strings.Contains(out, "trellis-reconcile-counts") {
+		t.Errorf("the reconciler's internal counts trailer must never reach the delivered text:\n%s", out)
+	}
+}
+
 // TestNoSlugsInPayloadFailsLoudly pins the invariant staleness.sh states 40
 // lines above the reconciler ("Fail loudly rather than govern silently on a
 // partial payload") against the one verdict the reconciler must NEVER touch.

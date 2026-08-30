@@ -708,18 +708,42 @@ if [ "$slug_report" != "ok" ] && [ "$slug_report" != "no-slugs-in-payload" ]; th
           print "# added " missing_n " row(s) below on " today " (missing from " stamp ")"
           for (i = 1; i <= missing_n; i++) print missing[i] " = { active = true }"
         }
+        # THIS run-s counts, stated by the code that did the work. Peeled off
+        # by the shell below and never delivered. See the note there for why
+        # the summary cannot be recovered from the text.
+        print "#trellis-reconcile-counts " (missing_n + 0) " " (quarantined + 0)
       }
     ' "$toml"
   )"
-  # Counted from the reconciled text itself rather than passed out of awk — one
-  # source of truth, and no second channel to keep in step with the first. The
-  # added count now comes from the single header's own stated number (summed,
-  # in the rare case a previously-reconciled file already carried one and this
-  # run adds another) rather than one grep hit per row, because the per-row
-  # marker that count used to key on is exactly what the header replaced.
-  added="$(printf '%s\n' "$reconciled" | sed -n 's/^# added \([0-9][0-9]*\) row(s).*/\1/p' | awk '{s+=$1} END{print s+0}')"
-  quarantined="$(printf '%s\n' "$reconciled" | grep -c '# quarantined ' || true)"
-  repair_summary="added ${added:-0} row(s); quarantined ${quarantined:-0} row(s)"
+  # The summary must describe THIS session, so awk states its own counts on a
+  # trailer line that is peeled off here. Counting the reconciled text instead
+  # was one source of truth but the wrong one: quarantine notes and the
+  # `# added N row(s)` header are PERSISTED provenance, so a partially repaired
+  # file already carries earlier sessions' marks and a text count adds them to
+  # this run's. Measured on the pre-fix hook: a file with one old quarantine
+  # line and one old added-header, plus one further missing row, reported
+  # "added 2 row(s); quarantined 1 row(s)" for a session that added 1 and
+  # quarantined 0. The in-file provenance was right either way; the SPOKEN
+  # summary was not — and that summary is what the agent reports to the user,
+  # which is the whole channel this change is built to make trustworthy.
+  counts="$(printf '%s\n' "$reconciled" | sed -n '$p')"
+  case "$counts" in
+    '#trellis-reconcile-counts '*)
+      reconciled="$(printf '%s\n' "$reconciled" | sed '$d')"
+      added="${counts#* }"
+      added="${added%% *}"
+      quarantined="${counts##* }"
+      ;;
+    *)
+      # The trailer is unconditional in the END block above, so this is
+      # unreachable short of awk failing outright. Never strip a line that is
+      # not the trailer — a delivered row is worth more than a count — and say
+      # the count is unknown rather than assert one that was not counted.
+      added="unreported"
+      quarantined="unreported"
+      ;;
+  esac
+  repair_summary="added ${added} row(s); quarantined ${quarantined} row(s)"
 fi
 
 # The header carries `@rules.md`, an import the hook resolves itself, and a
