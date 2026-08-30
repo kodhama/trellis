@@ -2662,59 +2662,98 @@ func reconciledRowsFromContext(t *testing.T, context string) string {
 // parseRulesToml would reject every row as unknown for a reason unrelated
 // to the property this test checks. It stays minimal in every other way —
 // bare backticked slug lines, no rule prose.
+// The second case covers the same class through the OPPOSITE mistake, found by
+// the final whole-branch review. staleness.sh detected the existing table with
+// an anchored `^\[rules\]`, while parseRulesToml TRIMS each line before matching
+// its section regex — so Codex read an indented `  [rules]` as opening the table
+// and Claude did not. A file with an indented table plus any missing row got a
+// SECOND `[rules]` appended, and a second table header is exactly what
+// parseRulesToml rejects: the repaired file read invalid-rules on Codex.
+// Nothing was lost — such a file was already Codex-invalid before the repair,
+// so this is not a regression — but the mandate the hook prints promises the
+// written file "matches what governs", and a file Codex refuses does not.
+// Both cases are the one property: the table structure the reconciler produces
+// must be legal for the parser on the other host, whatever the input shape.
 func TestReconciledRowsParseForCodexToo(t *testing.T) {
 	run := rulesTomlRun(t)
-	out := run(t, "strictness  = \"firm\"\n")
-	context := nudgeContext(t, out)
-	if !strings.Contains(out, "RECONCILED") {
-		t.Fatalf("premise: this fixture must reconcile, or the case proves nothing:\n%s", out)
-	}
-	if !strings.Contains(out, "added 16 row(s)") {
-		t.Fatalf("premise: all sixteen rows must be missing, or this is not the shape the fix actually covers:\n%s", out)
-	}
-	reconciled := reconciledRowsFromContext(t, context)
-	// Premise, not the assertion under test: [rules] must appear BEFORE the
-	// first row (it need not be the first LINE — strictness precedes it), or
-	// writing this to disk would trivially fail for every parser, proving
-	// nothing about the specific defect below.
-	rulesIdx := strings.Index(reconciled, "[rules]")
-	firstRow := regexp.MustCompile(`(?m)^(inv|floor)-[a-z-]+[ \t]*=`).FindStringIndex(reconciled)
-	if rulesIdx < 0 || firstRow == nil || rulesIdx > firstRow[0] {
-		t.Fatalf("premise: the reconciled text must open a [rules] table before its first row, or the case would prove nothing; got:\n%s", reconciled)
-	}
 
-	project := newGitProject(t)
-	internal := filepath.Join(project, ".trellis", "internal")
-	if err := os.MkdirAll(internal, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	// Minimal, valid-shape placeholders — short on purpose (see doc comment):
-	// the property under test is .trellis/rules.toml, not rules.md/trellis.md
-	// content, and the real payload's size is exactly what must NOT gate this
-	// test. rules.md still needs one bare slug-tag line per assessable slug
-	// (see doc comment) so Codex's derived slug set matches the reconciled
-	// file's sixteen rows.
-	if err := os.WriteFile(filepath.Join(internal, "trellis.md"), []byte("@rules.md\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var minimalRulesMd strings.Builder
-	for _, slug := range assessableSlugs {
-		minimalRulesMd.WriteString("`" + slug + "`\n")
-	}
-	minimalRulesMd.WriteString(rulesLoadedSentinel + "\n")
-	if err := os.WriteFile(filepath.Join(internal, "rules.md"), []byte(minimalRulesMd.String()), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(internal, "version"), []byte("payload@000000000000\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// What an agent applying the repair actually writes to disk.
-	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(reconciled), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	for _, tc := range []struct {
+		name  string
+		rows  string
+		added string
+	}{
+		{
+			name:  "no [rules] table at all: sixteen rows must not land at top level",
+			rows:  "strictness  = \"firm\"\n",
+			added: "added 16 row(s)",
+		},
+		{
+			name:  "an INDENTED [rules] table is the table, not a reason to append a second",
+			rows:  "strictness = \"firm\"\n  [rules]\n  inv-directional-flow = { active = false }\n",
+			added: "added 15 row(s)",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := run(t, tc.rows)
+			context := nudgeContext(t, out)
+			if !strings.Contains(out, "RECONCILED") {
+				t.Fatalf("premise: this fixture must reconcile, or the case proves nothing:\n%s", out)
+			}
+			if !strings.Contains(out, tc.added) {
+				t.Fatalf("premise: this fixture must report %q, or it is not the shape the fix covers:\n%s", tc.added, out)
+			}
+			reconciled := reconciledRowsFromContext(t, context)
+			// Premise, not the assertion under test: [rules] must appear BEFORE
+			// the first row (it need not be the first LINE — strictness precedes
+			// it), or writing this to disk would trivially fail for every parser,
+			// proving nothing about the specific defect below.
+			rulesIdx := strings.Index(reconciled, "[rules]")
+			firstRow := regexp.MustCompile(`(?m)^[ \t]*(inv|floor)-[a-z-]+[ \t]*=`).FindStringIndex(reconciled)
+			if rulesIdx < 0 || firstRow == nil || rulesIdx > firstRow[0] {
+				t.Fatalf("premise: the reconciled text must open a [rules] table before its first row, or the case would prove nothing; got:\n%s", reconciled)
+			}
+			// The direct pin, stated in Go as well as through Codex below: one
+			// table header, indented or not. Reading it off the text names the
+			// defect when it returns; the Codex run proves it actually matters.
+			if n := len(regexp.MustCompile(`(?m)^[ \t]*\[rules\]`).FindAllString(reconciled, -1)); n != 1 {
+				t.Fatalf("the reconciled text must carry exactly one [rules] table header, got %d — a second one is a fatal duplicate section for Codex:\n%s", n, reconciled)
+			}
 
-	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
-	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
-		t.Fatalf("the reconciled rows must parse for Codex too — a file Claude governs normally from must not read invalid-rules (0 rules) under Codex: %s", raw)
+			project := newGitProject(t)
+			internal := filepath.Join(project, ".trellis", "internal")
+			if err := os.MkdirAll(internal, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			// Minimal, valid-shape placeholders — short on purpose (see doc
+			// comment): the property under test is .trellis/rules.toml, not
+			// rules.md/trellis.md content, and the real payload's size is
+			// exactly what must NOT gate this test. rules.md still needs one
+			// bare slug-tag line per assessable slug (see doc comment) so
+			// Codex's derived slug set matches the reconciled file's sixteen
+			// rows.
+			if err := os.WriteFile(filepath.Join(internal, "trellis.md"), []byte("@rules.md\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var minimalRulesMd strings.Builder
+			for _, slug := range assessableSlugs {
+				minimalRulesMd.WriteString("`" + slug + "`\n")
+			}
+			minimalRulesMd.WriteString(rulesLoadedSentinel + "\n")
+			if err := os.WriteFile(filepath.Join(internal, "rules.md"), []byte(minimalRulesMd.String()), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(internal, "version"), []byte("payload@000000000000\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			// What an agent applying the repair actually writes to disk.
+			if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(reconciled), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+			if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+				t.Fatalf("the reconciled rows must parse for Codex too — a file Claude governs normally from must not read invalid-rules (0 rules) under Codex: %s", raw)
+			}
+		})
 	}
 }

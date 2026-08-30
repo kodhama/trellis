@@ -659,7 +659,19 @@ if [ "$slug_report" != "ok" ] && [ "$slug_report" != "no-slugs-in-payload" ]; th
       # fatal invalid-rules on Codex while Claude governs normally from the same
       # file. Track whether the file already opens the table so the END block
       # can open one itself before appending, rather than assume it is there.
-      /^\[rules\][[:space:]]*(#.*)?$/ { has_rules = 1 }
+      #
+      # Leading whitespace is tolerated here for the same host-parity reason,
+      # and it was not at first: parseRulesToml trims each line before matching
+      # its section regex (codex-context.mjs), so Codex reads an INDENTED
+      # `  [rules]` as opening the table while an anchored match here did not.
+      # A file with an indented table plus any missing row therefore had a
+      # SECOND `[rules]` appended below -- and a second table header is
+      # precisely what parseRulesToml rejects, so the repaired file read
+      # invalid-rules on Codex. Nothing was lost (such a file was already
+      # Codex-invalid before the repair) but the mandate promises the written
+      # file matches what governs, and a file Codex refuses does not. Matching
+      # the row regex one line down, which was already whitespace-tolerant.
+      /^[[:space:]]*\[rules\][[:space:]]*(#.*)?$/ { has_rules = 1 }
       /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
         row = $1
         sub(/[^a-z-].*$/, "", row)
