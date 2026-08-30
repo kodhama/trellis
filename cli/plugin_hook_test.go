@@ -623,6 +623,31 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		t.Fatalf("found only %d payload printf messages — the scan is broken, and a guard that reads nothing passes", len(payloadMsgs))
 	}
 	msgs = append(msgs, payloadMsgs...)
+	// Fix round 2: the "actually enforced" subtest below recomputes its own
+	// mutated payloadMsgs independently (payloadAssembly -> payloadPrintfMessages
+	// -> ungatedDestructiveMessages on a copy of body), so it proves those
+	// helpers work but never exercises the append above — the actual data flow
+	// the scan below runs on. The re-reviewer proved the gap by mutation:
+	// replacing the append with `_ = payloadMsgs` left `gated` unchanged (12,
+	// since none of the real payload messages carry a verb) and the subtest
+	// still green; only a log line moved from 28 to 19 messages, with nothing
+	// asserting on it. This check ties the guard directly to msgs, the exact
+	// slice ungatedDestructiveMessages is about to scan: every payload message
+	// computed above must actually be IN it, or the payload channel is
+	// computed but not wired into what this test asserts on.
+	for _, pm := range payloadMsgs {
+		found := false
+		for _, m := range msgs {
+			if m == pm {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("a payload printf message was computed but never entered the scanned set (msgs) — "+
+				"the payload channel is computed but not wired into this guard's assertions:\n%s", pm)
+		}
+	}
 	violations, gated := ungatedDestructiveMessages(msgs)
 	for _, msg := range violations {
 		t.Errorf("this message instructs a mutation with no confirmation gate — an autonomous "+
