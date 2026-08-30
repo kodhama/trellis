@@ -159,26 +159,29 @@ The design predicted three; execution retired exactly those three, one task earl
 
 `TestEveryDestructiveInstructionIsGated`'s floor moved 13 → 12 for the same reason: the retired
 blackout message was one of the gated messages, so removing it removed **something to gate, not a
-gate**. Nineteen emits → eighteen, one gated emit removed, zero ungated in both states; verified by
-count, not by argument.
+gate**. The emit count itself is unchanged at nineteen — the blackout emit went and the
+`no-slugs-in-payload` branch's loud emit took its place — and the guards report **zero ungated
+destructive messages** across both channels. Counted, not argued.
 
 ## Consequences
 
 - **`plugins/trellis/VERSION` 0.6.0 → 0.7.0**, with both plugin manifests and `install.sh`'s baked
   bundle manifest advanced in the same commit (`decision-0028`). A payload change that does not
-  move `VERSION` never reaches an installed copy — `cli/assets/invariants.md:65` records that this
-  obligation is still **unguarded** (`trellis#245`).
+  move `VERSION` never reaches an installed copy — the catalog's own row-set obligation note
+  records that this obligation is still **unguarded** (`trellis#245`).
 - **`decision-0070` D4 is untouched and still pinned** — `cli/plugin_hook_test.go:1704` fails with
   *"the hook wrote `.trellis/rules.toml` — 'the hook never writes' is the half of `decision-0070` D4
   that stands"*.
 - **A commented row is new user-visible state in a consumer-owned file.** Both READMEs now say what
   it is: inert, safe to leave, one uncomment away if a newer release ships that slug.
-- **The row-set obligation list is one surface shorter, and the list does not know it yet.**
-  `core/catalog/signature-catalog-v1.md:61` (copied to `cli/assets/invariants.md:61`) names
+- **The row-set obligation list is one surface shorter.** Its note in
+  `core/catalog/signature-catalog-v1.md` (copied verbatim to `cli/assets/invariants.md`) named
   *"`plugins/trellis/hooks/codex-context.mjs`'s hardcoded `SLUGS`"* among the surfaces a row-set
-  change touches. That hardcode is gone; the entry is corrected in this change. The list itself —
-  ~15 surfaces enforced only by prose, the root cause upstream of all three issues — is
-  **TRL-28**, which is the consumer that will re-present it (`decision-0078`).
+  change touches. That hardcode is gone, so the entry is marked retired **in this same change**
+  rather than left to send a future author hunting for a constant that no longer exists
+  (`decision-0028`, `inv-deliberate-succession`). The list itself — ~15 surfaces enforced only by
+  prose, the root cause upstream of all three issues — is **TRL-28**, which is the consumer that
+  will re-present it (`decision-0078`).
 - **`/trellis:remove` needs no change.** It deletes `.trellis/` wholesale, quarantined rows
   included.
 - **Cross-host regression coverage is new.** `TestReconciledRowsParseForCodexToo` runs Claude's hook
