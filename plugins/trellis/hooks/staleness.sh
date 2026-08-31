@@ -656,6 +656,84 @@ case "$slug_report" in
     exit 0
     ;;
 esac
+# PAYLOAD-VS-PAYLOAD, not payload-vs-project. Everything above this line checks
+# the PROJECT's rows against the payload; nothing checked the payload against
+# ITSELF, and `length(want) == 0` is the only shape of broken rules.md the
+# validator can see. A rules.md truncated BELOW its first slug is non-empty, so
+# it passes that test and is then treated as authoritative -- measured with a
+# 9-line, 2-slug payload, the hook reported `quarantined 14 row(s)`, commented
+# out BOTH floor rules, and instructed the agent to write that file to
+# .trellis/rules.toml. Exit 0, no loud marker.
+#
+# That is worse in kind than the blackouts above rather than another of them.
+# Those WITHHELD governance for a session; this one PERSISTS DAMAGE: a broken
+# payload drives a mandate to comment out fourteen rules in the consumer's own
+# file, while the whole safety argument for reconciling without a gate is that
+# a repair loses nothing.
+#
+# The check is possible because the payload ships two independent statements of
+# the same set: rules.md tags sixteen slugs and reference/rules-b.toml carries
+# sixteen rows, and they are IDENTICAL by construction. A payload whose own two
+# halves disagree is provable internal corruption -- and it is exactly what
+# quarantine cannot be allowed to act on, because it is distinguishable from
+# the stale-plugin case quarantine legitimately exists to handle (there the
+# payload is coherent and the PROJECT is out of step). So the disagreement is
+# refused loudly and the reconciler is never reached.
+#
+# Placed AFTER the report classification deliberately: an unreadable rules.md
+# already exits above with a message that names the read failure, which is a
+# better diagnosis than "the payload disagrees with itself".
+#
+# Skipped, not failed, when the preset is absent: a payload without it offers
+# nothing to compare against, which is where this hook already stood. (The
+# separate silent `exit 0` when rules-b.toml is missing on the defaults path is
+# pre-existing -- it is on main at the same line -- and is filed on its own.)
+preset="$plugin/reference/rules-b.toml"
+if [ -f "$preset" ]; then
+  coherence="$(
+    awk '
+      FNR == NR {
+        if (match($0, /`(inv|floor)-[a-z-]+`[[:space:]]*$/)) {
+          s = substr($0, RSTART + 1, RLENGTH - 2)
+          sub(/`[[:space:]]*$/, "", s)
+          want[s] = 1
+        }
+        next
+      }
+      /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
+        row = $1
+        sub(/[^a-z-].*$/, "", row)
+        rows[row] = 1
+      }
+      END {
+        for (s in want) if (!(s in rows)) d++
+        for (s in rows) if (!(s in want)) d++
+        printf "%d %d %d\n", length(want), length(rows), d + 0
+      }
+    ' "$rules" "$preset"
+  )"
+  case "$coherence" in
+    *" 0") ;;
+    *)
+      # Unreachable short of awk failing outright -- both files were read
+      # successfully a few lines above -- but an empty capture must never read
+      # as agreement, which is the mistake this whole series exists to close.
+      [ -n "$coherence" ] || coherence="unknown unknown unknown"
+      coherence_rest="${coherence#* }"
+      # NO SLUG NAMES in the message below. It is a payload defect, the reader
+      # can do nothing with the list, and the loud paths are pinned by tests
+      # that assert no rule slug appears anywhere in a refusal.
+      #
+      # And the word "preset" cannot appear in it either: the destructive-verb
+      # scan in cli/plugin_hook_test.go matches SUBSTRINGS, so "p-reset" hits
+      # `reset` and demands a confirmation gate on a message that instructs no
+      # mutation at all. Erring safe is the right default for that guard, so the
+      # wording moves rather than the guard.
+      emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own payload is internally inconsistent: its rules.md and the rules-b.toml default row list it ships alongside do not describe the same rule set (rules.md slugs: ${coherence%% *}; rules-b.toml rows: ${coherence_rest%% *}; named in one but not the other: ${coherence_rest##* }). Those two files ship together and are identical by construction, so this is a truncated or corrupted plugin payload, not a problem with your rows. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rows were injected — your file was not reconciled against a payload that cannot be trusted to say what the rule set is, and nothing on disk was changed. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+      exit 0
+      ;;
+  esac
+fi
 reconciled=""
 repair_summary=""
 # `no-slugs-in-payload` already exited above, and the case just proved the

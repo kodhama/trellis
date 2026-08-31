@@ -2902,6 +2902,154 @@ func TestUnreadableHeaderNeverShipsRowsWithoutRules(t *testing.T) {
 	}
 }
 
+// truncateRulesMdAfter returns the payload's rules.md cut immediately after its
+// nth backticked slug tag — a file that is NON-EMPTY and carries real slugs, so
+// the validator's only broken-payload test, `length(want) == 0`, passes it.
+func truncateRulesMdAfter(t *testing.T, n int) string {
+	t.Helper()
+	tag := regexp.MustCompile("`(inv|floor)-[a-z-]+`[ \t]*$")
+	var kept []string
+	seen := 0
+	for _, line := range strings.Split(payloadFiles()["rules.md"], "\n") {
+		kept = append(kept, line)
+		if tag.MatchString(line) {
+			seen++
+			if seen == n {
+				break
+			}
+		}
+	}
+	if seen != n {
+		t.Fatalf("premise: the payload rules.md must carry at least %d slug tags, found %d", n, seen)
+	}
+	return strings.Join(kept, "\n") + "\n"
+}
+
+// TestIncoherentPayloadNeverMandatesQuarantiningTheProjectsRows closes the one
+// member of this family that is worse in KIND than the rest.
+//
+// Every guard above withholds governance for a session when the payload is
+// broken. This one PERSISTS DAMAGE. The validator's only test for a broken
+// rules.md is `length(want) == 0`, so a rules.md truncated BELOW its first slug
+// is non-empty, passes, and is then treated as authoritative. Measured with a
+// nine-line, two-slug payload: the hook reported `quarantined 14 row(s)`,
+// commented out BOTH floor rules, and instructed the agent to write that file
+// to .trellis/rules.toml — at exit 0, with no loud marker. The whole safety
+// argument for repairing without a gate is that quarantine loses nothing; a
+// truncated payload turns it into fourteen deletions-in-effect in a file the
+// consumer owns.
+//
+// It is introduced by this branch, not inherited: `main` has no reconciler and
+// no quarantine at all.
+//
+// The check is payload-vs-PAYLOAD. The payload states its rule set twice —
+// rules.md tags sixteen slugs, reference/rules-b.toml carries sixteen rows —
+// and the two are identical by construction, so a disagreement between them is
+// provable internal corruption. That is exactly what distinguishes it from the
+// stale-plugin case quarantine legitimately exists for, where the payload is
+// coherent and the PROJECT is out of step. The second subtest is the control
+// for that distinction: it must still reconcile, unchanged.
+func TestIncoherentPayloadNeverMandatesQuarantiningTheProjectsRows(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	run := func(t *testing.T, rulesMd, rows string) string {
+		t.Helper()
+		pluginRoot := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, body := range files {
+			if name == "rules.md" {
+				body = rulesMd
+			}
+			if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(rows), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		return nudgeContext(t, strings.TrimSpace(stdout.String()))
+	}
+
+	t.Run("a truncated rules.md must not drive a quarantine mandate", func(t *testing.T) {
+		truncated := truncateRulesMdAfter(t, 2)
+		// The premise the validator could not see: non-empty, real slugs, and
+		// still not the payload's rule set.
+		if strings.TrimSpace(truncated) == "" {
+			t.Fatal("premise: the fixture must be non-empty, or no-slugs-in-payload would catch it for the wrong reason")
+		}
+		ctx := run(t, truncated, files["rules-b.toml"])
+
+		if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("a payload that disagrees with itself must be refused, not treated as the authority on the consumer's rows:\n%s", ctx)
+		}
+		// The damage, asserted as the damage: a quarantine count, a commented
+		// floor row, and the mandate to persist it.
+		if strings.Contains(ctx, "quarantined") {
+			t.Errorf("nothing may be quarantined against a payload that cannot say what the rule set is:\n%s", ctx)
+		}
+		for _, floor := range []string{"floor-transparency", "floor-intent-gate"} {
+			if strings.Contains(ctx, "# "+floor) {
+				t.Errorf("%s was commented out on the strength of a truncated payload:\n%s", floor, ctx)
+			}
+		}
+		if strings.Contains(ctx, "Write .trellis/rules.toml with exactly the rows shown above") {
+			t.Errorf("the repair mandate must never fire against an incoherent payload — it is the half that persists the damage:\n%s", ctx)
+		}
+		if strings.Contains(ctx, "RECONCILED") {
+			t.Errorf("nothing may be reconciled against a payload that disagrees with itself:\n%s", ctx)
+		}
+		for _, slug := range []string{"floor-transparency", "inv-minimal-first"} {
+			if deliveredRow(ctx, slug) {
+				t.Errorf("no row may be delivered from an incoherent payload; got %s in:\n%s", slug, ctx)
+			}
+		}
+	})
+
+	// The control that keeps the guard honest. It is payload-vs-payload
+	// disagreement being caught, never payload-vs-project: a project out of
+	// step with a COHERENT payload is the case reconciliation exists for, and
+	// it must behave exactly as it did before this guard.
+	t.Run("a coherent payload still reconciles a project that is out of step", func(t *testing.T) {
+		short := strings.Replace(files["rules-b.toml"],
+			"inv-minimal-first         = { active = true }\n", "", 1)
+		if short == files["rules-b.toml"] {
+			t.Fatal("fixture removed nothing — the control would prove nothing")
+		}
+		ctx := run(t, files["rules.md"], short)
+
+		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("a coherent payload must still reconcile a project whose rows are out of step:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "RECONCILED") {
+			t.Errorf("the ordinary mismatch must still reconcile and say so:\n%s", ctx)
+		}
+		for _, slug := range []string{"inv-minimal-first", "floor-transparency", "floor-intent-gate"} {
+			if !deliveredRow(ctx, slug) {
+				t.Errorf("reconciliation must still deliver %s as a governed row:\n%s", slug, ctx)
+			}
+		}
+	})
+}
+
 // reconciledRowsFromContext extracts the reconciled `.trellis/rules.toml` text
 // from a decoded additionalContext (see nudgeContext) — the block between the
 // "Project rule activation" preamble's fixed trailing sentence and whichever
