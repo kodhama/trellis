@@ -1225,6 +1225,7 @@ func TestCodexRejectsAnEmptyDerivedSlugSet(t *testing.T) {
 		t.Errorf("failure mismatch\n got: %s\nwant: %s", raw, want)
 	}
 }
+
 // Two implementations of one ratified semantic (decision-0083's table) are
 // only safe with a guard that makes drift a test failure rather than a field
 // report. This is decision-0028's "a guard per pair", applied to the
