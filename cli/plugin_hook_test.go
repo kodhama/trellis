@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -2643,6 +2644,116 @@ func TestNoSlugsInPayloadFailsLoudly(t *testing.T) {
 	}
 	if got := hookSlugs(ctx); len(got) > 0 {
 		t.Errorf("no rows may be injected when the payload itself cannot be validated against; got %v in:\n%s", keysOfBool(got), ctx)
+	}
+}
+
+// TestUnreadablePayloadFileNeverReconcilesToBlackout pins the SECOND door into
+// the same hazard the note at staleness.sh:624 names, and the fourth time this
+// branch produced it: an empty want set reaching the reconciler, every
+// legitimate row quarantined, and the session running ungoverned at exit 0.
+//
+// The validator awk reads two files POSITIONALLY — the payload's rules.md and
+// the project's rules.toml — and a positional file that exists but cannot be
+// opened is a fatal awk error: it prints nothing, so `$slug_report` is the
+// EMPTY STRING, not `no-slugs-in-payload`. The old guard tested only
+// `!= ok && != no-slugs-in-payload`, so "" read as a mismatch to repair. Inside
+// the reconciler the want set is filled by a REDIRECTED getline, which returns
+// -1 silently on a failed open rather than dying, so want[] stayed empty, every
+// row failed `row in want`, and the hook shipped `added 0 row(s); quarantined
+// 16 row(s)` together with a mandate to write that all-commented-out file to
+// disk. The unreadable-rules.toml variant is the same defect one step further
+// on: the reconcile awk died too, `$reconciled` stayed empty, and delivery fell
+// back to a `cat` that failed just as quietly — the rows heading with nothing
+// under it and no warning at all.
+//
+// Both are broken-payload/broken-config shapes, so both must exit through the
+// loud door, deliver no governed row, and never claim a reconciliation.
+func TestUnreadablePayloadFileNeverReconcilesToBlackout(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+	}
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	for _, tc := range []struct {
+		name string
+		// unreadable names the file the fixture chmods to 0000, relative to
+		// whichever root owns it.
+		pluginRel  string
+		projectRel string
+	}{
+		{name: "the payload rules.md exists but cannot be read", pluginRel: "reference/rules.md"},
+		{name: "the project rules.toml exists but cannot be read", projectRel: ".trellis/rules.toml"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pluginRoot := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for name, body := range files {
+				if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			proj := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			// A fully valid row set: the defect is never in these rows, which is
+			// the whole point — quarantining them is the failure.
+			if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			target := filepath.Join(proj, filepath.FromSlash(tc.projectRel))
+			if tc.pluginRel != "" {
+				target = filepath.Join(pluginRoot, filepath.FromSlash(tc.pluginRel))
+			}
+			if err := os.Chmod(target, 0o000); err != nil {
+				t.Fatal(err)
+			}
+			// Restore before TempDir cleanup, which must still be able to remove it.
+			t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+			if _, err := os.ReadFile(target); err == nil {
+				t.Skipf("premise: %s is still readable at mode 0000 (root, or a filesystem without POSIX modes)", target)
+			}
+
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			// stdout and stderr are read SEPARATELY here, unlike rulesTomlRun:
+			// awk announces its own fatal "can't open file" on stderr, and the
+			// host reads only stdout, which must still be exactly one JSON
+			// envelope. Combining them would make the fixture look like
+			// malformed output when it is in fact the diagnostic doing its job.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+			}
+			raw := stdout.String()
+			if !strings.Contains(raw, "TRELLIS_RULES_NOT_LOADED") {
+				t.Fatalf("an unreadable payload file must fail loudly, not reconcile against an empty want set:\n%s", raw)
+			}
+			ctx := nudgeContext(t, strings.TrimSpace(raw))
+			if strings.Contains(ctx, "RECONCILED") || strings.Contains(ctx, "quarantined") {
+				t.Errorf("nothing may be reconciled or quarantined when the want set could not be read at all:\n%s", ctx)
+			}
+			// hookSlugs alone cannot tell a governed row from a slug named in
+			// prose or in a commented-out quarantine line; deliveredRow can.
+			for _, slug := range []string{"floor-transparency", "floor-intent-gate", "inv-minimal-first"} {
+				if deliveredRow(ctx, slug) {
+					t.Errorf("no row may be delivered when the payload could not be validated; got a row for %s in:\n%s", slug, ctx)
+				}
+			}
+			if got := hookSlugs(ctx); len(got) > 0 {
+				t.Errorf("no rule slug may appear at all on this path; got %v in:\n%s", keysOfBool(got), ctx)
+			}
+		})
 	}
 }
 
