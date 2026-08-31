@@ -147,10 +147,15 @@ The rule this settles, stated so it generalises past this string:
 > not.**
 
 Both hooks changed together, in the same commit, because byte-parity between them is now enforced
-(§5) and a one-sided fix would go red. The two surviving `claude plugin update trellis@kodhama`
-mentions are both Claude speaking about itself in its own hook message — its loud
-`no-slugs-in-payload` emit and its repair mandate — verified by grep across both hooks, not assumed.
-Neither is a comment written into `.trellis/rules.toml`.
+(§5) and a one-sided fix would go red. Grepped across both hooks on 2026-08-31:
+`claude plugin update trellis@kodhama` appears **nine** times in `staleness.sh` and **zero** times in
+`codex-context.mjs`. All nine are Claude speaking about itself in its own hook message — eight loud
+`TRELLIS_RULES_NOT_LOADED` emits (including the `no-slugs-in-payload` one) and the repair mandate at
+`staleness.sh:1129`. **None of the nine is a comment written into `.trellis/rules.toml`**, and both
+hooks' quarantine-note sources are host-neutral; that is the claim that carries the ruling, and it
+holds. An earlier draft of this paragraph said "the two surviving mentions" and labelled the figure
+grep-verified — the ruling was right, the number was not. Read it as of its date and recount
+(`decision-0083`: a count in a record is a measurement with a date).
 
 **This supersedes `decision-0083`'s recorded provenance wording**, and `decision-0083` carries a
 forward pointer for it. That record's remedy prose named the Claude-only command as the repair
@@ -161,10 +166,11 @@ instruction; the string it described is no longer the string either hook writes.
 `decision-0028` requires **"a sync guard per source↔derivative pair"**. `staleness.sh`'s awk
 reconciler and `codex-context.mjs`'s `reconcileRows` are now such a pair: same semantics, two
 languages, one output file. `TestBothHostsReconcileIdentically` runs both real hooks against the
-same fixture and compares the reconciled row block **byte for byte** across seven fixtures — five
-that genuinely reconcile (rename, indented `[rules]` plus a missing row, duplicate with a differing
-value, no `[rules]` table at all, empty file) and two pass-through (already-quarantined,
-missing `strictness`).
+same fixture and compares the reconciled row block **byte for byte** across eight fixtures — six
+that genuinely reconcile (rename, CRLF line endings plus a rename, indented `[rules]` plus a missing
+row, duplicate with a differing value, no `[rules]` table at all, empty file) and two pass-through
+(already-quarantined, missing `strictness`). Counted 2026-08-31 against
+`cli/codex_hook_test.go`'s `fixtures` map; recount before relying on it.
 
 **The guard earned itself on its first run.** It found an **empty-file divergence**:
 `"".split(/\r?\n/)` yields `[""]` — one phantom line — where awk reads a 0-byte file as zero
@@ -197,9 +203,15 @@ CRLF input. **CR-only** input (classic-Mac line endings) is the exception. Both 
 such a file as a single line — awk's `RS` is `"\n"`, the JS splits on `/\r?\n/` — so both find no
 rows, both classify all sixteen slugs as missing, and both append all sixteen; **both hosts deliver
 and govern**. They then differ in two measured ways: `staleness.sh:876`'s `sub(/\r$/, "")` strips
-the record's trailing CR while the JS splitter keeps it, and the sixteen-row append assembles to
-9481 B, over `MAX_CONTEXT_BYTES`, so Codex silently takes §6's provenance-free path and omits the
-`# added 16 row(s) below on <date>` header Claude writes. What diverges is the *text of the repair*,
+the record's trailing CR while the JS splitter keeps it, and the sixteen-row append **with full
+provenance** assembles to **9724 B** — over `MAX_CONTEXT_BYTES`, which is 9500
+(`codex-context.mjs:30`) — so Codex silently takes §6's provenance-free path and omits the
+`# added 16 row(s) below on <date>` header Claude writes. What it actually delivers on that path is
+**9481 B**, which is *under* the cap; that is the point of degrading, not a contradiction of it. An
+earlier draft of this paragraph welded the two halves into "assembles to 9481 B, over
+`MAX_CONTEXT_BYTES`", which is arithmetically false. Both figures measured 2026-08-31 by running the
+real hook on the CR-only fixture, once as shipped and once with the cap raised; recount before
+relying on either. What diverges is the *text of the repair*,
 not the governing set.
 
 `TestCROnlyLineEndingsAreTheOneKnownDivergence` pins both differences, so closing either is a

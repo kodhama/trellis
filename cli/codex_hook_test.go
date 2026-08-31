@@ -1421,10 +1421,16 @@ func codexReconciledRowsAllowingDegraded(t *testing.T, toml string) (string, boo
 //  1. staleness.sh:876's `sub(/\r$/, "")` strips the record's trailing CR;
 //     the Codex splitter leaves it, so Codex emits `...this row\r\n[rules]`
 //     where Claude emits `...this row\n[rules]`.
-//  2. Sixteen added rows on top of an intact sixteen-row file assembles to
-//     9481 B degraded — over MAX_CONTEXT_BYTES — so Codex silently takes the
-//     provenance-free path and omits the `# added 16 row(s) below on <date>`
-//     header that Claude writes.
+//  2. Sixteen added rows on top of an intact sixteen-row file assemble to
+//     9724 B WITH full provenance — over MAX_CONTEXT_BYTES, which is 9500 —
+//     so Codex silently takes the provenance-free path and omits the
+//     `# added 16 row(s) below on <date>` header that Claude writes. What it
+//     delivers on that path is 9481 B, UNDER the cap: that is the degradation
+//     working, not a contradiction. Keep the two numbers apart — an earlier
+//     wording ("9481 B degraded — over MAX_CONTEXT_BYTES") collapsed them and
+//     the claim was copied into decision-0084 as 9481 > 9500. Measured
+//     2026-08-31 by running the hook on this fixture with the cap as shipped
+//     and again with it raised.
 //
 // Both hosts still deliver and still govern; what diverges is the text of the
 // repair. This test exists so that closing either divergence is a deliberate
