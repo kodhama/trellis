@@ -982,14 +982,31 @@ fi
 #
 # The substitution is index-based rather than gsub-based, and the BEGIN escaping
 # that guarded it is GONE with it. That escaping was half right and half wrong,
-# and only measuring said which half: on this awk (version 20200816) an
-# unescaped `&` in a gsub replacement IS expanded to the matched text, so
-# guarding it was necessary -- but an unescaped backslash is NOT special, so
-# escaping it turned a root named `plug\tools` into `plug\\tools` in the
-# delivered pointer. gawk collapses that; BSD awk does not, which is a
-# portability fork with no correct escaping on both sides. Substituting by
-# index invokes no replacement semantics at all, so neither metacharacter has
-# anything to do.
+# and only measuring said which half. Measured on BSD awk 20200816, the awk this
+# ran on, with the fixtures passed through ENVIRON so the -v channel could not
+# mangle them before the test began:
+#
+#   input        escaped      via escaped replacement   via raw replacement
+#   plug\tools   plug\\tools  plug\\tools  (doubled)     plug\tools  (right)
+#   x\\y         x\\\\y       x\\\\y        (doubled)     x\\y        (right)
+#   R&D          R\&D         R&D          (right)       RTOKD       (wrong)
+#
+# So `&` IS special in a gsub replacement and guarding it was necessary, while a
+# backslash is NOT -- and escaping it doubled every backslash in the delivered
+# pointer. That settles it on its own: the escaping was wrong on the awk this
+# hook runs on, for every backslash input, whatever any other awk does.
+#
+# A portability fork exists too, but it is narrower than an earlier version of
+# this comment claimed and the example that version cited was the wrong one.
+# Reported by review and measured there on gawk 5.4.1; NOT reproducible on this
+# machine, which ships no gawk, so it is recorded as attributed measurement
+# rather than as something checked here: gawk default AGREES with BSD awk on
+# `plug\tools`, the two diverge on DOUBLED input (`x\\y` gives BSD `x\\\\y` and
+# gawk `x\\y`), and `gawk --posix` alone round-trips the single-backslash case.
+#
+# None of that is load-bearing any more. Substituting by index invokes no
+# replacement semantics at all, so there is nothing to escape and neither
+# metacharacter has anything to do -- on any awk, without needing to know which.
 rules_prose="$(
   printf '%s\n' "$header_prose" |
   TRELLIS_RULES="$rules" TRELLIS_INV="$plugin/reference/invariants.md" awk '

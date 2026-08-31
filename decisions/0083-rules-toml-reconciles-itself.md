@@ -132,9 +132,15 @@ activation rows, zero rules prose, exit 0, no marker. Such a root is *legitimate
 it is readable, so the fix passes the paths through `ENVIRON`, which does no escape processing —
 the root now **works** rather than failing loudly — and keeps a return-value check as the backstop
 for real read failures. Measuring it turned up one more: the `gsub` escaping that guarded the
-invariants pointer is half wrong on BSD awk, where an unescaped `&` in a replacement *is* expanded
-but an unescaped backslash is *not*, and gawk disagrees. Substituting by index invokes no
-replacement semantics at all, so the fork stops mattering.
+invariants pointer is half wrong on BSD awk 20200816, where an unescaped `&` in a replacement *is*
+expanded but an unescaped backslash is *not* — so escaping both **doubled every backslash** in the
+delivered pointer, which settles it on the awk this actually runs on, whatever any other awk does.
+**A portability fork exists as well, and an earlier version of this sentence cited the wrong example
+for it.** `plug\tools` is not where the two awks differ — gawk's default agrees with BSD there.
+They diverge on *doubled* input (`x\\y` → BSD `x\\\\y`, gawk `x\\y`), and `gawk --posix` alone
+round-trips the single-backslash case; those gawk figures are **review's measurement, attributed
+rather than reproduced**, since the machine this was written on ships no gawk. Substituting by index
+invokes no replacement semantics at all, so the fork stops mattering either way.
 
 ### 2. Quarantine, not deletion — and that is the whole safety argument
 
