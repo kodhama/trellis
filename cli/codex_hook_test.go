@@ -764,3 +764,48 @@ func TestCodexDerivesItsSlugSetFromThePayload(t *testing.T) {
 		t.Error("the hardcoded SLUGS array must be gone — it cannot be repaired by a payload upgrade")
 	}
 }
+
+// TestCodexRejectsAnEmptyDerivedSlugSet is the Codex half of the same
+// governance-blackout class staleness.sh refuses as `no-slugs-in-payload`.
+//
+// Deriving the slug set from the payload (rather than hardcoding it) opened a
+// hole the hardcoded array could not have: `slugsFromRules` returns [] for a
+// rules.md that keeps its sentinel but carries no trailing backticked slug on
+// any line, and the sentinel gate above the derivation cannot see that — it
+// checks the marker, not the tags. With `slugs` empty, parseRulesToml's two
+// completeness checks pass VACUOUSLY (rows.size 0 === slugs.length 0, and
+// slugs.some() over an empty array is false), so a config holding nothing but
+// `strictness` and an empty `[rules]` table was ACCEPTED and the hook emitted a
+// successful "loaded installed overlay" response with zero activation rows —
+// a silently ungoverned session at exit 0, on the host where success is what it
+// looks like. The refusal must fire before anything consumes `slugs`.
+func TestCodexRejectsAnEmptyDerivedSlugSet(t *testing.T) {
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	// Well-formed by every check that runs BEFORE the derivation — non-empty,
+	// exactly one sentinel, terminated by it — and carrying no slug tag at all.
+	brokenRules := "# Trellis rules\n\nThis payload lost every trailing backticked slug tag.\n" +
+		rulesLoadedSentinel + "\n"
+	if strings.Count(brokenRules, rulesLoadedSentinel) != 1 || !strings.HasSuffix(brokenRules, rulesLoadedSentinel+"\n") {
+		t.Fatal("premise: the fixture must still satisfy the sentinel gate, or it would fail as invalid-rules for the wrong reason")
+	}
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "internal", "rules.md"), []byte(brokenRules), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The one rules.toml shape an empty slug set ACCEPTS: any actual row would
+	// be rejected as unknown (slugSet is empty), which fails loudly on its own
+	// — mislabelled, but loudly. This shape is the silent one.
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte("strictness = \"adaptive\"\n[rules]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput != nil {
+		t.Fatalf("a payload with no derivable slugs must not deliver a successful, row-free context — that is a silent governance blackout:\n%s", raw)
+	}
+	want := `{"systemMessage":"Trellis hook did not load rules: .trellis/internal/rules.md: no-slugs-in-payload. The AGENTS.md bootstrap must attempt the installed overlay."}`
+	if raw != want {
+		t.Errorf("failure mismatch\n got: %s\nwant: %s", raw, want)
+	}
+}

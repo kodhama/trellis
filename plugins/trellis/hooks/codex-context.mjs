@@ -489,6 +489,24 @@ if (
 // close, so the array is deduplicated at the source rather than trusted to
 // stay duplicate-free forever.
 const slugs = [...new Set(slugsFromRules(rules))];
+// An EMPTY derived set is the Codex twin of staleness.sh's
+// `no-slugs-in-payload` refusal, and it needs its own branch for the same
+// reason: nothing downstream can tell it apart from a satisfied one. The
+// sentinel gate above proves rules.md is well-formed, not that it TAGS any
+// slug — a payload whose rule lines lost their trailing backticked slug keeps
+// its sentinel and yields []. parseRulesToml then ACCEPTS a config carrying
+// `strictness` plus an empty `[rules]` table, because both completeness checks
+// pass vacuously (rows.size 0 === slugs.length 0, and slugs.some() over an
+// empty array is false), and this hook emits a successful "loaded installed
+// overlay" response with no activation rows in it at all: a silent governance
+// blackout at exit 0 — the fail-loud invariant inverted, on the host where the
+// blackout is hardest to notice because the response looks like success.
+// Rejected here, before anything consumes `slugs` — including the floor-row
+// warning below, which would also have nothing to filter.
+if (slugs.length === 0) {
+  fail(sources.rules, "no-slugs-in-payload");
+  process.exit(0);
+}
 const rows = parseRulesToml(rulesToml, slugs);
 if (rows === null) {
   fail(PROJECT_CONFIG, "invalid-rules");
