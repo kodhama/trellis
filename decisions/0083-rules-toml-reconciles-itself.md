@@ -83,6 +83,28 @@ to the reconciler would quarantine every legitimate row and run the session ungo
 inverting the fail-loud rule stated forty lines above the reconciler in the same file. It gets its
 own loud branch, and names the plugin rather than the consumer's rows as the thing to fix.
 
+**That branch turned out to be one of four, not the only one.** Review of this branch, before merge,
+found three more — and the paragraph above, which forbids exactly this outcome, was already true
+while the code let it happen three other ways. `no-slugs-in-payload` is the verdict the validator
+*reaches*; it is not the only way this hook could hand a session a governance blackout at `exit 0`.
+All four are one construct: **a read whose failure is silent**, behind an existence check that only
+proves the file is *there*.
+
+| Entry point | What the session got |
+|---|---|
+| `no-slugs-in-payload` — the validator ran and found no slug to check rows against | refused loudly; the verdict this section describes |
+| **An unparseable validator report.** The validator awk reads its two files **positionally**, so one that exists but cannot be *opened* kills it — it prints nothing, and the empty string is neither `ok` nor `no-slugs-in-payload`, so it read as *a mismatch to repair*. | all sixteen rows quarantined: `added 0 row(s); quarantined 16 row(s)`, plus a mandate to write that all-commented-out file to disk |
+| **An unreconcilable want set.** Inside the reconciler the want set is filled by a **redirected** `getline`, which returns `-1` *silently* instead of dying, so a failed open left `want[]` empty. | the same blackout one layer in, reached without the report ever being wrong |
+| **An unusable posture header.** The assembly awk read `$header` positionally too, one line below the other two — mode `000`, zero bytes, or truncated above its `@rules.md` import. | **sixteen activation rows and zero rules prose**: the agent told exactly which rules are active and handed none of them |
+
+The last is the worst-looking of the four *because* it is the least alarming: the payload reads as
+substantive, so nothing signals a problem, and it needs no permission trickery — an interrupted
+`install.sh` leaves a truncated header on its own. **The Codex hook has refused every one of these
+since it shipped** (`readRequired`'s `unreadable-file`/`missing-file`, its explicit `empty-prose`
+check, and `invalid-placeholder-count`), which is what marks all three as Claude-side oversights
+rather than design choices. Each now exits through the same loud door as `no-slugs-in-payload`, and
+each is pinned by a test proved by mutation.
+
 ### 2. Quarantine, not deletion — and that is the whole safety argument
 
 **Quarantine is correct under both readings of `unknown:`**: inert clutter if the rule was retired,
@@ -213,9 +235,20 @@ The design predicted three; execution retired exactly those three, one task earl
 
 `TestEveryDestructiveInstructionIsGated`'s floor moved 13 → 12 for the same reason: the retired
 blackout message was one of the gated messages, so removing it removed **something to gate, not a
-gate**. The emit count itself is unchanged at nineteen — the blackout emit went and the
-`no-slugs-in-payload` branch's loud emit took its place — and the guards report **zero ungated
-destructive messages** across both channels. Counted, not argued.
+gate**, and the guards report **zero ungated destructive messages** across both channels.
+
+**The emit count is twenty-three. This record said nineteen, with the words "counted, not argued"
+attached, and by the time anyone read it that was wrong by four.** Nineteen was right when the
+reconciliation task ended — the blackout emit went and the `no-slugs-in-payload` branch's loud emit
+took its place. The four blackout guards added afterwards on this same branch added one `emit` each:
+the three new entry points in the table under §1, plus a fourth probing the `cat "$toml"` delivery
+read, which is about the *consumer's* file rather than the payload and so is not one of them.
+Recounted on `plugins/trellis/hooks/staleness.sh` as `emit "` call sites, excluding the single
+comment that names the pattern: **23**.
+
+A wrong number carrying "counted, not argued" is worse than no number, because the phrase invites
+the reader to trust it instead of re-counting. The count is a fact about a file that keeps changing;
+read any number in this record as of its date, and recount before relying on one.
 
 ## Consequences
 
