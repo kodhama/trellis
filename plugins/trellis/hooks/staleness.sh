@@ -568,6 +568,41 @@ if [ ! -f "$header" ] || [ ! -f "$rules" ]; then
   exit 0
 fi
 
+# The payload's own terminator, checked BEFORE its slugs are trusted -- the
+# order codex-context.mjs uses and for the reason its comment gives: derive
+# first and a broken rules.md yields a broken slug set, after which every
+# downstream verdict is about the consumer's rows when the defect is the
+# plugin's. rules.md is 39 lines with the sentinel on line 39, so a truncation
+# anywhere loses it, and this catches the shape DIRECTLY rather than inferring
+# it from a slug count.
+#
+# It is also the one payload check with no second-file dependency. The
+# coherence check further down needs reference/rules-b.toml and skips itself
+# when that file is absent -- measured, that skip reopens the full
+# quarantine-fourteen-rows hole. This gate has nothing to skip on.
+#
+# Exactly one occurrence, and it must be the last line: the same two conditions
+# Codex enforces (`split(SENTINEL).length - 1 !== 1` and `endsWith`). One
+# nuance is deliberately NOT matched: Codex also requires the trailing newline,
+# which no portable awk can see, so a rules.md ending at the sentinel with no
+# newline passes here and fails there. Stated rather than papered over.
+sentinel_report="$(
+  awk '
+    { last = $0; n += gsub(/<!-- trellis:rules-loaded -->/, "&") }
+    END { print n + 0, (last == "<!-- trellis:rules-loaded -->" ? "last" : "not-last") }
+  ' "$rules"
+)"
+case "$sentinel_report" in
+  "1 last") ;;
+  *)
+    # Empty when the awk died outright, which is the unreadable-file case; the
+    # message covers both readings rather than asserting one.
+    [ -n "$sentinel_report" ] || sentinel_report="unreadable"
+    emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own rules payload ($rules) is not complete: it must carry exactly one \`<!-- trellis:rules-loaded -->\` terminator as its final line, and this hook found \"$sentinel_report\". A payload cut short of that line is a truncated or half-written install, and every rule below the cut is simply absent — so its slug list cannot be trusted to say what the rule set is. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rows were injected; your rows were not judged against it and nothing on disk was changed. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+    exit 0
+    ;;
+esac
+
 # Validate the rows before injecting them. The Codex hook has always done this
 # (parseRulesToml against a known slug list); the Claude hook did not, so a
 # truncated or hand-broken rules.toml was injected verbatim and the session ran
@@ -741,8 +776,15 @@ repair_summary=""
 if [ "$slug_report" != "ok" ]; then
   today="$(date +%Y-%m-%d)"
   reconciled="$(
-    awk -v want_src="$rules" -v stamp="$current" -v today="$today" '
+    TRELLIS_WANT_SRC="$rules" awk -v stamp="$current" -v today="$today" '
       BEGIN {
+        # ENVIRON, not -v, for the same reason as the assembly below: -v
+        # escape-processes its value, so a plugin root containing a backslash
+        # arrived here as a path that does not exist. The rc check under this
+        # made that fail LOUDLY rather than silently, which was right for a
+        # broken payload and wrong for a legitimate root that merely has a
+        # backslash in it. Now it simply works, and rc guards real read failures.
+        want_src = ENVIRON["TRELLIS_WANT_SRC"]
         # A REDIRECTED getline is silent where a positional read is fatal: it
         # returns -1 when the file cannot be opened and 0 at EOF, and the plain
         # `> 0` test could not tell those apart from a file that simply held no
@@ -919,17 +961,69 @@ if [ -z "$header_prose" ] || [ "$header_imports" != "1" ]; then
   emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook could not assemble its own rules payload: the posture header it was about to inject ($header) read as empty, or carries ${header_imports} @rules.md imports where exactly one is required, so the rules themselves would have been missing from what was injected. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected — the hook refused rather than deliver a rule ACTIVATION list with no rules under it. This is a broken or half-written plugin payload, not a problem with your rows: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
   exit 0
 fi
-payload="$(
+# The `@rules.md` expansion is the TWIN of the reconciler getline this branch
+# already fixed -- same redirected read, same silent -1 on a failed open -- left
+# unguarded on the `ok` path while its sibling 186 lines up checks `rc`. A
+# failed open printed ZERO rules prose and carried on.
+#
+# What triggers it is the `-v` channel, not a permission: `awk -v`
+# ESCAPE-PROCESSES its value (`awk -v v=/a\tb/c` yields length 6, not 7), so a
+# CLAUDE_PLUGIN_ROOT containing a backslash reaches this awk as a DIFFERENT path
+# than the one every `-f` test and every positional read used -- all of which
+# pass. Measured with a root named `plug\tools`: 16 activation rows, 0 rules
+# prose, exit 0, no marker, which is verbatim the damage shape the posture-header
+# guard above exists to stop. The same root with a mismatched rules.toml already
+# refused loudly, from the sibling that checks `rc`.
+#
+# `inv` took the identical mangling in silence, so the invariants pointer this
+# block exists to REPOINT was itself wrong on such a root. ENVIRON does no escape
+# processing, so both values arrive verbatim and a backslash root now works
+# rather than merely failing loudly.
+#
+# The substitution is index-based rather than gsub-based, and the BEGIN escaping
+# that guarded it is GONE with it. That escaping was half right and half wrong,
+# and only measuring said which half: on this awk (version 20200816) an
+# unescaped `&` in a gsub replacement IS expanded to the matched text, so
+# guarding it was necessary -- but an unescaped backslash is NOT special, so
+# escaping it turned a root named `plug\tools` into `plug\\tools` in the
+# delivered pointer. gawk collapses that; BSD awk does not, which is a
+# portability fork with no correct escaping on both sides. Substituting by
+# index invokes no replacement semantics at all, so neither metacharacter has
+# anything to do.
+rules_prose="$(
   printf '%s\n' "$header_prose" |
-  awk -v rules="$rules" -v inv="$plugin/reference/invariants.md" '
+  TRELLIS_RULES="$rules" TRELLIS_INV="$plugin/reference/invariants.md" awk '
     BEGIN {
-      # awk expands `&` in a gsub replacement to the matched text, and `\` escapes
-      # there too, so a plugin root under e.g. R&D silently corrupted the pointer.
-      gsub(/[\\&]/, "\\\\&", inv)
+      rules = ENVIRON["TRELLIS_RULES"]
+      inv = ENVIRON["TRELLIS_INV"]
+      tok = "`.trellis/internal/invariants.md`"
     }
-    /^@rules\.md[[:space:]]*$/ { while ((getline line < rules) > 0) print line; next }
-    { gsub(/`\.trellis\/internal\/invariants\.md`/, "`" inv "`"); print }
+    /^@rules\.md[[:space:]]*$/ {
+      rc = 0
+      while ((rc = (getline line < rules)) > 0) { print line; imported++ }
+      if (rc < 0 || imported == 0) { failed = 1; exit 1 }
+      next
+    }
+    {
+      line = $0
+      out = ""
+      while ((i = index(line, tok)) > 0) {
+        out = out substr(line, 1, i - 1) "`" inv "`"
+        line = substr(line, i + length(tok))
+      }
+      print out line
+    }
+    END { if (failed) print "#trellis-rules-import-failed" }
   '
+)"
+case "$rules_prose" in
+  "" | *"#trellis-rules-import-failed")
+    emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook assembled its posture header but could not import the rules themselves from $rules, so what it was about to inject named which rules are active without saying what any of them are. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected — the hook refused rather than deliver an activation list with nothing under it. This is a broken or half-written plugin payload: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+    exit 0
+    ;;
+esac
+payload="$(
+  printf '%s\n' "$rules_prose"
   printf '\n## Project rule activation\n\n'
   if [ -n "$reconciled" ]; then
     printf 'Rows from this project'"'"'s .trellis/rules.toml, RECONCILED against the rules this payload ships (%s) — the file on disk still differs. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n' "$repair_summary"

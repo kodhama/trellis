@@ -2605,8 +2605,13 @@ func TestNoSlugsInPayloadFailsLoudly(t *testing.T) {
 	files := payloadFiles()
 	// The one thing this fixture must break: no backticked trailing `inv-`/
 	// `floor-` slug anywhere, which is exactly what staleness.sh's validator
-	// scans rules.md for. Everything else about the payload stays valid.
-	files["rules.md"] = "# Rules\n\nThis payload carries no rule slugs at all.\n"
+	// scans rules.md for. Everything else about the payload stays valid —
+	// including the terminator, which the hook now checks BEFORE it derives a
+	// slug set (matching codex-context.mjs's order). Without this line the
+	// terminator gate would capture the fixture and this test would pass for
+	// the wrong reason, pinning nothing about no-slugs-in-payload.
+	files["rules.md"] = "# Rules\n\nThis payload carries no rule slugs at all.\n" +
+		rulesLoadedSentinel + "\n"
 
 	pluginRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
@@ -2905,7 +2910,15 @@ func TestUnreadableHeaderNeverShipsRowsWithoutRules(t *testing.T) {
 // truncateRulesMdAfter returns the payload's rules.md cut immediately after its
 // nth backticked slug tag — a file that is NON-EMPTY and carries real slugs, so
 // the validator's only broken-payload test, `length(want) == 0`, passes it.
-func truncateRulesMdAfter(t *testing.T, n int) string {
+//
+// keepTerminator re-appends the `<!-- trellis:rules-loaded -->` line. The
+// coherence test needs it TRUE: the terminator gate runs earlier and would
+// otherwise catch this fixture first, leaving the coherence guard pinned by
+// nothing. The terminator test needs it FALSE — that is the shape it is about.
+// A real truncation loses the terminator, so keepTerminator: true models the
+// narrower case of a payload whose rule list was corrupted with its ending
+// intact, which is exactly the residue the terminator gate cannot see.
+func truncateRulesMdAfter(t *testing.T, n int, keepTerminator bool) string {
 	t.Helper()
 	tag := regexp.MustCompile("`(inv|floor)-[a-z-]+`[ \t]*$")
 	var kept []string
@@ -2922,7 +2935,11 @@ func truncateRulesMdAfter(t *testing.T, n int) string {
 	if seen != n {
 		t.Fatalf("premise: the payload rules.md must carry at least %d slug tags, found %d", n, seen)
 	}
-	return strings.Join(kept, "\n") + "\n"
+	out := strings.Join(kept, "\n") + "\n"
+	if keepTerminator {
+		out += rulesLoadedSentinel + "\n"
+	}
+	return out
 }
 
 // TestIncoherentPayloadNeverMandatesQuarantiningTheProjectsRows closes the one
@@ -2990,7 +3007,7 @@ func TestIncoherentPayloadNeverMandatesQuarantiningTheProjectsRows(t *testing.T)
 	}
 
 	t.Run("a truncated rules.md must not drive a quarantine mandate", func(t *testing.T) {
-		truncated := truncateRulesMdAfter(t, 2)
+		truncated := truncateRulesMdAfter(t, 2, true)
 		// The premise the validator could not see: non-empty, real slugs, and
 		// still not the payload's rule set.
 		if strings.TrimSpace(truncated) == "" {
@@ -3211,6 +3228,240 @@ func TestReconciledRowsParseForCodexToo(t *testing.T) {
 			raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
 			if got.HookSpecificOutput == nil || got.SystemMessage != "" {
 				t.Fatalf("the reconciled rows must parse for Codex too — a file Claude governs normally from must not read invalid-rules (0 rules) under Codex: %s", raw)
+			}
+		})
+	}
+}
+
+// TestTruncatedRulesMdIsRefusedByItsOwnTerminator adds the check Codex has had
+// since it shipped and the Claude hook did not: rules.md must carry exactly one
+// `<!-- trellis:rules-loaded -->` terminator, as its final line.
+//
+// It closes the same truncated-payload hole the coherence guard does, by a
+// shorter and less conditional route. rules.md is 39 lines with the terminator
+// on line 39, so ANY truncation loses it — no slug arithmetic required. And
+// unlike the coherence guard it has no second-file dependency: that guard needs
+// reference/rules-b.toml and SKIPS itself when the file is absent, which
+// reopens the full hole (measured: `quarantined 14 row(s)`, both floor rules
+// commented out, exit 0, no marker). The third subtest is that exact
+// combination, and it is the reason this gate is worth its line count.
+//
+// Ordered BEFORE the slug derivation, matching codex-context.mjs and its
+// comment's reasoning: a payload validated after it is trusted produces
+// verdicts about the consumer's rows for a defect that is the plugin's.
+func TestTruncatedRulesMdIsRefusedByItsOwnTerminator(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+	if !strings.HasSuffix(files["rules.md"], rulesLoadedSentinel+"\n") {
+		t.Fatal("premise: the shipped rules.md must end with the terminator this gate requires")
+	}
+
+	run := func(t *testing.T, rulesMd string, dropPresetFile bool) string {
+		t.Helper()
+		pluginRoot := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, body := range files {
+			if name == "rules.md" {
+				body = rulesMd
+			}
+			if dropPresetFile && name == "rules-b.toml" {
+				continue
+			}
+			if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		proj := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		return nudgeContext(t, strings.TrimSpace(stdout.String()))
+	}
+
+	assertRefused := func(t *testing.T, ctx string) {
+		t.Helper()
+		if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("a payload without its terminator must be refused, not believed:\n%s", ctx)
+		}
+		if strings.Contains(ctx, "quarantined") {
+			t.Errorf("nothing may be quarantined against a truncated payload:\n%s", ctx)
+		}
+		for _, floor := range []string{"floor-transparency", "floor-intent-gate"} {
+			if strings.Contains(ctx, "# "+floor) {
+				t.Errorf("%s was commented out on the strength of a truncated payload:\n%s", floor, ctx)
+			}
+		}
+		if strings.Contains(ctx, "Write .trellis/rules.toml with exactly the rows shown above") {
+			t.Errorf("the repair mandate must never fire against a truncated payload:\n%s", ctx)
+		}
+		for _, slug := range []string{"floor-transparency", "inv-minimal-first"} {
+			if deliveredRow(ctx, slug) {
+				t.Errorf("no row may be delivered from a truncated payload; got %s in:\n%s", slug, ctx)
+			}
+		}
+	}
+
+	t.Run("a rules.md cut short of its terminator is refused", func(t *testing.T) {
+		assertRefused(t, run(t, truncateRulesMdAfter(t, 2, false), false))
+	})
+
+	t.Run("a doubled terminator is refused too", func(t *testing.T) {
+		assertRefused(t, run(t, files["rules.md"]+rulesLoadedSentinel+"\n", false))
+	})
+
+	// The reason this gate earns its place beside the coherence guard: with
+	// rules-b.toml absent, coherence skips itself and the hole is fully open.
+	// Measured on the pre-gate hook, exactly this fixture produced
+	// `quarantined 14 row(s)` with both floor rules commented out.
+	t.Run("a truncated rules.md is refused even with no rules-b.toml to compare against", func(t *testing.T) {
+		assertRefused(t, run(t, truncateRulesMdAfter(t, 2, false), true))
+	})
+
+	// The control: the shipped payload must sail through the new gate.
+	t.Run("the shipped payload passes its own terminator check", func(t *testing.T) {
+		ctx := run(t, files["rules.md"], false)
+		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("the shipped payload must not be refused by the gate meant for broken ones:\n%s", ctx)
+		}
+		for _, slug := range []string{"floor-transparency", "inv-minimal-first"} {
+			if !deliveredRow(ctx, slug) {
+				t.Errorf("the shipped payload must still deliver %s:\n%s", slug, ctx)
+			}
+		}
+	})
+}
+
+// TestPluginRootWithABackslashStillDeliversTheRules is the eighth instance of
+// the silent-read class, and the twin of the reconciler getline this branch
+// already fixed: `@rules.md` expanded through `while ((getline line < rules) >
+// 0)` with the return value discarded, on the `slug_report == "ok"` path, 186
+// lines from the sibling that checks it.
+//
+// The trigger is not a permission but the `-v` channel. `awk -v`
+// ESCAPE-PROCESSES its value — `awk -v v='/a\tb/c'` yields length 6, not 7 — so
+// a CLAUDE_PLUGIN_ROOT containing a backslash reached that awk as a DIFFERENT
+// path than the one every `-f` test and every positional read used, all of
+// which passed. Measured with a root named `plug\tools`: 16 activation rows,
+// 0 rules prose, exit 0, no marker — verbatim the damage shape the posture
+// header guard exists to stop. The discriminator that made it unambiguous: the
+// SAME root with a mismatched rules.toml refused loudly, from the sibling that
+// checks rc.
+//
+// The fix passes the paths through ENVIRON, which does no escape processing, so
+// such a root now WORKS rather than merely failing loudly; the rc check remains
+// for genuine read failures. The invariants pointer is asserted verbatim
+// because it rode the identical mangling silently, and because the gsub-based
+// substitution that carried it was half-wrong on this awk in the other
+// direction — an unescaped `&` IS expanded, an unescaped backslash is NOT, so
+// the escaping meant to protect both corrupted one. Substituting by index
+// invokes no replacement semantics at all.
+func TestPluginRootWithABackslashStillDeliversTheRules(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	for _, tc := range []struct {
+		name       string
+		dir        string
+		rows       string
+		reconciles bool
+	}{
+		{
+			// The path the sibling rc check never covered.
+			name: "a backslash in the plugin root, rows already matching",
+			dir:  "plug\\tools",
+			rows: files["rules-b.toml"],
+		},
+		{
+			// An ampersand corrupted the invariants pointer through the same
+			// awk by the opposite mechanism; both are asserted here so a fix
+			// for either cannot silently break the other.
+			name: "an ampersand in the plugin root, rows already matching",
+			dir:  "R&D",
+			rows: files["rules-b.toml"],
+		},
+		{
+			// The discriminator: this path already refused loudly, because the
+			// reconciler checks rc. It must now DELIVER, since the root is
+			// legitimate and every file on it is readable.
+			name:       "a backslash in the plugin root, rows needing reconciliation",
+			dir:        "plug\\tools",
+			rows:       strings.Replace(files["rules-b.toml"], "inv-minimal-first         = { active = true }\n", "", 1),
+			reconciles: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.reconciles && tc.rows == files["rules-b.toml"] {
+				t.Fatal("fixture removed nothing — the reconcile case would prove nothing")
+			}
+			pluginRoot := filepath.Join(t.TempDir(), tc.dir)
+			if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for name, body := range files {
+				if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			proj := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(tc.rows), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+			}
+			ctx := nudgeContext(t, strings.TrimSpace(stdout.String()))
+
+			if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+				t.Fatalf("a plugin root whose NAME contains a metacharacter is legitimate and every file on it is readable — it must govern, not refuse:\n%s", ctx)
+			}
+			// The blackout, asserted as itself: rows without rules is the
+			// shape, so both halves are required.
+			if !strings.Contains(ctx, rulesLoadedSentinel) {
+				t.Errorf("the rules prose was not imported — this is the rows-without-rules blackout:\n%s", ctx)
+			}
+			for _, slug := range []string{"floor-transparency", "floor-intent-gate", "inv-minimal-first"} {
+				if !deliveredRow(ctx, slug) {
+					t.Errorf("row for %s was not delivered:\n%s", slug, ctx)
+				}
+			}
+			// Verbatim, not merely present: the escape hazard mangled this
+			// pointer without changing its shape.
+			wantPointer := filepath.Join(pluginRoot, "reference", "invariants.md")
+			if !strings.Contains(ctx, "`"+wantPointer+"`") {
+				t.Errorf("the invariants pointer must name the real path verbatim, want %q in:\n%s", wantPointer, ctx)
+			}
+			if tc.reconciles && !strings.Contains(ctx, "RECONCILED") {
+				t.Errorf("a project out of step must still reconcile on such a root:\n%s", ctx)
 			}
 		})
 	}
