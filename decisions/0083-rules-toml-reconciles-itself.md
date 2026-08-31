@@ -83,12 +83,12 @@ to the reconciler would quarantine every legitimate row and run the session ungo
 inverting the fail-loud rule stated forty lines above the reconciler in the same file. It gets its
 own loud branch, and names the plugin rather than the consumer's rows as the thing to fix.
 
-**That branch turned out to be one of four, not the only one.** Review of this branch, before merge,
-found three more — and the paragraph above, which forbids exactly this outcome, was already true
-while the code let it happen three other ways. `no-slugs-in-payload` is the verdict the validator
-*reaches*; it is not the only way this hook could hand a session a governance blackout at `exit 0`.
-All four are one construct: **a read whose failure is silent**, behind an existence check that only
-proves the file is *there*.
+**That branch turned out to be one of five, not the only one.** Review of this branch, before merge,
+found four more — and the paragraph above, which forbids exactly this outcome, was already true
+while the code let it happen four other ways. `no-slugs-in-payload` is the verdict the validator
+*reaches*; it is not the only way a broken payload could reach the reconciler. Four of the five are
+one construct: **a read whose failure is silent**, behind an existence check that only proves the
+file is *there*. The fifth is worse, and is marked as such in the table.
 
 | Entry point | What the session got |
 |---|---|
@@ -96,14 +96,27 @@ proves the file is *there*.
 | **An unparseable validator report.** The validator awk reads its two files **positionally**, so one that exists but cannot be *opened* kills it — it prints nothing, and the empty string is neither `ok` nor `no-slugs-in-payload`, so it read as *a mismatch to repair*. | all sixteen rows quarantined: `added 0 row(s); quarantined 16 row(s)`, plus a mandate to write that all-commented-out file to disk |
 | **An unreconcilable want set.** Inside the reconciler the want set is filled by a **redirected** `getline`, which returns `-1` *silently* instead of dying, so a failed open left `want[]` empty. | the same blackout one layer in, reached without the report ever being wrong |
 | **An unusable posture header.** The assembly awk read `$header` positionally too, one line below the other two — mode `000`, zero bytes, or truncated above its `@rules.md` import. | **sixteen activation rows and zero rules prose**: the agent told exactly which rules are active and handed none of them |
+| **An incoherent payload — different in kind, see below.** The validator's only test for a broken `rules.md` is `length(want) == 0`, so one truncated *below* its first slug is non-empty, passes, and is then believed. | **`quarantined 14 row(s)`**, both floor rules commented out, and a mandate to write that file to `.trellis/rules.toml` |
 
-The last is the worst-looking of the four *because* it is the least alarming: the payload reads as
+The fourth is the worst-*looking*, because it is the least alarming: the payload reads as
 substantive, so nothing signals a problem, and it needs no permission trickery — an interrupted
-`install.sh` leaves a truncated header on its own. **The Codex hook has refused every one of these
-since it shipped** (`readRequired`'s `unreadable-file`/`missing-file`, its explicit `empty-prose`
-check, and `invalid-placeholder-count`), which is what marks all three as Claude-side oversights
-rather than design choices. Each now exits through the same loud door as `no-slugs-in-payload`, and
-each is pinned by a test proved by mutation.
+`install.sh` leaves a truncated header on its own.
+
+**The fifth is worse in kind, and it is the only one of the five that is.** The other four *withhold*
+governance for a session; a truncated `rules.md` **persists damage** — a broken payload drives a
+mandate to comment out fourteen rules in a file the consumer owns, while §2 below argues, correctly
+for a coherent payload, that a repair loses nothing. It is caught by comparing the payload against
+**itself**: `rules.md` tags sixteen slugs and the `rules-b.toml` default row list ships sixteen
+rows, identical by construction, so a disagreement between them is provable internal corruption —
+and provably distinct from the stale-plugin case quarantine exists for, where the payload is
+coherent and the *project* is out of step. That distinction is what keeps the guard from
+over-refusing, and it has its own control test.
+
+**The Codex hook has refused all four blackout shapes since it shipped** (`readRequired`'s
+`unreadable-file`/`missing-file`, its explicit `empty-prose` check, and
+`invalid-placeholder-count`), which is what marks those as Claude-side oversights rather than design
+choices; the fifth has no Codex analogue, because Codex never reconciles. Each now exits through the
+same loud door as `no-slugs-in-payload`, and each is pinned by a test proved by mutation.
 
 ### 2. Quarantine, not deletion — and that is the whole safety argument
 
@@ -126,6 +139,14 @@ consumer's choices. Under quarantine semantics no prior value is ever lost: ever
 addition or a comment. `floor-intent-gate` is satisfied because nothing irreversible happens;
 `floor-transparency` is satisfied because the agent must state what it reconciled, row by row,
 before substantive work. So the repair is **announced, not asked**.
+
+**That argument has a precondition, and it was unstated here until review supplied it: the payload
+must be coherent.** No *value* is lost either way — the row text survives, commented — but a
+reconciliation driven by a truncated `rules.md` stops fourteen rules from governing until somebody
+notices, which is damage whatever the file still contains. "Loses nothing" is a claim about the
+consumer's bytes, and a reader takes it as a claim that a wrong repair is harmless. It is not, so
+the precondition is now enforced rather than assumed: a payload that disagrees with itself is
+refused before the reconciler (§1, fifth entry point).
 
 **The clause this most nearly touches, quoted rather than paraphrased.** `decision-0070` D4 reads:
 
@@ -237,14 +258,14 @@ The design predicted three; execution retired exactly those three, one task earl
 blackout message was one of the gated messages, so removing it removed **something to gate, not a
 gate**, and the guards report **zero ungated destructive messages** across both channels.
 
-**The emit count is twenty-three. This record said nineteen, with the words "counted, not argued"
-attached, and by the time anyone read it that was wrong by four.** Nineteen was right when the
+**The emit count is twenty-four. This record said nineteen, with the words "counted, not argued"
+attached, and by the time anyone read it that was wrong by five.** Nineteen was right when the
 reconciliation task ended — the blackout emit went and the `no-slugs-in-payload` branch's loud emit
-took its place. The four blackout guards added afterwards on this same branch added one `emit` each:
-the three new entry points in the table under §1, plus a fourth probing the `cat "$toml"` delivery
-read, which is about the *consumer's* file rather than the payload and so is not one of them.
-Recounted on `plugins/trellis/hooks/staleness.sh` as `emit "` call sites, excluding the single
-comment that names the pattern: **23**.
+took its place. The guards added afterwards on this same branch added one `emit` each: the four new
+entry points in the table under §1, plus one probing the `cat "$toml"` delivery read, which is about
+the *consumer's* file rather than the payload and so is not one of them. Recounted on
+`plugins/trellis/hooks/staleness.sh` as `emit "` call sites, excluding the single comment that names
+the pattern: **24** (25 raw matches, less that comment).
 
 A wrong number carrying "counted, not argued" is worse than no number, because the phrase invites
 the reader to trust it instead of re-counting. The count is a fact about a file that keeps changing;
@@ -340,8 +361,15 @@ five separate assertions were green while proving nothing:
   `Contains` check against a string that no longer exists can only ever pass.
 - **One** slug check scraped the hook's **whole output**, including the rules prose, rather than the
   delivered TOML rows — so it stayed true even with every row quarantined. This is precisely why
-  the branch's one Critical defect (`no-slugs-in-payload` entering the reconciler with an empty want
-  set, quarantining every legitimate row and running ungoverned at exit 0) got past its own test.
+  **the Critical defect as it stood at `35f9aa8`** got past its own test: at that commit the
+  reconciler ran on `if [ "$slug_report" != "ok" ]` alone, with no `no-slugs-in-payload` branch
+  above it, so the verdict string itself entered the reconciler with an empty want set, quarantined
+  every legitimate row and ran the session ungoverned at exit 0. `3ce51b9` added the dedicated
+  branch that §1 describes; **read this bullet as of `35f9aa8`, not of the shipped code** — today
+  `no-slugs-in-payload` refuses loudly, and the same shape reaches the reconciler through the four
+  other doors §1 now enumerates. (Checked against `git show 35f9aa8:plugins/trellis/hooks/
+  staleness.sh` rather than inferred: the temporal marker was the thing missing, not the
+  attribution.)
 - **One** guard matched the verb `delete` **case-sensitively**, so a capitalised *"Delete the
   unknown rows…"* walked through both destructive-instruction guards untouched.
 - **One** subtest written to prove a guard was *"actually enforced"* recomputed the scanned message
@@ -422,7 +450,10 @@ change does not reach, and its prose is unedited — the forward pointer is in f
 Ungating a write to a consumer-owned file is the shape `floor-intent-gate` exists for, and
 `decision-0072` finding #6 is the exact precedent against it. The argument that it does not apply
 rests entirely on quarantine being non-destructive — stated as a load-bearing premise above, not
-as a passing remark — and it is enforced by two widened guards rather than by intent.
+as a passing remark — and it is enforced by two widened guards rather than by intent. **And that
+premise carries a precondition the first version of this record left implicit**: it holds only while
+the payload driving the repair is coherent, which is now checked before the reconciler runs rather
+than assumed (§1, §2).
 
 **The boundary with what came before is drawn in both directions** (`decision-0074`): what
 `decision-0072` loses is enumerated in §4, what it keeps is enumerated beside it, and the one
