@@ -38,19 +38,34 @@ its own mandate does not merely sit there; it gets enforced.
 
 ### What superpowers actually does
 
-The instruction is *"follow what superpowers does"*, and superpowers commits both artifacts and
-deletes neither. From the skills themselves:
+The instruction is *"follow what superpowers does"*, and superpowers retains both artifacts and
+deletes neither. **The evidence is stronger for the spec than for the plan, and the difference is
+stated rather than smoothed over** — the whole defect this record corrects is a paraphrase that
+widened, so it would be self-defeating to widen one here.
+
+**Quoted, for the spec:**
 
 - `superpowers:brainstorming` — *"Write the validated design (spec) to
-  `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`"*, followed by *"Commit the design document
-  to git"*.
-- `superpowers:writing-plans` — *"**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`"*.
-- `superpowers:subagent-driven-development`, at Finish — *"delete this plan's **workspace**
-  (`rm -rf <workspace>`) — the git history is the record now."*
+  `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`"*, followed at `SKILL.md:209` by an explicit
+  *"Commit the design document to git"*.
+
+**Inferred, for the plan** — `superpowers:writing-plans` gives a location and no commit instruction:
+
+- *"**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`"* (`SKILL.md:18`). Its
+  other mentions of committing are the task template's steps for the *feature's* commits, not the
+  plan's.
+- The location is what carries the argument: `docs/superpowers/` is tracked, while the working state
+  the same tooling creates goes to `.superpowers/`, which this repository git-ignores. A tool that
+  wanted plans discarded had a git-ignored directory available and did not use it.
+- `superpowers:subagent-driven-development`, at Finish — *"delete this plan's workspace*
+  *(`rm -rf <workspace>`) — the git history is the record now"* (`SKILL.md:483-484`; emphasis on
+  *workspace* added). The deletion is scoped to `.superpowers/sdd/<plan>/`, named at `SKILL.md:137-138`.
+  Nothing instructs deleting the plan document.
 
 The only thing the tooling deletes is the SDD **workspace** — the ledger, task briefs and review
-packages under `.superpowers/sdd/`. That is the scratch. The spec and the plan are committed by
-design; there is no archive step, because git history *is* the archive.
+packages under `.superpowers/sdd/`. That is the scratch. Nothing in any of the three skills instructs
+deleting or archiving the spec or the plan, and there is no archive step to invoke: git history *is*
+the archive.
 
 `0079`'s *"plans are session scaffolding"* is therefore true of the workspace and false of the
 plan. The two were conflated.
@@ -87,7 +102,7 @@ together. The exemption is unchanged; only its stated ground is.
 **5. Planning artifacts are records, not contracts.** They are not maintained against the code after
 the work lands. When a plan or spec turns out to have been wrong about what shipped, the correction
 is a **dated note appended beside the original claim**, never an edit that makes the record look
-prescient. Six such notes exist across `#258` and `#259` already, and that is the intended shape.
+prescient. Five such notes already sit on this branch's own spec and plan, and that is the intended shape.
 
 ## Consequences
 
@@ -112,6 +127,6 @@ prescient. Six such notes exist across `#258` and `#259` already, and that is th
 - **The maintainer's words are quoted rather than paraphrased**, because the whole defect being
   corrected is a paraphrase that widened.
 - **`decision-0081`'s cost-of-reversal framing applies and is cited honestly** — that record calls
-  itself *"(proposal, not a decision)"* at `decisions/0081:17`. Under it, correcting an over-wide
+  itself *"(proposal, not a decision)"* at `decisions/0081-supersession-authority-by-cost-of-reversal.md:17`. Under it, correcting an over-wide
   record before anything depends on it is cheap; leaving it costs a further reviewer objection on
   every subsequent change that uses the tooling.
