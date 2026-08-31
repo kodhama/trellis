@@ -83,9 +83,9 @@ to the reconciler would quarantine every legitimate row and run the session ungo
 inverting the fail-loud rule stated forty lines above the reconciler in the same file. It gets its
 own loud branch, and names the plugin rather than the consumer's rows as the thing to fix.
 
-**That branch turned out to be one of six, not the only one.** Review of this branch, before merge,
-found five more — and the paragraph above, which forbids exactly this outcome, was already true
-while the code let it happen five other ways. `no-slugs-in-payload` is the verdict the validator
+**That branch turned out to be one of seven, not the only one.** Review of this branch, before merge,
+found six more — and the paragraph above, which forbids exactly this outcome, was already true
+while the code let it happen six other ways. `no-slugs-in-payload` is the verdict the validator
 *reaches*; it is not the only way a broken payload could reach the reconciler. Most of them are one
 construct: **a read whose failure is silent**, behind an existence check that only proves the file
 is *there*. Two are not, and are marked in the table.
@@ -98,6 +98,7 @@ is *there*. Two are not, and are marked in the table.
 | **An unusable posture header.** The assembly awk read `$header` positionally too, one line below the other two — mode `000`, zero bytes, or truncated above its `@rules.md` import. | **sixteen activation rows and zero rules prose**: the agent told exactly which rules are active and handed none of them |
 | **An incoherent payload — different in kind, see below.** The validator's only test for a broken `rules.md` is `length(want) == 0`, so one truncated *below* its first slug is non-empty, passes, and is then believed. | **`quarantined 14 row(s)`**, both floor rules commented out, and a mandate to write that file to `.trellis/rules.toml` |
 | **A payload missing its own terminator** — the check Codex has always had and this hook did not. Added last, because the guard above it *skips itself* when `reference/rules-b.toml` is absent, and measured with that file removed the hole is fully open again. | the same `quarantined 14 row(s)`, reached with nothing left to compare the payload against |
+| **A defaults path with no rows to default to — persists damage, like the fifth.** With `rows_are_default = yes` (D3), `$toml` IS the payload's own `rules-b.toml`, so a corrupted one stops being a *comparison* file and becomes the rows themselves. | sixteen rows added and **a mandate to write `.trellis/rules.toml` into a project that never had one** |
 
 The fourth is the worst-*looking*, because it is the least alarming: the payload reads as
 substantive, so nothing signals a problem, and it needs no permission trickery — an interrupted
@@ -282,14 +283,14 @@ The design predicted three; execution retired exactly those three, one task earl
 blackout message was one of the gated messages, so removing it removed **something to gate, not a
 gate**, and the guards report **zero ungated destructive messages** across both channels.
 
-**The emit count is twenty-six. This record said nineteen, with the words "counted, not argued"
-attached, and by the time anyone read it that was wrong by seven.** Nineteen was right when the
+**The emit count is twenty-seven. This record said nineteen, with the words "counted, not argued"
+attached, and by the time anyone read it that was wrong by eight.** Nineteen was right when the
 reconciliation task ended — the blackout emit went and the `no-slugs-in-payload` branch's loud emit
-took its place. The guards added afterwards on this same branch added one `emit` each: the five new
+took its place. The guards added afterwards on this same branch added one `emit` each: the six new
 entry points in the table under §1, plus one probing the `cat "$toml"` delivery read (about the
 *consumer's* file, not the payload) and one backstopping the `@rules.md` import. Recounted on
 `plugins/trellis/hooks/staleness.sh` as `emit "` call sites, excluding the single comment that names
-the pattern: **26** (27 raw matches, less that comment).
+the pattern: **27** (28 raw matches, less that comment).
 
 This number has now been restated three times on one branch, which is itself the finding: a count
 in a record is a **measurement with a date**, not a fact about the design, and the sentence carrying

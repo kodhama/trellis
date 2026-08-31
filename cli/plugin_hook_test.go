@@ -3696,4 +3696,112 @@ func TestEveryLegitimateShapeStillGoverns(t *testing.T) {
 			}
 		})
 	}
+
+	// THE DEFAULTS PATH, which every shape above misses. rulesTomlRun always
+	// seeds a project .trellis/rules.toml, so this sweep — written to prove no
+	// shape is wrongly refused — never exercised `rows_are_default=yes` at all,
+	// and that is exactly where a regression landed: on that path $toml is
+	// repointed at the payload's OWN rules-b.toml, so an unusable rules-b.toml
+	// stops being a comparison file and becomes the rows themselves. Both
+	// directions are pinned here, because the blind spot was the bug.
+	defaultsRun := func(t *testing.T, presetBody string, presetMode os.FileMode) string {
+		t.Helper()
+		// decision-0070 D6: project scope is the vendored bundle under
+		// <repo>/.claude/skills/, and only that. Anywhere else and the hook
+		// announces instead of governing, so this layout is load-bearing.
+		proj := t.TempDir()
+		pluginRoot := filepath.Join(proj, ".claude", "skills", "trellis")
+		if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, body := range files {
+			if name == "rules-b.toml" {
+				continue
+			}
+			if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", "rules-b.toml"), []byte(presetBody), presetMode); err != nil {
+			t.Fatal(err)
+		}
+		if presetMode == 0o000 {
+			t.Cleanup(func() { _ = os.Chmod(filepath.Join(pluginRoot, "reference", "rules-b.toml"), 0o644) })
+		}
+		// No .trellis/rules.toml, on purpose: that absence IS this shape.
+		if _, err := os.Stat(filepath.Join(proj, ".trellis", "rules.toml")); !os.IsNotExist(err) {
+			t.Fatal("premise: the defaults path requires a project with no .trellis/rules.toml")
+		}
+		cmd := exec.Command(hookPathForDefaults(t))
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		return nudgeContext(t, strings.TrimSpace(stdout.String()))
+	}
+
+	t.Run("no project file at all: the shipped defaults govern", func(t *testing.T) {
+		ctx := defaultsRun(t, files["rules-b.toml"], 0o644)
+		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("an adopted project with no rules.toml must govern from the shipped defaults:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "this project has no .trellis/rules.toml") {
+			t.Errorf("the defaults preamble must say where the rows came from — otherwise this fixture is not on the defaults path at all:\n%s", ctx)
+		}
+		for _, slug := range []string{"floor-transparency", "floor-intent-gate", "inv-minimal-first"} {
+			if !deliveredRow(ctx, slug) {
+				t.Errorf("row for %s must be delivered from the shipped defaults:\n%s", slug, ctx)
+			}
+		}
+		if strings.Contains(ctx, "RECONCILED") {
+			t.Errorf("the shipped defaults match the shipped rules by construction — nothing to reconcile:\n%s", ctx)
+		}
+	})
+
+	// The regression, as its own damage. A corrupted defaults file must never
+	// reach the reconciler, because on this path the repair mandate names a
+	// file the project does not have and has never had.
+	for _, tc := range []struct {
+		name string
+		body string
+		mode os.FileMode
+	}{
+		{name: "zero bytes", body: "", mode: 0o644},
+		{name: "no rows, only a comment", body: "# nothing here\n", mode: 0o644},
+		{name: "unreadable", body: "", mode: 0o000},
+	} {
+		t.Run("a corrupted defaults file refuses instead of inventing a project file: "+tc.name, func(t *testing.T) {
+			if tc.mode == 0o000 && os.Geteuid() == 0 {
+				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+			}
+			ctx := defaultsRun(t, tc.body, tc.mode)
+			if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+				t.Fatalf("a payload whose own row file carries no rows must refuse, not reconcile against nothing:\n%s", ctx)
+			}
+			if strings.Contains(ctx, "Write .trellis/rules.toml with exactly the rows shown above") {
+				t.Errorf("the repair mandate names a file this project does not have — a broken payload driving a write into the consumer's tree:\n%s", ctx)
+			}
+			if strings.Contains(ctx, "RECONCILED") {
+				t.Errorf("nothing may be reconciled when the rows themselves could not be read:\n%s", ctx)
+			}
+			for _, slug := range []string{"floor-transparency", "inv-minimal-first"} {
+				if deliveredRow(ctx, slug) {
+					t.Errorf("no row may be delivered from a payload row file that parsed to nothing; got %s in:\n%s", slug, ctx)
+				}
+			}
+		})
+	}
+}
+
+func hookPathForDefaults(t *testing.T) string {
+	t.Helper()
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return hook
 }

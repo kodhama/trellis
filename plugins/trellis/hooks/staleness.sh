@@ -702,6 +702,36 @@ case "$slug_report" in
     exit 0
     ;;
 esac
+# ON THE DEFAULTS PATH THE PAYLOAD **IS** THE ROWS, and that inverts what an
+# unusable row file means. When rows_are_default=yes (decision-0070 D3: the
+# bundle is vendored in this repository, so absent rows mean the standard set)
+# $toml was repointed at the payload's own rules-b.toml. There is no consumer
+# file at all -- and the reconciler, reached with zero rows parsed, reads all
+# sixteen slugs as missing, adds them, and mandates writing .trellis/rules.toml
+# into a project that never had one. Measured against a 0-byte rules-b.toml:
+# exit 0, sixteen rows, and "Write .trellis/rules.toml with exactly the rows
+# shown above" -- a broken payload driving a write into the consumer's tree,
+# which is the persists-damage class the comment below this one exists for.
+#
+# It reached that path through the coherence gate skipping itself, correctly,
+# on `length(rows) == 0`: that gate treats rules-b.toml as the COMPARISON file,
+# and skipping an unusable comparison is right when the rows come from
+# somewhere else. Here they do not. So the row count is checked on $toml
+# directly rather than inferred from the gate below, which keeps this correct
+# even if the defaults path is ever pointed at a different preset file.
+#
+# Only the defaults path. An empty PROJECT rules.toml is the supported
+# hand-written-partial shape and must keep reconciling into the consumer's own
+# file -- the difference is whose file the mandate names.
+if [ "${rows_are_default:-no}" = yes ]; then
+  default_rows="$(awk '/^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ { n++ } END { print n + 0 }' "$toml")"
+  case "${default_rows:-0}" in
+    0)
+      emit "TRELLIS_RULES_NOT_LOADED — this project has no .trellis/rules.toml and is governed by the rule rows the Trellis plugin ships ($toml), and that file carries no rows at all — it is empty, unreadable, or truncated. This project adopted Trellis (the plugin is vendored in this repository), but the session is running ungoverned and NO rules and NO rows were injected. The hook refused rather than treat a broken payload file as if it were this project's own settings. NOTHING is wrong with this project and there is nothing here to correct: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the fix. Tell the user before doing substantive work."
+      exit 0
+      ;;
+  esac
+fi
 # PAYLOAD-VS-PAYLOAD, not payload-vs-project. Everything above this line checks
 # the PROJECT's rows against the payload; nothing checked the payload against
 # ITSELF, and `length(want) == 0` is the only shape of broken rules.md the
