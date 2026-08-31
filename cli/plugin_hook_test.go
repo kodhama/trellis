@@ -3346,6 +3346,136 @@ func TestTruncatedRulesMdIsRefusedByItsOwnTerminator(t *testing.T) {
 			}
 		}
 	})
+
+	// The gate compared awk's RAW record against an exact ASCII string, so a
+	// rules.md checked out or packaged with CRLF normalization carried a
+	// trailing \r on its last line and was reported `not-last` — a full
+	// blackout on a COMPLETE, CORRECT payload, which is the mirror image of
+	// every defect this branch has been closing and just as useless to a
+	// consumer, who is told nothing loaded and has nothing to fix.
+	//
+	// This branch had already fixed the identical blindness once, in the
+	// reconciler, a few hundred lines away. The fixture exists so it cannot
+	// come back a third time.
+	t.Run("a healthy CRLF payload governs and is not refused", func(t *testing.T) {
+		crlf := strings.ReplaceAll(files["rules.md"], "\n", "\r\n")
+		if !strings.Contains(crlf, "\r\n") || strings.Contains(files["rules.md"], "\r") {
+			t.Fatal("premise: the fixture must convert LF to CRLF and the shipped file must not already be CRLF")
+		}
+		ctx := run(t, crlf, false)
+		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Fatalf("a complete payload with CRLF line endings must govern, not black out:\n%s", ctx)
+		}
+		for _, slug := range []string{"floor-transparency", "floor-intent-gate", "inv-minimal-first"} {
+			if !deliveredRow(ctx, slug) {
+				t.Errorf("a CRLF payload must still deliver %s as a governed row:\n%s", slug, ctx)
+			}
+		}
+	})
+
+	// ...and tolerating \r must not make the gate blind: a CRLF payload that
+	// really is truncated is still refused.
+	t.Run("a truncated CRLF payload is still refused", func(t *testing.T) {
+		crlf := strings.ReplaceAll(truncateRulesMdAfter(t, 2, false), "\n", "\r\n")
+		assertRefused(t, run(t, crlf, false))
+	})
+}
+
+// TestAnUnusablePresetSkipsTheCoherenceCheckRatherThanBlackingOut fixes the
+// mirror-image defect in the coherence guard: `[ -f ]` proves the file EXISTS,
+// never that it can be READ, and the difference was inverted. An ABSENT
+// rules-b.toml skipped the check and governed normally; an UNREADABLE or EMPTY
+// one produced a full TRELLIS_RULES_NOT_LOADED blaming payload incoherence,
+// while rules.md and the project's rows were both perfectly healthy. The MORE
+// broken state was handled better than the less broken one.
+//
+// A guard that cannot tell "I could not read this" from "this is corrupt" is
+// not a guard. All three unusable states now behave identically — skip, and
+// govern — because the terminator gate above is the unconditional half of the
+// pair and needs no second file.
+func TestAnUnusablePresetSkipsTheCoherenceCheckRatherThanBlackingOut(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+
+	for _, tc := range []struct {
+		name  string
+		state string // "absent", "empty", "unreadable"
+	}{
+		{name: "an absent rules-b.toml skips the comparison", state: "absent"},
+		{name: "an empty rules-b.toml skips it too, rather than reading as 16-vs-0", state: "empty"},
+		{name: "an unreadable rules-b.toml skips it too, rather than reading as corruption", state: "unreadable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.state == "unreadable" && os.Geteuid() == 0 {
+				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+			}
+			pluginRoot := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for name, body := range files {
+				if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			target := filepath.Join(pluginRoot, "reference", "rules-b.toml")
+			switch tc.state {
+			case "absent":
+				if err := os.Remove(target); err != nil {
+					t.Fatal(err)
+				}
+			case "empty":
+				if err := os.WriteFile(target, nil, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			case "unreadable":
+				if err := os.Chmod(target, 0o000); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+				if _, err := os.ReadFile(target); err == nil {
+					t.Skipf("premise: %s is still readable at mode 0000", target)
+				}
+			}
+
+			proj := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			// The project's own rows are the SHIPPED set: nothing here is wrong,
+			// which is the whole point — refusing this is refusing a healthy
+			// project over a payload file it never reads.
+			if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+			}
+			ctx := nudgeContext(t, strings.TrimSpace(stdout.String()))
+
+			if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+				t.Fatalf("a healthy payload and healthy rows must govern; an unusable comparison file is not a reason to refuse:\n%s", ctx)
+			}
+			if !strings.Contains(ctx, rulesLoadedSentinel) {
+				t.Errorf("the rules prose must still be delivered:\n%s", ctx)
+			}
+			for _, slug := range []string{"floor-transparency", "floor-intent-gate", "inv-minimal-first"} {
+				if !deliveredRow(ctx, slug) {
+					t.Errorf("row for %s must still be delivered:\n%s", slug, ctx)
+				}
+			}
+		})
+	}
 }
 
 // TestPluginRootWithABackslashStillDeliversTheRules is the eighth instance of
@@ -3462,6 +3592,107 @@ func TestPluginRootWithABackslashStillDeliversTheRules(t *testing.T) {
 			}
 			if tc.reconciles && !strings.Contains(ctx, "RECONCILED") {
 				t.Errorf("a project out of step must still reconcile on such a root:\n%s", ctx)
+			}
+		})
+	}
+}
+
+// TestEveryLegitimateShapeStillGoverns is the over-refusal sweep for the eight
+// payload guards this branch added. Every one of them refuses loudly, and two
+// of them shipped defects that refused a HEALTHY input — a CRLF payload, and an
+// unreadable comparison file. That direction is as bad for a consumer as the
+// blackouts the guards exist to stop: TRELLIS_RULES_NOT_LOADED with nothing
+// wrong to fix.
+//
+// So the ordinary shapes are pinned as a set rather than one at a time. None of
+// them may produce that marker, whatever else they do — reconcile, deliver
+// unchanged, or decline.
+func TestEveryLegitimateShapeStillGoverns(t *testing.T) {
+	run := rulesTomlRun(t)
+	files := payloadFiles()
+	const oneRow = "inv-minimal-first         = { active = true }\n"
+	if !strings.Contains(files["rules-b.toml"], oneRow) {
+		t.Fatalf("premise: the shipped preset must carry the row every fixture below edits: %q", oneRow)
+	}
+
+	for _, tc := range []struct {
+		name string
+		rows string
+		// reconciles records whether this shape is EXPECTED to repair. Asserted
+		// so a fixture that silently stopped being a mismatch cannot pass as
+		// "did not refuse".
+		reconciles bool
+		// declines marks the opt-out, whose correct answer is silence.
+		declines bool
+	}{
+		{name: "the firm preset, unchanged", rows: files["rules-a.toml"]},
+		{name: "the adaptive preset, unchanged", rows: files["rules-b.toml"]},
+		{
+			name:       "a missing row",
+			rows:       strings.Replace(files["rules-b.toml"], oneRow, "", 1),
+			reconciles: true,
+		},
+		{
+			name:       "an unknown row",
+			rows:       files["rules-b.toml"] + "inv-not-a-real-rule = { active = true }\n",
+			reconciles: true,
+		},
+		{
+			name:       "a duplicate row",
+			rows:       files["rules-b.toml"] + oneRow,
+			reconciles: true,
+		},
+		{
+			name:       "a renamed slug — missing and unknown at once",
+			rows:       strings.Replace(files["rules-b.toml"], "inv-minimal-first  ", "inv-renamed-slug   ", 1),
+			reconciles: true,
+		},
+		{
+			// A file a previous session already repaired. The validator anchors
+			// rows at line start, so the commented row is invisible to it and
+			// the file draws no second notice — the property that makes an
+			// ungated repair idempotent.
+			name: "a file already carrying a quarantined row",
+			rows: files["rules-b.toml"] +
+				"# inv-not-a-real-rule = { active = true }  # quarantined 2026-01-01: not in payload@000000000000.\n",
+		},
+		{
+			name:       "a hand-written partial file: a posture and no rows",
+			rows:       "strictness = \"firm\"\n",
+			reconciles: true,
+		},
+		{name: "an explicit opt-out", rows: "governed = false\n", declines: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := run(t, tc.rows)
+			if strings.Contains(out, "TRELLIS_RULES_NOT_LOADED") {
+				t.Fatalf("a legitimate shape must never be refused as a broken payload:\n%s", out)
+			}
+			if tc.declines {
+				// `governed = false` in a project with no static shape emits
+				// NOTHING, by design: there is nothing already loaded to tell
+				// the agent to disregard. Silence is the correct answer here,
+				// and the only thing that matters is that no rule was
+				// delivered and nothing was refused as broken.
+				if strings.Contains(out, rulesLoadedSentinel) || strings.Contains(out, "= { active =") {
+					t.Errorf("a project that declined must be delivered no rules and no rows:\n%s", out)
+				}
+				return
+			}
+			ctx := nudgeContext(t, strings.TrimSpace(out))
+			if !strings.Contains(ctx, rulesLoadedSentinel) {
+				t.Errorf("the rules prose must be delivered on every governed shape:\n%s", ctx)
+			}
+			// Whatever the input shape, all sixteen rules end up governed:
+			// that is what reconciliation is for.
+			for _, slug := range []string{"floor-transparency", "floor-intent-gate", "inv-minimal-first"} {
+				if !deliveredRow(ctx, slug) {
+					t.Errorf("row for %s must be delivered:\n%s", slug, ctx)
+				}
+			}
+			if got := strings.Contains(ctx, "RECONCILED"); got != tc.reconciles {
+				t.Errorf("reconciliation expected=%v got=%v — the fixture may have stopped being the shape it names:\n%s",
+					tc.reconciles, got, ctx)
 			}
 		})
 	}

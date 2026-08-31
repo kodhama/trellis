@@ -586,9 +586,20 @@ fi
 # nuance is deliberately NOT matched: Codex also requires the trailing newline,
 # which no portable awk can see, so a rules.md ending at the sentinel with no
 # newline passes here and fails there. Stated rather than papered over.
+#
+# CRLF. `last` is the raw record awk read under RS="\n", so a rules.md checked
+# out or packaged with CRLF normalization leaves a trailing \r on it and an
+# exact ASCII comparison fails -- reporting `not-last` and blacking out a
+# COMPLETE, CORRECT payload. This branch already fixed that blindness once, in
+# the reconciler, which strips \r for the same reason and only a few hundred
+# lines away; this guard reintroduced the assumption. Every other check here is
+# already CRLF-safe by accident rather than intent: the slug scans anchor on
+# `[[:space:]]*$`, and \r is in [[:space:]] under the C locale. Only an exact
+# string compare could break, and it did. Stripped rather than tolerated in the
+# regex, so the comparison stays a comparison.
 sentinel_report="$(
   awk '
-    { last = $0; n += gsub(/<!-- trellis:rules-loaded -->/, "&") }
+    { last = $0; sub(/\r$/, "", last); n += gsub(/<!-- trellis:rules-loaded -->/, "&") }
     END { print n + 0, (last == "<!-- trellis:rules-loaded -->" ? "last" : "not-last") }
   ' "$rules"
 )"
@@ -741,19 +752,35 @@ if [ -f "$preset" ]; then
         rows[row] = 1
       }
       END {
+        # NOTHING TO COMPARE is a third answer, and collapsing it into
+        # "they disagree" was a false blackout on a healthy payload: an
+        # EMPTY rules-b.toml yielded 16 want vs 0 rows and read as corruption.
+        if (length(want) == 0 || length(rows) == 0) { print "incomparable"; exit }
         for (s in want) if (!(s in rows)) d++
         for (s in rows) if (!(s in want)) d++
         printf "%d %d %d\n", length(want), length(rows), d + 0
       }
     ' "$rules" "$preset"
   )"
+  # `-f` proves the file EXISTS, never that it can be READ, and the difference
+  # was inverted here: an ABSENT rules-b.toml skipped the check and governed
+  # normally, while an UNREADABLE or EMPTY one produced a full
+  # TRELLIS_RULES_NOT_LOADED blaming payload incoherence -- with rules.md and
+  # the project rows both perfectly healthy. The more broken state was handled
+  # better than the less broken one.
+  #
+  # A guard that cannot tell "I could not read this" from "this is corrupt" is
+  # not a guard. So the two are separated: an empty capture means the awk died
+  # on the positional read, `incomparable` means it ran and found no rows, and
+  # both mean the same thing this check already does for an absent file -- skip
+  # it. Silently, because nothing is wrong for the consumer: the terminator gate
+  # above is the unconditional half of this pair and needs no second file, so
+  # skipping here loses the narrower case only (a rules.md whose slug list is
+  # wrong while its ending is intact).
   case "$coherence" in
+    "" | incomparable) ;;
     *" 0") ;;
     *)
-      # Unreachable short of awk failing outright -- both files were read
-      # successfully a few lines above -- but an empty capture must never read
-      # as agreement, which is the mistake this whole series exists to close.
-      [ -n "$coherence" ] || coherence="unknown unknown unknown"
       coherence_rest="${coherence#* }"
       # NO SLUG NAMES in the message below. It is a payload defect, the reader
       # can do nothing with the list, and the loud paths are pinned by tests
