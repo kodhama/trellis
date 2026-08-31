@@ -2757,6 +2757,151 @@ func TestUnreadablePayloadFileNeverReconcilesToBlackout(t *testing.T) {
 	}
 }
 
+// TestUnreadableHeaderNeverShipsRowsWithoutRules is the fifth instance of the
+// class the two guards above close, and the worst-looking one: the payload
+// assembly awk read $header POSITIONALLY, one line below the fixes for the
+// other two, behind the same bare `-f` existence check. A $header that exists
+// but yields nothing dies fatally and prints nothing, while the printfs and the
+// row block around it carry on inside the same command substitution.
+//
+// Measured on the pre-fix hook four ways — mode 000, zero-byte, truncated above
+// the `@rules.md` import, and the firm-posture trellis-a.md — the hook emitted
+// sixteen activation rows, ZERO rules prose, no loud marker and exit 0. It is
+// MORE dangerous than the reconciler blackouts, not less: the payload looks
+// substantive, so nothing signals a problem. The agent is told exactly which
+// sixteen rules are active and handed none of them. No permission trickery is
+// required either — a header left truncated by an interrupted install.sh does
+// it.
+//
+// The Codex hook has always refused this shape (readRequired's unreadable-file
+// / missing-file, plus its explicit empty-prose check, plus
+// invalid-placeholder-count for the truncated-above-the-import case), which is
+// what makes the Claude-side gap an oversight rather than a design choice. This
+// pins the matching behaviour on both halves.
+func TestUnreadableHeaderNeverShipsRowsWithoutRules(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+	// The import line the assembly resolves; a header truncated above it is
+	// non-empty and still delivers rows with no rules under them.
+	const importLine = "@rules.md\n"
+	head, _, found := strings.Cut(files["trellis-b.md"], importLine)
+	if !found || head == "" {
+		t.Fatal("premise: trellis-b.md must carry an @rules.md import with prose above it")
+	}
+
+	for _, tc := range []struct {
+		name string
+		// rows selects the posture, which selects WHICH header file is read.
+		rows string
+		// header names the payload file the fixture breaks, and how.
+		header  string
+		mode    os.FileMode
+		content string // "" with mode 0 means: leave the bytes, deny the read
+	}{
+		{
+			name:   "the adaptive posture header exists but cannot be read",
+			rows:   files["rules-b.toml"],
+			header: "trellis-b.md",
+			mode:   0o000,
+		},
+		{
+			name:    "the posture header is zero bytes",
+			rows:    files["rules-b.toml"],
+			header:  "trellis-b.md",
+			content: "",
+			mode:    0o644,
+		},
+		{
+			name:    "the posture header is truncated above its @rules.md import",
+			rows:    files["rules-b.toml"],
+			header:  "trellis-b.md",
+			content: head,
+			mode:    0o644,
+		},
+		{
+			// Posture selects the header, so the firm side needs its own row:
+			// a fix that guarded only trellis-b.md would leave firm projects
+			// blacked out and every adaptive test green.
+			name:   "the firm posture header exists but cannot be read",
+			rows:   files["rules-a.toml"],
+			header: "trellis-a.md",
+			mode:   0o000,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.mode == 0o000 && os.Geteuid() == 0 {
+				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+			}
+			pluginRoot := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for name, body := range files {
+				if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			target := filepath.Join(pluginRoot, "reference", tc.header)
+			if tc.mode != 0o000 {
+				if err := os.WriteFile(target, []byte(tc.content), tc.mode); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.Chmod(target, 0o000); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+				if _, err := os.ReadFile(target); err == nil {
+					t.Skipf("premise: %s is still readable at mode 0000", target)
+				}
+			}
+
+			proj := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			// A fully valid row set every time: rows are never the defect here,
+			// which is the point — delivering them alone is the failure.
+			if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(tc.rows), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+			}
+			raw := stdout.String()
+			if !strings.Contains(raw, "TRELLIS_RULES_NOT_LOADED") {
+				t.Fatalf("an unusable posture header must fail loudly, not ship rows with no rules under them:\n%s", raw)
+			}
+			ctx := nudgeContext(t, strings.TrimSpace(raw))
+			// The two halves of the blackout, asserted separately: no activation
+			// list, and no row inside one. Either alone would pass over the
+			// pre-fix output, which carried a perfectly ordinary-looking
+			// heading above sixteen perfectly ordinary-looking rows.
+			if strings.Contains(ctx, "## Project rule activation") {
+				t.Errorf("no activation list may be delivered when the rules prose could not be assembled:\n%s", ctx)
+			}
+			for _, slug := range []string{"floor-transparency", "floor-intent-gate", "inv-minimal-first"} {
+				if deliveredRow(ctx, slug) {
+					t.Errorf("row for %s delivered with no rules prose to govern by:\n%s", slug, ctx)
+				}
+			}
+			if strings.Contains(ctx, rulesLoadedSentinel) {
+				t.Errorf("nothing may claim the rules were loaded on this path:\n%s", ctx)
+			}
+		})
+	}
+}
+
 // reconciledRowsFromContext extracts the reconciled `.trellis/rules.toml` text
 // from a decoded additionalContext (see nudgeContext) — the block between the
 // "Project rule activation" preamble's fixed trailing sentence and whichever

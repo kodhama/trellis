@@ -809,7 +809,40 @@ fi
 # pointer at the vendored invariants path, which does not exist in this mode.
 # Repointing it at the plugin keeps the trigger-read affordance and cannot go
 # stale, because it names the payload this session is actually running.
+#
+# The assembly awk below used to read $header POSITIONALLY -- the same construct
+# as the validator above, behind the same bare `-f` existence check -- and that
+# was the worst-looking member of this whole family. A $header that EXISTS but
+# yields nothing dies fatally and prints nothing, while the printfs and the row
+# block around it carry on: measured four ways (mode 000, zero-byte, truncated,
+# and the firm-posture trellis-a.md), the hook emitted sixteen activation rows,
+# ZERO rules prose, no loud marker, and exit 0. That is more dangerous than the
+# two blackouts above rather than less, because the payload looks substantive
+# and nothing signals a problem -- the agent is told which sixteen rules are
+# active and handed none of them. It needs no permission trickery either: a
+# header left truncated by an interrupted install.sh is enough.
+#
+# The Codex hook has always refused exactly this -- readRequired reports
+# unreadable-file/missing-file, and an explicit check rejects empty prose
+# (codex-context.mjs) -- so the Claude-side gap was an oversight, not a design
+# choice. Match it. The header is read ONCE, here, where a failure can still be
+# reported, and the assembly reads that text from stdin, so the fatal positional
+# open is gone rather than merely guarded.
+#
+# Exactly one `@rules.md` import is required for the same reason Codex rejects
+# invalid-placeholder-count: a header truncated ABOVE that line is non-empty and
+# still assembles into rows with no rules under them, which is the identical
+# blackout reached through a shorter truncation. Counted with awk over stdin --
+# never a positional read, which is the failure being closed here.
+header_prose="$(cat "$header" 2>/dev/null)"
+header_imports="$(printf '%s\n' "$header_prose" |
+  awk '/^@rules\.md[[:space:]]*$/ { n++ } END { print n + 0 }')"
+if [ -z "$header_prose" ] || [ "$header_imports" != "1" ]; then
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook could not assemble its own rules payload: the posture header it was about to inject ($header) read as empty, or carries ${header_imports} @rules.md imports where exactly one is required, so the rules themselves would have been missing from what was injected. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected — the hook refused rather than deliver a rule ACTIVATION list with no rules under it. This is a broken or half-written plugin payload, not a problem with your rows: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+  exit 0
+fi
 payload="$(
+  printf '%s\n' "$header_prose" |
   awk -v rules="$rules" -v inv="$plugin/reference/invariants.md" '
     BEGIN {
       # awk expands `&` in a gsub replacement to the matched text, and `\` escapes
@@ -818,7 +851,7 @@ payload="$(
     }
     /^@rules\.md[[:space:]]*$/ { while ((getline line < rules) > 0) print line; next }
     { gsub(/`\.trellis\/internal\/invariants\.md`/, "`" inv "`"); print }
-  ' "$header"
+  '
   printf '\n## Project rule activation\n\n'
   if [ -n "$reconciled" ]; then
     printf 'Rows from this project'"'"'s .trellis/rules.toml, RECONCILED against the rules this payload ships (%s) — the file on disk still differs. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n' "$repair_summary"
