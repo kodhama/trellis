@@ -35,6 +35,17 @@ func docSurfaces(t *testing.T) []string {
 		".git": true, ".github": true, ".claude": true,
 		"decisions": true, "specs": true, "research": true, "eval": true,
 		"fixtures": true, "testdata": true,
+		// docs/superpowers/ (committed specs and plans) and .superpowers/
+		// (working SDD state) are exempt on the SAME ground as the three
+		// above, not by inheritance from specs/: a planning record
+		// legitimately names artifacts that later retired — e.g.
+		// /trellis:setup before decision-0072 retired it — and a retirement
+		// must not force an edit to the record of the work that preceded it.
+		// An earlier version of this comment argued succession from specs/
+		// via decision-0079. decision-0085 shows that argument assumed 0079
+		// permitted retention, which as written it did not; the exemption
+		// stands, its stated ground does not.
+		"superpowers": true, ".superpowers": true,
 	}
 	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}
 	var out []string

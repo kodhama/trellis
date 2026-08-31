@@ -619,3 +619,193 @@ func TestCodexHookHonoursGovernedFalse(t *testing.T) {
 		t.Errorf("decision-0070 D5: a project declaring governed = false must get nothing on Codex either; got:\n%s", got)
 	}
 }
+
+// TestReconciledCodexPayloadFitsContextBudget pins Ruling 6 (TRL-20 task 3,
+// fix round 1): reconciled payloads must still fit inside Codex's own
+// MAX_CONTEXT_BYTES once combined with the REAL payload
+// (reference/trellis-a.md + reference/rules.md, not the minimal placeholders
+// every other reconciliation test uses — see TestReconciledRowsParseForCodexToo's
+// doc comment for why those stay minimal).
+//
+// The cap moved from 8000 to 9500 in fix round 1: 8000 had no recorded
+// rationale, and review established Codex's actual default is ~2500 TOKENS
+// (documented at https://learn.chatgpt.com/docs/hooks), not bytes, and Codex
+// does not even reject over that limit — it spills to a file and gives the
+// model a preview. 8000 B measured the wrong unit against a limit that fails
+// open, not closed; this hook's refusal at 8000 was self-inflicted. See
+// codex-context.mjs's MAX_CONTEXT_BYTES comment for the full accounting.
+//
+// Two cases, both real reachability review found, not just the one the
+// original round named:
+//   - the worst case named in the original ruling: a hand-written partial
+//     file (just strictness, no rows at all), firm posture, all sixteen rows
+//     missing — reconciliation adds all sixteen.
+//   - the case round-1 review actually found reachable at the OLD 8000 cap:
+//     one quarantined row on an otherwise untouched firm install (baseline
+//     7876 B, 124 B headroom at the old cap; one quarantine note adds ~191 B
+//     — enough on its own to blow an 8000 B budget, with no missing rows at
+//     all).
+func TestReconciledCodexPayloadFitsContextBudget(t *testing.T) {
+	t.Run("worst case: hand-written partial file, firm posture, all sixteen rows missing", func(t *testing.T) {
+		run := rulesTomlRun(t)
+		out := run(t, "strictness  = \"firm\"\n")
+		if !strings.Contains(out, "added 16 row(s)") {
+			t.Fatalf("premise: all sixteen rows must be missing at firm posture, or this is not the worst case Ruling 6 names:\n%s", out)
+		}
+		context := nudgeContext(t, out)
+		assertReconciledFitsCodexBudget(t, reconciledRowsFromContext(t, context))
+	})
+
+	t.Run("one quarantined row on an otherwise untouched firm install", func(t *testing.T) {
+		run := rulesTomlRun(t)
+		// The real, unmodified firm preset plus exactly one row it does not
+		// recognize — every real row survives untouched (added 0), and the
+		// extra row is the only thing quarantined (quarantined 1).
+		withExtraRow := payloadFiles()["rules-a.toml"] + "inv-bogus-extra-rule = { active = true }\n"
+		out := run(t, withExtraRow)
+		if !strings.Contains(out, "added 0 row(s)") || !strings.Contains(out, "quarantined 1 row(s)") {
+			t.Fatalf("premise: exactly one unrecognized row on an otherwise-untouched firm install, or this is not the case round-1 review found reachable:\n%s", out)
+		}
+		context := nudgeContext(t, out)
+		assertReconciledFitsCodexBudget(t, reconciledRowsFromContext(t, context))
+	})
+}
+
+// assertReconciledFitsCodexBudget writes reconciled — what an agent applying
+// the repair actually writes to .trellis/rules.toml — alongside the REAL
+// payload (not minimal placeholders: the byte budget is exactly what these
+// cases exist to prove) and requires the real Codex hook to govern from it
+// within MAX_CONTEXT_BYTES. The 9500 literal is deliberately not read from
+// codex-context.mjs's own constant — it must reflect the value review
+// actually intended, not silently track whatever the source happens to say.
+func assertReconciledFitsCodexBudget(t *testing.T, reconciled string) {
+	t.Helper()
+	project := newGitProject(t)
+	internal := filepath.Join(project, ".trellis", "internal")
+	if err := os.MkdirAll(internal, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := payloadFiles()
+	for rel, content := range map[string]string{
+		"trellis.md": files["trellis-a.md"],
+		"rules.md":   files["rules.md"],
+		"version":    files["version"],
+	} {
+		if err := os.WriteFile(filepath.Join(internal, rel), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(reconciled), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+		t.Fatalf("the reconciled payload must still fit and govern under Codex, not fail closed: %s", raw)
+	}
+	if n := len([]byte(got.HookSpecificOutput.AdditionalContext)); n > 9500 {
+		t.Errorf("reconciled payload is %d bytes, exceeds Codex MAX_CONTEXT_BYTES (9500) — Ruling 6 fix round 1 is unresolved", n)
+	}
+}
+
+// TestCodexToleratesADuplicateSlugTagInRulesMd — round-1 fix 2. slugSet
+// (membership, inside parseRulesToml) already treated the derived slugs as a
+// set, but the completeness check (slugs.length / slugs.some) did not, so a
+// rules.md that ever tagged one slug twice made rows.size !== slugs.length
+// permanently true: every Codex project would read
+// .trellis/rules.toml: invalid-rules while Claude — whose own want[] in
+// staleness.sh is already a set — kept governing normally from the identical
+// file. Not reachable with the current payload (every one of the sixteen
+// tags occurs exactly once); this guards the shape directly, by duplicating
+// one tag line in the payload rules.md itself, so a future catalog edit that
+// accidentally reused a slug tag does not turn into the same
+// blame-the-consumer mislabel this whole task exists to close.
+func TestCodexToleratesADuplicateSlugTagInRulesMd(t *testing.T) {
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	rulesMdPath := filepath.Join(project, ".trellis", "internal", "rules.md")
+	original := readFileT(t, rulesMdPath)
+	tagLine := "`inv-minimal-first`\n"
+	if !strings.Contains(original, tagLine) {
+		t.Fatalf("premise: fixture rules.md must carry the tag line this test duplicates: %q", tagLine)
+	}
+	duplicated := strings.Replace(original, tagLine, tagLine+tagLine, 1)
+	if strings.Count(duplicated, tagLine) != 2 {
+		t.Fatalf("premise: the duplication must actually produce two occurrences of the tag, got:\n%s", duplicated)
+	}
+	if err := os.WriteFile(rulesMdPath, []byte(duplicated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+		t.Fatalf("a duplicated slug tag in rules.md must not fail every row closed: %s", raw)
+	}
+}
+
+// The Codex hook validated rows against a hardcoded 16-slug array while the
+// Claude hook derived its set from the shipped rules.md, and nothing in CI
+// compared the two. A payload upgrade therefore could not repair drift on
+// Codex — worse, a stale array made an `unknown:` reason FALSE: the agent
+// would quarantine a live row and cite a payload that does ship it.
+func TestCodexDerivesItsSlugSetFromThePayload(t *testing.T) {
+	src, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(src)
+	for _, slug := range assessableSlugs {
+		if strings.Contains(body, `"`+slug+`"`) {
+			t.Errorf("codex-context.mjs still hardcodes %s; the slug set must come from reference/rules.md", slug)
+		}
+	}
+	if strings.Contains(body, "const SLUGS = [") {
+		t.Error("the hardcoded SLUGS array must be gone — it cannot be repaired by a payload upgrade")
+	}
+}
+
+// TestCodexRejectsAnEmptyDerivedSlugSet is the Codex half of the same
+// governance-blackout class staleness.sh refuses as `no-slugs-in-payload`.
+//
+// Deriving the slug set from the payload (rather than hardcoding it) opened a
+// hole the hardcoded array could not have: `slugsFromRules` returns [] for a
+// rules.md that keeps its sentinel but carries no trailing backticked slug on
+// any line, and the sentinel gate above the derivation cannot see that — it
+// checks the marker, not the tags. With `slugs` empty, parseRulesToml's two
+// completeness checks pass VACUOUSLY (rows.size 0 === slugs.length 0, and
+// slugs.some() over an empty array is false), so a config holding nothing but
+// `strictness` and an empty `[rules]` table was ACCEPTED and the hook emitted a
+// successful "loaded installed overlay" response with zero activation rows —
+// a silently ungoverned session at exit 0, on the host where success is what it
+// looks like. The refusal must fire before anything consumes `slugs`.
+func TestCodexRejectsAnEmptyDerivedSlugSet(t *testing.T) {
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	// Well-formed by every check that runs BEFORE the derivation — non-empty,
+	// exactly one sentinel, terminated by it — and carrying no slug tag at all.
+	brokenRules := "# Trellis rules\n\nThis payload lost every trailing backticked slug tag.\n" +
+		rulesLoadedSentinel + "\n"
+	if strings.Count(brokenRules, rulesLoadedSentinel) != 1 || !strings.HasSuffix(brokenRules, rulesLoadedSentinel+"\n") {
+		t.Fatal("premise: the fixture must still satisfy the sentinel gate, or it would fail as invalid-rules for the wrong reason")
+	}
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "internal", "rules.md"), []byte(brokenRules), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The one rules.toml shape an empty slug set ACCEPTS: any actual row would
+	// be rejected as unknown (slugSet is empty), which fails loudly on its own
+	// — mislabelled, but loudly. This shape is the silent one.
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte("strictness = \"adaptive\"\n[rules]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput != nil {
+		t.Fatalf("a payload with no derivable slugs must not deliver a successful, row-free context — that is a silent governance blackout:\n%s", raw)
+	}
+	want := `{"systemMessage":"Trellis hook did not load rules: .trellis/internal/rules.md: no-slugs-in-payload. The AGENTS.md bootstrap must attempt the installed overlay."}`
+	if raw != want {
+		t.Errorf("failure mismatch\n got: %s\nwant: %s", raw, want)
+	}
+}

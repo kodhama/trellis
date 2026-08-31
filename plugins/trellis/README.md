@@ -81,7 +81,11 @@ further command and no file required (`decision-0070` D3).
 attached**. The machinery is already here — `hooks/codex-context.mjs`, a `.codex-plugin/`
 manifest, a catalog entry — and none of it is claimed as a supported path (`kodhama-0021` §2).
 Until it is, Codex is carried rather than maintained: its behaviour is not kept in step with the
-Claude path, and a difference between them is expected rather than a defect to file. What a
+Claude path, and a difference between them is expected rather than a defect to file. **Row-set
+reconciliation is one such difference, named concretely because it is the largest one:**
+`codex-context.mjs` still refuses a mismatched or incomplete row set outright — `invalid-rules`,
+nothing injected — where the Claude hook described below reconciles and delivers. Parity is owed,
+not shipped (`decision-0083` §1 and its open questions). What a
 supported Codex distribution would require is tracked in Linear. Its adoption signal also differs —
 `codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
 when there is none, so both the project-scope default and the user-scope announcement above are
@@ -90,13 +94,20 @@ which is where `decision-0077` leaves the Claude path too.
 
 On Claude, changing the posture has two shapes. **With no `.trellis/rules.toml` yet**, copy a
 **complete** preset — `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — then set
-`active = false` on any row you want off. The hook validates the row set against what the plugin
-ships and injects **nothing** when a slug is missing, so a hand-written partial file leaves the
-project ungoverned rather than firm. **With a file already there**, edit `strictness` in place:
+`active = false` on any row you want off. A hand-written partial file is no longer fatal: the hook
+validates the row set against what the plugin ships and, on a mismatch, **reconciles** it rather
+than injecting nothing — a missing slug is delivered `active = true`, a row the payload does not
+ship is **quarantined** (commented out with the date and the payload stamp, never deleted), the
+session is governed from the reconciled set, and the agent writes that set back and reports what it
+changed (`decision-0083`). A row starting with `#` is a quarantined row: inert, safe to leave, and
+one uncomment away if a newer release ships that slug. **With a file already there**, edit
+`strictness` in place:
 both presets set every row active, so copying one over your file silently re-enables every rule
-you disabled. **With the one-line `governed = false` opt-out**, re-enabling is a replace rather
-than an edit — editing `strictness` beside the opt-out leaves it in force and the hook stays
-silent — so confirm the intent, then write a complete preset over it (`decision-0070` D5). Older projects still carry an
+you disabled. **With the one-line `governed = false` opt-out**, editing `strictness` beside the
+opt-out leaves it in force and the hook stays silent, so that is not re-enabling. Deleting the line
+alone does re-enable governance, but on an empty file that reconciles to all sixteen rows active at
+the adaptive posture — so confirm the intent, and write a complete preset over it if the posture or
+the row set matters (`decision-0070` D5, `decision-0083`). Older projects still carry an
 **overlay**, split by who owns what (`decision-0051`):
 
 - **`.trellis/` root — yours.** `rules.toml` alone (the machine-read config: one row per rule,

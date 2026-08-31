@@ -10,26 +10,24 @@ import fs from "node:fs";
 import path from "node:path";
 
 const SENTINEL = "<!-- trellis:rules-loaded -->";
-const MAX_CONTEXT_BYTES = 8000;
-const SLUGS = [
-  "inv-directional-flow",
-  "inv-handover-points",
-  "inv-intent-locus",
-  "inv-ratifiable-artifacts",
-  "inv-graph-maintenance",
-  "inv-self-improvement",
-  "inv-deliberate-succession",
-  "inv-no-orphan-followups",
-  "inv-gate-at-handover",
-  "inv-independent-judgment",
-  "inv-auditable-archive",
-  "inv-bounded-context",
-  "inv-minimal-first",
-  "inv-clarify-before-commit",
-  "floor-transparency",
-  "floor-intent-gate",
-];
-const SLUG_SET = new Set(SLUGS);
+// 8000 (this constant's prior value) had no recorded rationale — it entered in
+// commit 3490555 with none, and "8000" appears nowhere in decisions/, research/
+// or core/. Investigated for Ruling 6 (TRL-20 task 3, fix round 1): Codex's own
+// default per-hook-message limit is documented at
+// https://learn.chatgpt.com/docs/hooks as roughly 2,500 TOKENS, not bytes, and
+// Codex does not reject over that limit — it spills gracefully, saving the full
+// text under `<temp_dir>/hook_outputs/<session_id>/<uuid>.txt` and giving the
+// model a head-and-tail preview plus the saved-file path (the setting is
+// configurable per handler via `additionalContextLimit`, and the installed
+// codex-cli binary corroborates the setting exists). So the OLD 8000-byte cap
+// measured the wrong unit against a limit that does not even fail closed: at
+// ~4 bytes/token, 8000 B is ~2000 tokens, comfortably under Codex's 2500 —
+// this hook's own "context-over-budget" refusal was a SELF-INFLICTED blackout,
+// strictly worse than what Codex would have done on its own (spill and point at
+// the file, not lose the rules). 9500 B is ~2375 tokens: still under Codex's
+// ~10,000-byte-equivalent default, so this hook still never triggers Codex's
+// own spill path either — it only stops refusing at a limit nobody imposed.
+const MAX_CONTEXT_BYTES = 9500;
 // The project always owns its rows. The three payload files come from the
 // vendored overlay when one exists, and from the plugin's own payload when it
 // does not (decision-0065: the plugin path vendors nothing). Vendored projects
@@ -228,7 +226,13 @@ function parseQuotedTomlString(source) {
 // approximation that silently accepts unknown TOML. It supports the two TOML
 // string forms used by consumer edits (basic and literal), and rejects duplicate
 // keys, sections, and rows deterministically.
-function parseRulesToml(source) {
+//
+// slugs is the set the payload actually ships (see slugsFromRules below), passed
+// in rather than closed over. A hardcoded list here could not be repaired by a
+// plugin upgrade, and a stale one made a quarantine reason false: the agent would
+// quarantine a live row and cite a payload that ships it.
+function parseRulesToml(source, slugs) {
+  const slugSet = new Set(slugs);
   const topLevel = new Map();
   const rows = new Map();
   let rulesSectionSeen = false;
@@ -282,7 +286,7 @@ function parseRulesToml(source) {
     const row = line.match(
       /^([a-z][a-z-]*)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
     );
-    if (!row || rows.has(row[1]) || !SLUG_SET.has(row[1])) return null;
+    if (!row || rows.has(row[1]) || !slugSet.has(row[1])) return null;
     rows.set(row[1], row[2] === "true");
   }
 
@@ -290,12 +294,25 @@ function parseRulesToml(source) {
   if (
     !rulesSectionSeen ||
     (strictness !== "firm" && strictness !== "adaptive") ||
-    rows.size !== SLUGS.length ||
-    SLUGS.some((slug) => !rows.has(slug))
+    rows.size !== slugs.length ||
+    slugs.some((slug) => !rows.has(slug))
   ) {
     return null;
   }
   return rows;
+}
+
+// The slugs the payload actually ships, read from the same rules.md the Claude
+// hook validates against (staleness.sh's own `want[]` scan uses the identical
+// trailing-backtick anchor). A hardcoded list here could not be repaired by a
+// plugin upgrade, and a stale one made a quarantine reason false.
+function slugsFromRules(rulesMd) {
+  const found = [];
+  for (const line of rulesMd.split(/\r?\n/u)) {
+    const m = line.match(/`((?:inv|floor)-[a-z-]+)`[ \t]*$/u);
+    if (m) found.push(m[1]);
+  }
+  return found;
 }
 
 let input;
@@ -439,20 +456,60 @@ if (!/^payload@[0-9a-f]{12}\n?$/u.test(version)) {
   fail(sources.version, "invalid-version");
   process.exit(0);
 }
-const rows = parseRulesToml(rulesToml);
-if (rows === null) {
-  fail(PROJECT_CONFIG, "invalid-rules");
-  process.exit(0);
-}
 if (trellis.split("@rules.md").length - 1 !== 1) {
   fail(".trellis/internal/trellis.md", "invalid-placeholder-count");
   process.exit(0);
 }
+// The rules payload's own well-formedness (the sentinel gate) must be checked
+// BEFORE it is trusted enough to derive a slug set from it — moved ahead of
+// that derivation for exactly this reason. Deriving first and validating after
+// meant a broken rules.md (no sentinel, a truncated one, or a doubled one)
+// yielded an empty or malformed slug set, parseRulesToml then failed on the
+// PROJECT's .trellis/rules.toml, and the reported label blamed the project's
+// config for a defect that was actually in the plugin's own payload.
 if (
   rules.split(SENTINEL).length - 1 !== 1 ||
   !rules.endsWith(`${SENTINEL}\n`)
 ) {
   fail(".trellis/internal/rules.md", "invalid-rules");
+  process.exit(0);
+}
+// Derived from the payload actually resolved above (vendored or plugin-native,
+// whichever `sources` picked), not a hardcoded list — this is the row set a
+// payload upgrade CAN repair, and it is what the row-count/row-membership
+// checks inside parseRulesToml validate against.
+//
+// De-duplicated: parseRulesToml checks membership through a Set (slugSet) but
+// checks completeness against slugs.length/slugs.some, so a rules.md that ever
+// tagged one slug twice would make rows.size !== slugs.length permanently true
+// — every Codex project would read .trellis/rules.toml: invalid-rules while
+// Claude (whose want[] is already a set) kept governing normally from the same
+// file. Not reachable with the current payload (every tag occurs exactly
+// once), but it is the same blame-the-consumer mislabel this task exists to
+// close, so the array is deduplicated at the source rather than trusted to
+// stay duplicate-free forever.
+const slugs = [...new Set(slugsFromRules(rules))];
+// An EMPTY derived set is the Codex twin of staleness.sh's
+// `no-slugs-in-payload` refusal, and it needs its own branch for the same
+// reason: nothing downstream can tell it apart from a satisfied one. The
+// sentinel gate above proves rules.md is well-formed, not that it TAGS any
+// slug — a payload whose rule lines lost their trailing backticked slug keeps
+// its sentinel and yields []. parseRulesToml then ACCEPTS a config carrying
+// `strictness` plus an empty `[rules]` table, because both completeness checks
+// pass vacuously (rows.size 0 === slugs.length 0, and slugs.some() over an
+// empty array is false), and this hook emits a successful "loaded installed
+// overlay" response with no activation rows in it at all: a silent governance
+// blackout at exit 0 — the fail-loud invariant inverted, on the host where the
+// blackout is hardest to notice because the response looks like success.
+// Rejected here, before anything consumes `slugs` — including the floor-row
+// warning below, which would also have nothing to filter.
+if (slugs.length === 0) {
+  fail(sources.rules, "no-slugs-in-payload");
+  process.exit(0);
+}
+const rows = parseRulesToml(rulesToml, slugs);
+if (rows === null) {
+  fail(PROJECT_CONFIG, "invalid-rules");
   process.exit(0);
 }
 
@@ -475,8 +532,12 @@ const response = {
     additionalContext: context,
   },
 };
-const falseFloors = ["floor-intent-gate", "floor-transparency"]
-  .filter((slug) => rows.get(slug) === false)
+// Floors are the `floor-` half of the same derived slug set, not a second
+// hardcoded pair — the prefix is the product's own classification (matched the
+// same way everywhere else this file and staleness.sh distinguish inv- from
+// floor-), so a payload that ever ships a third floor picks it up here too.
+const falseFloors = slugs
+  .filter((slug) => slug.startsWith("floor-") && rows.get(slug) === false)
   .sort();
 if (falseFloors.length > 0) {
   response.systemMessage =

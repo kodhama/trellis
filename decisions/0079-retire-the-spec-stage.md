@@ -5,6 +5,7 @@ status: approved  # maintainer's intent act 2026-08-29, in conversation ("Approv
 depends_on: [decision-0011]
 changes: [decision-0011]
 informed_by: [decision-0075, decision-0076, decision-0078]
+superseded_in_part_by: [decision-0085]  # 2026-08-31 — the Consequences sentence disposing of the plan-retention question ONLY ("whether superpowers plans should be retained in-repo — is dropped"). The maintainer asked for the old spec-* artifacts to be deleted and made no ruling about superpowers' own planning artifacts; the generalisation was the record's, not his. What stands: the whole of ## Decision — the spec-* stage is retired, specs/ is deleted, decision-0011 is changed, and the retired-artifact registry is unaffected.
 owner: agent
 date: 2026-08-29
 ---
