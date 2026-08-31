@@ -679,7 +679,7 @@ func TestCodexReconcilesInsteadOfFailingClosed(t *testing.T) {
 	// Ruling 1(a) on the task-1 brief: the original single subtest here
 	// asserted the adaptive header ("**By default**") on the fixture
 	// writeValidCodexOverlay builds, but that fixture creates
-	// .trellis/internal/, so codex-context.mjs:424 takes the VENDORED branch —
+	// .trellis/internal/, so codex-context.mjs:720-727 takes the VENDORED branch —
 	// prose comes from the overlay's own trellis.md, which
 	// writeValidCodexOverlay hardcodes to trellis-a.md (firm). Posture
 	// selection is bypassed entirely on that path, so the header assertion
@@ -696,12 +696,12 @@ func TestCodexReconcilesInsteadOfFailingClosed(t *testing.T) {
 		}
 	})
 
-	// Ruling 1(b): codex-context.mjs:421-423 already defaults posture to "b"
+	// Ruling 1(b): codex-context.mjs:717-719 already defaults posture to "b"
 	// (adaptive) whenever strictness is not literally "firm" — that selection
 	// logic is untouched by this task; the only change is that parseRulesToml
 	// no longer treats an absent strictness as a syntax fault. This subtest
 	// pins the existing default reaching a project on the PLUGIN-NATIVE path
-	// (no .trellis/internal/, so codex-context.mjs:424 selects
+	// (no .trellis/internal/, so codex-context.mjs:720-727 selects
 	// reference/trellis-${posture}.md from PLUGIN_ROOT), which a missing
 	// strictness could not reach before this task — parseRulesToml refused the
 	// whole file first.
@@ -794,9 +794,9 @@ func TestCodexMandatesAndReportsTheRepair(t *testing.T) {
 // rules.toml classifies as "unknown" (nothing is ever in an empty set). That
 // used to trigger reconciliation, which quarantined all sixteen rows and
 // still emitted hookSpecificOutput with exit 0 — an ungoverned session that
-// LOOKED governed. staleness.sh:625-636 already names this exact failure
-// "no-slugs-in-payload" and refuses to reconcile against it; this pins the
-// equivalent Codex guard.
+// LOOKED governed. staleness.sh:642 already names this exact failure
+// "no-slugs-in-payload", and staleness.sh:679-682 refuses to reconcile
+// against it; this pins the equivalent Codex guard.
 func TestCodexRefusesToReconcileAgainstAnEmptySlugSet(t *testing.T) {
 	project := newGitProject(t)
 	writeValidCodexOverlay(t, project)
@@ -1253,13 +1253,36 @@ func TestBothHostsReconcileIdentically(t *testing.T) {
 		t.Fatal("fixture changed nothing — the case would prove nothing")
 	}
 
+	// Hoisted out of the map below so the CRLF fixture can be built from it.
+	renamed := strings.Replace(base,
+		"inv-minimal-first         = { active = true }",
+		"inv-renamed-first         = { active = true }", 1)
+	if renamed == base {
+		t.Fatal("fixture renamed nothing — the case would prove nothing")
+	}
+	// CRLF is the divergence a HUMAN comparison found before any fixture
+	// reached it (decision-0084 §5) — and, until this fixture, decision-0083's
+	// "byte identity ... for LF and CRLF input" pointed at a guard with no
+	// CRLF case in it. awk's RS is "\n", so a CRLF line arrives with its `\r`
+	// still attached to $0; without staleness.sh:876's `{ sub(/\r$/, "") }`,
+	// `print "# " $0 note` on a QUARANTINED row emits a bare CR mid-line,
+	// before the note, while the JS splitter (/\r?\n/) consumes the pair and
+	// never leaves one. Built on the rename, not on a plain copy of base, for
+	// exactly that reason: a fixture with nothing to quarantine never reaches
+	// the line the strip protects and would be vacuous. Verified by deleting
+	// `{ sub(/\r$/, "") }` from staleness.sh — this subtest goes red, the
+	// LF ones stay green.
+	crlfRenamed := strings.ReplaceAll(renamed, "\n", "\r\n")
+	if crlfRenamed == renamed || !strings.Contains(crlfRenamed, "\r\n") {
+		t.Fatal("fixture is not CRLF — the case would prove nothing")
+	}
+
 	fixtures := map[string]string{
 		// Reconciling fixtures: parseRulesToml finds a genuine slug-set
-		// mismatch, so reconcileRows actually runs and these five compare its
+		// mismatch, so reconcileRows actually runs and these six compare its
 		// real output byte for byte.
-		"rename (missing + unknown together)": strings.Replace(base,
-			"inv-minimal-first         = { active = true }",
-			"inv-renamed-first         = { active = true }", 1),
+		"rename (missing + unknown together)":       renamed,
+		"CRLF line endings, plus a rename":          crlfRenamed,
 		"indented [rules] table plus a missing row": indentedWithMissingRow,
 		"duplicate with a differing value": base +
 			"inv-minimal-first         = { active = false }\n",
@@ -1270,7 +1293,7 @@ func TestBothHostsReconcileIdentically(t *testing.T) {
 		// reconcileRows is never called on either host and the compared block
 		// is just the input verbatim (minus its own trailing newline — see
 		// reconciledRowsFromContext / codexReconciledRowsFromContext). Kept
-		// deliberately unreconciled, not upgraded to match the five above:
+		// deliberately unreconciled, not upgraded to match the six above:
 		// "already quarantined" pins idempotency (an already-repaired file
 		// draws no second notice on either host); "missing strictness" pins
 		// non-fatality (an absent strictness must not block delivery on
@@ -1367,7 +1390,7 @@ func codexReconciledRowsAllowingDegraded(t *testing.T, toml string) (string, boo
 	}
 	// decision-0070 D4: the hook computes a repair in memory and reports it,
 	// but never writes it — the mirror of staleness.sh's own pin
-	// (plugin_hook_test.go:1704, "the hook wrote .trellis/rules.toml —
+	// (plugin_hook_test.go:1841, "the hook wrote .trellis/rules.toml —
 	// \"the hook never writes\" is the half of decision-0070 D4 that stands").
 	// That Claude-side pin only covers a project with no rules.toml at all;
 	// every fixture through this helper already carries a genuine mismatch
@@ -1395,7 +1418,7 @@ func codexReconciledRowsAllowingDegraded(t *testing.T, toml string) (string, boo
 // and both reconcile by appending all sixteen. They then differ in two ways,
 // measured, not assumed:
 //
-//  1. staleness.sh:665's `sub(/\r$/, "")` strips the record's trailing CR;
+//  1. staleness.sh:876's `sub(/\r$/, "")` strips the record's trailing CR;
 //     the Codex splitter leaves it, so Codex emits `...this row\r\n[rules]`
 //     where Claude emits `...this row\n[rules]`.
 //  2. Sixteen added rows on top of an intact sixteen-row file assembles to
@@ -1437,7 +1460,7 @@ func TestCROnlyLineEndingsAreTheOneKnownDivergence(t *testing.T) {
 		t.Errorf("expected Codex to keep the record's trailing CR before the appended table; got:\n%q", codex)
 	}
 	if strings.Contains(claude, "this row\r\n[rules]") {
-		t.Errorf("expected staleness.sh:665 to strip the trailing CR; got:\n%q", claude)
+		t.Errorf("expected staleness.sh:876 to strip the trailing CR; got:\n%q", claude)
 	}
 	if strings.Contains(codex, "# added ") {
 		t.Errorf("Codex reported degraded but still emitted the added-rows header; got:\n%q", codex)
@@ -1456,7 +1479,7 @@ func TestCROnlyLineEndingsAreTheOneKnownDivergence(t *testing.T) {
 // reconciled this session" mandate section, appended after the row block and
 // before the fixed "Trellis hook loaded installed overlay: <stamp>" footer —
 // mirroring reconciledRowsFromContext's own two-way stop on the Claude side
-// (plugin_hook_test.go:2697, "apply regardless of their row\.\n\n(.*?)\n\n
+// (plugin_hook_test.go:3271, "apply regardless of their row\.\n\n(.*?)\n\n
 // (?:## Rule activation...|Delivered by...)"). Before that task the row block
 // ran straight into the footer with nothing between them, so a single
 // unconditional stop at the footer was correct; left unconditional now, it

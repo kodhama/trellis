@@ -307,7 +307,7 @@ read any number in this record as of its date, and recount before relying on one
   bundle manifest advanced in the same commit (`decision-0028`). A payload change that does not
   move `VERSION` never reaches an installed copy — the catalog's own row-set obligation note
   records that this obligation is still **unguarded** (`trellis#245`).
-- **`decision-0070` D4 is untouched and still pinned** — `cli/plugin_hook_test.go:1704` fails with
+- **`decision-0070` D4 is untouched and still pinned** — `cli/plugin_hook_test.go:1841` fails with
   *"the hook wrote `.trellis/rules.toml` — 'the hook never writes' is the half of `decision-0070` D4
   that stands"*.
 - **A commented row is new user-visible state in a consumer-owned file.** Both READMEs now say what

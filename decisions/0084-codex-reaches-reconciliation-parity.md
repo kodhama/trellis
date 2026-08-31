@@ -114,7 +114,7 @@ is wrong"* from *"the payload gave me nothing to check it against"*. The path is
 **This is the same defect the Claude hook had, and its own review caught it there first.**
 `decision-0083` records it as that branch's one Critical finding — *"the branch's one Critical defect
 (`no-slugs-in-payload` entering the reconciler with an empty want set, quarantining every legitimate
-row and running ungoverned at exit 0)"* — and `staleness.sh:625-636` grew a guard for it.
+row and running ungoverned at exit 0)"* — and `staleness.sh:642`/`:679-682` grew a guard for it.
 
 **The transferable lesson is not the bug; it is how the bug recurred.** This task ported a
 *semantic* (reconcile instead of refuse) from one host to the other and did not port the *guard*
@@ -182,7 +182,13 @@ automatically the correct one** — each divergence was decided on the merits, n
 
 Neither was findable by reading either implementation alone: both are properties of the *pair*.
 That is the case for the guard — and the CRLF one is also the case for its coverage, since it took
-a human comparison to find what the fixture set did not yet reach.
+a human comparison to find what the fixture set did not yet reach. **That coverage gap is now
+closed**, in the direction of more guard rather than a softer claim: `TestBothHostsReconcileIdentically`
+carries a `CRLF line endings, plus a rename` fixture, built on the rename precisely so a row is
+actually *quarantined* — `print "# " $0 note` is the only line the stray CR reaches, so a CRLF
+fixture with nothing to quarantine would have been vacuous. Deleting `{ sub(/\r$/, "") }` from
+`staleness.sh:876` turns that subtest red and leaves every LF subtest green. `decision-0083`'s
+*"for LF and CRLF input"* therefore now names a guard that has a CRLF case inside it.
 
 **The byte-identity claim is scoped, not absolute — one divergence class survives, and it is now
 covered.** This qualifies both the sentence above and the same claim in `decision-0083`'s
@@ -190,7 +196,7 @@ covered.** This qualifies both the sentence above and the same claim in `decisio
 CRLF input. **CR-only** input (classic-Mac line endings) is the exception. Both reconcilers read
 such a file as a single line — awk's `RS` is `"\n"`, the JS splits on `/\r?\n/` — so both find no
 rows, both classify all sixteen slugs as missing, and both append all sixteen; **both hosts deliver
-and govern**. They then differ in two measured ways: `staleness.sh:665`'s `sub(/\r$/, "")` strips
+and govern**. They then differ in two measured ways: `staleness.sh:876`'s `sub(/\r$/, "")` strips
 the record's trailing CR while the JS splitter keeps it, and the sixteen-row append assembles to
 9481 B, over `MAX_CONTEXT_BYTES`, so Codex silently takes §6's provenance-free path and omits the
 `# added 16 row(s) below on <date>` header Claude writes. What diverges is the *text of the repair*,

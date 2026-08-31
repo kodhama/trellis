@@ -2563,8 +2563,25 @@ func TestSlugMismatchStillDeliversEveryRule(t *testing.T) {
 		if !strings.Contains(out, "quarantined") {
 			t.Errorf("the quarantine must be labelled so a reader can tell why:\n%s", out)
 		}
-		if !strings.Contains(out, "claude plugin update trellis@kodhama") {
-			t.Errorf("quarantine provenance must name the stale-plugin cause (TRL-27):\n%s", out)
+		// Two provenance strings, in two places, deliberately worded
+		// differently (decision-0084 (b)) — so both need their own pin.
+		//
+		// The ROW note is host-neutral. .trellis/rules.toml is ONE file read by
+		// both hooks, so a row comment naming a Claude-only command is wrong for
+		// a Codex reader whichever hook wrote it.
+		if !strings.Contains(out, "update the Trellis plugin and uncomment this row.") {
+			t.Errorf("the quarantine ROW note must stay host-neutral — no host's own command inside a file both hosts read (decision-0084):\n%s", out)
+		}
+		// The MANDATE may name Claude's own command: staleness.sh is the Claude
+		// hook and its mandate is addressed to a Claude agent. This assertion was
+		// a bare `claude plugin update trellis@kodhama` substring check labelled
+		// as the row note's pin; when the row note went host-neutral it silently
+		// retargeted onto the mandate — still green, but no longer guarding what
+		// its failure message named, and leaving the row note's wording
+		// unpinned on the Claude side. Anchored on the surrounding sentence so
+		// it can only match the mandate, never the row note.
+		if !strings.Contains(out, "the installed plugin is the stale side: `claude plugin update trellis@kodhama`, restart the session, and uncomment the row.") {
+			t.Errorf("the repair MANDATE must name the stale-plugin cause (TRL-27) and Claude's own remedy for it:\n%s", out)
 		}
 	})
 

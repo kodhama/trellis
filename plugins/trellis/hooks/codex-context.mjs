@@ -469,7 +469,7 @@ function reconcileRows(source, slugs, stamp, today, withProvenance = true) {
 }
 
 // mismatchReport mirrors staleness.sh's own $slug_report text (its awk block,
-// staleness.sh:594-609): which slugs were missing, unknown, or duplicate —
+// staleness.sh:640-655): which slugs were missing, unknown, or duplicate —
 // the WHICH an agent needs alongside repairMandate's HOW MUCH
 // (added/quarantined counts). mismatch is never null when this is called
 // (repairMandate only runs on the `mismatch !== null` branch), and
@@ -839,9 +839,10 @@ if (mismatch !== null) {
   // already-quarantined or already-added row from an earlier session is
   // invisible to these counters; re-reconciling an already-repaired file
   // reports 0/0, not yesterday's counts restated on top of today's. Mirrors
-  // staleness.sh's own fix for exactly this defect (staleness.sh:730-740's
-  // "the SPOKEN summary was not" note) — do not derive this from text length
-  // or any other count that could see stale provenance.
+  // staleness.sh's own fix for exactly this defect (staleness.sh:953-963, the
+  // `#trellis-reconcile-counts` trailer and its "the SPOKEN summary was not"
+  // note — grep that phrase, not the line number) — do not derive this from
+  // text length or any other count that could see stale provenance.
   const repairSummary = `added ${reconciled.added} row(s); quarantined ${reconciled.quarantined} row(s)`;
   repairMandateText = repairMandate(mismatchReport(mismatch), repairSummary);
 }
@@ -856,7 +857,7 @@ const buildContext = (rulesTomlText, mandateText) =>
   (rulesTomlText.endsWith("\n") ? "" : "\n") +
   mandateText +
   // Cosmetic parity, fix round 1: staleness.sh's footer printf always opens
-  // with its own leading "\n" (staleness.sh:793), so on the Claude side a
+  // with its own leading "\n" (staleness.sh:1131), so on the Claude side a
   // blank line separates the mandate's last sentence from "Delivered by...".
   // Scoped to the mandate-present branch only — the no-mismatch path (empty
   // mandateText) is pre-existing behaviour this task did not touch and is
