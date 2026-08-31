@@ -83,12 +83,12 @@ to the reconciler would quarantine every legitimate row and run the session ungo
 inverting the fail-loud rule stated forty lines above the reconciler in the same file. It gets its
 own loud branch, and names the plugin rather than the consumer's rows as the thing to fix.
 
-**That branch turned out to be one of five, not the only one.** Review of this branch, before merge,
-found four more — and the paragraph above, which forbids exactly this outcome, was already true
-while the code let it happen four other ways. `no-slugs-in-payload` is the verdict the validator
-*reaches*; it is not the only way a broken payload could reach the reconciler. Four of the five are
-one construct: **a read whose failure is silent**, behind an existence check that only proves the
-file is *there*. The fifth is worse, and is marked as such in the table.
+**That branch turned out to be one of six, not the only one.** Review of this branch, before merge,
+found five more — and the paragraph above, which forbids exactly this outcome, was already true
+while the code let it happen five other ways. `no-slugs-in-payload` is the verdict the validator
+*reaches*; it is not the only way a broken payload could reach the reconciler. Most of them are one
+construct: **a read whose failure is silent**, behind an existence check that only proves the file
+is *there*. Two are not, and are marked in the table.
 
 | Entry point | What the session got |
 |---|---|
@@ -97,6 +97,7 @@ file is *there*. The fifth is worse, and is marked as such in the table.
 | **An unreconcilable want set.** Inside the reconciler the want set is filled by a **redirected** `getline`, which returns `-1` *silently* instead of dying, so a failed open left `want[]` empty. | the same blackout one layer in, reached without the report ever being wrong |
 | **An unusable posture header.** The assembly awk read `$header` positionally too, one line below the other two — mode `000`, zero bytes, or truncated above its `@rules.md` import. | **sixteen activation rows and zero rules prose**: the agent told exactly which rules are active and handed none of them |
 | **An incoherent payload — different in kind, see below.** The validator's only test for a broken `rules.md` is `length(want) == 0`, so one truncated *below* its first slug is non-empty, passes, and is then believed. | **`quarantined 14 row(s)`**, both floor rules commented out, and a mandate to write that file to `.trellis/rules.toml` |
+| **A payload missing its own terminator** — the check Codex has always had and this hook did not. Added last, because the guard above it *skips itself* when `reference/rules-b.toml` is absent, and measured with that file removed the hole is fully open again. | the same `quarantined 14 row(s)`, reached with nothing left to compare the payload against |
 
 The fourth is the worst-*looking*, because it is the least alarming: the payload reads as
 substantive, so nothing signals a problem, and it needs no permission trickery — an interrupted
@@ -112,11 +113,28 @@ and provably distinct from the stale-plugin case quarantine exists for, where th
 coherent and the *project* is out of step. That distinction is what keeps the guard from
 over-refusing, and it has its own control test.
 
-**The Codex hook has refused all four blackout shapes since it shipped** (`readRequired`'s
-`unreadable-file`/`missing-file`, its explicit `empty-prose` check, and
-`invalid-placeholder-count`), which is what marks those as Claude-side oversights rather than design
-choices; the fifth has no Codex analogue, because Codex never reconciles. Each now exits through the
+**The Codex hook has refused three of the four blackout shapes since it shipped** —
+`readRequired`'s `unreadable-file`/`missing-file`, its explicit `empty-prose` check, and
+`invalid-placeholder-count` — which is what marks those as Claude-side oversights rather than design
+choices. The fourth's Codex analogue is `slugs.length === 0`, and `git log -S` places that at
+`1b6553b`, **on this branch**: `main`'s Codex hook has no such branch, so it is not something Codex
+brought and Claude lacked. The fifth and sixth have no Codex analogue at all — Codex never
+reconciles, and its own terminator gate is the thing the sixth copies. Each now exits through the
 same loud door as `no-slugs-in-payload`, and each is pinned by a test proved by mutation.
+
+**An eighth instance of the same class is fixed but is NOT in the table, because refusing was the
+wrong answer for it.** The `@rules.md` expansion is the twin of the reconciler `getline` in row 3 —
+same redirected read, same discarded return, 186 lines apart, guarded on one branch and not the
+other. Its trigger is not a permission: `awk -v` **escape-processes its value**, so a
+`CLAUDE_PLUGIN_ROOT` containing a backslash arrived at that awk as a path that does not exist while
+every `-f` test and every positional read passed. Measured with a root named `plug\tools`: sixteen
+activation rows, zero rules prose, exit 0, no marker. Such a root is *legitimate* and every file on
+it is readable, so the fix passes the paths through `ENVIRON`, which does no escape processing —
+the root now **works** rather than failing loudly — and keeps a return-value check as the backstop
+for real read failures. Measuring it turned up one more: the `gsub` escaping that guarded the
+invariants pointer is half wrong on BSD awk, where an unescaped `&` in a replacement *is* expanded
+but an unescaped backslash is *not*, and gawk disagrees. Substituting by index invokes no
+replacement semantics at all, so the fork stops mattering.
 
 ### 2. Quarantine, not deletion — and that is the whole safety argument
 
@@ -258,14 +276,18 @@ The design predicted three; execution retired exactly those three, one task earl
 blackout message was one of the gated messages, so removing it removed **something to gate, not a
 gate**, and the guards report **zero ungated destructive messages** across both channels.
 
-**The emit count is twenty-four. This record said nineteen, with the words "counted, not argued"
-attached, and by the time anyone read it that was wrong by five.** Nineteen was right when the
+**The emit count is twenty-six. This record said nineteen, with the words "counted, not argued"
+attached, and by the time anyone read it that was wrong by seven.** Nineteen was right when the
 reconciliation task ended — the blackout emit went and the `no-slugs-in-payload` branch's loud emit
-took its place. The guards added afterwards on this same branch added one `emit` each: the four new
-entry points in the table under §1, plus one probing the `cat "$toml"` delivery read, which is about
-the *consumer's* file rather than the payload and so is not one of them. Recounted on
+took its place. The guards added afterwards on this same branch added one `emit` each: the five new
+entry points in the table under §1, plus one probing the `cat "$toml"` delivery read (about the
+*consumer's* file, not the payload) and one backstopping the `@rules.md` import. Recounted on
 `plugins/trellis/hooks/staleness.sh` as `emit "` call sites, excluding the single comment that names
-the pattern: **24** (25 raw matches, less that comment).
+the pattern: **26** (27 raw matches, less that comment).
+
+This number has now been restated three times on one branch, which is itself the finding: a count
+in a record is a **measurement with a date**, not a fact about the design, and the sentence carrying
+it should say so rather than sound settled.
 
 A wrong number carrying "counted, not argued" is worse than no number, because the phrase invites
 the reader to trust it instead of re-counting. The count is a fact about a file that keeps changing;
