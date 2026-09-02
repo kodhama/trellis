@@ -40,8 +40,19 @@ What establishes that is a check, not an assurance: `decision-0065` moved rule d
 plugin's `SessionStart` hooks on both hosts, and measured against a real session with file tools
 disabled, `startup` and `resume` fire and the injected rules reach the model, including under
 headless `claude -p`. **Not verified on any surface:** `compact`, `clear`, `fork`, subagent
-boundaries, desktop, IDE, cloud, and CI runners — a bare subagent is not a session, so
-`SessionStart` never fires for one. `install.sh` registers no hook either — instead it renders
+boundaries, desktop, IDE, and CI runners — a bare subagent is not a session, so
+`SessionStart` never fires for one. **Claude Code cloud sessions are checked** (`TRL-35`, the
+Trellis team's Linear issue holding the evidence; Claude Code 2.1.258, fresh containers):
+`SessionStart` fires in a cloud container, and the plugin's hook injected the rules on turn one
+— **when the environment installed the plugin before Claude Code launched**, through an
+environment setup script, and not otherwise. The **automatic project-scope plugin path** —
+`enabledPlugins` plus `extraKnownMarketplaces` in the repo's `.claude/settings.json` — does
+**not** reach cloud: the container never trusts the folder, so the marketplace is never
+registered, and a headless startup never installs project-enabled plugins, while the host's
+reconcile reports zero failures. That is host behaviour, not the plugin's. `install.sh
+--scope project`'s rendered `.claude/rules/trellis.md` was also loaded on turn one there, with
+no plugin present. The recommended cloud path is the opt-in script below. `install.sh`
+itself registers no hook — instead it renders
 `.claude/rules/trellis.md`, which Claude Code loads at launch with no hook and no trust dialog
 (`decision-0068`; the hook stands down when that file is present, so the rules never arrive
 twice). **That covers Claude Code and project scope only**: a `--scope personal` install
@@ -53,10 +64,33 @@ question, `install.sh` runs only on **macOS, Linux and WSL** — it is a POSIX `
 native Windows (cmd, PowerShell) cannot run the curl path at all, whichever host is being
 targeted (`decision-0068` §8). **Trellis claims no support.** "Known to work" names
 a check that ran; support is not claimed for any host, surface, or version, and nothing here
-undertakes to keep any of them working or to repair them if they stop. And **no marketplace
-install has been evidenced**: no recorded check has exercised installing this package from a
-marketplace listing, on either host, so a catalog entry means Trellis is listed — not that the
-listed install path has been shown to work.
+undertakes to keep any of them working or to repair them if they stop. And **the marketplace
+listing has been exercised once**: in that cloud investigation, `claude plugin marketplace add
+kodhama/stewards` followed by `claude plugin install trellis@kodhama` installed 0.7.0 in a
+2.1.258 cloud container, and the installed plugin's hook then fired. No other recorded check
+has exercised installing this package from a marketplace listing, on either host, so a catalog
+entry means Trellis is listed — not that the listed install path has been shown to work beyond
+that one run.
+
+**Recommended for cloud — the environment setup script, opt-in shape** (`TRL-35`). Install
+the plugin, then disable it at **user** scope: the environment then holds the plugin switched
+off, and a repo's own `enabledPlugins: { "trellis@kodhama": true }` in `.claude/settings.json`
+overrides that and opts in — a repo that declares nothing gets nothing. Verified on turn one in
+a fresh, untrusted, headless container:
+
+```bash
+#!/bin/bash
+C=/opt/claude-code/bin/claude
+$C plugin marketplace add kodhama/stewards || true
+$C plugin install trellis@kodhama || true
+$C plugin disable trellis@kodhama --scope user || true
+```
+
+**Always pass `--scope user` to `claude plugin disable`.** Without a scope it defaulted to
+project scope and wrote `false` into the repo's tracked `.claude/settings.json` (observed on
+2.1.258). Two limits: the environment snapshot keeps what the script wrote until it rebuilds,
+so the plugin version is pinned between rebuilds, and a session gets this only when it runs in
+an environment carrying the script.
 
 Applying a preset **replaces** rows, strictness and `seeded_from`, so replacing a file you
 already have shows up as a git diff — provided the file is committed, which nothing does for you. There is no per-host disable: `/trellis:remove` removes both

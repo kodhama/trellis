@@ -137,13 +137,14 @@ func TestDocsClaimOnlyRealCommands(t *testing.T) {
 // allowed form below names why it is allowed, so the exemption list is a record
 // rather than a mute.
 var setupQualifiers = []string{
-	"the retired setup skill", // decision-0072's own name for it
-	"a past setup",            // remove skill: cleaning artifacts it left
-	"past setup",              // same, mid-sentence
-	"setup skill retired",     // README pointer at the decision
-	"the setup skill",         // qualified reference to the artifact
-	"`setup` TUI",             // the retired v0 BINARY, not the skill
-	"setup\n  CLI",            // same, across a line wrap
+	"the retired setup skill",  // decision-0072's own name for it
+	"a past setup",             // remove skill: cleaning artifacts it left
+	"past setup",               // same, mid-sentence
+	"setup skill retired",      // README pointer at the decision
+	"the setup skill",          // qualified reference to the artifact
+	"`setup` TUI",              // the retired v0 BINARY, not the skill
+	"setup\n  CLI",             // same, across a line wrap
+	"environment setup script", // Claude Code cloud's own name for the pre-launch script (TRL-35), not the skill
 	// "grove:setup" was exempted here as "a different product's skill". Dropped by
 	// decision-0076: grove is retired and no doc surface may name /grove:setup as a
 	// live command, so keeping the exemption would let one back in unnoticed.
