@@ -8,6 +8,8 @@
 
 > **2026-08-30, after execution — this last sentence overstates what Task 3 delivered.** Deriving the slug set removed the drift hazard and the false `unknown:` reason; it did **not** give Codex the reconcile semantics. `parseRulesToml` still returns `null` on any mismatch and the hook still fails closed with `invalid-rules`, so the blackout this plan retires is retired on Claude only. Recorded here rather than edited away: the deferral was deliberate. See `decision-0083` §1 and its open questions; tracked as [TRL-30](https://linear.app/kodhama/issue/TRL-30).
 
+> **2026-08-30, debt paid — the note above now describes history, not an open gap.** TRL-30 shipped on `feature/trl-30-codex-reconciliation-parity`: `parseRulesToml` became a classifier rather than a gate, so `codex-context.mjs` reconciles a mismatched row set exactly as `staleness.sh` does, and `TestBothHostsReconcileIdentically` pins the two to byte-identical reconciled output. The architecture sentence above is now true as written. See `decision-0084`.
+
 **Tech Stack:** POSIX shell + awk (`staleness.sh`), Node ESM (`codex-context.mjs`), Go tests (`cli/`).
 
 **Spec:** `docs/superpowers/specs/2026-08-30-rules-toml-self-repair-design.md`
@@ -22,7 +24,11 @@
 - **Both hosts, same semantics.** A behaviour added to `staleness.sh` is added to `codex-context.mjs` in Task 3.
 
   > **2026-08-30, after execution — this constraint was not met, and the note at line 9 above says why.** Task 3 delivered the slug derivation and the raised context cap; it did **not** give `codex-context.mjs` the reconcile semantics. `parseRulesToml` still returns `null` on any mismatch — missing, unknown and duplicate alike — and the hook still fails closed with `invalid-rules`, so reconciliation is **Claude-only** and the constraint as written above is unsatisfied. Recorded rather than edited away: what this plan originally required is part of the story, and the deferral was deliberate. The gap is tracked as [TRL-30](https://linear.app/kodhama/issue/TRL-30); see `decision-0083` §1 and its open questions.
+
+  > **2026-08-30, debt paid — this constraint is now met.** TRL-30 gave `codex-context.mjs` the reconcile semantics: `parseRulesToml` returns a `{rows, mismatch}` classification instead of `null` for a missing, unknown or duplicate row, and only a genuine syntax fault still fails closed. Both hosts are held to the same reconciled bytes by `TestBothHostsReconcileIdentically`. See `decision-0084`.
 - **Provenance format, exact:** `  # quarantined <YYYY-MM-DD>: not in <payload-stamp>. If a newer Trellis ships this slug, run \`claude plugin update trellis@kodhama\` and uncomment.`
+
+  > **2026-08-30, superseded wording — do not copy the string above.** TRL-30's Ruling 4 made the quarantine comment host-neutral in **both** hooks: `. If a newer Trellis release ships this slug, update the Trellis plugin and uncomment this row.` `.trellis/rules.toml` is one file read by both hosts, so a row comment naming a Claude-only command is wrong for a Codex user opening it, whichever hook wrote it. A host's own mandate may still name its own command; the comment written into the shared file may not. See `decision-0084`.
 - **Run after every change:** `cd cli && go test ./...`
 
 ---

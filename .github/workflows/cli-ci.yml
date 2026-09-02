@@ -37,4 +37,13 @@ jobs:
           cache: false  # dependency-free since #120 (x/term retired with the TUI)
       - run: go build ./...
       - run: go vet ./...
-      - run: go test ./...
+      # -count=1 disables Go's test cache. cli/plugin_hook_test.go and
+      # cli/codex_hook_test.go execute the production hooks
+      # (plugins/trellis/hooks/staleness.sh, hooks/codex-context.mjs) as
+      # external files; the cache keys on Go sources and inputs it can see, so
+      # a hook mutation with no .go change replays a stale PASS. Reproduced by
+      # deleting codex-context.mjs's empty-slug-set guard: `ok (cached)`, then
+      # red under -count=1. Redundant on a fresh CI runner (cache: false above,
+      # and nothing to restore) — kept so this line and AGENTS.md's documented
+      # command are the same command, and the local run is safe by default.
+      - run: go test -count=1 ./...

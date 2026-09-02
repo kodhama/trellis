@@ -46,6 +46,8 @@ One table, applied identically by both hosts, in memory (for delivery) and on di
 > applied by `staleness.sh` only; `codex-context.mjs` still fails closed on any mismatch. See the
 > note under *Codex parity* below, `decision-0083` §1, and [TRL-30](https://linear.app/kodhama/issue/TRL-30).
 
+> **2026-08-30, debt paid — "by both hosts" now holds.** TRL-30 gave `codex-context.mjs` the same reconciliation: `parseRulesToml` classifies a slug-set mismatch instead of returning `null`, and `TestBothHostsReconcileIdentically` compares the two hosts' reconciled output byte for byte across seven fixtures. The table below is applied by both. One correction to it shipped with the parity work: the quarantine comment no longer names a Claude-only command, because `.trellis/rules.toml` is one file read by both hosts. See `decision-0084`.
+
 | Kind | Resolution | Rationale |
 |---|---|---|
 | `missing:` | add row, `active = true` | Matches both shipped presets and `decision-0070` D3, where a project-scope plugin with no file at all governs at full strength. A newly ratified invariant behaves the same in a project installed today or two releases ago. |
@@ -118,6 +120,8 @@ returns `null` → `invalid-rules` on any mismatch; it adopts the reconcile sema
 > section scoped, and it was deliberately deferred. See `decision-0083` §1 and its open questions;
 > the follow-up is tracked as [TRL-30](https://linear.app/kodhama/issue/TRL-30).
 
+> **2026-08-30, debt paid — reconciliation is no longer Claude-only.** The restructure this note deferred is what TRL-30 did: `parseRulesToml` became a classifier returning `{rows, mismatch}`, `fail(PROJECT_CONFIG, "invalid-rules")` now fires only on a genuine syntax fault, and the over-budget refusal that would have rebuilt the blackout at the byte boundary degrades instead (TRL-29, folded in). See `decision-0084`.
+
 **Unconfirmed, to be settled in implementation, not planned around:** `parseRulesToml` runs at
 `:369` and the payload resolves at `:408`, so deriving the slug set needs that order swapped. It
 reads like a reordering rather than a rewrite, but the uses in between were not traced.
@@ -132,6 +136,8 @@ this section exists to prevent. Enumerate the matrix as failing tests **before**
   unknown simultaneously — the shape `staleness.sh:598-603` documents).
 - **File shapes:** absent · complete · partial · `governed = false` · **already-quarantined**.
 - **Hosts:** Claude and Codex, same semantics. *(2026-08-30, after the branch shipped: not met — reconciliation is Claude-only, so the matrix below was exercised against `staleness.sh`, and the Codex axis is a single cross-host regression that a Claude-reconciled file still parses. [TRL-30](https://linear.app/kodhama/issue/TRL-30); see the notes at the two parity claims above.)*
+
+  *(2026-08-30, debt paid: now met. Both hosts reconcile, and the Codex axis is a seven-fixture byte-identity comparison — `TestBothHostsReconcileIdentically` — not a single regression. `decision-0084`.)*
 
 Two tests that carry most of the risk:
 

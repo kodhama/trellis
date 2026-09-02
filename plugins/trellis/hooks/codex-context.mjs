@@ -231,10 +231,25 @@ function parseQuotedTomlString(source) {
 // in rather than closed over. A hardcoded list here could not be repaired by a
 // plugin upgrade, and a stale one made a quarantine reason false: the agent would
 // quarantine a live row and cite a payload that ships it.
+//
+// Returns `{ rows, mismatch }` on any file this parser can make sense of, or
+// `null` only for a genuine syntax fault — a malformed row (including one not
+// shaped `(inv|floor)-...`, the same prefix reconcileRows requires — see the
+// row regex below), an unknown top-level key, a duplicate top-level key or
+// section, or a `strictness` that is present but neither "firm" nor
+// "adaptive". `mismatch` is null when every row's slug matched exactly once;
+// otherwise it names the three ways a row can fail to match the slug set —
+// missing, unknown, duplicate — and the caller reconciles rather than
+// refusing (staleness.sh's TRL-20 fix, now mirrored here). This used to be a
+// pass/fail gate (`return null` on any of those three, PLUS a missing
+// `[rules]` table entirely); the classifier split is what lets a single bad
+// row — or a table that never existed — stop costing the other fifteen.
 function parseRulesToml(source, slugs) {
   const slugSet = new Set(slugs);
   const topLevel = new Map();
   const rows = new Map();
+  const unknown = [];
+  const duplicate = [];
   let rulesSectionSeen = false;
   let inRules = false;
 
@@ -283,23 +298,287 @@ function parseRulesToml(source, slugs) {
       continue;
     }
 
+    // A malformed row is still a genuine syntax fault and stays fatal — only
+    // the SLUG-SET checks (duplicate, unknown) move from `return null` to
+    // collection, so the scan continues and every row still gets classified.
+    //
+    // The prefix is `(?:inv|floor)-`, not the wider `[a-z][a-z-]*` this used
+    // to accept: reconcileRows' own row-detection (`rowLead`, below) has
+    // always been prefix-narrow, matching staleness.sh's awk, which has no
+    // other way to tell a row from a top-level key (no state tracking; a bare
+    // `[a-z][a-z-]*` would also match `strictness`). A row shaped like
+    // `bogus-rule = { active = true }` used to be classified `unknown` here
+    // and then trigger reconciliation, but reconcileRows' narrower regex
+    // never recognised it as a row to quarantine — measured: context
+    // delivered, zero quarantine notes, the row passed through uncommented,
+    // so the mismatch never cleared and the hook re-reconciled every session
+    // to no effect. Narrowing this regex to match reconcileRows exactly is
+    // what makes the two agree: such a line is now a malformed row (fails
+    // closed), not a silently no-op "unknown" one.
     const row = line.match(
-      /^([a-z][a-z-]*)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
+      /^((?:inv|floor)-[a-z-]+)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
     );
-    if (!row || rows.has(row[1]) || !slugSet.has(row[1])) return null;
+    if (!row) return null;
+    if (rows.has(row[1])) {
+      duplicate.push(row[1]);
+      continue;
+    }
+    if (!slugSet.has(row[1])) {
+      unknown.push(row[1]);
+      continue;
+    }
     rows.set(row[1], row[2] === "true");
   }
 
+  // A missing strictness is no longer fatal (it used to fold into the same
+  // `rows.size !== slugs.length` style all-or-nothing check this function
+  // replaces): left unset here, it is the caller's job to default it — which
+  // codex-context.mjs's posture selection already does (`strictness !== "firm"`
+  // falls to adaptive), matching staleness.sh:558-560's `case "$strictness" in
+  // firm) ... ; *) ... ;; esac`. A strictness that IS present but invalid still
+  // fails closed: a typo must not silently pick a posture.
   const strictness = topLevel.get("strictness");
-  if (
-    !rulesSectionSeen ||
-    (strictness !== "firm" && strictness !== "adaptive") ||
-    rows.size !== slugs.length ||
-    slugs.some((slug) => !rows.has(slug))
-  ) {
+  if (strictness !== undefined && strictness !== "firm" && strictness !== "adaptive") {
     return null;
   }
-  return rows;
+
+  // `!rulesSectionSeen` used to be fatal too (fix round 1 correction — the
+  // brief said keep it fatal, and that was the controller's error, not a
+  // reading of the code). A rules.toml with no `[rules]` table at all is not
+  // a syntax fault: it is a slug set that is entirely missing, reconcilable
+  // like any other slug-set mismatch. A hand-written partial file carrying
+  // only `strictness = "firm"` is the canonical shape — staleness.sh repairs
+  // it into a full `[rules]` table plus all sixteen rows, and this must reach
+  // the same repair rather than refusing the file outright. No special-casing
+  // is needed to get there: `rows` is simply empty when `[rules]` was never
+  // seen (the loop never entered the row-matching branch), which already
+  // makes every slug "missing" below — and it is what makes reconcileRows'
+  // own `if (!hasRules)` insertion below reachable at all.
+
+  const missing = slugs.filter((slug) => !rows.has(slug));
+  const mismatch =
+    missing.length === 0 && unknown.length === 0 && duplicate.length === 0
+      ? null
+      : { missing, unknown, duplicate };
+  return { rows, mismatch };
+}
+
+// reconcileRows mirrors staleness.sh's reconciliation awk block byte-for-byte in
+// its provenance strings (both hosts govern from the same rules.toml, so an agent
+// reading the repair notice must see identical wording regardless of which host
+// wrote it). Quarantine, never delete: an unknown or duplicate row is commented
+// out with a dated note rather than dropped, so nothing a project chose is ever
+// lost, and a payload upgrade that later re-recognises the slug is a one-line
+// uncomment. Missing rows are appended, defaulted to `active = true`, under one
+// shared header comment rather than one note per row (Ruling 6, TRL-20 task 3 —
+// per-row notes on a firm, all-sixteen-missing file blew Codex's own
+// MAX_CONTEXT_BYTES and reintroduced the blackout this exists to remove).
+//
+// `stamp` is the installed payload's own version stamp (`payload@<hash>`, no
+// trailing newline) — what the note calls "not in <stamp>" / "missing from
+// <stamp>". `today` is the caller's `YYYY-MM-DD` for the same reason
+// staleness.sh takes one `date +%Y-%m-%d` call up front rather than one per row:
+// every note in a single reconciliation shares one date.
+// quarantineNote/addedHeader are the two provenance strings reconcileRows
+// glues onto a row (or a block of rows) it could not match to the payload's
+// slug set. Factored out to a single source of truth so the `withProvenance`
+// branches below (the ordinary call and TRL-29's degraded one, immediately
+// after) can never drift from each other about what "with provenance" means.
+function quarantineNote(today, stamp) {
+  return (
+    `  # quarantined ${today}: not in ${stamp}. If a newer Trellis` +
+    " release ships this slug, update the Trellis plugin and uncomment this row."
+  );
+}
+function addedHeader(count, today, stamp) {
+  return `# added ${count} row(s) below on ${today} (missing from ${stamp})`;
+}
+
+// `withProvenance = false` is TRL-29's degradation path: same rows, same
+// quarantine/addition DECISIONS (so `added`/`quarantined` — and therefore
+// governance — are identical either way), but the explanatory comment text
+// (quarantineNote/addedHeader) is left off entirely, not reconstructed
+// elsewhere — see repairMandate's own comment for why the mandate does not
+// try to hand that literal wording back to the agent either. Called only
+// when the full-provenance assembly below did not fit MAX_CONTEXT_BYTES.
+function reconcileRows(source, slugs, stamp, today, withProvenance = true) {
+  const want = new Set(slugs);
+  const note = withProvenance ? quarantineNote(today, stamp) : "";
+
+  // Mirrors parseRulesToml's own newline handling: `\r?\n` consumes a CRLF pair
+  // as one delimiter, so a raw line here never carries a trailing `\r`. Both
+  // functions read the same source string and must agree on what a "line" is.
+  //
+  // A genuinely empty source (0 bytes) is the one case that split() cannot
+  // model directly: "".split(/\r?\n/u) returns [""], one phantom empty-string
+  // "line" that corresponds to no real line in a 0-byte file. awk has no such
+  // artifact — an empty input file is 0 records, not 1 — so unguarded this
+  // pushed a spurious leading blank line into the reconciled text ahead of
+  // `[rules]`, present on Codex and absent from staleness.sh's output for the
+  // identical empty-file fixture (found by Task 2's cross-host conformance
+  // guard, TestBothHostsReconcileIdentically, "empty file"). Every other
+  // shape (a lone "\n", any nonempty source with or without a trailing
+  // newline) already matches awk via hadTrailingNewline below; only the
+  // zero-byte case needs the explicit override.
+  const hadTrailingNewline = /\r?\n$/u.test(source);
+  const rawLines = source.length === 0 ? [] : source.split(/\r?\n/u);
+  if (hadTrailingNewline) rawLines.pop(); // a terminal newline is not an extra blank record — matches awk's own line semantics
+
+  const rulesHeader = /^[ \t]*\[rules\][ \t]*(?:#.*)?$/u;
+  const rowLead = /^[ \t]*(?:inv|floor)-[a-z-]+[ \t]*=/u;
+
+  const seen = new Set();
+  let hasRules = false;
+  let quarantined = 0;
+  const out = [];
+
+  for (const line of rawLines) {
+    if (rulesHeader.test(line)) hasRules = true;
+
+    if (rowLead.test(line)) {
+      // The slug is the row's first whitespace-delimited field, trimmed to its
+      // leading [a-z-]+ run — mirrors the awk's `row = $1; sub(/[^a-z-].*$/, ""
+      // , row)` exactly, so a row with no space before `=` still classifies
+      // correctly.
+      const field = line.replace(/^[ \t]+/u, "").match(/^\S+/u)?.[0] ?? "";
+      const slug = field.match(/^[a-z-]+/u)?.[0] ?? field;
+      if (!want.has(slug) || seen.has(slug)) {
+        out.push(`# ${line}${note}`);
+        quarantined += 1;
+        continue;
+      }
+      seen.add(slug);
+      out.push(line);
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  const missing = slugs.filter((slug) => !seen.has(slug));
+  if (missing.length > 0) {
+    if (!hasRules) {
+      out.push("[rules]");
+      hasRules = true;
+    }
+    if (withProvenance) out.push(addedHeader(missing.length, today, stamp));
+    for (const slug of missing) out.push(`${slug} = { active = true }`);
+  }
+
+  return { text: `${out.join("\n")}\n`, added: missing.length, quarantined };
+}
+
+// mismatchReport mirrors staleness.sh's own $slug_report text (its awk block,
+// staleness.sh:640-655): which slugs were missing, unknown, or duplicate —
+// the WHICH an agent needs alongside repairMandate's HOW MUCH
+// (added/quarantined counts). mismatch is never null when this is called
+// (repairMandate only runs on the `mismatch !== null` branch), and
+// parseRulesToml only ever returns a non-null mismatch when at least one of
+// these three arrays is non-empty, so the result is never "".
+function mismatchReport(mismatch) {
+  const parts = [];
+  if (mismatch.missing.length > 0) parts.push(`missing: ${mismatch.missing.join(" ")}`);
+  if (mismatch.unknown.length > 0) parts.push(`unknown: ${mismatch.unknown.join(" ")}`);
+  if (mismatch.duplicate.length > 0) parts.push(`duplicate: ${mismatch.duplicate.join(" ")}`);
+  return parts.join("; ");
+}
+
+// mismatchCounts is mismatchReport's TRL-29 degraded counterpart (over-budget
+// branch, below): the same three categories, by COUNT rather than naming
+// every slug. At sixteen quarantined rows (worst case) mismatchReport alone
+// names all thirty-two slugs — and every one of them is already visible,
+// named, in the row block above (a quarantined row keeps its slug on a
+// commented-out line; an added row is `slug = { active = true }`) — so
+// repeating the full list here is reporting redundant enough with what
+// already governs to give way alongside the provenance comments, freeing the
+// bytes an announcement of the omission itself needs.
+function mismatchCounts(mismatch) {
+  const parts = [];
+  if (mismatch.missing.length > 0) parts.push(`${mismatch.missing.length} missing`);
+  if (mismatch.unknown.length > 0) parts.push(`${mismatch.unknown.length} unknown`);
+  if (mismatch.duplicate.length > 0) parts.push(`${mismatch.duplicate.length} duplicate`);
+  return parts.join(", ");
+}
+
+// repairMandate is TRL-30 task 3 (decision-0083 host parity): the Claude hook
+// (staleness.sh) does not just reconcile a mismatch in memory, it tells the
+// agent to write the repaired file back and report what changed — this hook
+// used to stop at "computed in memory," delivering the reconciled rows with
+// no instruction attached. Text below is the Claude mandate's substance.
+//
+// Carries no stale-plugin remedy of its own (fix round 1): that used to live
+// here as its own sentence, but .trellis/rules.toml is one file read by both
+// hosts, and reconcileRows' own quarantine note — INSIDE the row block this
+// mandate follows — already carries a host-neutral "update the Trellis
+// plugin and uncomment this row" remedy per quarantined line. A second,
+// differently-worded remedy sentence here was redundant at best and, before
+// this fix, actively contradicted that note (naming a Claude-only command a
+// Codex agent cannot run).
+//
+// Safe to leave ungated (no floor-intent-gate confirmation), for the same
+// reason the Claude mandate is: reconcileRows only ever comments a row out or
+// appends one, so nothing this text instructs the agent to write is
+// destructive. That argument is enforced by construction, not just argued in
+// this comment — cli/plugin_hook_test.go's TestEveryDeletionInstructionIsGated
+// and TestEveryDestructiveInstructionIsGated scan this function's literal
+// strings alongside staleness.sh's own payload assembly, specifically because
+// this is the first place codex-context.mjs puts an agent-facing instruction
+// into the Codex payload. No deletion verb may ever appear here.
+//
+// This hook still never writes .trellis/rules.toml itself (decision-0070 D4,
+// pinned behaviourally by codexReconciledRows in cli/codex_hook_test.go) —
+// the mandate only tells the agent to.
+// `degraded` (TRL-29, boolean) is set only by the over-budget branch below,
+// once the provenance-free reassembly is what actually fits. "The rows
+// above" is then the abbreviated working set the degraded assembly injected,
+// not the reconciled file's own text — the write instruction must say so
+// explicitly, so the FILE this mandate has the agent write still ends up
+// with full provenance even though the session's own injected context did
+// not carry it. Letting this collapse back to "write exactly the rows shown
+// above" is the one failure this whole task exists to close: the file would
+// silently lose the provenance the design rests on, even though nothing else
+// changed.
+//
+// Deliberately does not reproduce quarantineNote/addedHeader's own literal
+// wording here, nor spell out today/stamp again (stamp is already in the
+// footer below, "Trellis hook loaded installed overlay: <stamp>"): the
+// over-budget caller also passes mismatchCounts' compact form instead of
+// mismatchReport's full one for the same reason — at sixteen quarantined
+// rows (worst case) mismatchReport alone names all thirty-two slugs, and a
+// fixed verbatim recipe added on top of THAT pushed the assembled context
+// back over MAX_CONTEXT_BYTES on its own — see
+// TestCodexDegradesRatherThanRefusingOverBudget and its byte accounting in
+// task-4-report.md. A session already over budget cannot also afford asking
+// for the exact template text back; "the full-provenance version, not the
+// abbreviated rows above" is the instruction the byte budget can carry.
+function repairMandate(mismatchText, repairSummary, degraded) {
+  const writeInstruction = degraded
+    ? "Provenance was omitted above to fit the context budget and remains in full in the file this mandate instructs writing next. " +
+      "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above, so the file matches what governs. "
+    : "Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. ";
+  // The no-loss sentence has to describe what the reader can SEE. On the
+  // degraded path the rows above carry no reason and no date — saying they do
+  // would contradict the very lines under it and invite the agent to copy the
+  // abbreviated rows back as if they were already complete. Same guarantee,
+  // stated as the property of the file being written rather than of the rows
+  // shown. Note also that `today` reaches the degraded context nowhere at all
+  // (the date lives only inside quarantineNote/addedHeader, which this path
+  // drops): the agent supplies its own date for the notes it writes. That is
+  // deliberate and harmless — the notes are comments, never re-parsed by
+  // either hook, so a date that differs by a day changes no decision and
+  // costs no idempotency; spending budget to carry the date back would.
+  const noLoss = degraded
+    ? "Nothing is lost by this: in the file you write, a row the payload does not ship keeps its line, commented out with its reason and the date, and every value the project chose is preserved verbatim. "
+    : "Nothing is lost by this: a row the payload does not ship is commented out with its reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. ";
+  return (
+    "\n## Rule activation was reconciled this session\n\n" +
+    `This project's .trellis/rules.toml did not match the rules this payload ships (${mismatchText}). ` +
+    "The rows above are the reconciled set and are what governs this session; the file on disk still differs. " +
+    `Reconciliation: ${repairSummary}.\n\n` +
+    writeInstruction +
+    noLoss +
+    "Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent.\n"
+  );
 }
 
 // The slugs the payload actually ships, read from the same rules.md the Claude
@@ -313,6 +592,23 @@ function slugsFromRules(rulesMd) {
     if (m) found.push(m[1]);
   }
   return found;
+}
+
+// Local calendar date, YYYY-MM-DD — must match staleness.sh's `date
+// +%Y-%m-%d`, which reads the process's LOCAL timezone. `Date`'s un-prefixed
+// accessors (getFullYear/getMonth/getDate) are local-time; `toISOString` is
+// always UTC and disagreed with the shell by |UTC offset| hours a day on any
+// non-UTC machine. Measured at 2026-08-30T05:30:00Z:
+// `TZ=America/Los_Angeles date +%Y-%m-%d` says 2026-08-29,
+// `toISOString().slice(0, 10)` said 2026-08-30. Task 2 compares the two
+// hosts' reconciled output byte-for-byte; left as UTC, that comparison would
+// have gone red for |offset| hours a day on any non-UTC machine and green on
+// UTC CI — a mismatch that reads as flake, not as what it is.
+function localToday(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 let input;
@@ -507,23 +803,112 @@ if (slugs.length === 0) {
   fail(sources.rules, "no-slugs-in-payload");
   process.exit(0);
 }
-const rows = parseRulesToml(rulesToml, slugs);
-if (rows === null) {
+const parsed = parseRulesToml(rulesToml, slugs);
+if (parsed === null) {
   fail(PROJECT_CONFIG, "invalid-rules");
   process.exit(0);
 }
+const { rows, mismatch } = parsed;
 
 const stamp = version.endsWith("\n") ? version.slice(0, -1) : version;
-const context =
+// Reconcile rather than refuse (TRL-20, mirroring staleness.sh): a missing,
+// unknown or duplicate row used to fail the whole file closed, so one bad row
+// cost all sixteen rules every session until a human edited it by hand. The
+// rows the payload ships are still the authority; what changes is that an
+// unmatched row is quarantined instead of blocking delivery. `rows` (used below
+// for the false-floor check) is unaffected either way: it already carries only
+// the recognised, first-occurrence rows parseRulesToml collected.
+// Captured once, before either reconcileRows call below, so the ordinary
+// assembly and a possible TRL-29 degraded re-assembly (over-budget branch,
+// below) never disagree about "today" across a midnight boundary — both
+// reconcileRows calls, and the degraded mandate's recipe, must cite the same
+// date reconcileRows actually used when it decided what to quarantine or add.
+const today = localToday();
+let effectiveRulesToml = rulesToml;
+// repairMandateText stays "" on the no-mismatch path (below), so a session
+// that reconciled nothing gets no mandate — matching staleness.sh, which only
+// prints its own "## Rule activation was reconciled this session" section
+// when $reconciled is non-empty.
+let repairMandateText = "";
+if (mismatch !== null) {
+  const reconciled = reconcileRows(rulesToml, slugs, stamp, today);
+  effectiveRulesToml = reconciled.text;
+  // `reconciled.added`/`.quarantined` describe THIS call only, against the
+  // file as it stands right now — never a running total. reconcileRows' row
+  // regex matches only an uncommented `(inv|floor)-... =` line, so an
+  // already-quarantined or already-added row from an earlier session is
+  // invisible to these counters; re-reconciling an already-repaired file
+  // reports 0/0, not yesterday's counts restated on top of today's. Mirrors
+  // staleness.sh's own fix for exactly this defect (staleness.sh:953-963, the
+  // `#trellis-reconcile-counts` trailer and its "the SPOKEN summary was not"
+  // note — grep that phrase, not the line number) — do not derive this from
+  // text length or any other count that could see stale provenance.
+  const repairSummary = `added ${reconciled.added} row(s); quarantined ${reconciled.quarantined} row(s)`;
+  repairMandateText = repairMandate(mismatchReport(mismatch), repairSummary);
+}
+// Factored out so the over-budget branch below can re-run it against a
+// provenance-free reassembly without duplicating the footer/spacing rules —
+// the two assemblies must differ ONLY in effectiveRulesToml/repairMandateText,
+// never in how they are joined.
+const buildContext = (rulesTomlText, mandateText) =>
   trellis.replace("@rules.md", rules) +
   "\n" +
-  rulesToml +
-  (rulesToml.endsWith("\n") ? "" : "\n") +
+  rulesTomlText +
+  (rulesTomlText.endsWith("\n") ? "" : "\n") +
+  mandateText +
+  // Cosmetic parity, fix round 1: staleness.sh's footer printf always opens
+  // with its own leading "\n" (staleness.sh:1131), so on the Claude side a
+  // blank line separates the mandate's last sentence from "Delivered by...".
+  // Scoped to the mandate-present branch only — the no-mismatch path (empty
+  // mandateText) is pre-existing behaviour this task did not touch and is
+  // left as is.
+  (mandateText === "" ? "" : "\n") +
   `Trellis hook loaded installed overlay: ${stamp}\n`;
 
+let context = buildContext(effectiveRulesToml, repairMandateText);
+
 if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
-  fail("assembled-context", "context-over-budget");
-  process.exit(0);
+  // TRL-29: refusing outright here used to be a self-inflicted blackout —
+  // Codex's own documented behaviour on oversized hook output is to spill,
+  // not reject (MAX_CONTEXT_BYTES' own comment, above), so failing closed was
+  // strictly worse than the host's own degradation.
+  //
+  // KNOWN LIMITATION — the degradation is ONE-SHOT, and this gate is why.
+  // It runs only when a reconciliation ran this session (mismatch !== null).
+  // The session that follows the repair has NO mismatch: the file the mandate
+  // asked for already carries every row plus the persisted provenance
+  // comments, so this branch is skipped and the hard refusal below fires
+  // instead — permanently, because nothing about that file changes again.
+  // Measured against the real firm payload (rules-a.toml + N foreign rows):
+  // at N >= 9 session 1 degrades and delivers (9129 B), the file the mandate
+  // produces is 2816 B, and session 2 refuses with `context-over-budget` and
+  // injects nothing, while staleness.sh governs happily from the identical
+  // file (9833 B delivered). A 2.8 KB file Trellis itself authored is not
+  // pathological, and its quarantine comments are exactly the provenance
+  // there would be left to drop — the gate, not a shortage of material, is
+  // what stops it. Degrading on the no-mismatch path is a behaviour change
+  // with its own tests, so it is NOT done here; tracked as TRL-29 (reopened
+  // with this measurement).
+  if (mismatch !== null) {
+    const bare = reconcileRows(rulesToml, slugs, stamp, today, false);
+    const repairSummary = `added ${bare.added} row(s); quarantined ${bare.quarantined} row(s)`;
+    repairMandateText = repairMandate(mismatchCounts(mismatch), repairSummary, true);
+    context = buildContext(bare.text, repairMandateText);
+  }
+  if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
+    // The last resort rather than the default — but NOT, as this comment
+    // once claimed, a state with "nothing left to degrade". Two ways here:
+    // (a) after a degraded reassembly that still did not fit, where the claim
+    // holds — reconcileRows' own output is small even at sixteen quarantined
+    // and sixteen added rows (Ruling 6, TRL-20 task 3); and (b) the
+    // no-mismatch path, where the branch above was skipped and the file's own
+    // persisted provenance was never offered up. (b) is reachable from a file
+    // Trellis itself told the agent to write — see the gate's comment above —
+    // and is a real, permanent blackout on a project Claude still governs.
+    // TRL-29 (reopened) carries the fix.
+    fail("assembled-context", "context-over-budget");
+    process.exit(0);
+  }
 }
 
 const response = {

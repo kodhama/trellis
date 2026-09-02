@@ -19,9 +19,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 )
 
 const rulesLoadedSentinel = "<!-- trellis:rules-loaded -->"
@@ -297,9 +299,13 @@ func TestCodexHookFailureVocabularyAndIsolation(t *testing.T) {
 	}
 	mutateAndFail(t, ".trellis/internal/version", "payload@ABCDEF123456\n", "invalid-version")
 	mutateAndFail(t, ".trellis/rules.toml", "strictness = \"loose\"\n[rules]\n", "invalid-rules")
-	mutateAndFail(t, ".trellis/rules.toml", strings.Replace(payloadFiles()["rules-a.toml"], "inv-minimal-first", "inv-unknown-rule", 1), "invalid-rules")
-	mutateAndFail(t, ".trellis/rules.toml", strings.Replace(payloadFiles()["rules-a.toml"], "inv-minimal-first         = { active = true }\n", "", 1), "invalid-rules")
-	mutateAndFail(t, ".trellis/rules.toml", payloadFiles()["rules-a.toml"]+"inv-minimal-first = { active = true }\n", "invalid-rules")
+	// A renamed/missing/duplicate slug used to fail this file closed too (three
+	// deleted assertions: rename, missing row, duplicate row). TRL-20 moved that
+	// slug-set mismatch off the fail-closed path entirely — it now reconciles
+	// instead of refusing, exactly as staleness.sh already did. See
+	// TestCodexReconcilesInsteadOfFailingClosed for the reconciled behaviour
+	// these three cases now exercise; only a genuine syntax fault (this test's
+	// remaining assertions) still lands here.
 
 	largeRules := strings.TrimSuffix(payloadFiles()["rules.md"], rulesLoadedSentinel+"\n") +
 		strings.Repeat("é", 8001) + "\n" + rulesLoadedSentinel + "\n"
@@ -459,7 +465,7 @@ func TestCodexHookStrictRulesTomlSchema(t *testing.T) {
 		raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
 		want := `{"systemMessage":"Trellis hook did not load rules: .trellis/rules.toml: invalid-rules. The AGENTS.md bootstrap must attempt the installed overlay."}`
 		if raw != want || got.HookSpecificOutput != nil {
-			t.Errorf("malformed/duplicate Trellis TOML must fail exactly\n got: %s\nwant: %s", raw, want)
+			t.Errorf("malformed or duplicate top-level Trellis TOML must fail exactly\n got: %s\nwant: %s", raw, want)
 		}
 	}
 
@@ -470,7 +476,11 @@ func TestCodexHookStrictRulesTomlSchema(t *testing.T) {
 	assertInvalid(t, canonical+"\n[rules]\n")
 	assertInvalid(t, canonical+"\n[other]\n")
 	assertInvalid(t, strings.Replace(canonical, "[rules]", "unexpected = 'value'\n\n[rules]", 1))
-	assertInvalid(t, canonical+"inv-minimal-first = { active = true }\n")
+	// A duplicate ROW (as opposed to the duplicate top-level keys/sections
+	// above, which stay fatal) used to fail closed here too; TRL-20 moved it
+	// onto the reconcile path instead — see
+	// TestCodexReconcilesInsteadOfFailingClosed's "a duplicate keeps the first
+	// occurrence" case.
 	assertInvalid(t, strings.Replace(canonical,
 		`seeded_from = "conductor"`, `seeded_from = "\/"`, 1))
 	assertInvalid(t, strings.Replace(canonical,
@@ -483,6 +493,352 @@ func TestCodexHookStrictRulesTomlSchema(t *testing.T) {
 	} {
 		assertInvalid(t, strings.Replace(canonical,
 			`seeded_from = "conductor"`, invalidValue, 1))
+	}
+}
+
+// stripTOMLLine deletes an entire top-level assignment line (its trailing
+// inline comment included) from a rendered rules.toml fixture, matching-and-
+// removing rather than requiring the caller to spell out the payload's exact
+// comment text (which carries a literal "·" the generator emits, easy to
+// transcribe wrong). Used below to build a "no strictness line at all"
+// fixture from the real firm/adaptive presets.
+func stripTOMLLine(t *testing.T, source, key string) string {
+	t.Helper()
+	re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(key) + `[ \t]*=.*\n`)
+	out := re.ReplaceAllString(source, "")
+	if out == source {
+		t.Fatalf("fixture removed nothing — %q was not found as a top-level line", key)
+	}
+	return out
+}
+
+// Codex used to fail closed on ANY mismatch, so a single bad row cost all
+// sixteen rules — the TRL-20 blackout, still live on this host after the Claude
+// side was fixed. It now reconciles, exactly as staleness.sh does.
+func TestCodexReconcilesInsteadOfFailingClosed(t *testing.T) {
+	pluginRoot := writeCodexPluginRoot(t)
+	files := payloadFiles()
+
+	run := func(t *testing.T, toml string) (string, codexHookResult) {
+		t.Helper()
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		p := filepath.Join(project, ".trellis", "rules.toml")
+		if err := os.WriteFile(p, []byte(toml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return runCodexHook(t, pluginRoot, startupInput(t, project))
+	}
+
+	t.Run("a missing row no longer blacks out delivery", func(t *testing.T) {
+		short := strings.Replace(files["rules-a.toml"],
+			"inv-minimal-first         = { active = true }\n", "", 1)
+		if short == files["rules-a.toml"] {
+			t.Fatal("fixture removed nothing — the case would prove nothing")
+		}
+		raw, got := run(t, short)
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a missing row must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !regexp.MustCompile(`(?m)^inv-minimal-first[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*true`).MatchString(ctx) {
+			t.Errorf("the missing row must be reconciled to active = true:\n%s", ctx)
+		}
+	})
+
+	t.Run("an unknown row is quarantined, never dropped", func(t *testing.T) {
+		bogus := files["rules-a.toml"] + "inv-not-a-real-rule       = { active = false }\n"
+		_, got := run(t, bogus)
+		if got.HookSpecificOutput == nil {
+			t.Fatal("an unknown row must reconcile, not fail closed")
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "# inv-not-a-real-rule") {
+			t.Errorf("the unknown row must survive as a commented row:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "quarantined") {
+			t.Errorf("the quarantine must be labelled:\n%s", ctx)
+		}
+	})
+
+	t.Run("a duplicate keeps the first occurrence", func(t *testing.T) {
+		dup := files["rules-a.toml"] + "inv-minimal-first         = { active = false }\n"
+		_, got := run(t, dup)
+		if got.HookSpecificOutput == nil {
+			t.Fatal("a duplicate must reconcile, not fail closed")
+		}
+		if !strings.Contains(got.HookSpecificOutput.AdditionalContext,
+			"# inv-minimal-first         = { active = false }") {
+			t.Errorf("the extra occurrence must be quarantined verbatim:\n%s",
+				got.HookSpecificOutput.AdditionalContext)
+		}
+	})
+
+	// Fix round 1, minor: the mutation this covered used to live as a
+	// fail-closed assertion in TestCodexHookFailureVocabularyAndIsolation
+	// (deleted there in the same round, since a rename is exactly the
+	// missing+unknown mismatch this task makes reconcilable) — nothing
+	// otherwise pinned it after that deletion, though it already worked.
+	t.Run("a rename is both kinds at once and both are reconciled", func(t *testing.T) {
+		renamed := strings.Replace(files["rules-a.toml"],
+			"inv-minimal-first         = { active = true }",
+			"inv-renamed-first         = { active = true }", 1)
+		if renamed == files["rules-a.toml"] {
+			t.Fatal("fixture did not rename anything — the case would prove nothing")
+		}
+		raw, got := run(t, renamed)
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a rename must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "# inv-renamed-first") {
+			t.Errorf("the stale slug must be quarantined:\n%s", ctx)
+		}
+		if !regexp.MustCompile(`(?m)^inv-minimal-first[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*true`).MatchString(ctx) {
+			t.Errorf("the new slug must be added as active:\n%s", ctx)
+		}
+	})
+
+	// Fix round 1, IMPORTANT: parseRulesToml's row regex (matches any
+	// [a-z][a-z-]* slug before this fix) and reconcileRows' row-detection
+	// (always inv-/floor- only) disagreed. A row like this used to classify
+	// as "unknown" here (triggering reconciliation) but reconcileRows never
+	// recognised it as a row to quarantine — measured: context delivered,
+	// zero quarantine notes, the row passed through uncommented, so the
+	// mismatch never cleared and the hook re-reconciled every session to no
+	// effect. The two now share the same (?:inv|floor)-[a-z-]+ grammar, so
+	// this is a malformed row (fails closed) rather than a silent no-op.
+	t.Run("a row not shaped like a rule slug fails closed, not a silent no-op reconcile", func(t *testing.T) {
+		bogus := files["rules-a.toml"] + "bogus-rule = { active = true }\n"
+		raw, got := run(t, bogus)
+		if got.HookSpecificOutput != nil {
+			t.Errorf("a row not shaped (inv|floor)-... must fail closed, not reconcile:\n%s", raw)
+		}
+		if !strings.Contains(raw, "invalid-rules") {
+			t.Errorf("want invalid-rules, got:\n%s", raw)
+		}
+	})
+
+	// Fix round 1, RULING (correcting the brief, which told the implementer
+	// to keep !rulesSectionSeen fatal): a rules.toml with no [rules] table at
+	// all is not a syntax fault, it is a slug set that is entirely missing —
+	// reconcilable like any other slug-set mismatch. staleness.sh already
+	// repairs this exact hand-written-partial shape (strictness alone, no
+	// rows) into a full [rules] table plus every row; Codex must reach the
+	// same repair instead of refusing the file outright. This is also what
+	// makes reconcileRows' own `if (!hasRules)` insertion reachable at all —
+	// dead code before this fix.
+	t.Run("a rules.toml with no [rules] table at all reconciles, not fails closed", func(t *testing.T) {
+		raw, got := run(t, "strictness  = \"firm\"\n")
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a missing [rules] table must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "[rules]") {
+			t.Errorf("a [rules] table must be opened where none existed:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "added 16 row(s)") {
+			t.Errorf("all sixteen rows must be added — none had a table to belong to:\n%s", ctx)
+		}
+		for _, slug := range assessableSlugs {
+			re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*true`)
+			if !re.MatchString(ctx) {
+				t.Errorf("rule %s must be reconciled to active = true:\n%s", slug, ctx)
+			}
+		}
+	})
+
+	// Fix round 1, IMPORTANT: staleness.sh reads `date +%Y-%m-%d` — the
+	// process's LOCAL calendar date. Left as UTC (toISOString), this and the
+	// Claude hook would disagree by |UTC-offset| hours a day on any non-UTC
+	// machine, and Task 2's byte-identical comparison would go red for part
+	// of every day and green only on UTC CI — a mismatch that reads as flake.
+	t.Run("the reconciliation date is the local calendar date, not UTC", func(t *testing.T) {
+		short := strings.Replace(files["rules-a.toml"],
+			"inv-minimal-first         = { active = true }\n", "", 1)
+		raw, got := run(t, short)
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("no context was injected:\n%s", raw)
+		}
+		wantDate := time.Now().Format("2006-01-02")
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if !strings.Contains(ctx, "below on "+wantDate+" (missing from") {
+			t.Errorf("reconciliation date must be today's LOCAL calendar date (%s):\n%s", wantDate, ctx)
+		}
+	})
+
+	// Ruling 1(a) on the task-1 brief: the original single subtest here
+	// asserted the adaptive header ("**By default**") on the fixture
+	// writeValidCodexOverlay builds, but that fixture creates
+	// .trellis/internal/, so codex-context.mjs:720-727 takes the VENDORED branch —
+	// prose comes from the overlay's own trellis.md, which
+	// writeValidCodexOverlay hardcodes to trellis-a.md (firm). Posture
+	// selection is bypassed entirely on that path, so the header assertion
+	// could never pass. Split in two: non-fatality on the vendored fixture
+	// here, posture selection on a plugin-native fixture below.
+	t.Run("a missing strictness is not fatal — vendored path", func(t *testing.T) {
+		noStrict := stripTOMLLine(t, files["rules-a.toml"], "strictness")
+		raw, got := run(t, noStrict)
+		if strings.Contains(raw, "invalid-rules") {
+			t.Errorf("a missing strictness must reconcile, not fail closed:\n%s", raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("a missing strictness must not be fatal — Claude defaults it:\n%s", raw)
+		}
+	})
+
+	// Ruling 1(b): codex-context.mjs:717-719 already defaults posture to "b"
+	// (adaptive) whenever strictness is not literally "firm" — that selection
+	// logic is untouched by this task; the only change is that parseRulesToml
+	// no longer treats an absent strictness as a syntax fault. This subtest
+	// pins the existing default reaching a project on the PLUGIN-NATIVE path
+	// (no .trellis/internal/, so codex-context.mjs:720-727 selects
+	// reference/trellis-${posture}.md from PLUGIN_ROOT), which a missing
+	// strictness could not reach before this task — parseRulesToml refused the
+	// whole file first.
+	t.Run("a missing strictness falls back to adaptive, as Claude does — posture", func(t *testing.T) {
+		project := newGitProject(t)
+		noStrict := stripTOMLLine(t, files["rules-b.toml"], "strictness")
+		p := filepath.Join(project, ".trellis", "rules.toml")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(noStrict), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, vendoredBundleAbs(t), startupInput(t, project))
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("a missing strictness must not be fatal — Claude defaults it:\n%s", raw)
+		}
+		if !strings.Contains(got.HookSpecificOutput.AdditionalContext, "**By default**") {
+			t.Errorf("the adaptive header must be selected:\n%s",
+				got.HookSpecificOutput.AdditionalContext)
+		}
+	})
+
+	// The permissive direction is the dangerous one: reconciliation must never
+	// paper over a file it cannot parse.
+	t.Run("genuine syntax faults still fail closed", func(t *testing.T) {
+		for name, toml := range map[string]string{
+			"invalid strictness value": strings.Replace(files["rules-a.toml"],
+				`strictness  = "firm"`, `strictness  = "bogus"`, 1),
+			"unknown top-level key": "nonsense = \"x\"\n" + files["rules-a.toml"],
+			"malformed row":         files["rules-a.toml"] + "inv-broken = notatable\n",
+		} {
+			t.Run(name, func(t *testing.T) {
+				raw, got := run(t, toml)
+				if got.HookSpecificOutput != nil {
+					t.Errorf("a syntax fault must fail closed, not reconcile:\n%s", raw)
+				}
+				if !strings.Contains(raw, "invalid-rules") {
+					t.Errorf("want invalid-rules, got:\n%s", raw)
+				}
+			})
+		}
+	})
+}
+
+// TestCodexMandatesAndReportsTheRepair pins TRL-30 task 3 (decision-0083 host
+// parity): the repair is applied and REPORTED, not proposed and gated — safe
+// only because quarantine loses nothing. What must never be lost is the
+// loudness. Uses writeCodexPluginRoot/newGitProject (this file's actual
+// helpers), not the task brief's codexPluginRoot, which does not exist here.
+func TestCodexMandatesAndReportsTheRepair(t *testing.T) {
+	pluginRoot := writeCodexPluginRoot(t)
+	files := payloadFiles()
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	short := strings.Replace(files["rules-a.toml"],
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	if short == files["rules-a.toml"] {
+		t.Fatal("premise: fixture removed nothing — the case would prove nothing")
+	}
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"),
+		[]byte(short), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatal("no context injected")
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+
+	if !strings.Contains(ctx, "Write .trellis/rules.toml") {
+		t.Errorf("the mandate must instruct the write:\n%s", ctx)
+	}
+	if !strings.Contains(ctx, "added 1 row(s)") {
+		t.Errorf("the repair must be reported per row:\n%s", ctx)
+	}
+	for _, verb := range []string{"delete", "remove", "drop"} {
+		if strings.Contains(strings.ToLower(ctx), verb+" those rows") {
+			t.Errorf("no deletion instruction may reach the agent, found %q:\n%s", verb, ctx)
+		}
+	}
+}
+
+// Fix round 1, CRITICAL. The sentinel gate a few lines above where slugs is
+// derived (rules.split(SENTINEL).length - 1 !== 1 && rules.endsWith(...))
+// passes any rules.md carrying exactly one sentinel — it says nothing about
+// whether the file has any SLUG TAGS at all. If every backtick-wrapped
+// `inv-...`/`floor-...` tag is gone but the sentinel survives, slugsFromRules
+// returns an empty array, slugSet is empty, and every row in the project's
+// rules.toml classifies as "unknown" (nothing is ever in an empty set). That
+// used to trigger reconciliation, which quarantined all sixteen rows and
+// still emitted hookSpecificOutput with exit 0 — an ungoverned session that
+// LOOKED governed. staleness.sh:642 already names this exact failure
+// "no-slugs-in-payload", and staleness.sh:679-682 refuses to reconcile
+// against it; this pins the equivalent Codex guard.
+func TestCodexRefusesToReconcileAgainstAnEmptySlugSet(t *testing.T) {
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	rulesMdPath := filepath.Join(project, ".trellis", "internal", "rules.md")
+	original := readFileT(t, rulesMdPath)
+	// Strip every backtick-wrapped slug tag but leave everything else —
+	// including the terminal sentinel line, which carries no such tag and so
+	// is untouched — so this exercises ONLY the empty-slug-set path, not the
+	// sentinel gate above it.
+	tagless := regexp.MustCompile("`(?:inv|floor)-[a-z-]+`").ReplaceAllString(original, "")
+	if tagless == original {
+		t.Fatal("fixture stripped nothing — the case would prove nothing")
+	}
+	if !strings.Contains(tagless, rulesLoadedSentinel) {
+		t.Fatal("fixture must still carry the sentinel — this pins the slug-set gate, not the sentinel gate")
+	}
+	if err := os.WriteFile(rulesMdPath, []byte(tagless), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A MINIMAL rules.toml (one row), not the real sixteen writeValidCodexOverlay
+	// wrote: without this guard, reconciling one row against an empty slug set
+	// stays well under MAX_CONTEXT_BYTES and delivers successfully — the exact
+	// silently-ungoverned-but-exit-0 shape the guard exists to prevent. Using
+	// the real sixteen-row preset here would let the UNRELATED byte-budget
+	// guard (sixteen quarantine notes together overrun MAX_CONTEXT_BYTES) catch
+	// the mutation by coincidence, which would mask whether this specific guard
+	// fired — confirmed by running this test against a build with the guard
+	// removed and the sixteen-row preset still in place: it failed for the
+	// wrong reason (context-over-budget, not no-slugs-in-payload).
+	minimal := "strictness  = \"firm\"\n\n[rules]\ninv-minimal-first         = { active = true }\n"
+	rulesTomlPath := filepath.Join(project, ".trellis", "rules.toml")
+	if err := os.WriteFile(rulesTomlPath, []byte(minimal), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput != nil {
+		t.Errorf("an empty derived slug set must fail closed, never reconcile:\n%s", raw)
+	}
+	if !strings.Contains(raw, "no-slugs-in-payload") {
+		t.Errorf("want no-slugs-in-payload, got:\n%s", raw)
 	}
 }
 
@@ -574,9 +930,18 @@ func TestCliCIProvidesNode20BeforeGoTests(t *testing.T) {
 	workflow := readFileT(t, "../.github/workflows/cli-ci.yml")
 	setupNode := strings.Index(workflow, "uses: actions/setup-node@v5")
 	node20 := strings.Index(workflow, `node-version: "20"`)
-	goTests := strings.Index(workflow, "run: go test ./...")
+	goTests := strings.Index(workflow, "run: go test -count=1 ./...")
 	if setupNode < 0 || node20 < setupNode || goTests < node20 {
 		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node@v5 before Go tests execute the Codex hook")
+	}
+	// -count=1 is matched, not just `go test`, because the cache hazard this
+	// suite lives inside is real: these tests execute the production hooks as
+	// EXTERNAL files, which Go's test cache cannot see, so a hook mutation with
+	// no .go change replays a stale `ok (cached)`. Reproduced by deleting
+	// codex-context.mjs's empty-slug-set guard. Pinned here so dropping the flag
+	// from the workflow is a red test rather than a silent loss of coverage.
+	if !strings.Contains(workflow, "run: go test -count=1 ./...") {
+		t.Error("cli-ci must run tests with -count=1 — the hook tests exec external files the Go test cache does not track")
 	}
 }
 
@@ -708,6 +1073,57 @@ func assertReconciledFitsCodexBudget(t *testing.T, reconciled string) {
 	}
 }
 
+// TestCodexDegradesRatherThanRefusingOverBudget pins TRL-29: refusing to emit
+// is a self-inflicted blackout — Codex itself spills oversized context to
+// disk with a preview rather than rejecting it, so failing closed is
+// strictly worse than the host's own degradation. Governance survives; the
+// provenance comments are what give way, and the omission is announced.
+// Uses writeCodexPluginRoot/newGitProject (see codexReconciledRows above),
+// not the task brief's codexPluginRoot/t.TempDir(), which do not work here.
+func TestCodexDegradesRatherThanRefusingOverBudget(t *testing.T) {
+	pluginRoot := writeCodexPluginRoot(t)
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	// The worst case: every row foreign, so all 16 quarantine AND all 16 add.
+	// Letter suffixes, not the brief's zero-padded digits: parseRulesToml's row
+	// regex is `(?:inv|floor)-[a-z-]+` (codex-context.mjs:319) — no digits — so
+	// a slug like "inv-foreign-rule-00" fails to match a row at all and the
+	// whole file is rejected as malformed (invalid-rules) before reconciliation
+	// is ever reached. Measured: the brief's literal fixture never exercises
+	// this task's degradation path.
+	letters := "abcdefghijklmnop"
+	var b strings.Builder
+	b.WriteString("strictness  = \"firm\"\n\n[rules]\n")
+	for i := 0; i < 16; i++ {
+		fmt.Fprintf(&b, "inv-foreign-rule-%c = { active = true }\n", letters[i])
+	}
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"),
+		[]byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+
+	if strings.Contains(raw, "context-over-budget") {
+		t.Fatalf("the hook must degrade, not refuse — refusing is the blackout:\n%s", raw)
+	}
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("no context injected:\n%s", raw)
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+	for _, slug := range assessableSlugs {
+		if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
+			t.Errorf("rule %s must still be delivered when provenance is dropped", slug)
+		}
+	}
+	if !strings.Contains(ctx, "provenance") {
+		t.Errorf("the omission must be announced, not silent:\n%s", ctx)
+	}
+	if n := len([]byte(ctx)); n > 9500 {
+		t.Errorf("degraded context is %d bytes, still over the cap", n)
+	}
+}
+
 // TestCodexToleratesADuplicateSlugTagInRulesMd — round-1 fix 2. slugSet
 // (membership, inside parseRulesToml) already treated the derived slugs as a
 // set, but the completeness check (slugs.length / slugs.some) did not, so a
@@ -808,4 +1224,284 @@ func TestCodexRejectsAnEmptyDerivedSlugSet(t *testing.T) {
 	if raw != want {
 		t.Errorf("failure mismatch\n got: %s\nwant: %s", raw, want)
 	}
+}
+
+// Two implementations of one ratified semantic (decision-0083's table) are
+// only safe with a guard that makes drift a test failure rather than a field
+// report. This is decision-0028's "a guard per pair", applied to the
+// reconciler: both hosts reconcile the SAME fixture and their reconciled row
+// blocks must be byte-identical.
+func TestBothHostsReconcileIdentically(t *testing.T) {
+	files := payloadFiles()
+	base := files["rules-a.toml"]
+
+	// An indented `[rules]` ALONE never reaches the reconciler: parseRulesToml
+	// trims every line before matching its section regex (codex-context.mjs),
+	// so "  [rules]" parses as the identical table — zero mismatch — and
+	// reconcileRows is gated on `if (mismatch !== null)`. A fixture that only
+	// indents the header therefore proves nothing about reconciler parity:
+	// reviewer-verified by deleting `[ \t]*` from reconcileRows' own
+	// `rulesHeader` regex, which left an indent-only fixture green (it never
+	// runs the mutated code at all). Pairing the indent with a removed row
+	// forces a real slug-set mismatch, so the reconciler must actually find
+	// the indented header — to decide whether to open a second one — for this
+	// fixture to exercise anything.
+	indentedWithMissingRow := strings.Replace(base, "[rules]", "  [rules]", 1)
+	indentedWithMissingRow = strings.Replace(indentedWithMissingRow,
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	if indentedWithMissingRow == base {
+		t.Fatal("fixture changed nothing — the case would prove nothing")
+	}
+
+	// Hoisted out of the map below so the CRLF fixture can be built from it.
+	renamed := strings.Replace(base,
+		"inv-minimal-first         = { active = true }",
+		"inv-renamed-first         = { active = true }", 1)
+	if renamed == base {
+		t.Fatal("fixture renamed nothing — the case would prove nothing")
+	}
+	// CRLF is the divergence a HUMAN comparison found before any fixture
+	// reached it (decision-0084 §5) — and, until this fixture, decision-0083's
+	// "byte identity ... for LF and CRLF input" pointed at a guard with no
+	// CRLF case in it. awk's RS is "\n", so a CRLF line arrives with its `\r`
+	// still attached to $0; without staleness.sh:876's `{ sub(/\r$/, "") }`,
+	// `print "# " $0 note` on a QUARANTINED row emits a bare CR mid-line,
+	// before the note, while the JS splitter (/\r?\n/) consumes the pair and
+	// never leaves one. Built on the rename, not on a plain copy of base, for
+	// exactly that reason: a fixture with nothing to quarantine never reaches
+	// the line the strip protects and would be vacuous. Verified by deleting
+	// `{ sub(/\r$/, "") }` from staleness.sh — this subtest goes red, the
+	// LF ones stay green.
+	crlfRenamed := strings.ReplaceAll(renamed, "\n", "\r\n")
+	if crlfRenamed == renamed || !strings.Contains(crlfRenamed, "\r\n") {
+		t.Fatal("fixture is not CRLF — the case would prove nothing")
+	}
+
+	fixtures := map[string]string{
+		// Reconciling fixtures: parseRulesToml finds a genuine slug-set
+		// mismatch, so reconcileRows actually runs and these six compare its
+		// real output byte for byte.
+		"rename (missing + unknown together)":       renamed,
+		"CRLF line endings, plus a rename":          crlfRenamed,
+		"indented [rules] table plus a missing row": indentedWithMissingRow,
+		"duplicate with a differing value": base +
+			"inv-minimal-first         = { active = false }\n",
+		"no [rules] table at all": "strictness  = \"firm\"\n",
+		"empty file":              "",
+
+		// Pass-through fixtures: parseRulesToml finds NO mismatch, so
+		// reconcileRows is never called on either host and the compared block
+		// is just the input verbatim (minus its own trailing newline — see
+		// reconciledRowsFromContext / codexReconciledRowsFromContext). Kept
+		// deliberately unreconciled, not upgraded to match the six above:
+		// "already quarantined" pins idempotency (an already-repaired file
+		// draws no second notice on either host); "missing strictness" pins
+		// non-fatality (an absent strictness must not block delivery on
+		// either host). Neither is meant to exercise reconcileRows itself.
+		"already quarantined": base +
+			"# inv-gone = { active = true }  # quarantined 2026-01-01: not in payload@old\n",
+		// The brief's literal `strings.Replace(base, "strictness  = \"firm\"\n",
+		// "", 1)` is a silent no-op: the real line carries a trailing comment
+		// ("strictness  = \"firm\"  # firm (a·conductor) | ..."), so that exact
+		// substring never occurs and Replace returns base unchanged, proving
+		// nothing. stripTOMLLine strips the whole logical line by key and
+		// fails loudly if it removed nothing.
+		"missing strictness": stripTOMLLine(t, base, "strictness"),
+	}
+
+	for name, toml := range fixtures {
+		t.Run(name, func(t *testing.T) {
+			claude := claudeReconciledRows(t, toml)
+			codex := codexReconciledRows(t, toml)
+			if claude != codex {
+				t.Errorf("the two hosts reconciled the same file differently — "+
+					"decision-0083's table must apply identically to both\n"+
+					"claude:\n%s\ncodex:\n%s", claude, codex)
+			}
+		})
+	}
+}
+
+// claudeReconciledRows runs staleness.sh against `toml` and returns the
+// reconciled row block it injected. rulesTomlRun returns raw hook stdout
+// (JSON with newlines escaped), and reconciledRowsFromContext's regex matches
+// against real newline bytes — so the raw output must go through nudgeContext
+// first, exactly as every other caller of reconciledRowsFromContext does.
+func claudeReconciledRows(t *testing.T, toml string) string {
+	t.Helper()
+	out := rulesTomlRun(t)(t, toml)
+	context := nudgeContext(t, out)
+	return reconciledRowsFromContext(t, context)
+}
+
+// codexReconciledRows runs codex-context.mjs against the same fixture and
+// returns the same block, so the two can be compared byte for byte.
+// writeCodexPluginRoot (not the brief's nonexistent codexPluginRoot) only
+// needs a syntactically valid .codex-plugin/plugin.json here: writeValidCodexOverlay
+// puts a full vendored overlay in `project`, so codex-context.mjs reads the
+// project's own .trellis/internal/* and never touches pluginRoot/reference.
+// The project must sit under a git boundary (nearestGitBoundary) or the hook
+// fails at project-root-not-found before ever reaching the reconciler — the
+// brief's plain t.TempDir() has no such boundary, so newGitProject is used
+// instead.
+func codexReconciledRows(t *testing.T, toml string) string {
+	t.Helper()
+	rows, degraded := codexReconciledRowsAllowingDegraded(t, toml)
+	// The byte-for-byte comparison is only about host parity while BOTH hosts
+	// are on the full-provenance path. Over MAX_CONTEXT_BYTES (9500) the Codex
+	// hook re-reconciles without provenance and injects that instead, so its
+	// rows lose the `# added N row(s)` header and every quarantine note while
+	// staleness.sh keeps them — a guaranteed, expected difference that has
+	// nothing to do with the resolution table decision-0083 pins. The headroom
+	// is thin enough for this to matter: the `rename` fixture already assembles
+	// to 8939 B. Without this check, the first fixture to cross 9500 B fails
+	// with "the two hosts reconciled the same file differently", which blames
+	// the wrong thing and sends the next reader after a parity bug that is not
+	// there.
+	if degraded {
+		t.Fatalf("this fixture crossed MAX_CONTEXT_BYTES, so the Codex hook degraded to " +
+			"provenance-free rows — the two row blocks are expected to differ and comparing " +
+			"them proves nothing about host parity. Shrink the fixture, or move it to " +
+			"TestCROnlyLineEndingsAreTheOneKnownDivergence, which asserts the degraded shape " +
+			"on purpose.")
+	}
+	return rows
+}
+
+// codexDegradedMarker is the one sentence only repairMandate's degraded branch
+// emits (codex-context.mjs). Matched rather than recomputing the byte budget
+// here: the budget lives in the hook, and a test that re-derives it drifts.
+const codexDegradedMarker = "Provenance was omitted above to fit the context budget"
+
+// codexReconciledRowsAllowingDegraded is codexReconciledRows without the
+// full-provenance assertion, reporting instead whether the hook degraded, so
+// the one test that expects degradation can say so explicitly.
+func codexReconciledRowsAllowingDegraded(t *testing.T, toml string) (string, bool) {
+	t.Helper()
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	tomlPath := filepath.Join(project, ".trellis", "rules.toml")
+	if err := os.WriteFile(tomlPath, []byte(toml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("codex injected nothing for this fixture — it must reconcile, not refuse")
+	}
+	// decision-0070 D4: the hook computes a repair in memory and reports it,
+	// but never writes it — the mirror of staleness.sh's own pin
+	// (plugin_hook_test.go:1841, "the hook wrote .trellis/rules.toml —
+	// \"the hook never writes\" is the half of decision-0070 D4 that stands").
+	// That Claude-side pin only covers a project with no rules.toml at all;
+	// every fixture through this helper already carries a genuine mismatch
+	// that gets reconciled in the response, so this is the stronger case —
+	// the file on disk must still read back as the UNRECONCILED fixture,
+	// byte for byte, after a run that just told the agent to write the
+	// reconciled text over it. Holds today by construction (no writeFile/
+	// appendFile call in codex-context.mjs); pinning it behaviourally so a
+	// regression is a red test, not a code-reading exercise.
+	if after, err := os.ReadFile(tomlPath); err != nil {
+		t.Fatalf("could not re-read .trellis/rules.toml after the hook ran: %v", err)
+	} else if string(after) != toml {
+		t.Errorf("the codex hook wrote .trellis/rules.toml — \"the hook never writes\" is the half of decision-0070 D4 that stands:\nbefore:\n%s\nafter:\n%s", toml, after)
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+	return codexReconciledRowsFromContext(t, ctx), strings.Contains(ctx, codexDegradedMarker)
+}
+
+// The one divergence class decision-0083's byte-identity claim does not cover,
+// pinned here rather than left to be rediscovered.
+//
+// A CR-only file (classic-Mac line endings) is ONE line to both reconcilers —
+// staleness.sh's awk has RS="\n", and codex-context.mjs splits on /\r?\n/ —
+// so neither finds a single row, both classify all sixteen slugs as missing,
+// and both reconcile by appending all sixteen. They then differ in two ways,
+// measured, not assumed:
+//
+//  1. staleness.sh:876's `sub(/\r$/, "")` strips the record's trailing CR;
+//     the Codex splitter leaves it, so Codex emits `...this row\r\n[rules]`
+//     where Claude emits `...this row\n[rules]`.
+//  2. Sixteen added rows on top of an intact sixteen-row file assemble to
+//     9724 B WITH full provenance — over MAX_CONTEXT_BYTES, which is 9500 —
+//     so Codex silently takes the provenance-free path and omits the
+//     `# added 16 row(s) below on <date>` header that Claude writes. What it
+//     delivers on that path is 9481 B, UNDER the cap: that is the degradation
+//     working, not a contradiction. Keep the two numbers apart — an earlier
+//     wording ("9481 B degraded — over MAX_CONTEXT_BYTES") collapsed them and
+//     the claim was copied into decision-0084 as 9481 > 9500. Measured
+//     2026-08-31 by running the hook on this fixture with the cap as shipped
+//     and again with it raised.
+//
+// Both hosts still deliver and still govern; what diverges is the text of the
+// repair. This test exists so that closing either divergence is a deliberate
+// act with a red test to update, not a silent change — and so the claim in
+// decision-0084 §"What this supersedes" has a fixture behind it.
+func TestCROnlyLineEndingsAreTheOneKnownDivergence(t *testing.T) {
+	base := payloadFiles()["rules-a.toml"]
+	crOnly := strings.ReplaceAll(base, "\n", "\r")
+	if crOnly == base || strings.Contains(crOnly, "\n") {
+		t.Fatal("fixture is not CR-only — the case would prove nothing")
+	}
+
+	claude := claudeReconciledRows(t, crOnly)
+	codex, degraded := codexReconciledRowsAllowingDegraded(t, crOnly)
+
+	if !degraded {
+		t.Errorf("Codex no longer degrades on the CR-only fixture — the byte budget or the " +
+			"reconciler changed. Re-measure and update this test and decision-0084's " +
+			"qualification of the byte-identity claim.")
+	}
+	for _, slug := range []string{"inv-minimal-first", "floor-intent-gate"} {
+		for host, rows := range map[string]string{"claude": claude, "codex": codex} {
+			if !strings.Contains(rows, slug+" = { active = true }") {
+				t.Errorf("%s did not reconcile the CR-only file — %s is missing; both hosts must still deliver every rule", host, slug)
+			}
+		}
+	}
+	if claude == codex {
+		t.Errorf("the CR-only divergence has closed. That is an improvement, not a failure — " +
+			"delete this test and drop decision-0084's qualification of the byte-identity claim.")
+	}
+	if !strings.Contains(codex, "this row\r\n[rules]") {
+		t.Errorf("expected Codex to keep the record's trailing CR before the appended table; got:\n%q", codex)
+	}
+	if strings.Contains(claude, "this row\r\n[rules]") {
+		t.Errorf("expected staleness.sh:876 to strip the trailing CR; got:\n%q", claude)
+	}
+	if strings.Contains(codex, "# added ") {
+		t.Errorf("Codex reported degraded but still emitted the added-rows header; got:\n%q", codex)
+	}
+	if !strings.Contains(claude, "# added 16 row(s) below on ") {
+		t.Errorf("expected staleness.sh to write the added-rows header; got:\n%q", claude)
+	}
+}
+
+// codexReconciledRowsFromContext extracts the reconciled `.trellis/rules.toml`
+// text from a decoded Codex additionalContext (runCodexHook's
+// HookSpecificOutput.AdditionalContext is already decoded — real newlines,
+// no nudgeContext needed here).
+//
+// TRL-30 task 3 gave codex-context.mjs its own "## Rule activation was
+// reconciled this session" mandate section, appended after the row block and
+// before the fixed "Trellis hook loaded installed overlay: <stamp>" footer —
+// mirroring reconciledRowsFromContext's own two-way stop on the Claude side
+// (plugin_hook_test.go:3271, "apply regardless of their row\.\n\n(.*?)\n\n
+// (?:## Rule activation...|Delivered by...)"). Before that task the row block
+// ran straight into the footer with nothing between them, so a single
+// unconditional stop at the footer was correct; left unconditional now, it
+// would swallow the mandate text into the "row block" this function returns,
+// and TestBothHostsReconcileIdentically would compare Claude's bare rows
+// against Codex's rows-plus-mandate — a drift this extractor exists to catch,
+// not cause. The row block is the same whether or not this session
+// reconciled anything (the mandate section only exists on the reconciling
+// path, same asymmetry reconciledRowsFromContext already handles on Claude).
+func codexReconciledRowsFromContext(t *testing.T, context string) string {
+	t.Helper()
+	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(invariantsTrigger) +
+		`\n\n(.*?)(?:\n\n## Rule activation was reconciled this session|\nTrellis hook loaded installed overlay: )`).
+		FindStringSubmatch(context)
+	if m == nil {
+		t.Fatalf("could not find the row block in the codex hook's decoded context:\n%s", context)
+	}
+	return m[1]
 }

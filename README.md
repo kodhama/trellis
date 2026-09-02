@@ -28,13 +28,12 @@ To change that, the recipe depends on whether you already have a `.trellis/rules
 - **No file yet** — copy a complete preset from the installed plugin: `reference/rules-a.toml`
   for the firm posture, `rules-b.toml` for adaptive. Then set `active = false` on any row you
   want off (rows govern at read time, `decision-0053`). Copying the whole file is still the clean
-  start, but **on Claude** a partial one is no longer fatal: the hook validates your rows against
-  the shipped set and, on a mismatch, **reconciles** instead of refusing — a missing slug is
-  delivered `active = true`, the session is governed from the reconciled set, and the agent writes
-  that set back to your file and tells you what it changed (`decision-0083`). **On Codex the file
-  must still be complete and carry a `strictness`:** that hook injects nothing when the row set
-  does not match, so copy a preset rather than hand-write a partial file if this project runs on
-  Codex (parity is owed, `decision-0083` open questions).
+  start, but a partial one is no longer fatal on **either host**: the hook validates your rows
+  against the shipped set and, on a mismatch, **reconciles** instead of refusing — a missing slug
+  is delivered `active = true`, the session is governed from the reconciled set, and the agent
+  writes that set back to your file and tells you what it changed (`decision-0083`,
+  `decision-0084`). A file with no `strictness` at all is fine on both: the posture falls to
+  adaptive rather than the file being rejected.
 - **File already there** — edit it **in place**: change `strictness` (and `seeded_from` to
   match), flip individual rows. **Do not copy a preset over it** — both presets set every row
   active, so a posture-only change made by copying silently re-enables every rule you turned
@@ -42,11 +41,10 @@ To change that, the recipe depends on whether you already have a `.trellis/rules
 - **The file is the one-line `governed = false` opt-out** — Trellis is switched off for this
   project (`decision-0070` D5). Editing `strictness` beside the opt-out leaves it in force and the
   hook stays silent, so that is not re-enabling. Deleting the line alone **does** re-enable
-  governance — but the file is then empty, so on Claude it reconciles to **all sixteen rows active
-  at the adaptive posture**, whatever this project ran before, and on Codex an empty file is
-  refused outright (`decision-0083`). Confirm that turning governance back on is what you want,
-  then write a complete preset over it if you want a posture or a row set of your own — on Codex,
-  write one either way. The plugin vendors
+  governance — but the file is then empty, so it reconciles to **all sixteen rows active at the
+  adaptive posture**, whatever this project ran before, on either host (`decision-0083`,
+  `decision-0084`). Confirm that turning governance back on is what you want, then write a
+  complete preset over it if you want a posture or a row set of your own. The plugin vendors
 nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
 plugin's payload, so there is no copy in your repo to install, refresh or let drift
 (`decision-0065`). A project set up before that change still carries a vendored `.trellis/`

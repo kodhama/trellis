@@ -606,6 +606,64 @@ func ungatedDestructiveMessages(msgs []string) (violations []string, gated int) 
 	return violations, gated
 }
 
+// codexQuotedSpanRe matches one JS-quoted span — single, double, or template
+// literal (backtick) — the JS counterpart of quotedSpanRe for
+// codex-context.mjs. JS template literals delimit with backticks (bash has
+// no such form), so a third alternative is needed here; repairMandate's own
+// text never contains a literal backtick, so this naive (no escape handling)
+// span is exact for that source.
+var codexQuotedSpanRe = regexp.MustCompile("'[^']*'|\"[^\"]*\"|`[^`]*`")
+
+// codexPayloadAssembly returns the JS source of codex-context.mjs's
+// repairMandate(...) function body in body — the Codex-side counterpart to
+// payloadAssembly's shell payload="$( ... )" region. TRL-30 task 3 is the
+// first place codex-context.mjs puts an agent-facing instruction into the
+// Codex payload, so the same "no deletion verb reaches the agent" safety
+// argument staleness.sh's guards already enforce must cover this channel too.
+func codexPayloadAssembly(t *testing.T, body string) string {
+	t.Helper()
+	const marker = "\nfunction repairMandate("
+	start := strings.Index(body, marker)
+	if start < 0 {
+		t.Fatal("repairMandate(...) not found in codex-context.mjs — the scan is broken")
+	}
+	rest := body[start:]
+	end := strings.Index(rest, "\n}\n")
+	if end < 0 {
+		t.Fatal("repairMandate(...) has no closing '}' — the scan is broken")
+	}
+	return rest[:end]
+}
+
+// codexPayloadMessages extracts the literal text of every quoted-string line
+// in block (normally codexPayloadAssembly's output), reconstructed from its
+// quoted spans — the JS counterpart of payloadPrintfMessages. A comment line
+// is skipped; every other line carrying a quoted span is a fragment of the
+// mandate text codex-context.mjs concatenates into the agent's context, so
+// each is scanned as its own message, the same granularity as one bash
+// printf call. An interpolation like `${stamp}` reconstructs literally (as
+// the text "${stamp}"), which is inert for verb-scanning — the same
+// treatment payloadPrintfMessages gives a bash `"$reconciled"` passthrough.
+func codexPayloadMessages(block string) []string {
+	var msgs []string
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "//") {
+			continue
+		}
+		spans := codexQuotedSpanRe.FindAllString(trimmed, -1)
+		if len(spans) == 0 {
+			continue
+		}
+		var sb strings.Builder
+		for _, s := range spans {
+			sb.WriteString(s[1 : len(s)-1])
+		}
+		msgs = append(msgs, sb.String())
+	}
+	return msgs
+}
+
 func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
@@ -647,6 +705,33 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		if !found {
 			t.Fatalf("a payload printf message was computed but never entered the scanned set (msgs) — "+
 				"the payload channel is computed but not wired into this guard's assertions:\n%s", pm)
+		}
+	}
+	// TRL-30 task 3: codex-context.mjs's repairMandate is the Codex counterpart
+	// of the payload="$( ... )" channel above — its own first agent-facing
+	// instruction into the Codex payload. Scanned the same way, wired the same
+	// way, for the same reason: the safety argument for shipping it ungated
+	// only holds if this channel is actually enforced, not merely present.
+	codexBody, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	codexMsgs := codexPayloadMessages(codexPayloadAssembly(t, string(codexBody)))
+	if len(codexMsgs) < 5 {
+		t.Fatalf("found only %d codex payload messages — the scan is broken, and a guard that reads nothing passes", len(codexMsgs))
+	}
+	msgs = append(msgs, codexMsgs...)
+	for _, cm := range codexMsgs {
+		found := false
+		for _, m := range msgs {
+			if m == cm {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("a codex payload message was computed but never entered the scanned set (msgs) — "+
+				"the codex payload channel is computed but not wired into this guard's assertions:\n%s", cm)
 		}
 	}
 	violations, gated := ungatedDestructiveMessages(msgs)
@@ -711,6 +796,32 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 				"the payload channel is not actually being scanned, only its message count is being checked")
 		}
 	})
+
+	// The Codex counterpart of the subtest above: proves codexPayloadAssembly ->
+	// codexPayloadMessages -> ungatedDestructiveMessages actually catches an
+	// injected ungated deletion, rather than merely counting codex-context.mjs's
+	// messages without scanning them.
+	t.Run("the codex payload channel is actually enforced, not merely counted", func(t *testing.T) {
+		const marker = `"Write .trellis/rules.toml with exactly the rows shown above`
+		mutated := strings.Replace(string(codexBody), marker,
+			`"Delete the unknown rows now, then write .trellis/rules.toml with exactly the rows shown above`, 1)
+		if mutated == string(codexBody) {
+			t.Fatal("premise: the mandate string to mutate was not found in codex-context.mjs — the case would prove nothing")
+		}
+		mutatedMsgs := codexPayloadMessages(codexPayloadAssembly(t, mutated))
+		mutatedViolations, _ := ungatedDestructiveMessages(mutatedMsgs)
+		found := false
+		for _, v := range mutatedViolations {
+			if strings.Contains(v, "Delete the unknown rows now") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("an ungated deletion instruction injected into the codex mandate channel was not caught — " +
+				"the codex payload channel is not actually being scanned, only its message count is being checked")
+		}
+	})
 }
 
 // TestDocumentedPostureRecipeActuallyGoverns: a Codex P1 on #227, and the
@@ -762,9 +873,29 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 		t.Fatalf("found only %d payload printf messages — the scan is broken, and a guard that reads nothing passes", len(payloadMsgs))
 	}
 	msgs = append(msgs, payloadMsgs...)
+	// TRL-30 task 3: scan codex-context.mjs's repairMandate the same way — see
+	// the sibling wiring in TestEveryDestructiveInstructionIsGated for why.
+	codexBody, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	codexMsgs := codexPayloadMessages(codexPayloadAssembly(t, string(codexBody)))
+	if len(codexMsgs) < 5 {
+		t.Fatalf("found only %d codex payload messages — the scan is broken, and a guard that reads nothing passes", len(codexMsgs))
+	}
+	msgs = append(msgs, codexMsgs...)
 	gated := 0
 	for _, msg := range msgs {
-		if !strings.Contains(msg, "delete") {
+		// Fix round 1 (TRL-30 task 3): case-insensitive, matching the same
+		// sibling scan in TestEveryDestructiveInstructionIsGated
+		// (plugin_hook_test.go:596) and the payload/codex-payload-specific
+		// loops below. Pre-existing hole, on the Claude emit channel, closed
+		// while here: a case-sensitive check here is exactly what let a
+		// capitalized "Delete the unknown rows..." land undetected on the
+		// payload channel before that was fixed (see the comment on the
+		// payload-loop check below) — this is the same defect class on the
+		// channel that scan didn't cover.
+		if !strings.Contains(strings.ToLower(msg), "delete") {
 			continue
 		}
 		gated++
@@ -796,7 +927,12 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 			t.Errorf("the repair mandate's payload printf text must never instruct a deletion (the reconciliation is additive/commenting-only, which is what keeps it ungated):\n%s", msg)
 		}
 	}
-	t.Logf("checked %d deletion-instructing messages of %d (emit + payload printf)", gated, len(msgs))
+	for _, msg := range codexMsgs {
+		if strings.Contains(strings.ToLower(msg), "delete") {
+			t.Errorf("the codex repair mandate text must never instruct a deletion (the reconciliation is additive/commenting-only, which is what keeps it ungated):\n%s", msg)
+		}
+	}
+	t.Logf("checked %d deletion-instructing messages of %d (emit + payload printf + codex payload)", gated, len(msgs))
 }
 
 // TestRepairRemedyCoversEveryMismatchKind and the opt-out shape: two Codex P2s
@@ -2427,8 +2563,25 @@ func TestSlugMismatchStillDeliversEveryRule(t *testing.T) {
 		if !strings.Contains(out, "quarantined") {
 			t.Errorf("the quarantine must be labelled so a reader can tell why:\n%s", out)
 		}
-		if !strings.Contains(out, "claude plugin update trellis@kodhama") {
-			t.Errorf("quarantine provenance must name the stale-plugin cause (TRL-27):\n%s", out)
+		// Two provenance strings, in two places, deliberately worded
+		// differently (decision-0084 (b)) — so both need their own pin.
+		//
+		// The ROW note is host-neutral. .trellis/rules.toml is ONE file read by
+		// both hooks, so a row comment naming a Claude-only command is wrong for
+		// a Codex reader whichever hook wrote it.
+		if !strings.Contains(out, "update the Trellis plugin and uncomment this row.") {
+			t.Errorf("the quarantine ROW note must stay host-neutral — no host's own command inside a file both hosts read (decision-0084):\n%s", out)
+		}
+		// The MANDATE may name Claude's own command: staleness.sh is the Claude
+		// hook and its mandate is addressed to a Claude agent. This assertion was
+		// a bare `claude plugin update trellis@kodhama` substring check labelled
+		// as the row note's pin; when the row note went host-neutral it silently
+		// retargeted onto the mandate — still green, but no longer guarding what
+		// its failure message named, and leaving the row note's wording
+		// unpinned on the Claude side. Anchored on the surrounding sentence so
+		// it can only match the mandate, never the row note.
+		if !strings.Contains(out, "the installed plugin is the stale side: `claude plugin update trellis@kodhama`, restart the session, and uncomment the row.") {
+			t.Errorf("the repair MANDATE must name the stale-plugin cause (TRL-27) and Claude's own remedy for it:\n%s", out)
 		}
 	})
 
@@ -2472,6 +2625,41 @@ func TestSlugMismatchStillDeliversEveryRule(t *testing.T) {
 			t.Errorf("an already-repaired file must draw no repair notice at all:\n%s", out)
 		}
 	})
+}
+
+// TestReconciliationStripsCRFromCRLFInput — codex-context.mjs's own
+// reconcileRows splits on /\r?\n/, which consumes a CRLF pair as one
+// delimiter and never leaves a trailing \r on a line it emits. The awk
+// reconciler here did not: its default record separator is "\n" alone, so a
+// CRLF-terminated line arrived with "\r" still attached to $0, and
+// `print "# " $0 note` on a quarantined row then emitted a bare CR MID-LINE,
+// before the note — a real host divergence review measured directly against
+// this block, not a hypothetical one. Fixed by stripping a trailing \r from
+// every record before any other rule reads $0 (see the `sub(/\r$/, "")` rule
+// above). Host parity is this branch's job, and CRLF is the shape a project
+// checked out with core.autocrlf=true actually produces — this pins it.
+func TestReconciliationStripsCRFromCRLFInput(t *testing.T) {
+	run := rulesTomlRun(t)
+	files := payloadFiles()
+
+	crlf := strings.ReplaceAll(files["rules-a.toml"], "\n", "\r\n")
+	bogus := crlf + "inv-not-a-real-rule       = { active = false }\r\n"
+	out := run(t, bogus)
+	context := nudgeContext(t, out)
+
+	if strings.Contains(context, "\r") {
+		t.Errorf("CRLF input must not leave a bare CR anywhere in the reconciled context:\n%q", context)
+	}
+	if !strings.Contains(context, "# inv-not-a-real-rule       = { active = false }  # quarantined") {
+		t.Errorf("the quarantined row must match the LF reconciler exactly, CR-free:\n%s", context)
+	}
+	// The real rows must still be delivered too, not merely CR-free — CR-
+	// stripping every record must not have knocked out row detection.
+	for _, slug := range assessableSlugs {
+		if !deliveredRow(context, slug) {
+			t.Errorf("rule %s must still be delivered from CRLF input:\n%s", slug, context)
+		}
+	}
 }
 
 // The repair is applied and REPORTED, not proposed and gated. decision-0072's
