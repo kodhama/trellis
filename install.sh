@@ -53,10 +53,15 @@
 # point — seeding .trellis/rules.toml from the shipped preset when none exists
 # (decision-0070 D2), never overwriting; otherwise .trellis/ is the consumer's
 # to edit (decision-0072 retired the setup skill). It DOES therefore pick a
-# posture, the adaptive one, by copying
+# posture for a project that has none, the adaptive one, by copying
 # rules-b.toml: that is a shipped constant, not a decision this script makes, but
 # the header used to claim "no posture choice" full stop and that reads as false
-# next to the seed. It reads no project file to decide anything, and it NEVER runs
+# next to the seed. When the project ALREADY has a rules.toml, the rendered rules
+# file takes its posture header from that file: `strictness = "firm"` selects
+# reference/trellis-a.md, anything else reference/trellis-b.md, read with the
+# plugin hook's own parser so the two deliveries agree on the same project
+# (TRL-37). That key is the one project file whose CONTENTS decide anything
+# here; the managed-block marker is read too, but only to refuse. It NEVER runs
 # a git
 # command that mutates anything (no add, no commit): it prints a suggested next
 # command for project scope and leaves the commit to you.
@@ -133,9 +138,11 @@ Platform: macOS, Linux, WSL. A POSIX sh script — cmd and PowerShell cannot run
 it at all, so use WSL there. The dependency list at the top of this file is the
 whole of the boundary, and POSIX sh is the binding entry in it.
 
-This is the ONLY decision this script makes. The posture ships as a constant
-(the adaptive preset) and is yours to change afterwards by editing
-.trellis/rules.toml; see the "next steps" this script prints when it finishes.
+This is the ONLY decision this script makes. A project with no .trellis/rules.toml
+is seeded with the adaptive preset; one that already has the file keeps it, and the
+rendered rules file takes its posture header from that file's strictness. Either
+way the posture is yours to change afterwards by editing .trellis/rules.toml; see
+the "next steps" this script prints when it finishes.
 
 Flags:
   --scope personal|project   where to vendor the plugin. Also settable via
@@ -421,13 +428,19 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 # would govern every repo on the machine and import ~/.trellis/rules.toml, which
 # nothing writes.
 #
-# Still zero decision logic in the sense AC2's heading means — no posture chosen,
-# no marker patched. AC2's "never reads" clause WAS amended for this branch (see
-# the spec's frontmatter and AC2d): six reads over five paths, of which exactly
-# ONE reads a file's contents — the managed-block opening marker. No .trellis/
-# file's CONTENTS are read and no posture is chosen. It emits trellis-b's
-# prose as a CONSTANT — staleness.sh already resolves absent strictness to `b`,
-# so the install path inherits a ratified default rather than inventing one.
+# Still zero decision logic in the sense AC2's heading means — no marker
+# patched, nothing branched on an instructions file. AC2's "never reads" clause
+# WAS amended for this branch (see the spec's frontmatter and AC2d): six reads
+# over five paths, of which ONE read a file's contents — the managed-block
+# opening marker. TRL-37 added a second: the `strictness` key of an existing
+# .trellis/rules.toml, which selects the posture HEADER — trellis-a for `firm`,
+# trellis-b for anything else — with the plugin hook's own parser. Before that
+# the header was trellis-b's prose as a CONSTANT (decision-0068 D5), and a firm
+# project read the adaptive sentence above its own firm rows while the hook
+# served the firm header to the same project: two deliveries, two postures.
+# Absent, missing or unrecognised strictness still resolves to `b`, exactly as
+# staleness.sh resolves it, so the install path inherits the hook's default
+# rather than inventing one.
 #
 # Two edits, both of which staleness.sh already performs under decision-0065's
 # "one edit" allowance:
@@ -543,10 +556,15 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   #                                                   below, and the non-regular
   #                                                   refusal before the mv)
   #   - .trellis/rules.toml                          (existence, for the
-  #                                                   floors-only guidance line)
-  # Exactly ONE is a content read, and it reads one line-anchored string. None
-  # selects a posture, patches a marker, or writes anything under .trellis/.
-  # spec-0005 AC2's second amendment permits exactly this and no more.
+  #                                                   floors-only guidance line;
+  #                                                   CONTENT: the strictness
+  #                                                   key, selecting the posture
+  #                                                   header — TRL-37)
+  # Two are content reads: the marker, one line-anchored string that only ever
+  # refuses; and the strictness key, which selects which SHIPPED header is
+  # rendered. Neither patches a marker or writes anything under .trellis/.
+  # spec-0005 AC2's second amendment permitted the first; the second is argued
+  # in the test that pins the count (cli/install_script_test.go).
   rendered_note="no rules file — $static_conflict present"
   say "NOT rendering .claude/rules/trellis.md: this project already delivers the"
   say "rules statically ($static_conflict). Adding the rendered file would deliver"
@@ -570,12 +588,57 @@ elif [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
   mkdir -p "$rules_dir" || fail "could not create $rules_dir (is .claude/rules present as a file?). The bundle is already vendored; re-run once the path is clear."
 
+  # Posture selects the header, exactly as the plugin's SessionStart hook does
+  # on its config-only path (plugins/trellis/hooks/staleness.sh, path B): the
+  # first `strictness = ...` line of .trellis/rules.toml, in either TOML string
+  # form, and exactly `firm` picks reference/trellis-a.md — everything else,
+  # including no file, no key and a value the hook does not know, picks
+  # reference/trellis-b.md. The awk program is the hook's own, copied because
+  # the hook lives inside the bundle this script vendors and cannot be shared;
+  # a test pins the two copies to each other (decision-0028: a guard per pair).
+  # The file is read as STDIN rather than as an operand so that the lexical
+  # content-read guard in the test suite sees the read; it is never written.
+  #
+  # Before TRL-37 the header was trellis-b's as a constant, and a project whose
+  # rows said firm got the adaptive sentence rendered over them — while the hook
+  # served the firm header to that same project. The rendered footer below
+  # still says the rows win over the sentence, because strictness can be edited
+  # after this file is written and the sentence is frozen at that moment.
+  strictness=""
+  toml_state=absent
+  if [ -f "$git_root/.trellis/rules.toml" ]; then
+    toml_state=present
+    strictness="$(awk '
+  /^[[:space:]]*strictness[[:space:]]*=/ {
+    if (match($0, /"[^"]*"/) || match($0, /\x27[^\x27]*\x27/)) {
+      print substr($0, RSTART + 1, RLENGTH - 2); exit
+    }
+  }' < "$git_root/.trellis/rules.toml" 2>/dev/null)"
+  fi
+  case "$strictness" in
+    firm) header="reference/trellis-a.md"
+          posture_note="firm — strictness = \"firm\" in .trellis/rules.toml; header from $header" ;;
+    *)    header="reference/trellis-b.md"
+          # Said out loud, because the hook's fall-through is silent: a value it
+          # does not recognise governs as adaptive there without a word, and the
+          # install is the one moment someone is reading the output.
+          if [ "$toml_state" = absent ]; then
+            posture_note="adaptive — no .trellis/rules.toml file; the seed written below, if that path is free, is adaptive too; header from $header"
+          elif [ -z "$strictness" ]; then
+            posture_note="adaptive — .trellis/rules.toml carries no strictness key, which the plugin hook also resolves to adaptive; header from $header"
+          elif [ "$strictness" = adaptive ]; then
+            posture_note="adaptive — strictness = \"adaptive\" in .trellis/rules.toml; header from $header"
+          else
+            posture_note="adaptive — strictness = \"$strictness\" in .trellis/rules.toml is not a posture the plugin hook recognises, and it resolves every value but \"firm\" to adaptive; header from $header"
+          fi ;;
+  esac
+
   # The placeholder must exist or the first sed silently emits the whole file
   # minus its last line and the second emits nothing — a truncated render that
   # every other check would pass. Unreachable through a verified fetch; this is
   # defence in depth against a coordinated payload edit.
-  grep -q '^@rules\.md[[:space:]]*$' "$stage/bundle/reference/trellis-b.md" \
-    || fail "reference/trellis-b.md carries no @rules.md placeholder line; refusing to render a truncated rules file"
+  grep -q '^@rules\.md[[:space:]]*$' "$stage/bundle/$header" \
+    || fail "$header carries no @rules.md placeholder line; refusing to render a truncated rules file"
 
   # Render to a sibling temp file and move it into place only on success.
   # `{ ...; } > target` truncates the target BEFORE the body runs and swallows a
@@ -605,13 +668,13 @@ elif [ "$scope" = "project" ]; then
   # invariants pointer would re-create the exact defect this branch fixed — a
   # legitimate payload reword breaking every install. `-s` asks only "did this
   # step produce anything", which no reword can falsify.
-  sed -n '1,/^@rules\.md[[:space:]]*$/p' "$stage/bundle/reference/trellis-b.md" | sed '$d' > "$stage/render.head"
-  [ -s "$stage/render.head" ] || fail "rendering the posture prose produced nothing; the bundle's reference/trellis-b.md is damaged or has no @rules.md placeholder. Nothing was written."
+  sed -n '1,/^@rules\.md[[:space:]]*$/p' "$stage/bundle/$header" | sed '$d' > "$stage/render.head"
+  [ -s "$stage/render.head" ] || fail "rendering the posture prose produced nothing; the bundle's $header is damaged or has no @rules.md placeholder. Nothing was written."
   cat "$stage/bundle/reference/rules.md" > "$stage/render.body"
   [ -s "$stage/render.body" ] || fail "rendering the rules body produced nothing; the bundle's reference/rules.md is missing or empty. Nothing was written."
-  sed -n '/^@rules\.md[[:space:]]*$/,$p' "$stage/bundle/reference/trellis-b.md" | sed '1d' \
+  sed -n '/^@rules\.md[[:space:]]*$/,$p' "$stage/bundle/$header" | sed '1d' \
     | sed 's|`\.trellis/internal/invariants\.md`|`.claude/skills/trellis/reference/invariants.md`|' > "$stage/render.tail"
-  [ -s "$stage/render.tail" ] || fail "rendering the header tail produced nothing; the bundle's reference/trellis-b.md is damaged. Nothing was written."
+  [ -s "$stage/render.tail" ] || fail "rendering the header tail produced nothing; the bundle's $header is damaged. Nothing was written."
   {
     # A MACHINE-OWNED opening marker. The hook used to validate this file by
     # matching prose landmarks — the invariants sentence, the posture note, the
@@ -723,6 +786,9 @@ fi
 say "vendored the Trellis plugin ($stamp) to $target"
 say "  $nfiles files written; manifest verify OK on every byte before anything was written"
 say "  rules: $rendered_note"
+if [ "$rendered_note" = ".claude/rules/trellis.md" ]; then
+  say "  posture header: $posture_note"
+fi
 if [ "$scope" = "project" ]; then
   say ""
   say "Claude Code will show its workspace-trust dialog the next time you launch it"
