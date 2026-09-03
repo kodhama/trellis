@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Executed 2026-09-03. Three predictions below were wrong; `decision-0086` follows execution, not this plan.** Kept unedited as the planning record (`decision-0085`), with the corrections stated here rather than silently patched into the steps:
+>
+> 1. **Task 1, Step 5** predicted that moving writer *and* reader together would leave the pin green. It goes **red** — the file under test is written by the *Claude* host, so a Codex-only template change breaks the strip against a `staleness.sh`-repaired file. A better outcome than predicted: the pin catches cross-host drift too.
+> 2. **Task 2, Step 7, row 3** predicted that reconciling the mismatch branch from the raw source would trip *"the two degraded paths disagree"*. **The mutation survived** — the fixture there carries no *persisted* provenance, so that branch was unguarded. `TestCodexDegradesPersistedProvenanceOnTheMismatchPathToo` was added for it, and it showed the branch was a **refusal**, not the cosmetic difference this plan assumed.
+> 3. **The runaway guard's new threshold is thirty quarantined rows, not the ~37 derived here.** Measured, same payload and slug family as the baseline: 42 B per row stripped against 192 B unstripped, first refusal at N = 30 where it was N = 9.
+>
+> Also unlisted here and required in practice: the `VERSION` bump drags both plugin manifests with it (`TestPluginPackageParity` pins them to it), so `install.sh`'s manifest advances for four files, not one.
+
 **Goal:** A Codex session whose `.trellis/rules.toml` already carries Trellis's own persisted provenance comments still governs when the assembled context would exceed `MAX_CONTEXT_BYTES` — instead of refusing outright, permanently, on a file Trellis itself told the agent to write.
 
 **Architecture:** The degradation `decision-0084` §6 built is gated on `mismatch !== null`, so it only ever fires in the session that has something to reconcile. The session *after* the repair has no mismatch, nothing to degrade, and hits the hard refusal. This plan moves the trigger from "a reconciliation ran" to "the assembly is over budget", which is what the branch was always about. The mechanism is the one already there — provenance comes off the *injected* copy while the file on disk keeps it — extended to reach provenance the file already carries. Both provenance strings become templates with named placeholders so the writer (`quarantineNote` / `addedHeader`) and a new reader (`stripPersistedProvenance`) are derived from one source and cannot drift.
