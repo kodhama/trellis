@@ -1,0 +1,109 @@
+---
+id: decision-0086
+type: decision
+depends_on: [decision-0068]
+changes: [decision-0068]
+informed_by: [decision-0028, decision-0035, decision-0053, decision-0070, decision-0079, decision-0081, decision-0082]
+owner: agent
+date: 2026-09-03
+---
+
+# 0086 — the install path renders the posture the project's own rows ask for
+
+## Context
+
+`decision-0068` D5 ruled that the rendered `.claude/rules/trellis.md` emits
+`reference/trellis-b.md`'s adaptive posture prose **as a shipped constant, not a choice**. Its
+Open question 2 named three resolutions — read `rules.toml`, write new read-time prose, or accept
+the mismatch — and ruled the third, adding one sentence of footer prose saying the rows win over
+the frozen sentence.
+
+**The consequence it predicted has now been observed in the field.** `TRL-35`, probing Trellis
+delivery in a Claude Code cloud session, hit it on *this repository*: `.trellis/rules.toml` here
+says `strictness = "firm"`, and the rendered file opened with *"**By default** — follow them unless
+you have a clear, specific reason not to."* The plugin's own `SessionStart` hook serves the **firm**
+header to that same project (`plugins/trellis/hooks/staleness.sh`, path B). So the two deliveries
+disagreed about how strictly a project's rules are to be followed, and which one a session got
+depended only on which delivery path it was on. `TRL-37` filed it as a defect.
+
+### Why D5's stated ground no longer holds
+
+D5 does not argue that a constant is *better*. It argues, twice and explicitly, that the choice is
+**unavailable**:
+
+> The rendered file cannot carry a posture sentence chosen from `strictness`, because AC2 forbids
+> reading `.trellis/`.
+
+That ground has since been removed from under it, in two steps neither of which was about posture:
+
+1. **`decision-0070` D2 already has `install.sh` write `.trellis/rules.toml`** — seeding the rows
+   when none exist. `decision-0068`'s "never touches `.trellis/`" clause is marked
+   `superseded_in_part_by: [decision-0070]` in its own frontmatter. A script that may *write* the
+   file to make the rules apply is not one that may not *read* one key of it to render them
+   correctly.
+2. **AC2's "never reads" clause was already amended inside `decision-0068` itself** (D12), which
+   permits one content read — the managed-block marker — and records the count as an amendment
+   rather than a silent widening. And `decision-0079` retired the spec stage: `spec-0005`'s only
+   surviving statement is `cli/install_script_test.go`. The constraint is now a **test**, which is
+   changed by argument in the same commit, not a ratified document that outranks the change.
+
+What survives from D5 untouched is its *other* half, and this record keeps it: the rendered sentence
+is frozen at install time while the rows are read fresh every session, so the footer must go on
+saying the rows are authoritative.
+
+## Decision
+
+1. **When `.trellis/rules.toml` exists and is readable, the render selects its header from that
+   file's `strictness`, exactly as `staleness.sh` path B does:** `firm` → `reference/trellis-a.md`,
+   every other value → `reference/trellis-b.md`. Head and tail change source; body, footer, import
+   line and stamp are unchanged.
+2. **Every other input resolves to `trellis-b.md`** — no file, no key, an unrecognised value, or a
+   file that cannot be read — which is the hook's own fall-through, not a new default invented here.
+   A project with no `rules.toml` is still seeded `rules-b.toml`, so seed and header still agree.
+3. **The unreadable case is said out loud** (`decision-0035`, `floor-transparency`). `[ -f ]` is true
+   for a file the invoking user cannot read; the installer reports that it could not honour the
+   file's posture rather than defaulting in silence, and does not abort — the hook survives that
+   input and serves adaptive, and diverging from it over a permission bit is the same defect in
+   miniature.
+4. **The parser is the hook's, copied byte for byte, with a guard pinning the pair**
+   (`decision-0028`). The hook ships *inside* the bundle `install.sh` vendors, so the two cannot
+   share a file; a copy drifts unless something fails when it does.
+5. **The content-read budget goes from one to two, and the second is named** rather than absorbed.
+   The test that pins the count said a second read "has to come here and argue itself"; this record
+   and that test are the argument.
+
+## Consequences
+
+- **`decision-0068` is changed in part, not superseded.** Only D5's constant-header ruling and the
+  read inventory it states are corrected; its delivery mechanism, project-scope-only ruling (D1),
+  the two payload edits, the stamp, D11 and the footer sentence all stand. The forward pointer on
+  `0068` records the scope.
+- **The two deliveries now agree on any project**, and a test proves it by running both against the
+  same repository rather than asserting each side against a fixture.
+- **What is *not* claimed here:** that `install.sh` may read `.trellis/` generally, or branch on any
+  other project state. One key, for one purpose, counted and guarded. A third read still has to come
+  and argue itself.
+- **Not fixed, and tracked rather than parked** (`decision-0078`, `inv-no-orphan-followups`): a
+  `rules.toml` holding only the `governed = false` opt-out still gets a governing rules file
+  rendered into it, after which the hook stands down and the rendered file governs a project that
+  switched Trellis off. That is pre-existing behaviour, older than this change and outside `TRL-37`;
+  it is filed as `TRL-38`, which is the consumer that will re-present it. The installer's own output no longer claims hook parity on that input.
+
+## Self-check
+
+- **The maintainer has not ruled on this; his merge is the act** (`decision-0082`). This record is
+  authored by the agent that wrote the code change (`decision-0037` — authorship, not
+  accountability), and it reverses a ruling he gave on 2026-07-30. It is written to be rejectable:
+  if he prefers the constant, reverting is one `case` statement and this record retires.
+- **`decision-0081`'s cost-of-reversal framing applies and is cited at its own stated weight** — that
+  record calls itself *"(proposal, not a decision)"*. Under it this is cheap to reverse, which is the
+  argument for the agent proceeding rather than blocking; it is not authority to have decided.
+- **The defect this corrects was measured, not reasoned** — on this repository, by a session that was
+  probing something else. The prediction was in `0068`'s own Open question 2 the whole time; what was
+  missing was that nobody had read the rendered file next to the rows it imports.
+- **Written because a review bot insisted on it.** The code change was opened with this recorded only
+  as a note offering the record as a possible follow-up. An automated reviewer on
+  `kodhama/trellis#261` called that what it is — executable behaviour contradicting an accepted
+  decision on `main` — and `inv-graph-maintenance` says fix the decision, not patch around it. The
+  agent had already identified the tension and chose to defer it; being right about the tension and
+  wrong about deferring it is the part worth recording.
