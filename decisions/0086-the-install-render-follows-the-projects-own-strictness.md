@@ -1,9 +1,9 @@
 ---
 id: decision-0086
 type: decision
-depends_on: [decision-0068]
+depends_on: [decision-0068, decision-0070, decision-0079]  # decision-0070 and decision-0079 moved up from informed_by after an independent corpus review: both are coupling under decision-0047's test, not provenance. D2's "still seeded rules-b.toml, so seed and header still agree" is FALSE, not merely less evidenced, if decision-0070 D2 stopped seeding or seeded rules-a.toml; and the Context argument that spec-0005's prohibition is now only a test rests on decision-0079 having retired the spec stage. Same correction decision-0076 made for the same reason
 changes: [decision-0068]
-informed_by: [decision-0028, decision-0035, decision-0053, decision-0070, decision-0079, decision-0081, decision-0082]
+informed_by: [decision-0028, decision-0035, decision-0053, decision-0081, decision-0082]
 owner: agent
 date: 2026-09-03
 ---
@@ -101,6 +101,12 @@ saying the rows are authoritative.
 - **The defect this corrects was measured, not reasoned** — on this repository, by a session that was
   probing something else. The prediction was in `0068`'s own Open question 2 the whole time; what was
   missing was that nobody had read the rendered file next to the rows it imports.
+- **`corpus-reviewer` was run on this record and found one defect in it**, now fixed: `decision-0070`
+  sat in `informed_by` when D2's seed-and-header-agree claim is contingent on `0070` D2's seeding
+  clause — coupling under `decision-0047`, not provenance. `decision-0079` moved up with it on the
+  same test. The one violation the review reports elsewhere in the corpus
+  (`decision-0044`'s bare `kodhama-0004-uniform-lifecycle`) predates this change and is left alone:
+  that record preserves it deliberately as the live instance of the gap it fixes.
 - **Written because a review bot insisted on it.** The code change was opened with this recorded only
   as a note offering the record as a possible follow-up. An automated reviewer on
   `kodhama/trellis#261` called that what it is — executable behaviour contradicting an accepted
