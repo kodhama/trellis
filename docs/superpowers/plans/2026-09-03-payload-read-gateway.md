@@ -358,11 +358,11 @@ git commit -m "TRL-34: an unreadable plugin version stamp says why staleness cou
 
 **Files:**
 - Modify: `plugins/trellis/VERSION` (one line), `install.sh` (bundle manifest)
-- Create: `decisions/0086-one-gateway-for-every-payload-read.md`
+- Create: `decisions/0087-one-gateway-for-every-payload-read.md`
 
 - [ ] **Step 1:** Bump `plugins/trellis/VERSION` — a payload change no cached consumer would otherwise re-pull. **One line only**, so the queued change behind this one rebases cleanly.
 - [ ] **Step 2:** Advance the baked manifest hashes in `install.sh` for `hooks/staleness.sh`, `hooks/codex-context.mjs` and `VERSION`. `TestInstallScriptBundleManifestIsCurrent` names each stale line.
-- [ ] **Step 3:** Write `decisions/0086`. Verify `0086` is free by listing `decisions/`. No `status:` field (`decision-0082`). Record: the defect class and its count; the gateway; why `missing` and `unreadable` are distinguished but neither is silent; the new `TRELLIS_STALENESS_UNKNOWN` marker as a contract change; the two inverted tests; and as an **open question** the Claude/Codex divergence on a malformed `reference/version` (Claude governs and annotates, Codex refuses) — named, not closed.
+- [ ] **Step 3:** Write `decisions/0087`. Verify `0087` is free by listing `decisions/`. No `status:` field (`decision-0082`). Record: the defect class and its count; the gateway; why `missing` and `unreadable` are distinguished but neither is silent; the new `TRELLIS_STALENESS_UNKNOWN` marker as a contract change; the two inverted tests; and as an **open question** the Claude/Codex divergence on a malformed `reference/version` (Claude governs and annotates, Codex refuses) — named, not closed.
 - [ ] **Step 4:** `cd cli && go test -count=1 ./... && go build ./... && go vet ./...` → all green.
 - [ ] **Step 5:** Invoke the repo-owned `corpus-reviewer` agent against the new decision.
 - [ ] **Step 6:** Rebase on `origin/main` (PR #260 touches `install.sh`'s manifest — expect a conflict there and rebase rather than fight it). Commit, push, open the PR. **Do not merge** (`floor-intent-gate`).

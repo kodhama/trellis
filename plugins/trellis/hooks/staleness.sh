@@ -213,18 +213,41 @@ ref="$plugin/reference/version"
 current=""
 stamp_defect=""
 if payload_read "$ref"; then
-  current="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
-  # SHAPE-CHECKED, matching what codex-context.mjs has always required of the
-  # same file (/^payload@[0-9a-f]{12}\n?$/). A TRUNCATED stamp is not a
-  # different version — it is an unreadable one — and comparing it reports a
-  # perfectly healthy overlay as STALE. That is the inverse-direction defect
-  # this whole change is as concerned with as the silent one: a consumer told
-  # to migrate an overlay that is already current has nothing to fix.
+  # THE WHOLE FILE IS VALIDATED, not just its first line. An earlier version of
+  # this block read `head -n1 "$ref" | tr -d '[:space:]'`, which threw away
+  # every byte after line 1 AND every space inside the stamp before any check
+  # ran. Both shapes then reduced to a valid-looking stamp and were accepted as
+  # authoritative — measured on a vendored-overlay project whose stamp matched,
+  # zero bytes of stdout at exit 0 for each:
   #
+  #   payload@<12 hex>\nGARBAGE     the garbage line never reached a check
+  #   payload@046c 9109c663         the internal space was deleted, not rejected
+  #
+  # It was also a host divergence: codex-context.mjs validates the whole file
+  # (/^payload@[0-9a-f]{12}\n?$/) and rejects both. Reported by review on
+  # kodhama/trellis#262 and reproduced before this was written.
+  #
+  # WHAT IS FORGIVEN, and only this: carriage returns, trailing whitespace on a
+  # line, and blank lines. A reference/version checked out on
+  # core.autocrlf=true is a HEALTHY file, and refusing it would be the
+  # over-correction this change set is as concerned with as the silence — the
+  # same tolerance, for the same reason, that the rendered-file validator below
+  # applies with `sub(/[ \t\r]+$/, "", line)`. Nothing else is forgiven: not
+  # internal whitespace, not a second line of content, not a decoy stamp.
+  #
+  # More than one content line is reported separately from a malformed one,
+  # because they are different corruptions and the message says which.
+  current="$(printf '%s\n' "$payload_text" | awk '
+    { line = $0; sub(/[ \t\r]+$/, "", line); if (line == "") next; n++; keep = line }
+    END { if (n == 1) print keep; else if (n > 1) print "#multi" }
+  ')"
   # Twelve `?` is an exact length test without needing a counting tool; the
   # nested case is the hex test. Both are shell built-ins, so this stays
-  # binary-free.
+  # binary-free. A TRUNCATED stamp is not a different version — it is an
+  # unreadable one — and comparing it reports a perfectly healthy overlay as
+  # STALE, which is a consumer told to migrate something already current.
   case "$current" in
+    "#multi") stamp_defect="carries more than one line of content, where a payload stamp is exactly one"; current="" ;;
     payload@????????????)
       case "${current#payload@}" in
         *[!0-9a-f]*) stamp_defect="is not a Trellis payload stamp"; current="" ;;

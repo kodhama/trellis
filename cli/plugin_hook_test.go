@@ -268,6 +268,15 @@ func TestStalenessHook(t *testing.T) {
 	// not governance. Reusing the blackout marker would be the over-correction
 	// this suite has already caught twice on this hook.
 	t.Run("an unreadable plugin stamp says so instead of vanishing", func(t *testing.T) {
+		// The REAL stamp, which is also what the project's overlay carries in
+		// every case below. The corruption fixtures are built around it on
+		// purpose: with the pre-fix `head -n1 | tr -d '[:space:]'` read, each
+		// of the last four reduced to exactly this value, compared EQUAL to the
+		// project's, and produced zero bytes of output. Hardcoding some other
+		// hash would have made them compare unequal and draw a stale nudge — a
+		// visible wrong answer instead of the silent one that actually shipped,
+		// so the fixture would have tested the wrong failure.
+		real := strings.TrimSpace(payloadFiles()["version"])
 		for _, tc := range []struct {
 			name  string
 			stamp string // "" means: do not create reference/ at all
@@ -277,7 +286,24 @@ func TestStalenessHook(t *testing.T) {
 			{"truncated to a short hash", "payload@abc\n"},
 			{"a stamp from the pre-payload@ era", "plugin@abcdef123456\n"},
 			{"a stamp with non-hex in it", "payload@zzzzzzzzzzzz\n"},
+			// The four below are the P2 from review on #262. `head -n1` threw
+			// away every byte after line 1 and `tr -d '[:space:]'` every space
+			// INSIDE the stamp, both before any check ran, so a corrupted
+			// payload stamp was accepted as authoritative. Reproduced at zero
+			// bytes of stdout before the fix; pinned here so it cannot return.
+			{"a valid stamp followed by garbage", real + "\nGARBAGE\n"},
+			{"a valid stamp followed by a decoy stamp", real + "\npayload@ffffffffffff\n"},
+			{"whitespace inside the stamp", "payload@" + real[8:12] + " " + real[12:] + "\n"},
+			{"a stamp preceded by a garbage line", "GARBAGE\n" + real + "\n"},
+			// The other direction, in the same table so it cannot be forgotten:
+			// these are HEALTHY files an editor or a core.autocrlf=true
+			// checkout produces, and refusing them would be the over-correction.
+			// They must draw NO marker at all — the stamps match.
+			{"CRLF line ending is healthy", real + "\r\n"},
+			{"trailing blank lines are healthy", real + "\n\n\n"},
+			{"trailing whitespace on the stamp line is healthy", real + "  \n"},
 		} {
+			healthy := strings.HasSuffix(tc.name, "healthy")
 			t.Run(tc.name, func(t *testing.T) {
 				proj := t.TempDir()
 				p := filepath.Join(proj, ".trellis", "internal", "version")
@@ -304,7 +330,19 @@ func TestStalenessHook(t *testing.T) {
 				if err != nil {
 					t.Fatalf("hook exited non-zero (%v): %s", err, out)
 				}
-				ctx := nudgeContext(t, strings.TrimSpace(string(out)))
+				raw := strings.TrimSpace(string(out))
+				if healthy {
+					// The stamps match, so silence is the CORRECT answer here —
+					// and it is the one answer the corruption rows must never
+					// get. Same table, opposite direction, so a guard that
+					// over-tightens the stamp shape fails here rather than
+					// reaching a consumer.
+					if raw != "" {
+						t.Fatalf("a %s reference/version is a healthy file and its stamp matches — refusing or nudging over it is the over-correction:\n%s", tc.name, raw)
+					}
+					return
+				}
+				ctx := nudgeContext(t, raw)
 				if !strings.Contains(ctx, "TRELLIS_STALENESS_UNKNOWN") {
 					t.Errorf("an unusable plugin stamp must say staleness could not be checked, not vanish:\n%s", ctx)
 				}
@@ -4274,19 +4312,43 @@ func TestNoPayloadReadBypassesTheGateway(t *testing.T) {
 	gateHi := gateLo + strings.Count(src[gateStart:gateStart+gateEnd], "\n")
 
 	// Rule 1.
-	assignRe := regexp.MustCompile(`(?m)^[ \t]*([a-z_]+)="\$plugin/`)
+	//
+	// ANCHORED ON A DELIMITER, NOT ON LINE START. `^[ \t]*([a-z_]+)="\$plugin/`
+	// was the first version and it had a blind spot review found on #262: the
+	// posture header is assigned inside a `case` arm —
+	// `firm) header="$plugin/reference/trellis-a.md" ;;` — so `$header`, a real
+	// payload path variable, was invisible to the scan. It happened to be
+	// guarded anyway, but a NEW payload path introduced the same way would have
+	// bypassed both rules undetected, which is the one thing this test exists to
+	// prevent. The mutation that proved the guard used a line-start assignment,
+	// so it never exercised the shape that was missing: a guard is only known to
+	// work against the mutations you actually try.
+	assignRe := regexp.MustCompile(`(?m)(?:^|[ \t;)&|])([a-z_]+)="\$plugin/`)
 	found := assignRe.FindAllStringSubmatch(src, -1)
-	if len(found) < 4 {
-		t.Fatalf("found only %d payload path assignments — the scan is broken; staleness.sh reads at least reference/version, rules.md, a posture header and a preset", len(found))
-	}
 	seen := map[string]bool{}
+	var names []string
 	for _, m := range found {
 		if seen[m[1]] {
 			continue
 		}
 		seen[m[1]] = true
-		if !strings.Contains(src, `payload_read "$`+m[1]+`"`) {
-			t.Errorf("$%s holds a path inside the installed plugin but is never passed to payload_read — every payload read goes through the gateway, so that an absent, empty or unreadable file is refused loudly instead of reaching downstream logic", m[1])
+		names = append(names, m[1])
+	}
+	sort.Strings(names)
+	// Named, not counted. A count says nothing about WHICH variables were found,
+	// and the previous version's floor passed while missing $header because an
+	// unrelated variable filled the slot its own failure message attributed to
+	// the posture header. Every payload path staleness.sh reads today is listed;
+	// a scan that stops seeing one of them fails here rather than passing
+	// quietly on a smaller set.
+	for _, want := range []string{"header", "preset", "ref", "rules", "toml"} {
+		if !seen[want] {
+			t.Errorf("the payload-path scan no longer sees $%s — it found %v, and a guard that stops seeing a payload read passes on nothing", want, names)
+		}
+	}
+	for _, name := range names {
+		if !strings.Contains(src, `payload_read "$`+name+`"`) {
+			t.Errorf("$%s holds a path inside the installed plugin but is never passed to payload_read — every payload read goes through the gateway, so that an absent, empty or unreadable file is refused loudly instead of reaching downstream logic", name)
 		}
 	}
 

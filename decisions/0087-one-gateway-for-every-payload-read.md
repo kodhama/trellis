@@ -1,5 +1,5 @@
 ---
-id: decision-0086
+id: decision-0087
 type: decision
 depends_on: [decision-0043, decision-0051, decision-0070, decision-0083, decision-0084]
 changes: [decision-0043]
@@ -11,8 +11,13 @@ date: 2026-09-03
 > **Provenance.** Directed by the maintainer as **TRL-33**, with **TRL-34** folded in. Designed
 > through `superpowers:brainstorming` and executed through `superpowers:executing-plans`; the
 > design and plan are retained under `docs/superpowers/` per `decision-0085`.
+>
+> **Numbered 0087, not 0086.** This record was drafted as `0086` — `0085` was the highest on
+> `main` when the branch opened — and renumbered before merge because `kodhama/trellis#263`
+> (TRL-29) claims `0086` and lands first. `decisions/` numbers are allocated by whichever branch
+> merges first, not by whichever drafts first; nothing else in this record moved.
 
-# 0086 — one gateway for every payload read; a defect class closed by construction, not by patch twelve
+# 0087 — one gateway for every payload read; a defect class closed by construction, not by patch twelve
 
 ## Context
 
@@ -172,7 +177,7 @@ disposition each turn the covering structural guard red.
   plugin manifests** (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `install.sh`'s
   baked bundle manifest advanced in the same commit (`decision-0028`: a source and its derivative
   move together).
-- **`decision-0043` gains `superseded_in_part_by: [decision-0086]`**, scoped in its trailing
+- **`decision-0043` gains `superseded_in_part_by: [decision-0087]`**, scoped in its trailing
   comment to rule 3's no-op clause and to nothing else. Under `decision-0082` the forward pointer
   is the only mark there is.
 - **What is not claimed:** that this is the last instance. The claim is narrower and checkable —
