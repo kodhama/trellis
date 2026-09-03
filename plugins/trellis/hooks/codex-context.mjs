@@ -1029,9 +1029,12 @@ if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
   if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
     // The runaway guard, and nothing more. Reached only when a context with NO
     // Trellis provenance left in it — neither generated nor persisted — is
-    // still over the cap. On the real firm payload that takes roughly
-    // thirty-seven quarantined rows: each costs the file 43 B once its note is
-    // off, against 191 B with it.
+    // still over the cap. Measured against the real firm payload: a quarantined
+    // row costs the injected copy 42 B once its note is off, against 192 B with
+    // it, and the refusal first appears at THIRTY quarantined rows where it
+    // used to appear at nine. It is a byte budget, not a row count — a longer
+    // slug reaches it sooner — so treat thirty as the measured order of
+    // magnitude, not a threshold to test against.
     //
     // Deliberately NOT described as a state with "nothing left to degrade".
     // An earlier draft of this comment, and of decision-0084, said exactly
