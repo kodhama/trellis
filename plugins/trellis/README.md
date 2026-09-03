@@ -83,12 +83,17 @@ a fresh, untrusted, headless container:
 C=/opt/claude-code/bin/claude
 $C plugin marketplace add kodhama/stewards || true
 $C plugin install trellis@kodhama || true
-$C plugin disable trellis@kodhama --scope user || true
+$C plugin disable trellis@kodhama --scope user   # not `|| true` — see below
 ```
 
 **Always pass `--scope user` to `claude plugin disable`.** Without a scope it defaulted to
 project scope and wrote `false` into the repo's tracked `.claude/settings.json` (observed on
-2.1.258). Two limits: the environment snapshot keeps what the script wrote until it rebuilds,
+2.1.258). **And do not mask that line's exit status.** The two commands above it fail closed —
+the worst case is no plugin — but the `disable` is the whole opt-in boundary: masked, a failure
+leaves the plugin **enabled** at user scope, so every repo run in that environment gets Trellis,
+including one that declares nothing, and the snapshot keeps that state until it rebuilds. In the
+run TRL-35 observed the command succeeded, so this is the untested branch rather than a failure
+anyone has seen. Two limits: the environment snapshot keeps what the script wrote until it rebuilds,
 so the plugin version is pinned between rebuilds, and a session gets this only when it runs in
 an environment carrying the script.
 
