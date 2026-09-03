@@ -78,8 +78,10 @@ saying the rows are authoritative.
   read inventory it states are corrected; its delivery mechanism, project-scope-only ruling (D1),
   the two payload edits, the stamp, D11 and the footer sentence all stand. The forward pointer on
   `0068` records the scope.
-- **The two deliveries now agree on any project**, and a test proves it by running both against the
-  same repository rather than asserting each side against a fixture.
+- **The two deliveries now agree on the posture header of any *governed* project**, and a test proves
+  it by running both against the same repository rather than asserting each side against a fixture.
+  The qualifier is load-bearing, not hedging: on a `governed = false` project they still disagree, for
+  the separate reason in the last bullet, and the test exercises governed fixtures only.
 - **What is *not* claimed here:** that `install.sh` may read `.trellis/` generally, or branch on any
   other project state. One key, for one purpose, counted and guarded. A third read still has to come
   and argue itself.
