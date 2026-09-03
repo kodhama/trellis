@@ -78,7 +78,8 @@ saying the rows are authoritative.
    install that stops halfway is the worse state, and the install is the one moment someone reads
    the output. What the shipped script *says* at that moment is wrong, though: its message claims
    the hook falls back the same way, which it does not; that wording is the shipped script's defect,
-   recorded under Consequences. It is the same shape as the `governed = false` residual there, and
+   recorded under Consequences. That divergence, not the wording, is the same shape as the
+   `governed = false` residual there, and
    it is noted on `TRL-38` beside it.
 4. **The parser is the hook's, copied byte for byte, with a guard pinning the pair**
    (`decision-0028`). The hook ships *inside* the bundle `install.sh` vendors, so the two cannot
