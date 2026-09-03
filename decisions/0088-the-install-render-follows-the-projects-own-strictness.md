@@ -76,8 +76,10 @@ saying the rows are authoritative.
    to it (path C), so the rendered adaptive file is what governs. The fail-closed alternative — the
    installer refusing to render over a file it cannot read — was available and is not taken here: an
    install that stops halfway is the worse state, and the install is the one moment someone reads
-   the output. It is the same shape as the `governed = false` residual under Consequences, and it
-   is noted on `TRL-38` beside it.
+   the output. What the shipped script *says* at that moment is wrong, though: its message claims
+   the hook falls back the same way, which it does not; that wording is the shipped script's defect,
+   recorded under Consequences. It is the same shape as the `governed = false` residual there, and
+   it is noted on `TRL-38` beside it.
 4. **The parser is the hook's, copied byte for byte, with a guard pinning the pair**
    (`decision-0028`). The hook ships *inside* the bundle `install.sh` vendors, so the two cannot
    share a file; a copy drifts unless something fails when it does.
@@ -89,8 +91,9 @@ saying the rows are authoritative.
 
 - **`decision-0068` is changed in part, not superseded.** What is corrected: D5's constant-header
   ruling, the read inventory it states, and D9's clause that *"`install.sh` makes no posture
-  choice"* — its other clause, *"writes no `rules.toml`"*, was already changed by `decision-0070`
-  D2. Its delivery mechanism, project-scope-only ruling (D1), the two payload edits, the stamp, D11
+  choice"*. D9's other clause, *"writes no `rules.toml`"*, was made false by `decision-0070` D2's
+  seeding, but `0070`'s forward pointer on `0068` names only the `:102` clause, so this record's
+  pointer claims the whole of `:199` rather than leaving that half unrecorded. Its delivery mechanism, project-scope-only ruling (D1), the two payload edits, the stamp, D11
   and the footer sentence all stand. The forward pointer on `0068` records the scope.
 - **The two deliveries now agree on the posture header of any *governed* project whose `rules.toml`
   is readable**, and a test proves it by running both against the same repository rather than
@@ -107,7 +110,10 @@ saying the rows are authoritative.
   switched Trellis off. That is pre-existing behaviour, older than this change and outside `TRL-37`;
   it is filed as `TRL-38`, which is the consumer that will re-present it, and the unreadable-file
   divergence in D3 is noted there beside it as the same shape. The installer's own output no longer
-  claims hook parity on either input.
+  claims hook parity on the `governed = false` input; on the unreadable input it still does —
+  `install.sh`'s `posture_note` for that case says *"the plugin hook falls back the same way"*, and
+  the comment above it says the same — which D3 shows is false. That wording is a defect of the
+  shipped script, not of this record, and it is named on `TRL-38` with the case it misdescribes.
 
 ## Self-check
 
