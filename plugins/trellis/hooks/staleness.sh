@@ -123,7 +123,10 @@ emit() {
 # opposite defaults, which is why one gateway cannot serve both and why this
 # one is named for the class it serves.
 #
-# Eleven defects across decision-0083 and decision-0084 shared one shape: an
+# Fifteen defects, counted 2026-09-03, shared one shape (decision-0087 states
+# the count as its own measurement: decision-0083 and decision-0084 record eight
+# and several more without totalling them, and four were open when that count was
+# taken). One shape: an
 # absent, empty, truncated or unreadable payload input reached downstream
 # logic, and the session ran ungoverned at exit 0 with nothing signalling a
 # problem. Each was fixed where it was found. Almost none was found by the
@@ -136,9 +139,13 @@ emit() {
 # TestBrokenPayloadIsNeverSilent, which breaks every file the bundle ships,
 # four ways, on both delivering paths, and refuses to accept silence.
 #
-# It CLASSIFIES; it does not judge. Two of those eleven were the INVERSE
-# defect — a guard that refused a HEALTHY payload (a CRLF-terminated rules.md;
-# an unreadable comparison preset reported as payload incoherence) — and a
+# It CLASSIFIES; it does not judge. Some of those were the INVERSE defect — a
+# guard that refused a HEALTHY payload: an unreadable comparison preset reported
+# as payload incoherence, and a CRLF-terminated rules.md reported as truncated
+# (that second one is recorded HERE, at the sentinel gate a few hundred lines
+# down, and in TestTruncatedRulesMdIsRefusedByItsOwnTerminator -- not in either
+# decision, which a corpus review of decision-0087 caught it being attributed
+# to) — and a
 # consumer who sees TRELLIS_RULES_NOT_LOADED with nothing wrong to fix is as
 # badly served as one governed by a broken payload. So the four outcomes are
 # reported and the CALL SITE decides what each one costs:

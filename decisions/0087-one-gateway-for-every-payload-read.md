@@ -13,9 +13,18 @@ date: 2026-09-03
 > design and plan are retained under `docs/superpowers/` per `decision-0085`.
 >
 > **Numbered 0087, not 0086.** This record was drafted as `0086` — `0085` was the highest on
-> `main` when the branch opened — and renumbered before merge because `kodhama/trellis#263`
-> (TRL-29) claims `0086` and lands first. `decisions/` numbers are allocated by whichever branch
-> merges first, not by whichever drafts first; nothing else in this record moved.
+> `main` when the branch opened, verified against `origin/main` rather than asserted — and
+> renumbered before merge because `kodhama/trellis#263` (TRL-29) claims `0086` and lands first.
+> `decisions/` numbers are allocated by whichever branch merges first, not by whichever drafts
+> first; nothing else in this record moved.
+>
+> **`decision-0078` recorded this same mechanism and armed a trigger on it**
+> (`decisions/0078-no-orphan-followups.md:146-155`): *"nothing catches two branches claiming one
+> id… if it recurs a third time, that is the trigger to file it."* The two it counted were
+> `0077` and trellis#252's `0076`. **This is the third**, so the trigger has fired and the
+> obligation is discharged rather than noted: filed as
+> [TRL-40](https://linear.app/kodhama/issue/TRL-40). Found by a `corpus-reviewer` pass, not by the
+> author who was standing in the collision.
 
 # 0087 — one gateway for every payload read; a defect class closed by construction, not by patch twelve
 
@@ -30,8 +39,11 @@ date: 2026-09-03
 either predecessor**, because neither states a total and a count in a record is a measurement with
 a date (`decision-0083`'s own discipline). What they say is: *"That branch turned out to be **one
 of seven**, not the only one. Review of this branch, before merge, found six more"*
-(`decisions/0083-rules-toml-reconciles-itself.md:86-87`), then *"An **eighth** instance of the same
-class is fixed but is NOT in the table"* (`:125-126`); `decision-0084` adds further instances in
+(`decisions/0083-rules-toml-reconciles-itself.md:87-88`), then *"An **eighth** instance of the same
+class is fixed but is NOT in the table"* (`:127-128`) — *line numbers as of this record; `0083`'s
+frontmatter has grown since it was written, and an earlier draft of this paragraph cited the
+pre-growth positions. The quoted text is the citation; the numbers are a convenience that decays.*
+`decision-0084` adds further instances in
 its §3 and §5 without totalling them. Adding the two filed-but-unfixed (`TRL-33`, `TRL-34`) and the
 two this change found while enumerating gives **fifteen at the point of writing**. Any reader who
 counts differently should trust their own count over this sentence — the number is not what the
@@ -114,10 +126,28 @@ That rule reads, verbatim at `decisions/0043-generator-only-cli-and-payload-stam
 > `.trellis/version` against the installed plugin's `reference/version`: warn on mismatch,
 > **no-op when either side is missing or empty.**
 
-**The no-op half is what this record changes.** Missing and empty are inside "cannot be read", and
-under Decision 5 they now draw `TRELLIS_STALENESS_UNKNOWN` (plugin side) or
-`TRELLIS_RULES_NOT_LOADED` (overlay side) instead of silence. The compare-and-warn half stands
-untouched, as does everything else in `0043`.
+**The no-op half is what this record changes**, on all **three** branches that carried it — missing
+and empty are inside "cannot be read", and each now says something instead of nothing:
+
+| Branch | Stamp | Was | Is |
+|---|---|---|---|
+| Path A, the plugin's stamp | `$plugin/reference/version` | silent | `TRELLIS_STALENESS_UNKNOWN` — still governed |
+| Path C, the plugin's stamp | `$plugin/reference/version` | silent | `TRELLIS_STALENESS_UNKNOWN` — still governed |
+| Path A, the project's stamp | `.trellis/internal/version` | silent when empty | `TRELLIS_RULES_NOT_LOADED` — the overlay is broken |
+| **The legacy flat path** | **`.trellis/version`** | **silent when either stamp was unreadable** | **the migration nudge, saying which stamp it could not read — no `TRELLIS_` marker, because nothing is ungoverned and nothing is stale-by-comparison; the LAYOUT is what is stale, and that is true without either stamp** |
+
+**The fourth row is the one a reader most needs, and an earlier draft of this record omitted it** —
+found by a corpus review, which also named why it matters: **`.trellis/version` is the path
+`decision-0043` rule 3 literally names.** The comparison moved to `.trellis/internal/version` under
+`decision-0051`, whose own record carries no supersession pointer at `0043`, so every statement
+about "rule 3's stamp" since then has silently meant the post-`0051` path. This record does too,
+and now says so rather than leaving the reader to notice.
+
+The compare-and-warn half stands untouched, and so does the rest of `0043` — **except the parts
+already reached by `decision-0059`, `decision-0061` and `decision-0065`**, which are visible in the
+same frontmatter field. `decision-0065` in particular already narrowed rules 2-3 to vendored
+projects. An earlier draft said "everything else in `0043`" flat, which read as a claim that
+nothing else had ever been changed; it had.
 
 Two honesties about the scope:
 
@@ -222,3 +252,22 @@ disposition each turn the covering structural guard red.
   meets `decision-0078`'s own test (now TRL-39). Each finding was re-verified against the cited
   source before being acted on; none was accepted on the reviewer's say-so. Recorded here because
   a record that hid its own review would be arguing against its own thesis.
+- **The re-review of the corrected draft found three more, and they are the interesting ones.**
+  Two line citations to `decision-0083` were off by one and two lines (`0083`'s frontmatter had
+  grown since the numbers were taken); the `changes:` scope named two dispositions where the code
+  has **four**, omitting the legacy flat path — *the path rule 3 literally names*; and the
+  corrected CRLF attribution had **not reached the two derivatives this record itself points at**,
+  so `staleness.sh` and `cli/plugin_hook_test.go` still carried the misattribution the record had
+  just fixed. That last one is a `decision-0028` pair failing inside the change that cites
+  `decision-0028` — a source and its derivative disagreeing, caught by a reviewer rather than by
+  the author who wrote both.
+- **A code review on the pull request found two more, and the second is the sharpest finding on
+  this branch.** A P2 showed the version-stamp read was `head -n1 | tr -d '[:space:]'`, so a valid
+  stamp followed by garbage, and a stamp with a space inside it, were both accepted as
+  authoritative at zero bytes of output — the defect class this record is about, reached through a
+  door this record's own author left open. And the structural guard's payload-path regex was
+  anchored at line start, so `firm) header="$plugin/…"` — a real payload path in a `case` arm — was
+  invisible to it, while its count floor passed anyway because an unrelated variable filled the
+  slot. **The mutation used to prove that guard added a variable at line start: the shape the
+  regex already handled.** A guard is known to work only against the mutations actually tried,
+  which is this record's own thesis arriving one level up and landing on it.

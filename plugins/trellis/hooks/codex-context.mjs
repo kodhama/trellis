@@ -112,8 +112,8 @@ function nearestOverlay(cwd, boundary) {
 // SUCCESS. Emptiness was caught only by post-checks each caller remembered to
 // write (empty-prose for the prose and the rules, the version regex for the
 // stamp), and the project config had none at all. That is guarded by
-// remembering, which is precisely what has failed eleven times across
-// decision-0083 and decision-0084.
+// remembering, which is precisely the failure mode decision-0083 and
+// decision-0084 kept shipping fixes for, one instance at a time.
 //
 // So the DEFAULT is now loud: a call that says nothing about emptiness gets
 // empty-file. A call site where an empty read is legitimate says so in its own

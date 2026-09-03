@@ -4104,16 +4104,20 @@ func hookPathForDefaults(t *testing.T) string {
 // TestBrokenPayloadIsNeverSilent is the behavioural half of the guard TRL-33
 // asks for, and the primary deliverable of that issue.
 //
-// Eleven defects across decision-0083 and decision-0084 shared one shape: an
-// absent, empty, truncated or unreadable payload input reached downstream
-// logic and the session ran ungoverned at exit 0 with nothing signalling a
-// problem. ALMOST NONE was found by this suite or by reading the code — every
-// one was found by a reviewer RUNNING the hook against a deliberately broken
-// input, one file at a time, as they thought of it. This test is that
-// reviewer, written down.
+// Fifteen defects, counted 2026-09-03, shared one shape: an absent, empty,
+// truncated or unreadable payload input reached downstream logic and the
+// session ran ungoverned at exit 0 with nothing signalling a problem. The
+// count is decision-0087's own measurement, not a total either predecessor
+// states — decision-0083 records eight and decision-0084 several more without
+// adding them up, and four were still open when it was taken.
+//
+// ALMOST NONE was found by this suite or by reading the code — every one was
+// found by a reviewer RUNNING the hook against a deliberately broken input,
+// one file at a time, as they thought of it. This test is that reviewer,
+// written down.
 //
 // THE FILE LIST IS READ FROM THE BUNDLE, never hardcoded. That is what makes
-// instance twelve caught by construction: a payload file added to
+// the NEXT instance caught by construction: a payload file added to
 // plugins/trellis/reference/ later joins this matrix without anyone
 // remembering, and if the hook starts reading it unguarded, this test says so.
 //
@@ -4377,7 +4381,8 @@ func TestNoPayloadReadBypassesTheGateway(t *testing.T) {
 // missing-file and unreadable-file where the shell hook used to swallow both —
 // but a zero-byte file came back as { value: "" }, a SUCCESS, and emptiness was
 // caught only by post-checks each caller remembered to write. That is guarded
-// by remembering, which is what TRL-33 says has failed eleven times.
+// by remembering, which is the failure mode TRL-33 was filed about — see
+// decision-0087 for the count and how it was arrived at.
 //
 // The third argument makes the default loud: a call that says nothing gets
 // empty-file. A call site where empty is legitimate — the project's own

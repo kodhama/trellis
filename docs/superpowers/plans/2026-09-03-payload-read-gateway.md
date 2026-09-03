@@ -358,14 +358,29 @@ git commit -m "TRL-34: an unreadable plugin version stamp says why staleness cou
 
 **Files:**
 - Modify: `plugins/trellis/VERSION` (one line), `install.sh` (bundle manifest)
-- Create: `decisions/0087-one-gateway-for-every-payload-read.md`
+- Create: `decisions/0086-one-gateway-for-every-payload-read.md`
 
 - [ ] **Step 1:** Bump `plugins/trellis/VERSION` — a payload change no cached consumer would otherwise re-pull. **One line only**, so the queued change behind this one rebases cleanly.
 - [ ] **Step 2:** Advance the baked manifest hashes in `install.sh` for `hooks/staleness.sh`, `hooks/codex-context.mjs` and `VERSION`. `TestInstallScriptBundleManifestIsCurrent` names each stale line.
-- [ ] **Step 3:** Write `decisions/0087`. Verify `0087` is free by listing `decisions/`. No `status:` field (`decision-0082`). Record: the defect class and its count; the gateway; why `missing` and `unreadable` are distinguished but neither is silent; the new `TRELLIS_STALENESS_UNKNOWN` marker as a contract change; the two inverted tests; and as an **open question** the Claude/Codex divergence on a malformed `reference/version` (Claude governs and annotates, Codex refuses) — named, not closed.
+- [ ] **Step 3:** Write `decisions/0086`. Verify `0086` is free by listing `decisions/`. No `status:` field (`decision-0082`). Record: the defect class and its count; the gateway; why `missing` and `unreadable` are distinguished but neither is silent; the new `TRELLIS_STALENESS_UNKNOWN` marker as a contract change; the two inverted tests; and as an **open question** the Claude/Codex divergence on a malformed `reference/version` (Claude governs and annotates, Codex refuses) — named, not closed.
 - [ ] **Step 4:** `cd cli && go test -count=1 ./... && go build ./... && go vet ./...` → all green.
 - [ ] **Step 5:** Invoke the repo-owned `corpus-reviewer` agent against the new decision.
 - [ ] **Step 6:** Rebase on `origin/main` (PR #260 touches `install.sh`'s manifest — expect a conflict there and rebase rather than fight it). Commit, push, open the PR. **Do not merge** (`floor-intent-gate`).
+
+  > **2026-09-03, after execution — the record shipped as `decision-0087`, not `0086`.** Step 3's
+  > instruction was followed exactly as written: `0085` was the highest on `main` when this branch
+  > opened, so `0086` was free by the only test available to a branch. It was not free in the merge
+  > queue — `kodhama/trellis#263` (TRL-29) also claimed `0086` and lands first — so this branch
+  > renumbered before merge. **Decision ids are allocated by whichever branch merges first, and a
+  > branch cut before the race cannot see it** (`decision-0078` recorded the same mechanism and
+  > armed a trigger to file it on a third recurrence; this is the third, filed as
+  > [TRL-40](https://linear.app/kodhama/issue/TRL-40)).
+  >
+  > **Appended rather than edited in place**, per `decision-0085` point 5 — *"the correction is a
+  > dated note appended beside the original claim, never an edit that makes the record look
+  > prescient."* An earlier version of this renumber did edit both lines in place, which made the
+  > plan read as though it had instructed verifying `0087`; a corpus review caught it and the
+  > original wording is restored above.
 
 ---
 
