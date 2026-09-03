@@ -10,13 +10,16 @@ name: cli-ci
 
 # Paths include the doc surfaces (docs/, README, install.sh, plugins/) so the
 # docs-consistency test (decision-0025) runs when a doc claim changes, not only on
-# code changes.
+# code changes. They also include .github/scripts/** and decision-id-guard.yml:
+# cli/decision_id_guard_test.go executes that script and reads that workflow
+# (decision-0089), so editing either without touching cli/ would otherwise skip
+# the only tests that cover them.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
 
 jobs:
   build-test:

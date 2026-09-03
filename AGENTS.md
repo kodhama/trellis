@@ -48,7 +48,7 @@ asked for a PR, open it. An agent still may not merge on his behalf without his 
 | supersede a record | `decision-0082` — the forward pointer *is* the mark; `decision-0040` for the partial form |
 | retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal) · `decision-0074` |
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
-| record a significant choice | append to `decisions/` — the four strategic forks are `0001–0004` |
+| record a significant choice | append to `decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main` **and** on every open PR; `decision-0089`'s CI guard fails the higher-numbered claimant |
 | plan a build between a decision and the code | the **superpowers** skills (`brainstorming`, `writing-plans`, `executing-plans`) — the spec stage retired in `decision-0079`, and `specs/` with it |
 | record a next step | `decision-0078` — name the consumer that will re-present it, or drop it |
 | pick up or file work | `decision-0075` — see *Where work lives* below |
