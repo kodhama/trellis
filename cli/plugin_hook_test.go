@@ -4231,3 +4231,117 @@ func TestBrokenPayloadIsNeverSilent(t *testing.T) {
 		}
 	}
 }
+
+// TestNoPayloadReadBypassesTheGateway is the structural half of the guard
+// TRL-33 asks for. TestBrokenPayloadIsNeverSilent is the behavioural half and
+// the primary one; this half is what makes a read added LATER safe, at the
+// moment it is written rather than the moment someone breaks it.
+//
+// Two rules, and between them they have no false positives on the shapes this
+// hook legitimately uses:
+//
+//  1. Every shell variable assigned a path under the installed plugin must be
+//     passed to payload_read. This is what catches a NEW payload file — you
+//     cannot read one without naming it, and naming it puts you in the scan.
+//  2. No literal "$plugin/..." may be a file operand outside payload_read.
+//     This catches the shortcut around rule 1: reading the path inline without
+//     ever binding it to a variable.
+//
+// What the rules deliberately do NOT forbid is a SECOND read of a variable
+// that has already been through the gateway — $rules is read positionally by
+// three awks after payload_read has proved it readable and non-empty, and that
+// is the safe pattern rather than a bypass. The hazard the eleven instances
+// shared was an UNCHECKED first read, not a checked one repeated.
+func TestNoPayloadReadBypassesTheGateway(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+
+	gateStart := strings.Index(src, "\npayload_read() {")
+	if gateStart < 0 {
+		t.Fatal("payload_read() not found in staleness.sh — the scan is broken, and a guard that reads nothing passes")
+	}
+	gateEnd := strings.Index(src[gateStart:], "\n}\n")
+	if gateEnd < 0 {
+		t.Fatal("payload_read() has no closing brace at column 0 — the scan is broken")
+	}
+	gateLo := strings.Count(src[:gateStart], "\n") + 1
+	gateHi := gateLo + strings.Count(src[gateStart:gateStart+gateEnd], "\n")
+
+	// Rule 1.
+	assignRe := regexp.MustCompile(`(?m)^[ \t]*([a-z_]+)="\$plugin/`)
+	found := assignRe.FindAllStringSubmatch(src, -1)
+	if len(found) < 4 {
+		t.Fatalf("found only %d payload path assignments — the scan is broken; staleness.sh reads at least reference/version, rules.md, a posture header and a preset", len(found))
+	}
+	seen := map[string]bool{}
+	for _, m := range found {
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		if !strings.Contains(src, `payload_read "$`+m[1]+`"`) {
+			t.Errorf("$%s holds a path inside the installed plugin but is never passed to payload_read — every payload read goes through the gateway, so that an absent, empty or unreadable file is refused loudly instead of reaching downstream logic", m[1])
+		}
+	}
+
+	// Rule 2. A literal "$plugin/... as the operand of a read command or a file
+	// test. `emit` lines are excluded: they NAME payload paths in prose (the
+	// remedy tells the reader where to copy a preset from), which is text, not
+	// a read.
+	inlineRe := regexp.MustCompile(`(cat|head|tail|sed|awk|grep|wc|sort|\[ *!? *-[fser])\b[^\n]*"\$plugin/`)
+	for i, line := range strings.Split(src, "\n") {
+		n := i + 1
+		if n >= gateLo && n <= gateHi {
+			continue
+		}
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "emit ") {
+			continue
+		}
+		if inlineRe.MatchString(line) {
+			t.Errorf("staleness.sh:%d opens a payload path inline instead of through payload_read:\n  %s", n, trimmed)
+		}
+	}
+}
+
+// TestEveryReadRequiredStatesWhatEmptyMeans is the Codex half of the same
+// guard. readRequired has been the model for this all along — it reports
+// missing-file and unreadable-file where the shell hook used to swallow both —
+// but a zero-byte file came back as { value: "" }, a SUCCESS, and emptiness was
+// caught only by post-checks each caller remembered to write. That is guarded
+// by remembering, which is what TRL-33 says has failed eleven times.
+//
+// The third argument makes the default loud: a call that says nothing gets
+// empty-file. A call site where empty is legitimate — the project's own
+// .trellis/rules.toml, the supported hand-written-partial shape — says so in
+// its own source, where a reader sees it.
+func TestEveryReadRequiredStatesWhatEmptyMeans(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+
+	// Every call site is an assignment, which is what separates them from the
+	// `function readRequired(...)` definition.
+	callRe := regexp.MustCompile(`(?s)=\s*readRequired\(([^;]*?)\);`)
+	calls := callRe.FindAllStringSubmatch(src, -1)
+	if len(calls) < 2 {
+		t.Fatalf("found only %d readRequired call sites — the scan is broken, and a guard that reads nothing passes", len(calls))
+	}
+	// The scan must see every occurrence but the definition. A call whose result
+	// is not assigned would otherwise slip past the pattern above unexamined,
+	// which is the failure mode of a source guard: passing on what it cannot see.
+	if occurrences := strings.Count(src, "readRequired("); occurrences != len(calls)+1 {
+		t.Fatalf("codex-context.mjs mentions readRequired( %d times but the scan matched %d call sites plus one definition — something is calling it in a shape this guard cannot read", occurrences, len(calls))
+	}
+	for _, m := range calls {
+		args := strings.Join(strings.Fields(m[1]), " ")
+		if !strings.Contains(args, "emptyError") && !strings.Contains(args, "emptyIsValid") {
+			t.Errorf("a readRequired call site does not say what an empty read means — pass { emptyError: ... } or { emptyIsValid: true }:\n  readRequired(%s)", args)
+		}
+	}
+}
