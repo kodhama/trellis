@@ -57,14 +57,26 @@ saying the rows are authoritative.
    file's `strictness`, exactly as `staleness.sh` path B does:** `firm` → `reference/trellis-a.md`,
    every other value → `reference/trellis-b.md`. Head and tail change source; body, footer, import
    line and stamp are unchanged.
-2. **Every other input resolves to `trellis-b.md`** — no file, no key, an unrecognised value, or a
-   file that cannot be read — which is the hook's own fall-through, not a new default invented here.
-   A project with no `rules.toml` is still seeded `rules-b.toml`, so seed and header still agree.
-3. **The unreadable case is said out loud** (`decision-0035`, `floor-transparency`). `[ -f ]` is true
-   for a file the invoking user cannot read; the installer reports that it could not honour the
-   file's posture rather than defaulting in silence, and does not abort — the hook survives that
-   input and serves adaptive, and diverging from it over a permission bit is the same defect in
-   miniature.
+2. **Every other readable input resolves to `trellis-b.md`** — no file, no key, or an unrecognised
+   value — which is the hook's own fall-through, not a new default invented here. A project with no
+   `rules.toml` is still seeded `rules-b.toml`, so seed and header still agree. A file that cannot be
+   read also resolves to `trellis-b.md`, but that is **not** what the hook does; D3 records the
+   divergence rather than claiming parity.
+3. **The unreadable case is said out loud, and it is a recorded divergence from the hook**
+   (`decision-0035`, `floor-transparency`). `[ -f ]` is true for a file the invoking user cannot
+   read. The installer renders the adaptive header, reports that it could not honour the file's
+   posture, and does not abort — the first version of this change did abort there, under `set -eu`
+   inside a command substitution, leaving a vendored bundle with no rules file, no seed and only the
+   shell's `cannot open` as diagnosis. The hook does **not** serve adaptive on that input: its
+   strictness `awk` comes back empty, but its row validator then produces no usable report and
+   `staleness.sh` emits `TRELLIS_RULES_NOT_LOADED` and injects nothing — its fail-closed branch
+   above the reconciler. So on an unreadable file the two deliveries disagree: installer adaptive
+   and announced, hook nothing and announced. And once the rendered file exists the hook stands down
+   to it (path C), so the rendered adaptive file is what governs. The fail-closed alternative — the
+   installer refusing to render over a file it cannot read — was available and is not taken here: an
+   install that stops halfway is the worse state, and the install is the one moment someone reads
+   the output. It is the same shape as the `governed = false` residual under Consequences, and it
+   is noted on `TRL-38` beside it.
 4. **The parser is the hook's, copied byte for byte, with a guard pinning the pair**
    (`decision-0028`). The hook ships *inside* the bundle `install.sh` vendors, so the two cannot
    share a file; a copy drifts unless something fails when it does.
@@ -74,14 +86,17 @@ saying the rows are authoritative.
 
 ## Consequences
 
-- **`decision-0068` is changed in part, not superseded.** Only D5's constant-header ruling and the
-  read inventory it states are corrected; its delivery mechanism, project-scope-only ruling (D1),
-  the two payload edits, the stamp, D11 and the footer sentence all stand. The forward pointer on
-  `0068` records the scope.
-- **The two deliveries now agree on the posture header of any *governed* project**, and a test proves
-  it by running both against the same repository rather than asserting each side against a fixture.
-  The qualifier is load-bearing, not hedging: on a `governed = false` project they still disagree, for
-  the separate reason in the last bullet, and the test exercises governed fixtures only.
+- **`decision-0068` is changed in part, not superseded.** What is corrected: D5's constant-header
+  ruling, the read inventory it states, and D9's clause that *"`install.sh` makes no posture
+  choice"* — its other clause, *"writes no `rules.toml`"*, was already changed by `decision-0070`
+  D2. Its delivery mechanism, project-scope-only ruling (D1), the two payload edits, the stamp, D11
+  and the footer sentence all stand. The forward pointer on `0068` records the scope.
+- **The two deliveries now agree on the posture header of any *governed* project whose `rules.toml`
+  is readable**, and a test proves it by running both against the same repository rather than
+  asserting each side against a fixture. The qualifiers are load-bearing, not hedging: on a
+  `governed = false` project they still disagree, for the separate reason in the last bullet; on an
+  unreadable file they disagree as D3 records; and the test exercises governed, readable fixtures
+  only.
 - **What is *not* claimed here:** that `install.sh` may read `.trellis/` generally, or branch on any
   other project state. One key, for one purpose, counted and guarded. A third read still has to come
   and argue itself.
@@ -89,14 +104,18 @@ saying the rows are authoritative.
   `rules.toml` holding only the `governed = false` opt-out still gets a governing rules file
   rendered into it, after which the hook stands down and the rendered file governs a project that
   switched Trellis off. That is pre-existing behaviour, older than this change and outside `TRL-37`;
-  it is filed as `TRL-38`, which is the consumer that will re-present it. The installer's own output no longer claims hook parity on that input.
+  it is filed as `TRL-38`, which is the consumer that will re-present it, and the unreadable-file
+  divergence in D3 is noted there beside it as the same shape. The installer's own output no longer
+  claims hook parity on either input.
 
 ## Self-check
 
-- **The maintainer has not ruled on this; his merge is the act** (`decision-0082`). This record is
-  authored by the agent that wrote the code change (`decision-0037` — authorship, not
-  accountability), and it reverses a ruling he gave on 2026-07-30. It is written to be rejectable:
-  if he prefers the constant, reverting is one `case` statement and this record retires.
+- **The maintainer accepted this record on 2026-09-03, on `TRL-37`; his merge is the act**
+  (`decision-0082`). It is authored by the agent that wrote the code change (`decision-0037` —
+  authorship, not accountability), and it reverses a ruling he gave on 2026-07-30. It was written to
+  be rejectable — reverting is one `case` statement and the record retires — and the D3 wording was
+  corrected in review before merge, after an automated reviewer showed the hook-parity claim for
+  unreadable files was false.
 - **`decision-0081`'s cost-of-reversal framing applies and is cited at its own stated weight** — that
   record calls itself *"(proposal, not a decision)"*. Under it this is cheap to reverse, which is the
   argument for the agent proceeding rather than blocking; it is not authority to have decided.
