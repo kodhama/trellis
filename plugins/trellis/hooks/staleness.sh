@@ -454,6 +454,7 @@ if [ -d "$internal" ]; then
   # ONE message for all three files, naming $f. The two it replaces said
   # different things about the same broken overlay depending on which file was
   # broken; a reader gains nothing from that and the remedy is identical.
+  overlay=""
   for f in version trellis.md rules.md; do
     if ! payload_read "$internal/$f"; then
       emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f $payload_why, so the managed block's imports cannot load the rules and this hook cannot tell which rules the surviving files represent. The hook will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
