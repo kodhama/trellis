@@ -1,8 +1,9 @@
 ---
 id: decision-0086
 type: decision
-depends_on: [decision-0070, decision-0083, decision-0084]
-informed_by: [decision-0010, decision-0028, decision-0035, decision-0051, decision-0073, decision-0081, decision-0082, decision-0085]
+depends_on: [decision-0043, decision-0051, decision-0070, decision-0083, decision-0084]
+changes: [decision-0043]
+informed_by: [decision-0010, decision-0028, decision-0035, decision-0065, decision-0073, decision-0081, decision-0082, decision-0085]
 owner: agent
 date: 2026-09-03
 ---
@@ -15,22 +16,38 @@ date: 2026-09-03
 
 ## Context
 
-`decision-0083` and `decision-0084` shipped eleven fixes that shared one shape:
+`decision-0083` and `decision-0084` shipped a run of fixes that shared one shape:
 
 > **An absent, empty, truncated or unreadable *payload* input reaches downstream logic, and the
 > session runs ungoverned at `exit 0` with nothing signalling a problem.**
 
-Two of the eleven were the **inverse** — a guard that over-corrected and refused a *healthy*
-payload. A CRLF-terminated `rules.md` was reported as truncated; an unreadable
-`reference/rules-b.toml` was reported as payload incoherence while `rules.md` and the project's
-rows were both perfectly well. A consumer who sees `TRELLIS_RULES_NOT_LOADED` with nothing wrong
-to fix is served no better than one governed by a broken payload.
+**The count, stated as this record's own measurement on 2026-09-03 rather than attributed to
+either predecessor**, because neither states a total and a count in a record is a measurement with
+a date (`decision-0083`'s own discipline). What they say is: *"That branch turned out to be **one
+of seven**, not the only one. Review of this branch, before merge, found six more"*
+(`decisions/0083-rules-toml-reconciles-itself.md:86-87`), then *"An **eighth** instance of the same
+class is fixed but is NOT in the table"* (`:125-126`); `decision-0084` adds further instances in
+its §3 and §5 without totalling them. Adding the two filed-but-unfixed (`TRL-33`, `TRL-34`) and the
+two this change found while enumerating gives **fifteen at the point of writing**. Any reader who
+counts differently should trust their own count over this sentence — the number is not what the
+argument rests on.
 
 **The recurrence is the finding, and how each was found is the argument.** Almost none was found
 by the test suite or by reading the code. Every one was found by a reviewer *running* the hook
-against a deliberately broken input, one file at a time, as they thought of it. Two more were
-filed rather than fixed (`TRL-33`, `TRL-34`); this change found two further live instances while
-enumerating, so the count at the point of writing was **fifteen**, not eleven.
+against a deliberately broken input, one file at a time, as they thought of it.
+
+**Some were the inverse** — a guard that over-corrected and refused a *healthy* payload. An
+unreadable `reference/rules-b.toml` was reported as payload incoherence while `rules.md` and the
+project's rows were both perfectly well (`decision-0083` records the general property at
+`:115-116`; the specific fix is in the hook). A CRLF-terminated `rules.md` was reported as
+truncated — **that one is recorded in the hook rather than in either decision**, at
+`plugins/trellis/hooks/staleness.sh:796-804` (*"an exact ASCII comparison fails — reporting
+`not-last` and blacking out a COMPLETE, CORRECT payload"*), and pinned by
+`TestTruncatedRulesMdIsRefusedByItsOwnTerminator`/"a healthy CRLF payload governs and is not
+refused". Cited to its actual source, because a corpus review of an earlier draft of this record
+correctly found it attributed to two records that do not say it. A consumer who sees
+`TRELLIS_RULES_NOT_LOADED` with nothing wrong to fix is served no better than one governed by a
+broken payload.
 
 ### What was still live, measured before anything was changed
 
@@ -82,7 +99,30 @@ would have been the over-correction this record is half about.
 **6. The plugin's version stamp is shape-checked**, `payload@` plus exactly twelve lowercase hex,
 matching what `codex-context.mjs` has always required of the same file. A *truncated* stamp is not
 a different version — it is an unreadable one — and comparing it reported a healthy overlay as
-stale.
+stale. This narrows `decision-0043` rule 2's `payload@<content-hash>` without contradicting it:
+every stamp the payload generator has ever written is twelve hex.
+
+**6a. This changes `decision-0043` rule 3, and the forward pointer says exactly which clause.**
+That rule reads, verbatim at `decisions/0043-generator-only-cli-and-payload-stamp-staleness.md:54-56`:
+
+> **Staleness is a file-to-file compare; `trellis status` retires.** `hooks/staleness.sh` compares
+> `.trellis/version` against the installed plugin's `reference/version`: warn on mismatch,
+> **no-op when either side is missing or empty.**
+
+**The no-op half is what this record changes.** Missing and empty are inside "cannot be read", and
+under Decision 5 they now draw `TRELLIS_STALENESS_UNKNOWN` (plugin side) or
+`TRELLIS_RULES_NOT_LOADED` (overlay side) instead of silence. The compare-and-warn half stands
+untouched, as does everything else in `0043`.
+
+Two honesties about the scope:
+
+- **Half of the departure predates this record.** A *missing* `.trellis/internal/version` has
+  refused loudly on `main` since before this branch — `decision-0043` rule 3's no-op had already
+  been left behind on that side, with no pointer. This record marks the whole departure rather
+  than only its own half.
+- **The `TRL-34` case is not covered by rule 3 at all.** Mode 000 is neither missing nor empty, so
+  a stamp that exists and cannot be opened is a gap `0043` never addressed, not a clause this
+  record overrides.
 
 **7. On Codex, the default becomes loud without any behaviour changing.** `readRequired` — which
 has been the model for all of this, reporting `missing-file` and `unreadable-file` where the shell
@@ -101,6 +141,10 @@ itself.**
   Because the file list comes from the bundle, **a payload file added later joins the matrix
   without anyone remembering.** Its `healthy` and `crlf` rows run in the same table, so the
   over-refusal direction is measured by the same guard.
+  **It scopes to two of `decision-0073` D1's delivery states, and says so where it does it**
+  (D1's per-component relevance clause): config-only and vendored-defaults are the two states on
+  which this hook *delivers*, so only there is "silence is wrong" unconditional — a current
+  vendored overlay is legitimately silent, and path A is covered by named subtests instead.
 - `TestNoPayloadReadBypassesTheGateway` and `TestEveryReadRequiredStatesWhatEmptyMeans` are the
   structural half: nothing opens a payload path behind the gateway's back, and no `readRequired`
   call site stays silent about emptiness. Source-scanning guards have precedent here — the
@@ -124,9 +168,13 @@ disposition each turn the covering structural guard red.
   the containment evidence for a change this wide.
 - **`TRELLIS_STALENESS_UNKNOWN` is a new marker in the agent-facing vocabulary.** Recorded here
   rather than introduced quietly, because a marker is contract.
-- **A `VERSION` bump ships with it** (0.8.0 → 0.9.0) so cached consumers re-pull, and the baked
-  bundle manifest in `install.sh` advances for the four files that changed (`decision-0028`: a
-  source and its derivative move together).
+- **A `VERSION` bump ships with it** (0.8.0 → 0.9.0) so cached consumers re-pull, with **both
+  plugin manifests** (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `install.sh`'s
+  baked bundle manifest advanced in the same commit (`decision-0028`: a source and its derivative
+  move together).
+- **`decision-0043` gains `superseded_in_part_by: [decision-0086]`**, scoped in its trailing
+  comment to rule 3's no-op clause and to nothing else. Under `decision-0082` the forward pointer
+  is the only mark there is.
 - **What is not claimed:** that this is the last instance. The claim is narrower and checkable —
   that the *next* one is caught by a guard rather than by whoever thinks to try it, and that a
   payload file added later is covered without anyone deciding to cover it.
@@ -139,7 +187,10 @@ disposition each turn the covering structural guard red.
   a warning is withheld"* — is the reason for the Claude behaviour, and by that reading Codex is
   the over-corrected side. Not changed here: `codex-context.mjs` has a queued change behind this
   one, and aligning the two is a decision about which reading is right rather than a bug fix.
-  Named per `decision-0078`: the consumer that will re-present it is the next Codex change.
+  **Named per `decision-0078`, whose test is a consumer with a cadence: filed as
+  [TRL-39](https://linear.app/kodhama/issue/TRL-39/the-two-hosts-disagree-about-a-malformed-referenceversion-codex).**
+  An earlier draft of this record named *"the next Codex change"*, which `decision-0078` explicitly
+  rules out — corrected after a corpus review said so.
 - **The vendored overlay's `trellis.md` and `rules.md` are checked for readability by the hook but
   imported by the *host*.** The hook can now tell the reader the import will fail; it still cannot
   tell whether the host succeeded. That gap is inherent to the transport, not to this change.
@@ -156,3 +207,13 @@ disposition each turn the covering structural guard red.
 - **This record was written by the agent that made the change**, and the guard against that is
   Decision 9: every assertion added here was broken deliberately and observed to fail with the
   expected symptom. A guard that has never failed is not known to work.
+- **The `corpus-reviewer` returned FAIL on this record's first draft, and it was right on every
+  count that mattered.** It found an undeclared change to a live clause of `decision-0043` (now
+  Decision 6a and a forward pointer), `decision-0051` demoted to `informed_by` where
+  `decision-0083` — the immediate predecessor, on the same paths — has it as `depends_on` (now
+  moved), a count of "eleven" attributed to two records that state no total (now this record's own
+  measurement, with what they actually say quoted), a CRLF instance attributed to records that do
+  not contain it (now cited to the hook and its test), and an open question with no consumer that
+  meets `decision-0078`'s own test (now TRL-39). Each finding was re-verified against the cited
+  source before being acted on; none was accepted on the reviewer's say-so. Recorded here because
+  a record that hid its own review would be arguing against its own thesis.

@@ -4079,9 +4079,12 @@ func hookPathForDefaults(t *testing.T) string {
 // plugins/trellis/reference/ later joins this matrix without anyone
 // remembering, and if the hook starts reading it unguarded, this test says so.
 //
-// It runs on the two paths where the hook DELIVERS — config-only and
-// vendored-defaults — because only there is "silence is wrong" unconditional.
-// On path A a healthy, current overlay is legitimately silent, so that path is
+// DELIBERATE SUBSET of decision-0073 D1's delivery states, stated here where it
+// is done, per D1's own per-component relevance clause. It runs on the two
+// states where the hook DELIVERS — config-only and vendored-defaults — because
+// only there is "silence is wrong" unconditional. On path A a healthy, current
+// overlay is legitimately silent, and a payload file that path never reads
+// would make an unconditional assertion there simply false; that path is
 // covered by its own named subtests in TestStalenessHook instead.
 //
 // The healthy and CRLF rows run in this same table ON PURPOSE. Two of the
