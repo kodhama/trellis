@@ -54,7 +54,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // --- helpers -------------------------------------------------------------------
@@ -2128,6 +2130,89 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 		assertNoRuleDelivered(t, "the hook", out)
 		if !strings.Contains(out, "TRELLIS_NOT_GOVERNING") {
 			t.Errorf("the hook must tell the session to disregard the file the host already loaded; got:\n%s", out)
+		}
+	})
+
+	// Review of #267: the first version of the opt-out branch warned about a
+	// pre-existing rendered file only. A legacy project carrying a static
+	// overlay or an inline managed block beside its opt-out was told it was not
+	// governed while the host loaded those rules at launch regardless, and got
+	// no migration remedy — the shapes the hook's own TRELLIS_NOT_GOVERNING
+	// override names. The installer must name what is loaded anyway, with the
+	// paths to delete, and the hook must emit its override for the same shape.
+	for _, tc := range []struct {
+		name, wantShape, wantPath string
+		plant                     func(t *testing.T, repo string)
+	}{
+		{"a vendored overlay", ".trellis/internal/ overlay", ".trellis/internal/",
+			func(t *testing.T, repo string) {
+				writeFileT(t, filepath.Join(repo, ".trellis", "internal", "version"), "payload@000000000000\n")
+			}},
+		{"an inline managed block", "managed block in CLAUDE.md", "the managed block in CLAUDE.md",
+			func(t *testing.T, repo string) {
+				writeFileT(t, filepath.Join(repo, "CLAUDE.md"), inlineBlockFixture(t))
+			}},
+	} {
+		t.Run(tc.name+" already present is left in place and warned about", func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "governed = false\n")
+			tc.plant(t, repo)
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			if res.code != 0 {
+				t.Fatalf("install failed: %s", res.stderr)
+			}
+			if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+				t.Errorf("rendered over an opt-out (stat err=%v)", err)
+			}
+			for _, want := range []string{"STATICALLY (" + tc.wantShape + ")", tc.wantPath, "/trellis:remove", "rules: LEFT IN PLACE"} {
+				if !strings.Contains(res.stdout, want) {
+					t.Errorf("stdout must carry %q; got:\n%s", want, res.stdout)
+				}
+			}
+			out := runHook(t, repo)
+			assertNoRuleDelivered(t, "the hook", out)
+			if !strings.Contains(out, "TRELLIS_NOT_GOVERNING") {
+				t.Errorf("the hook must emit its disregard override for this shape; got:\n%s", out)
+			}
+		})
+	}
+
+	// Review of #267: the governed read opened .trellis/rules.toml before any
+	// `-f` check, so a FIFO at that path blocked the sed forever, ahead of the
+	// non-regular handling the seed step already has. The read is now guarded
+	// regular-and-readable like the strictness read. A FIFO is not an opt-out
+	// and not a rules file: the installer must finish, render, and report the
+	// seed as failed rather than hang. (The hook opens the same path unguarded;
+	// that is the hook's own defect, outside this change.)
+	t.Run("a FIFO at .trellis/rules.toml does not hang the opt-out read", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		mustMkdirAll(t, filepath.Join(repo, ".trellis"))
+		if err := syscall.Mkfifo(filepath.Join(repo, ".trellis", "rules.toml"), 0o644); err != nil {
+			t.Skipf("cannot create a FIFO here: %v", err)
+		}
+		cmd := exec.Command("/bin/sh", installScriptPath(t), "--non-interactive", "--scope", "project")
+		cmd.Dir = repo
+		cmd.Env = append(os.Environ(), "TRELLIS_BUNDLE_SOURCE="+vendoredBundleAbs(t))
+		var so, se bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &so, &se
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		done := make(chan error, 1)
+		go func() { done <- cmd.Wait() }()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatalf("the installer failed on a FIFO rules.toml: %v\nstdout: %s\nstderr: %s", err, so.String(), se.String())
+			}
+		case <-time.After(30 * time.Second):
+			_ = cmd.Process.Kill()
+			t.Fatalf("the installer hung on a FIFO at .trellis/rules.toml — the opt-out read opened it before checking it is a regular file\nstdout so far: %s", so.String())
+		}
+		if !strings.Contains(so.String(), "Could not write .trellis/rules.toml") {
+			t.Errorf("a non-regular rules.toml must be reported as a failed seed, not treated as rows or as an opt-out; got:\n%s", so.String())
 		}
 	})
 }

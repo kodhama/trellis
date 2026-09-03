@@ -484,8 +484,15 @@ if [ "$scope" = "project" ]; then
   # for it; the same narrowed divergence the hook records against Codex.
   # An unreadable file leaves $governed_head empty, so it is never an opt-out
   # here — nor in the hook, whose sed fails the same way; that case is handled
-  # in the render branch below.
-  governed_head="$(sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+  # in the render branch below. Regular-and-readable BEFORE the open, as the
+  # strictness read below is guarded: a FIFO at that path (review found it)
+  # would block the sed forever waiting for a writer, ahead of the non-regular
+  # handling the seed step already has. The hook opens unguarded; that is the
+  # hook's own defect and is not fixed here.
+  governed_head=""
+  if [ -f "$git_root/.trellis/rules.toml" ] && [ -r "$git_root/.trellis/rules.toml" ]; then
+    governed_head="$(sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+  fi
   governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*governed[[:space:]]*=' 2>/dev/null || true)"
   if [ -f "$git_root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
      printf '%s\n' "$governed_head" | LC_ALL=C grep -qE '^[[:space:]]*governed[[:space:]]*=[[:space:]]*false[[:space:]]*(#.*)?$' 2>/dev/null; then
@@ -599,16 +606,34 @@ if [ "$scope" = "project" ] && [ "$opted_out" = yes ]; then
   say "project that declined. The bundle is vendored (the hook that honours the opt-out"
   say "ships in it); the rules file is not, and .trellis/rules.toml is left exactly as it"
   say "is — this installer never overwrites it."
+  # Refusing does not help against what the host ALREADY loads at launch: a
+  # rendered file from an earlier run, or a static overlay / managed block
+  # (detected above, and the shapes the hook's own opt-out override names —
+  # staleness.sh's TRELLIS_NOT_GOVERNING). Each is live right now, and "no
+  # rules file" would be false at the moment it is printed. Review found the
+  # first version of this branch warning about the rendered file only, so an
+  # opted-out legacy project was told it was not governed while its overlay
+  # loaded regardless, with no migration remedy. Both are named, with the
+  # remedy each needs.
+  loaded_anyway=""
   if [ -f "$git_root/.claude/rules/trellis.md" ]; then
-    # Refusing does not help if the file is ALREADY there: an earlier run
-    # rendered it and the opt-out came afterwards. The host loads it at launch
-    # right now, and "no rules file" would be false at the moment it is printed.
-    rendered_note="LEFT IN PLACE — .claude/rules/trellis.md exists AND .trellis/rules.toml declares governed = false"
+    loaded_anyway=".claude/rules/trellis.md"
     say ""
     say "WARNING: .claude/rules/trellis.md ALREADY EXISTS in this project, so Claude Code"
     say "loads those rules at launch over the opt-out. The hook tells each session to"
     say "disregard them, which is second-best — this installer did not create that file"
     say "and has not removed it. Delete it, or run /trellis:remove."
+  fi
+  if [ -n "$static_conflict" ]; then
+    loaded_anyway="${loaded_anyway:+$loaded_anyway and }$static_conflict"
+    say ""
+    say "WARNING: this project also delivers Trellis rules STATICALLY ($static_conflict),"
+    say "and Claude Code loads those at launch over the opt-out — the hook can only tell"
+    say "each session to disregard them. To stop them loading, delete $conflict_paths,"
+    say "or run /trellis:remove to take Trellis out entirely."
+  fi
+  if [ -n "$loaded_anyway" ]; then
+    rendered_note="LEFT IN PLACE — $loaded_anyway present AND .trellis/rules.toml declares governed = false"
   fi
   say "To adopt Trellis here instead, replace the governed = false line with the rows from"
   say "the installed plugin's reference/rules-b.toml (rules-a.toml for firm) and re-run"
