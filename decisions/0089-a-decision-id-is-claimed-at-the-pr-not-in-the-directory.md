@@ -3,7 +3,7 @@ id: decision-0089
 type: decision
 depends_on: [decision-0078, decision-0082]
 changes: [decision-0078]
-informed_by: [decision-0010, decision-0028, decision-0075, decision-0077]
+informed_by: [decision-0005, decision-0010, decision-0028, decision-0077, decision-0085]
 owner: agent
 date: 2026-09-03
 ---
@@ -27,11 +27,13 @@ Three recurrences, each recorded at the time:
 | # | Collision | How it surfaced |
 | --- | --- | --- |
 | 1 | `decision-0077` claimed by two branches at once | the loser noticed CI had never reported, went to `main`'s log, and found the other record already merged |
-| 2 | trellis#252 open on an already-merged `decision-0076` | an accident of CI |
+| 2 | trellis#252 open on an already-taken `decision-0076` | not recorded — `decision-0078` states the collision as a standing fact while arguing #1 was not a one-off |
 | 3 | `decision-0086` claimed by both trellis#262 (TRL-33) and trellis#263 (TRL-29) | a coordinating session noticed; #262 renumbered to `0087` before merge |
 
 **`decision-0078` recorded #1 and #2 and armed a trigger**, at
-`decisions/0078-no-orphan-followups.md:146-155`: *"it is dropped, on this record, because no one has
+`decisions/0078-no-orphan-followups.md:147-156` *(TRL-40 cites it as `:146-155`; the forward pointer
+this change adds to that record's frontmatter displaced it by one — `decision-0085`'s treatment of
+the same problem)*: *"it is dropped, on this record, because no one has
 agreed to do it; if it recurs a third time, that is the trigger to file it."* That is the rule of
 `inv-no-orphan-followups` applied to itself — a deferral with a named consumer and a stated
 condition. The condition fired, so this record is the discharge of an obligation, not a new
@@ -83,7 +85,7 @@ repo's existing pattern for external scripts — `cli/plugin_hook_test.go` on
 reason `go test -count=1` is not optional here.
 
 **6. `decision-0078`'s parked observation is closed, and only that.** It gains
-`superseded_in_part_by: [decision-0089]` scoped to the dropped observation at `:146-155`, plus a
+`superseded_in_part_by: [decision-0089]` scoped to the dropped observation at `:147-156`, plus a
 dated note beside the original claim (`decision-0085` §5 shape: a note beside the claim, never an
 edit that makes the record look prescient). **`inv-no-orphan-followups` itself is untouched** — this
 record does not reopen the rule, only the example it parked.
@@ -104,8 +106,11 @@ record does not reopen the rule, only the example it parked.
   ambiguous about which file.
 
 - **The tie-break can still cost a renumber; it just makes it deterministic and early.** The
-  higher-numbered PR moves. What is removed is the discovery cost — three of three collisions were
-  found by luck, one of them after merge.
+  higher-numbered PR moves. What is removed is the discovery cost: not one of the three was found by
+  anything failing. #1 was found because CI happened not to report, which sent its author to `main`'s
+  log — and by then the rival record had already merged. #3 was found by a coordinating session
+  reading two branches at once. #2's discovery route is not recorded anywhere, which is itself the
+  point: nothing was watching.
 
 - **The guard is only as fresh as the last CI run on each PR.** PR #299 merging does not re-run the
   check on #300; #300 sees it on its next push, or at merge time if the maintainer re-runs. This is
@@ -120,8 +125,16 @@ record does not reopen the rule, only the example it parked.
 - **The live `gh` path is not covered by the tests, and this is a real gap.** The tests build the
   script's environment from scratch, which proves they never reach the network — and equally proves
   they never exercise `gh pr list` / `gh api`. The parse-and-compare half is fully covered; the
-  fetch half is verified only by the first real run on this PR. The alternative (a `gh` stub on
-  `PATH`) would test the stub.
+  fetch half is verified only by real runs. Its first one, on this record's own PR (#266), fetched
+  `main`, walked all six open PRs and printed `- decision-0089 (…) — free.` The alternative (a `gh`
+  stub on `PATH`) would test the stub.
+
+- **This is Layer B, and it does not touch `decision-0010`'s no-runtime rule.** The guard lives at
+  the repo root — the methodology used to *build* Trellis (`decision-0005`) — not in `core/`, and
+  nothing ships it to a consumer. `decision-0010` permits exactly this: *"Any deterministic helper a
+  project wants for hard CI gating is written in the target project's own stack — never a runtime
+  Trellis imposes."* Artifact **conformance** stays agent-applied via `corpus-reviewer`; this check
+  is about id allocation, which is a merge-queue fact no rubric can see.
 
 - **The count of guards grows by one, and `inv-minimal-first` cuts against that.** The argument for
   paying it is that the cheaper options were tried and failed: the observation was *recorded twice*
@@ -137,11 +150,11 @@ record does not reopen the rule, only the example it parked.
 ## Self-check (gate)
 
 - **The three recurrences are quoted from where they were recorded**, not reconstructed:
-  `decision-0078:146-155` for #1 and #2, TRL-40's own table for #3. The trigger sentence is quoted
+  `decision-0078:147-156` for #1 and #2, TRL-40's own table for #3. The trigger sentence is quoted
   verbatim because the whole warrant for this record is that a prior record armed it.
 
 - **The scope of the change to `decision-0078` is stated narrowly and is checkable.** The forward
-  pointer names the dropped observation at `:146-155` and nothing else; `## Decision` there is
+  pointer names the dropped observation at `:147-156` and nothing else; `## Decision` there is
   untouched, and `inv-no-orphan-followups` remains exactly as minted. A reader who wants to reject
   this record can do so without disturbing that rule.
 
@@ -154,6 +167,20 @@ record does not reopen the rule, only the example it parked.
   higher-numbered one starts. Restored and re-run green. A check nobody has broken on purpose is a
   check nobody has verified.
 
-- **Not independently reviewed at the time of writing.** The author of this record wrote the script,
-  the workflow and the tests. The `corpus-reviewer` run and the PR review are the independent passes
-  (`inv-independent-judgment`); until then everything here is the author's own reading.
+- **Every frontmatter edge is argued in the body, or it is not here.** `decision-0082` is why this
+  record carries no `status` and treats the forward pointer as the whole supersession mark;
+  `decision-0078` is both dependency and subject; `0005` / `0010` are the layer and no-runtime
+  arguments above; `0028` the pair guard; `0077` the first collision; `0085` the note-beside-the-claim
+  shape. A sixth entry (`decision-0075`) was drafted and **dropped rather than left decorative**, the
+  disposal `decision-0069` used for the same defect.
+
+- **The independent pass ran, and it caught something.** The `corpus-reviewer` returned PASS on all
+  eleven rubric checks and one real finding the numbered checks do not reach: the citation of
+  `decision-0078`'s parked observation was written as `:146-155` in four places, correct against
+  `main` and wrong by one against the state a reader sees — because the forward pointer this change
+  adds to that record's frontmatter displaces its body. **Line 156 is the trigger sentence this
+  record quotes as its entire warrant**, so the scope pointer excluded the line that fired. Corrected
+  to `:147-156` at all four sites. `decision-0085:16-17` had hit the identical off-by-one and
+  disclosed it; citing that record's §5 without carrying its handling of this exact problem is the
+  defect. The author wrote the script, the workflow and the tests, so the PR review is still the only
+  pass on the code (`inv-independent-judgment`).

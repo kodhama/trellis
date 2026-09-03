@@ -4,7 +4,7 @@ type: decision
 status: approved  # maintainer's intent act, relayed on TRL-24: "The maintainer has ruled: the ledger gets reviewed and pruned periodically, and combining moral cousins is that review's job, not this issue's" — the mint was decided before this record was drafted, and the framing quoted below is the maintainer's. This flip records that act (decision-0046, decision-0022). Author (agent) != approver (maintainer). Scope of the act: the mint. The wording, the pair set, the release call and the scope additions below are the maintainer's to accept at merge
 depends_on: [invariants-v1, signature-catalog-v1]
 informed_by: [decision-0018, decision-0021, decision-0027, decision-0028, decision-0040, decision-0074]
-superseded_in_part_by: [decision-0089]  # 2026-09-03 — the dropped observation at :146-155 ONLY (decision ids allocated by whoever merges first, left as an observation with a "third recurrence" trigger). The trigger fired; TRL-40 filed it and decision-0089 built the guard. What stands, untouched: the whole of ## Decision — inv-no-orphan-followups is minted exactly as written, and this record's own rule is what closed the example.
+superseded_in_part_by: [decision-0089]  # 2026-09-03 — the dropped observation at :147-156 ONLY (TRL-40 cites it as :146-155; this pointer line displaced it by one) (decision ids allocated by whoever merges first, left as an observation with a "third recurrence" trigger). The trigger fired; TRL-40 filed it and decision-0089 built the guard. What stands, untouched: the whole of ## Decision — inv-no-orphan-followups is minted exactly as written, and this record's own rule is what closed the example.
 owner: agent
 date: 2026-08-28
 ---
