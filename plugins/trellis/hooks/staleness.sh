@@ -76,8 +76,10 @@
 root="${CLAUDE_PROJECT_DIR:-.}"
 plugin="${CLAUDE_PLUGIN_ROOT:-/nonexistent}"
 
-ref="$plugin/reference/version"
-current="$(head -n1 "$ref" 2>/dev/null | tr -d '[:space:]')"
+# The installed plugin's own version stamp is read further down, after the
+# payload gateway is defined — a shell function called above its definition
+# simply is not there, and that read now goes through the gateway like every
+# other payload read in this file.
 
 # Escape stdin as a JSON string body (no surrounding quotes). Newlines become \n,
 # so the whole payload rides on the single line the output contract wants. UTF-8
@@ -108,6 +110,131 @@ emit() {
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
     "$(printf '%s' "$1" | json_escape)"
 }
+
+# ======================================================== the payload gateway
+# THE ONE PLACE THIS FILE OPENS A TRELLIS PAYLOAD FILE.
+#
+# A PAYLOAD file is one that ships in the Trellis bundle — read from the
+# installed plugin, or from a vendored copy inside the consuming repository.
+# Its absence or corruption is always a broken install, never a legitimate
+# project state. That is what separates it from a PROJECT file
+# (.trellis/rules.toml, CLAUDE.md, .claude/rules/trellis.md), where absent and
+# empty are legitimate states with defined meanings. The two classes need
+# opposite defaults, which is why one gateway cannot serve both and why this
+# one is named for the class it serves.
+#
+# Eleven defects across decision-0083 and decision-0084 shared one shape: an
+# absent, empty, truncated or unreadable payload input reached downstream
+# logic, and the session ran ungoverned at exit 0 with nothing signalling a
+# problem. Each was fixed where it was found. Almost none was found by the
+# test suite or by reading the code — every one was found by a reviewer
+# RUNNING the hook against a deliberately broken input. That recurrence is the
+# finding (TRL-33), and this function is the answer to it: a payload read
+# added to this file later is guarded by WHERE IT IS WRITTEN, not by whoever
+# remembers. Two guards hold that: TestNoPayloadReadBypassesTheGateway, which
+# fails if anything opens a payload path behind this function's back, and
+# TestBrokenPayloadIsNeverSilent, which breaks every file the bundle ships,
+# four ways, on both delivering paths, and refuses to accept silence.
+#
+# It CLASSIFIES; it does not judge. Two of those eleven were the INVERSE
+# defect — a guard that refused a HEALTHY payload (a CRLF-terminated rules.md;
+# an unreadable comparison preset reported as payload incoherence) — and a
+# consumer who sees TRELLIS_RULES_NOT_LOADED with nothing wrong to fix is as
+# badly served as one governed by a broken payload. So the four outcomes are
+# reported and the CALL SITE decides what each one costs:
+#
+#   missing     the path is not there, or its symlink target is gone
+#   unreadable  it exists and could not be opened — a permission mode, a stale
+#               ACL, or a directory where a file must be
+#   empty       it opened and yielded nothing
+#   ok          content is in $payload_text
+#
+# missing and unreadable are told apart because their remedies differ (reinstall
+# vs. fix the mode) — but NEITHER is silent anywhere, which is TRL-33's whole
+# finding: on the vendored-defaults path the two were handled differently, an
+# absent preset exiting silently while its unreadable sibling refused loudly,
+# and nothing chose that.
+#
+# Returns 0 only for ok, so the shortest thing a caller can write —
+# `payload_read "$f" || { emit "..."; exit 0; }` — is also the safe thing.
+#
+# The result comes back in GLOBALS rather than on stdout on purpose: a
+# `$(payload_read ...)` capture would run the function in a SUBSHELL, and every
+# status it set would be discarded at the closing paren.
+payload_status=""
+payload_why=""
+payload_text=""
+payload_read() {
+  payload_text=""
+  if [ ! -e "$1" ]; then
+    payload_status=missing
+    payload_why="is missing"
+    return 1
+  fi
+  if [ ! -f "$1" ]; then
+    payload_status=unreadable
+    payload_why="is not a readable file — a directory or a device sits at that path"
+    return 1
+  fi
+  # `-f` proves a file EXISTS, never that it can be READ, and the gap between
+  # those two is where several of the eleven lived. Opening it is the only test
+  # that settles it, so the read below is the check rather than a step after it.
+  if ! payload_text="$(cat "$1" 2>/dev/null)"; then
+    payload_text=""
+    payload_status=unreadable
+    payload_why="exists but could not be read — a permission mode, a stale ACL, or a symlink whose target is gone"
+    return 1
+  fi
+  # Command substitution strips trailing newlines, so a file holding nothing but
+  # blank lines lands here too — which is right: it is exactly as unusable as a
+  # zero-byte one, and both shipped as separate defects.
+  if [ -z "$payload_text" ]; then
+    payload_status=empty
+    payload_why="is empty"
+    return 1
+  fi
+  payload_status=ok
+  payload_why=""
+  return 0
+}
+
+# ------------------------------------------ the installed payload's own stamp
+# TRL-34. This was `current="$(head -n1 "$ref" 2>/dev/null | tr -d ...)"`, and
+# an unreadable reference/version therefore yielded "" — after which three
+# separate call sites exited silently or skipped their comparison, and the
+# staleness warning this hook exists to produce was withheld with no signal at
+# all. Measured on main: mode 000 on that file, a vendored overlay present,
+# zero bytes of stdout at exit 0.
+#
+# $stamp_defect carries the reason forward so each of those three sites can say
+# WHY it could not compare, rather than vanishing. Empty means the stamp is
+# good.
+ref="$plugin/reference/version"
+current=""
+stamp_defect=""
+if payload_read "$ref"; then
+  current="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
+  # SHAPE-CHECKED, matching what codex-context.mjs has always required of the
+  # same file (/^payload@[0-9a-f]{12}\n?$/). A TRUNCATED stamp is not a
+  # different version — it is an unreadable one — and comparing it reports a
+  # perfectly healthy overlay as STALE. That is the inverse-direction defect
+  # this whole change is as concerned with as the silent one: a consumer told
+  # to migrate an overlay that is already current has nothing to fix.
+  #
+  # Twelve `?` is an exact length test without needing a counting tool; the
+  # nested case is the hex test. Both are shell built-ins, so this stays
+  # binary-free.
+  case "$current" in
+    payload@????????????)
+      case "${current#payload@}" in
+        *[!0-9a-f]*) stamp_defect="is not a Trellis payload stamp"; current="" ;;
+      esac
+      ;;
+    *) stamp_defect="is not a Trellis payload stamp"; current="" ;;
+  esac
+else
+  stamp_defect="$payload_why"
+fi
 
 # decision-0070 D5, and it runs BEFORE every delivery path — but AFTER emit() is
 # defined, since a shell function called above its definition simply is not there.
@@ -272,7 +399,6 @@ fi
 # and must not silently become one — path B would then inject alongside whatever
 # vendored prose survived.
 internal="$root/.trellis/internal"
-ver="$internal/version"
 
 # BOTH static paths at once. install.sh refuses to create this state, but it can
 # arrive the other way round — a branch checkout or a collaborator's commit
@@ -307,23 +433,48 @@ if [ -n "$inline_file" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
 fi
 
 if [ -d "$internal" ]; then
-  if [ ! -f "$ver" ]; then
-    emit "TRELLIS_RULES_NOT_LOADED — this project has a .trellis/internal/ directory but no version stamp, so its vendored overlay is incomplete. The hook will not inject rules over a broken overlay, and cannot tell which rules the surviving files represent. Tell the user before doing substantive work. To migrate this project onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
-    exit 0
-  fi
-  # A current stamp is not proof the overlay can still load. If a payload file
-  # has been deleted, the import transport is broken and the stamp says nothing
-  # about it — checking the stamp alone left that project silently ungoverned.
-  for f in trellis.md rules.md; do
-    if [ ! -s "$internal/$f" ]; then
-      emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f is missing or empty, so the managed block's imports cannot load the rules. The stamp is intact, which is why nothing else flagged this. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
+  # THE VENDORED OVERLAY IS PAYLOAD TOO — the same bundle files, copied into
+  # the consumer's tree — so all three go through the same gateway, in one
+  # loop, with one disposition. They did not before, and the three ways they
+  # differed were each a live instance of the class TRL-33 names:
+  #
+  #   * a bare `-f` test on the stamp caught an ABSENT one loudly while an EMPTY
+  #     fell through to `[ -n "$overlay" ] || exit 0` below and exited in total
+  #     silence — the same absent-vs-empty split TRL-33 found on the plugin
+  #     side, one path over.
+  #   * `[ ! -s "$internal/$f" ]` catches missing-or-empty and NOT unreadable.
+  #     Measured: mode 000 on .trellis/internal/rules.md passed this check and
+  #     the hook then emitted "Trellis overlay may be stale ... Until then this
+  #     session is governed by the vendored copy" — FALSE. The host's import of
+  #     that file fails, so nothing governs, and the message asserted the
+  #     opposite of the reader's actual state.
+  #   * The stamp was read a second time with `head ... 2>/dev/null`, which is
+  #     the swallow-and-continue shape the gateway exists to end.
+  #
+  # ONE message for all three files, naming $f. The two it replaces said
+  # different things about the same broken overlay depending on which file was
+  # broken; a reader gains nothing from that and the remedy is identical.
+  for f in version trellis.md rules.md; do
+    if ! payload_read "$internal/$f"; then
+      emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f $payload_why, so the managed block's imports cannot load the rules and this hook cannot tell which rules the surviving files represent. The hook will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
       exit 0
     fi
+    [ "$f" = version ] && overlay="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
   done
-
-  overlay="$(head -n1 "$ver" 2>/dev/null | tr -d '[:space:]')"
-  [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
-  [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
+  # A non-empty file can still hold nothing but whitespace on its first line.
+  [ -n "$overlay" ] || {
+    emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/version carries no stamp on its first line, so this hook cannot tell which rules the surviving files represent and will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
+    exit 0
+  }
+  # TRL-34. This was `[ -n "$current" ] || exit 0` — silent. The overlay is
+  # intact and the session IS governed by it, so this is NOT a
+  # TRELLIS_RULES_NOT_LOADED: reusing the blackout marker here would be the
+  # over-correction this change is as concerned with as the silence. What is
+  # withheld is a WARNING, and the fix is to say so.
+  if [ -z "$current" ]; then
+    emit "TRELLIS_STALENESS_UNKNOWN — this session is governed by the vendored overlay at .trellis/internal/, and that is intact. What this hook could NOT do is check whether the overlay is stale: the installed Trellis plugin's own version stamp ($ref) $stamp_defect, so there is nothing to compare this project's stamp ($overlay) against. Nothing is wrong with this project and no rules are missing. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix."
+    exit 0
+  fi
   if [ "$overlay" != "$current" ]; then
     emit "Trellis overlay may be stale: this project's .trellis/internal/version stamp is $overlay, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Until then this session is governed by the vendored copy."
   fi
@@ -332,9 +483,17 @@ fi
 
 legacy="$root/.trellis/version"
 if [ -f "$legacy" ]; then
-  overlay="$(head -n1 "$legacy" 2>/dev/null | tr -d '[:space:]')"
-  [ -n "$overlay" ] || exit 0                     # empty stamp → nothing to compare
-  [ -n "$current" ] || exit 0                     # can't read the installed payload → silent
+  # A legacy overlay is stale BY ITS LAYOUT — decision-0051 moved the stamp,
+  # so the nudge below does not depend on comparing two stamps at all. Both
+  # earlier guards exited silently when a stamp could not be read, which
+  # withheld a migration nudge that was correct either way; the two literals
+  # below say what could not be read instead of vanishing.
+  overlay=""
+  payload_read "$legacy" && overlay="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
+  if [ -z "$overlay" ] || [ -z "$current" ]; then
+    emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version. This hook could not read both stamps, so it cannot say how far behind this overlay is — but the LAYOUT itself is the stale part and the migration below is correct regardless. To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
+    exit 0
+  fi
   emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
   exit 0
 fi
@@ -443,7 +602,20 @@ if [ -f "$rendered" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — .claude/rules/trellis.md exists but is incomplete: it carries no trellis:rendered-from stamp, which install.sh writes as its last line, so the file was truncated and its rule activation rows are missing. This hook did not inject over it, because a half-written governing file and a full one are indistinguishable to the reader. Re-run install.sh, or delete the file to move onto plugin-delivered rules. Tell the user before doing substantive work. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate)."
     exit 0
   fi
-  if [ -n "$current" ] && [ "$rendered_stamp" != "$current" ]; then
+  # TRL-34, path C's arm. `[ -n "$current" ] && ...` skipped the comparison in
+  # silence, so an unreadable plugin stamp meant this project was told its
+  # rendered file is fine when the hook had in fact checked nothing. The
+  # stand-down is still correct — the host loaded that file and it is complete
+  # — so this is a SECOND STAND-DOWN LITERAL, not a refusal. Two complete
+  # literals rather than a base plus an interpolated note, for the reason the
+  # governed=false branch above gives: the destructive-instruction guards in
+  # cli/plugin_hook_test.go scan `emit "…"` literals, and prose assembled into
+  # a variable and spliced in is agent-facing text those guards never see.
+  if [ -z "$current" ]; then
+    emit "TRELLIS_STALENESS_UNKNOWN — Trellis rules are already loaded from .claude/rules/trellis.md (the curl install path), so this hook injected nothing; that file and .trellis/rules.toml govern this session, and the file is complete. What this hook could NOT do is check whether it is stale: the installed Trellis plugin's own version stamp ($ref) $stamp_defect, so there is nothing to compare the file's own stamp ($rendered_stamp) against. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix."
+    exit 0
+  fi
+  if [ "$rendered_stamp" != "$current" ]; then
     emit "Trellis rules come from .claude/rules/trellis.md (the curl install path), and that file is STALE: it was rendered from $rendered_stamp, but the installed plugin ships $current. This hook injected nothing — the rendered file governs this session and it is out of date. Re-run install.sh to refresh it, or delete it to move onto plugin-delivered rules. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate)."
     exit 0
   fi
@@ -526,7 +698,26 @@ if [ ! -f "$toml" ]; then
     # semantics, point at the shipped preset and let every check below run
     # unchanged: same slugs, every row active, strictness "adaptive" (posture B).
     toml="$plugin/reference/rules-b.toml"
-    [ -f "$toml" ] || exit 0
+    # TRL-33. This was `[ -f "$toml" ] || exit 0`. Measured on main: an ABSENT
+    # rules-b.toml on this path produced completely empty stdout, exit 0, zero
+    # bytes of stderr — a session governed by nothing, with no signal of any
+    # kind — while the UNREADABLE sibling of the same file was caught, loudly,
+    # two hundred lines downstream by a message that names .trellis/rules.toml
+    # to a project that HAS NO .trellis/rules.toml. Absent-vs-unreadable was an
+    # inconsistency, not a choice, and the loud half also named the wrong file.
+    #
+    # Reachability is the payload-header case's: rules-b.toml is a line of
+    # install.sh's bundle manifest, so an interrupted install leaves exactly
+    # this state.
+    #
+    # THE WORDING IS THE `default_rows` REFUSAL'S, deliberately. That check
+    # still stands further down and catches the shape this one cannot — a file
+    # that reads fine and parses to no rows — so both doors lead to the same
+    # room, and a consumer who hits either is told the same true thing.
+    if ! payload_read "$toml"; then
+      emit "TRELLIS_RULES_NOT_LOADED — this project has no .trellis/rules.toml and is governed by the rule rows the Trellis plugin ships ($toml), and that file $payload_why. This project adopted Trellis (the plugin is vendored in this repository), but the session is running ungoverned and NO rules and NO rows were injected. The hook refused rather than treat a broken payload file as if it were this project's own settings. NOTHING is wrong with this project and there is nothing here to correct: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the fix. Tell the user before doing substantive work."
+      exit 0
+    fi
     rows_are_default=yes
   else
     # D4, as corrected by decision-0077. A user-wide install is a broad choice,
@@ -563,10 +754,24 @@ rules="$plugin/reference/rules.md"
 
 # Fail loudly rather than govern silently on a partial payload. A hook cannot
 # report that it never ran, but it can report that it ran and could not deliver.
-if [ ! -f "$header" ] || [ ! -f "$rules" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read its own rules payload (looked for $header and $rules). This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned. Tell the user before doing substantive work."
+#
+# THROUGH THE GATEWAY, both of them. This was a bare `[ ! -f ]` pair, and `-f`
+# proves existence and never readability — the gap the posture header fell
+# through four separate ways (mode 000, zero-byte, truncated, and the firm
+# trellis-a.md), each measured, each shipping sixteen activation rows with zero
+# rules prose under them at exit 0. The header is read ONCE, here, where a
+# failure can still be reported; $header_prose is what the assembly below uses,
+# so the fatal positional open that produced that damage is gone rather than
+# merely guarded.
+if ! payload_read "$rules"; then
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read its own rules payload: $rules $payload_why. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected. This is a broken or half-written plugin install, not a problem with your rows: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
   exit 0
 fi
+if ! payload_read "$header"; then
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read the posture header it was about to inject: $header $payload_why. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected. This is a broken or half-written plugin install, not a problem with your rows: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+  exit 0
+fi
+header_prose="$payload_text"
 
 # The payload's own terminator, checked BEFORE its slugs are trusted -- the
 # order codex-context.mjs uses and for the reason its comment gives: derive
@@ -760,12 +965,19 @@ fi
 # already exits above with a message that names the read failure, which is a
 # better diagnosis than "the payload disagrees with itself".
 #
-# Skipped, not failed, when the preset is absent: a payload without it offers
-# nothing to compare against, which is where this hook already stood. (The
-# separate silent `exit 0` when rules-b.toml is missing on the defaults path is
-# pre-existing -- it is on main at the same line -- and is filed on its own.)
+# Skipped, not failed, when the preset is unusable: a payload without it offers
+# nothing to compare against, which is where this hook already stood. That skip
+# is the ONE payload read in this file whose failure is deliberately silent, and
+# it stays that way -- an over-correction here is what
+# TestAnUnusablePresetSkipsTheCoherenceCheckRatherThanBlackingOut exists to
+# catch, and nothing is wrong for the consumer when only the COMPARISON file is
+# broken. The gateway is used anyway, so the silence is a stated disposition at
+# a checked read rather than the by-product of a bare `-f`. (The other silent
+# exit this comment used to point at -- rules-b.toml missing on the DEFAULTS
+# path, where the same file is the rows rather than the comparison -- was
+# TRL-33, and is now a loud refusal.)
 preset="$plugin/reference/rules-b.toml"
-if [ -f "$preset" ]; then
+if payload_read "$preset"; then
   coherence="$(
     awk '
       FNR == NR {
@@ -832,8 +1044,16 @@ repair_summary=""
 # report is one of the four well-formed values, so `ok` is the only non-defect.
 if [ "$slug_report" != "ok" ]; then
   today="$(date +%Y-%m-%d)"
+  # The quarantine note is written INTO THE CONSUMER'S OWN FILE and reads
+  # "not in <stamp>". With an unreadable reference/version, $current is the
+  # empty string and that note used to read "not in ." — a broken sentence
+  # persisted into a tracked file, silently. A named fallback keeps the line a
+  # sentence and keeps it TRUE; the rules themselves are fine, so this
+  # degrades the provenance rather than the delivery.
+  note_stamp="$current"
+  [ -n "$note_stamp" ] || note_stamp="the installed Trellis payload"
   reconciled="$(
-    TRELLIS_WANT_SRC="$rules" awk -v stamp="$current" -v today="$today" '
+    TRELLIS_WANT_SRC="$rules" awk -v stamp="$note_stamp" -v today="$today" '
       BEGIN {
         # ENVIRON, not -v, for the same reason as the assembly below: -v
         # escape-processes its value, so a plugin root containing a backslash
@@ -1023,7 +1243,9 @@ fi
 # still assembles into rows with no rules under them, which is the identical
 # blackout reached through a shorter truncation. Counted with awk over stdin --
 # never a positional read, which is the failure being closed here.
-header_prose="$(cat "$header" 2>/dev/null)"
+# $header_prose was read through payload_read at the top of path B, which is
+# also where emptiness is now refused; the `-z` test below is kept as the second
+# lock on the same door rather than as the only one.
 header_imports="$(printf '%s\n' "$header_prose" |
   awk '/^@rules\.md[[:space:]]*$/ { n++ } END { print n + 0 }')"
 if [ -z "$header_prose" ] || [ "$header_imports" != "1" ]; then
@@ -1128,7 +1350,19 @@ payload="$(
     printf 'This project'"'"'s .trellis/rules.toml did not match the rules this payload ships (%s). The rows above are the reconciled set and are what governs this session; the file on disk still differs. Reconciliation: %s.\n\n' "$slug_report" "$repair_summary"
     printf 'Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. Nothing is lost by this: a row the payload does not ship is commented out with the reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent. If a quarantined slug is one a newer Trellis release added, the installed plugin is the stale side: `claude plugin update trellis@kodhama`, restart the session, and uncomment the row.\n'
   fi
-  printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
+  # The path-B arm of TRL-34. Delivery is unaffected -- the rules payload is
+  # fine and the session IS governed -- so an unreadable version stamp degrades
+  # the PROVENANCE line and nothing else. It used to degrade it silently,
+  # printing an empty pair of parentheses.
+  # (NO APOSTROPHES anywhere inside this payload="$( ... )" block, comments
+  # included: bash 3.2 scans for the closing paren without re-entering comment
+  # context, so one lone apostrophe in a comment here swallows the rest of the
+  # file. Cost this change a syntax error before it cost a reader anything.)
+  if [ -n "$current" ]; then
+    printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
+  else
+    printf '\nDelivered by the Trellis plugin. Its own version stamp could not be read (%s %s), so this readout cannot name which payload build it came from; the rules and rows above are complete and govern this session. No overlay is vendored in this project.\n' "$ref" "$stamp_defect"
+  fi
 )"
 
 # A bounded payload, like the Codex hook's MAX_CONTEXT_BYTES. Without this a

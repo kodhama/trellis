@@ -229,33 +229,92 @@ func TestStalenessHook(t *testing.T) {
 			t.Errorf("want silent (internal/version is current; the leftover flat file must not fire), got %q", out)
 		}
 	})
-	t.Run("empty stamp is silent", func(t *testing.T) {
-		if out := run(t, ".trellis/internal/version", ""); out != "" {
-			t.Errorf("want silent (nothing to compare), got %q", out)
+	// INVERTED by TRL-33. This subtest asserted the defect: it required SILENCE
+	// from a broken vendored overlay, on the same path where a MISSING stamp had
+	// always refused loudly. Absent-vs-empty was never chosen; it fell out of
+	// `[ ! -f ]` for one and `[ -n "$overlay" ] || exit 0` for the other, and the
+	// two sibling files in the same directory already refused loudly when empty.
+	// Reproduced before changing anything: an empty .trellis/internal/version
+	// produced 0 bytes of stdout at exit 0.
+	t.Run("an empty overlay stamp is a broken overlay, said out loud", func(t *testing.T) {
+		out := run(t, ".trellis/internal/version", "")
+		ctx := nudgeContext(t, out)
+		if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Errorf("an empty overlay stamp must refuse loudly, as a missing one already did:\n%s", ctx)
 		}
-		if out := run(t, ".trellis/version", ""); out != "" {
-			t.Errorf("want silent (empty legacy stamp), got %q", out)
+		if !strings.Contains(ctx, ".trellis/internal/version") {
+			t.Errorf("the refusal must name the file that could not be read:\n%s", ctx)
 		}
 	})
-	t.Run("unreadable plugin reference is silent", func(t *testing.T) {
-		proj := t.TempDir()
-		p := filepath.Join(proj, ".trellis", "internal", "version")
-		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-			t.Fatal(err)
+	// The legacy flat overlay is stale BY ITS LAYOUT, so the migration nudge is
+	// correct whether or not either stamp can be read. It used to vanish instead.
+	t.Run("an empty legacy stamp still draws the migration nudge", func(t *testing.T) {
+		ctx := nudgeContext(t, run(t, ".trellis/version", ""))
+		if !strings.Contains(ctx, "predates the .trellis/internal/ layout") {
+			t.Errorf("a legacy overlay must still be told to migrate when its stamp cannot be read:\n%s", ctx)
 		}
-		if err := os.WriteFile(p, []byte("payload@abc\n"), 0o644); err != nil {
-			t.Fatal(err)
+		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Errorf("a legacy overlay still governs the session — this is a migration nudge, not a blackout:\n%s", ctx)
 		}
-		writeVendoredPayload(t, filepath.Dir(p))
-		cmd := exec.Command(hook)
-		cmd.Dir = proj
-		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+t.TempDir())
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("hook exited non-zero (%v): %s", err, out)
-		}
-		if strings.TrimSpace(string(out)) != "" {
-			t.Errorf("want silent (can't read the installed payload stamp), got %q", out)
+	})
+	// INVERTED by TRL-34, which this subtest pinned: it required SILENCE when the
+	// hook could not read the installed plugin's own reference/version, so the
+	// staleness warning this hook exists to produce was withheld with no signal
+	// at all. Reproduced against main before changing anything — mode 000 on that
+	// file, a healthy vendored overlay present: 0 bytes of stdout at exit 0.
+	//
+	// The marker is deliberately NOT TRELLIS_RULES_NOT_LOADED. The overlay is
+	// intact and the session IS governed by it; what is withheld is a warning,
+	// not governance. Reusing the blackout marker would be the over-correction
+	// this suite has already caught twice on this hook.
+	t.Run("an unreadable plugin stamp says so instead of vanishing", func(t *testing.T) {
+		for _, tc := range []struct {
+			name  string
+			stamp string // "" means: do not create reference/ at all
+		}{
+			{"absent", ""},
+			{"empty", "\n"},
+			{"truncated to a short hash", "payload@abc\n"},
+			{"a stamp from the pre-payload@ era", "plugin@abcdef123456\n"},
+			{"a stamp with non-hex in it", "payload@zzzzzzzzzzzz\n"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				proj := t.TempDir()
+				p := filepath.Join(proj, ".trellis", "internal", "version")
+				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte(payloadFiles()["version"]), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				writeVendoredPayload(t, filepath.Dir(p))
+				broken := t.TempDir()
+				if tc.stamp != "" {
+					if err := os.MkdirAll(filepath.Join(broken, "reference"), 0o755); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(broken, "reference", "version"), []byte(tc.stamp), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				cmd := exec.Command(hook)
+				cmd.Dir = proj
+				cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+broken)
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("hook exited non-zero (%v): %s", err, out)
+				}
+				ctx := nudgeContext(t, strings.TrimSpace(string(out)))
+				if !strings.Contains(ctx, "TRELLIS_STALENESS_UNKNOWN") {
+					t.Errorf("an unusable plugin stamp must say staleness could not be checked, not vanish:\n%s", ctx)
+				}
+				if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+					t.Errorf("the overlay is intact and governs this session — this must not read as a blackout:\n%s", ctx)
+				}
+				if strings.Contains(ctx, "may be stale") {
+					t.Errorf("nothing may be reported STALE against a stamp that could not be read:\n%s", ctx)
+				}
+			})
 		}
 	})
 
