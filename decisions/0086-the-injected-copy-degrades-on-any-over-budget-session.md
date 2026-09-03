@@ -18,6 +18,11 @@ date: 2026-09-03
 > execution contradicted the plan: the mismatch-path strip turned out to be a *refusal* rather than
 > a merely smaller degradation, and the runaway guard's new threshold is thirty rows where the plan
 > asserted a derived thirty-seven. Both are corrected below against measurement.
+>
+> **Amended 2026-09-03, on review of PR #263** (thread `PRRT_kwDOTIeCVc6eu78z`): the announcement
+> the degraded path appends was itself unbudgeted, and §4's claim about when the guard is reached
+> was false by the announcement's own length. The dated note under §4's table records what was
+> found, what changed, and the re-measured threshold. The original sentences stand above it.
 
 # 0086 — The injected copy degrades on any over-budget session, not only a reconciling one
 
@@ -125,6 +130,47 @@ consumer's file rather than nothing.
 Thirty is a measured order of magnitude, not a threshold: it is a byte budget, and a longer slug
 reaches it with fewer rows. No test asserts the number.
 
+> **Dated note, 2026-09-03 — review of PR #263, thread `PRRT_kwDOTIeCVc6eu78z`.** The paragraph
+> above says the guard is reached "only when a context with no Trellis provenance left in it at all
+> is still over the cap." That was not what shipped. The degraded path appended its announcement —
+> `provenanceOmittedNotice` on one side, the degraded `repairMandate` on the other —
+> *unconditionally*, and the guard measured the sum. So a body that fit on its own was refused for
+> the announcement's bytes, which are Trellis's own text and not the consumer's content.
+>
+> **Measured on the branch as it stood:** the full notice costs **414 B** and the degraded mandate
+> **156 B more** than the full mandate it replaces, while stripping frees **150 B** per quarantined
+> row. At one or two persisted notes the "degraded" assembly was therefore *larger* than the full
+> one it stood in for and could rescue nothing; above that, a 414 B (or 156 B) band of fitting
+> bodies still refused. The reviewer's fixture — firm preset, one persisted note, a valid 1450 B
+> project comment — assembled to 9517 B in full, 9367 B stripped, and was refused at 9781 B.
+>
+> **What changed.** Each path now lists its announcements from most to least informative — the full
+> form, then a one-paragraph compact form (**129 B** for the notice, **571 B** for the mandate) —
+> and the first assembly that fits ships. The guard is reached only when the stripped body will not
+> fit alongside the *shortest* honest announcement. The residual is that line's own length and is
+> **left open on purpose**: closing it to zero would mean injecting an abbreviated copy with no word
+> that it was abbreviated, or a reconciliation with no mandate to write it back — a quiet failure
+> traded for a loud one. Both compact forms live *inside* the functions the destructive-verb guards
+> already scan, so no registration step can be forgotten.
+>
+> **Re-measured, same payload, same slug family.** The per-row figures hold — a quarantined row
+> still costs the injected copy **42 B** stripped against **192 B** with its note. The threshold
+> moved: the reviewer's fixture now delivers at **9496 B**; the mismatch path delivers where a
+> single foreign row used to refuse outright; and the first refusal appears at **N ≥ 37** rows
+> where the table above says thirty. Thirty-seven is, by coincidence, the number the plan derived
+> before the notice was ever budgeted — a derivation that ignored the announcement's cost was right
+> about a design that no longer pays it. It remains a byte budget, and no test asserts the number.
+>
+> **Pinned** by `TestCodexAnnouncementNeverTipsAFittingBodyOverBudget` (both paths, sized against a
+> measured baseline rather than a hardcoded total) and by "the full form must be preferred when it
+> fits" assertions in the two existing degradation tests. Eight mutations, each killed:
+> the unconditional append restored (both subtests refuse); compact made the default (both
+> preference pins red); the compact notice without its marker; a deletion verb in the compact
+> notice (both verb guards, and the window test itself — the one-note fixture leaves the line 11 B
+> of growth, which is the pin for the reviewer's case); the extractor without the compact stems;
+> the compact mandate asking for the abbreviated rows; the guard measuring the body without its
+> announcement; a deletion verb in the compact mandate.
+
 ## Consequences
 
 **A project repaired by Trellis on Codex stays governed on Codex.** That is the whole of what TRL-29
@@ -191,3 +237,6 @@ with no trigger is a to-do nobody agreed to.
 - **Measurement discipline.** Two numbers in the plan were derived rather than measured and were
   wrong (thirty-seven rows; a cosmetic mismatch-path difference). Both were re-measured and
   corrected before this record was written, and the hook comment carries the measured figures.
+  A third claim — §4's "reached only when … is still over the cap" — was falsified in review and is
+  corrected by the dated note under §4's table, with the threshold re-measured rather than
+  re-derived; the original wording is kept above the note.

@@ -9,6 +9,8 @@
 > 3. **The runaway guard's new threshold is thirty quarantined rows, not the ~37 derived here.** Measured, same payload and slug family as the baseline: 42 B per row stripped against 192 B unstripped, first refusal at N = 30 where it was N = 9.
 >
 > Also unlisted here and required in practice: the `VERSION` bump drags both plugin manifests with it (`TestPluginPackageParity` pins them to it), so `install.sh`'s manifest advances for four files, not one.
+>
+> 4. **Found in review of PR #263 (thread `PRRT_kwDOTIeCVc6eu78z`), not by this plan:** the announcement the degraded path appends was itself unbudgeted. One quarantine note frees 150 B; the full notice costs 414 B and the degraded mandate 156 B more than the full one — so at one or two notes the "degraded" assembly was *larger* than the full one, and above that a notice-sized band of fitting bodies still refused. Fixed by tiering each announcement (full, then a 129 B / 571 B compact form) and taking the first that fits; the residual is the compact line's own length and is left open rather than going silent. Threshold re-measured at **N = 37** (from 30) — the number correction 3 above retired, now true for a different reason: the derivation that ignored the announcement's cost describes a design that no longer pays it. `decision-0086` carries the dated note.
 
 **Goal:** A Codex session whose `.trellis/rules.toml` already carries Trellis's own persisted provenance comments still governs when the assembled context would exceed `MAX_CONTEXT_BYTES` — instead of refusing outright, permanently, on a file Trellis itself told the agent to write.
 

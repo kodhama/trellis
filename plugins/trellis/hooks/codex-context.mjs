@@ -620,7 +620,32 @@ function mismatchCounts(mismatch) {
 // task-4-report.md. A session already over budget cannot also afford asking
 // for the exact template text back; "the full-provenance version, not the
 // abbreviated rows above" is the instruction the byte budget can carry.
-function repairMandate(mismatchText, repairSummary, degraded) {
+//
+// `compact` (review of #263, PRRT_kwDOTIeCVc6eu78z) is the last tier before
+// the runaway guard: the same mandate as one paragraph, 571 B where the
+// degraded form is 928 B. It exists because the degraded mandate is 156 B
+// LONGER than the full one for a single-slug mismatch while the strip it
+// accompanies frees 150 B per row — so at one foreign row the "degraded"
+// assembly was bigger than the full one, and a body that fit on its own was
+// refused for the mandate's bytes. Every load-bearing clause survives the
+// compaction — the counts, "the rows above govern", the degraded marker
+// sentence, "not the abbreviated ones shown above", the no-loss property, and
+// "row by row" — because each is pinned by a test and each is a thing the
+// agent must know to write the file correctly; only the explanatory prose
+// around them is what a session this short of bytes gives up. Lives inside
+// this function rather than beside it so codexPayloadAssembly's scan for
+// ungated deletion verbs covers it with no list to keep in step.
+function repairMandate(mismatchText, repairSummary, degraded, compact) {
+  if (degraded && compact) {
+    return (
+      "\nRule activation was reconciled this session: .trellis/rules.toml did not match the rules this payload ships " +
+      `(${mismatchText}; ${repairSummary}), and the rows above govern. ` +
+      "Provenance was omitted above to fit the context budget. " +
+      "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above: " +
+      "a row the payload does not ship stays in the file, commented out with its reason and the date, and every project value is kept verbatim. " +
+      "Tell the user what you reconciled, row by row, before doing substantive work.\n"
+    );
+  }
   const writeInstruction = degraded
     ? "Provenance was omitted above to fit the context budget and remains in full in the file this mandate instructs writing next. " +
       "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above, so the file matches what governs. "
@@ -678,7 +703,22 @@ function repairMandate(mismatchText, repairSummary, degraded) {
 // codexPayloadAssembly in cli/plugin_hook_test.go, which names both functions):
 // this is agent-facing text in the Codex payload, so the same "no deletion verb
 // reaches the agent" argument has to cover it.
-function provenanceOmittedNotice() {
+//
+// `compact` is the one-line tier (review of #263, PRRT_kwDOTIeCVc6eu78z): 129 B
+// where the full notice is 414 B. One persisted quarantine note frees 150 B when
+// its text comes off, so with the full notice appended unconditionally the
+// "degraded" assembly was 264 B LARGER than the full one at a single note, and
+// a body that fit on its own was refused for the notice's bytes. The line keeps
+// the degraded marker sentence verbatim (codexDegradedMarker keys on it) and the
+// one fact the agent needs — the file has it all and needs no repair — and
+// nothing else. The 129 B are the residual window the over-budget branch below
+// cannot close without going silent: a body that fits alone but not alongside
+// this line is still refused, loudly, rather than injected with no word that it
+// was abbreviated.
+function provenanceOmittedNotice(compact) {
+  if (compact) {
+    return "\nProvenance was omitted above to fit the context budget; .trellis/rules.toml keeps it in full and needs no repair this session.\n";
+  }
   return (
     "\n## Provenance comments were left out of the rows above\n\n" +
     "Provenance was omitted above to fit the context budget and remains in full in .trellis/rules.toml, which matches the rules this payload ships and needs no repair this session. " +
@@ -1003,8 +1043,34 @@ if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
   // not a shortage of material, was what stopped it.
   //
   // So the trigger is the budget, which is what this branch was always about.
-  // The gate below now only chooses which ANNOUNCEMENT fits the session.
+  // The gate below now only chooses which ANNOUNCEMENTS the session can carry.
+  //
+  // And the announcement is itself budgeted (review of #263,
+  // PRRT_kwDOTIeCVc6eu78z). The first shape of this branch appended one fixed
+  // announcement to the stripped body and let the runaway guard measure the
+  // sum — so a body that fit on its own was refused for the announcement's
+  // bytes. Measured: the full notice costs 414 B and the degraded mandate 156 B
+  // more than the full mandate it replaces at one foreign slug (the full form
+  // names every slug, the degraded one counts them, so the gap narrows by a
+  // slug's length per row), while stripping frees 150 B per quarantined row.
+  // At one or two persisted notes the "degraded" assembly
+  // was therefore LARGER than the full one it stood in for, and the strip
+  // could never rescue anything; above that, a window of 414 B (or 156 B) of
+  // fitting bodies was still refused. The reviewer's fixture — firm preset,
+  // one persisted note, a valid 1450 B project comment — assembled to 9517 B
+  // in full, 9367 B stripped, and was refused at 9781 B with the notice on.
+  //
+  // Now each path lists its announcements from most to least informative and
+  // the first assembly that fits is what ships. The guard fires only when the
+  // body will not fit alongside the SHORTEST honest announcement — the
+  // residual is that line's own length (129 B on the no-mismatch path, 571 B
+  // on the mismatch path), and it is not closed to zero on purpose: doing so
+  // would mean injecting an abbreviated copy with no word that it was
+  // abbreviated, or a reconciliation with no mandate to write it back, and a
+  // loud refusal is better than either of those quiet ones.
   const stripped = stripPersistedProvenance(rulesToml);
+  let body;
+  let announcements;
   if (mismatch !== null) {
     // Reconciled from the STRIPPED source, not the raw one. A file can carry
     // persisted provenance AND a fresh mismatch at once, and leaving the
@@ -1016,25 +1082,40 @@ if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
     // `quarantined` — and therefore what governs — are identical either way.
     const bare = reconcileRows(stripped, slugs, stamp, today, false);
     const repairSummary = `added ${bare.added} row(s); quarantined ${bare.quarantined} row(s)`;
-    repairMandateText = repairMandate(mismatchCounts(mismatch), repairSummary, true);
-    context = buildContext(bare.text, repairMandateText);
+    const counts = mismatchCounts(mismatch);
+    body = bare.text;
+    announcements = [
+      repairMandate(counts, repairSummary, true),
+      repairMandate(counts, repairSummary, true, true),
+    ];
   } else {
     // Nothing to reconcile, so no mandate and no write instruction at all —
     // see provenanceOmittedNotice for why an instruction here would be the
     // failure rather than the fix. effectiveRulesToml was the file verbatim on
     // this path; what is injected now is the file minus Trellis's own
     // bookkeeping, and nothing else.
-    context = buildContext(stripped, provenanceOmittedNotice());
+    body = stripped;
+    announcements = [provenanceOmittedNotice(false), provenanceOmittedNotice(true)];
   }
-  if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
+  context = null;
+  for (const announcement of announcements) {
+    const candidate = buildContext(body, announcement);
+    if (Buffer.byteLength(candidate, "utf8") <= MAX_CONTEXT_BYTES) {
+      context = candidate;
+      break;
+    }
+  }
+  if (context === null) {
     // The runaway guard, and nothing more. Reached only when a context with NO
-    // Trellis provenance left in it — neither generated nor persisted — is
-    // still over the cap. Measured against the real firm payload: a quarantined
-    // row costs the injected copy 42 B once its note is off, against 192 B with
-    // it, and the refusal first appears at THIRTY quarantined rows where it
-    // used to appear at nine. It is a byte budget, not a row count — a longer
-    // slug reaches it sooner — so treat thirty as the measured order of
-    // magnitude, not a threshold to test against.
+    // Trellis provenance left in it — neither generated nor persisted — will
+    // not fit alongside even the one-line announcement that it was
+    // abbreviated. Measured against the real firm payload: a quarantined row
+    // costs the injected copy 42 B once its note is off, against 192 B with
+    // it, and the refusal first appears at THIRTY-SEVEN quarantined rows
+    // where it used to appear at nine (thirty before the announcement was
+    // budgeted). It is a byte budget, not a row count — a longer slug reaches
+    // it sooner — so treat thirty-seven as the measured order of magnitude,
+    // not a threshold to test against.
     //
     // Deliberately NOT described as a state with "nothing left to degrade".
     // An earlier draft of this comment, and of decision-0084, said exactly
