@@ -32,6 +32,10 @@ func TestRepoDeclaresRulesConfig(t *testing.T) {
 	if !strings.Contains(content, `strictness  = "firm"`) {
 		t.Errorf(".trellis/rules.toml must declare strictness \"firm\" (the a/conductor posture the repo overlay is pinned to), got: %q", content)
 	}
+	// Every pinned row is ACTIVE — the repo holds every invariant firmly. Whether
+	// the row SET matches the pin (both ways — a stale row after a retire failed
+	// nothing here) is TestRowSetDerivativesFollowThePin's job (row_set_guard_test.go);
+	// this loop is about the value, not the membership.
 	for _, slug := range assessableSlugs {
 		rowRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `\s+= \{ active = true \}`)
 		if !rowRe.MatchString(content) {
