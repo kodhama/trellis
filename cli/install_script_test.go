@@ -1019,12 +1019,15 @@ func TestVendorRendersClaudeRulesFile(t *testing.T) {
 	if !strings.Contains(got, body) {
 		t.Errorf("the rules body is not byte-identical to the shipped reference/rules.md")
 	}
+	// This fixture has no .trellis/rules.toml, so the header is trellis-b's —
+	// the hook's absent-strictness branch. TestVendorRenderHeaderFollowsRulesTomlStrictness
+	// covers the file being present (TRL-37).
 	posture := "**How strictly to follow them:** **By default**"
 	if !strings.Contains(got, posture) {
-		t.Errorf("missing trellis-b's posture prose; decision-0068 D5 ships it as a constant")
+		t.Errorf("missing trellis-b's posture prose; with no rules.toml the render must follow the hook's absent-strictness branch")
 	}
 	if strings.Contains(got, "**Firmly** — treat these as hard requirements") {
-		t.Errorf("emitted trellis-a's firm posture; D5 ships the adaptive default, matching staleness.sh's absent-strictness branch")
+		t.Errorf("emitted trellis-a's firm posture with no rules.toml present; the hook resolves absent strictness to adaptive, and the seed written beside this file is adaptive too")
 	}
 
 	// --- ordering. The authority header states the rows are "loaded below the
@@ -1477,13 +1480,21 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		}
 	})
 
-	// install.sh reads EXACTLY ONE project file's contents: the managed-block
-	// opening marker. An earlier revision of this subtest asserted zero, which
-	// was achieved by deleting the check and regressed inline consumers into
-	// silent double delivery. Asserting the exact count instead of zero keeps the
-	// widening bounded — a second content read has to come here and argue itself,
-	// and spec-0005 AC2's amendment is scoped to this one.
-	t.Run("exactly one project file content read, and it is the marker check", func(t *testing.T) {
+	// install.sh reads EXACTLY TWO project files' contents: the managed-block
+	// opening marker, and the `strictness` key of an existing .trellis/rules.toml.
+	// An earlier revision of this subtest asserted zero, which was achieved by
+	// deleting the marker check and regressed inline consumers into silent double
+	// delivery; it then pinned exactly one, with the note that "a second content
+	// read has to come here and argue itself". This is that argument (TRL-37):
+	// the rendered file carries a posture sentence, and taking it from a constant
+	// while the rows a few lines below say `firm` put the adaptive header over a
+	// firm project — the plugin's own hook reads the same key to pick the same
+	// header, so the render now reads it too, with the hook's own parser
+	// (TestInstallScriptStrictnessParserMatchesHook). It still selects nothing
+	// from an instructions file, and still writes nothing under .trellis/ beyond
+	// the seed. Asserting the exact count keeps the widening bounded — a third
+	// read has to come here and argue itself.
+	t.Run("exactly two project file content reads: the marker check and the strictness key", func(t *testing.T) {
 		// Classify every grep by its OPERAND, not by whether the line happens to
 		// mention `git_root`. That earlier form was bypassed by aliasing:
 		//   claude_md="${git_root}/CLAUDE.md"
@@ -1556,14 +1567,31 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 				break
 			}
 		}
-		if len(reads) != 1 {
-			t.Fatalf("install.sh makes %d content read(s) of a project file; spec-0005 AC2's amendment permits exactly one (the managed-block marker):\n%s", len(reads), strings.Join(reads, "\n"))
+		if len(reads) != 2 {
+			t.Fatalf("install.sh makes %d content read(s) of a project file; exactly two are argued (the managed-block marker, and the strictness key of .trellis/rules.toml):\n%s", len(reads), strings.Join(reads, "\n"))
 		}
-		if !strings.Contains(reads[0], `<!-- trellis:begin`) || !strings.Contains(reads[0], `"^\(`) {
-			t.Errorf("the one permitted content read must be the column-0-anchored opening marker (optionally BOM-prefixed); got: %s", reads[0])
+		var marker, strictness string
+		for _, r := range reads {
+			switch {
+			case strings.Contains(r, `<!-- trellis:begin`):
+				marker = r
+			case strings.Contains(r, `.trellis/rules.toml`):
+				strictness = r
+			}
 		}
-		if strings.Contains(reads[0], "trellis:end") {
-			t.Errorf("the CLOSING marker grep is $-anchored and broke on CRLF checkouts — it must not come back: %s", reads[0])
+		if marker == "" || !strings.Contains(marker, `"^\(`) {
+			t.Errorf("one permitted content read must be the column-0-anchored opening marker (optionally BOM-prefixed); reads were:\n%s", strings.Join(reads, "\n"))
+		}
+		if strings.Contains(marker, "trellis:end") {
+			t.Errorf("the CLOSING marker grep is $-anchored and broke on CRLF checkouts — it must not come back: %s", marker)
+		}
+		// The strictness read is awk over the file as STDIN, so that this
+		// lexical guard sees it: an awk program that spans lines carries its file
+		// operand on a line with no command name, and a read written that way
+		// would slip past the scan above uncounted. The redirect form is the one
+		// this scan matches by construction.
+		if strictness == "" || !strings.Contains(strictness, `< "$git_root/.trellis/rules.toml"`) {
+			t.Errorf("the other permitted content read must be the strictness key of .trellis/rules.toml, read via a `< \"$git_root/.trellis/rules.toml\"` redirect; reads were:\n%s", strings.Join(reads, "\n"))
 		}
 	})
 }
@@ -1654,8 +1682,9 @@ func TestInstallScriptNamesNoProjectFileInExecutableCode(t *testing.T) {
 	// bypassed that way.
 	//
 	// `trellis:begin`, `CLAUDE.md` and `AGENTS.md` are deliberately NOT here:
-	// spec-0005 AC2's amendment permits exactly one content read and it names
-	// them. The bounded version of that guard is the exactly-one-read subtest in
+	// spec-0005 AC2's amendment permits the managed-block content read and names
+	// them; TRL-37 argued a second read, the strictness key. The bounded version
+	// of that guard is the exactly-two-reads subtest in
 	// TestVendorGuardsAddedByReviewAreActuallyPinned.
 	terms := []string{"expression.md", "profile-"}
 	for i, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
@@ -1682,4 +1711,242 @@ func inlineBlockFixture(t *testing.T) string {
 		t.Fatalf("the shipped inline block now carries an @-import; if the inline form gained a .trellis/ dependency, install.sh's existence checks may cover it and this fixture's premise needs re-deriving")
 	}
 	return block
+}
+
+// TRL-37. The rendered file's posture header was a constant taken from
+// trellis-b.md, so a project whose .trellis/rules.toml already said
+// strictness = "firm" got the adaptive sentence rendered over its firm rows,
+// while the plugin's own SessionStart hook (path B of staleness.sh) served
+// trellis-a.md to the same project. The render now selects the header the way
+// the hook does: the first `strictness = ...` line, either quote style, exactly
+// `firm` selects trellis-a.md and anything else — including no file, no key,
+// and a value the hook does not recognise — selects trellis-b.md.
+//
+// Expected heads are the shipped payload bytes above the @rules.md placeholder,
+// not literals, so a reword of either header cannot leave this green by luck.
+func TestVendorRenderHeaderFollowsRulesTomlStrictness(t *testing.T) {
+	files := payloadFiles()
+	headOf := func(name string) string {
+		t.Helper()
+		src := files[name]
+		i := strings.Index(src, "\n@rules.md")
+		if i < 0 {
+			t.Fatalf("%s carries no @rules.md placeholder; the render's premise has drifted", name)
+		}
+		return src[:i+1]
+	}
+	firmHead, adaptiveHead := headOf("trellis-a.md"), headOf("trellis-b.md")
+	if firmHead == adaptiveHead {
+		t.Fatal("premise drifted: trellis-a.md and trellis-b.md no longer differ above @rules.md, so there is no posture header to select")
+	}
+	rulesA, rulesB := files["rules-a.toml"], files["rules-b.toml"]
+	rowsOnly := rulesB[strings.Index(rulesB, "[rules]"):]
+	singleQuoted := strings.Replace(rulesA, `strictness  = "firm"`, `strictness  = 'firm'`, 1)
+	if singleQuoted == rulesA {
+		t.Fatalf("the shipped rules-a.toml no longer carries `strictness  = \"firm\"`; this test's fixture needs re-deriving:\n%s", rulesA)
+	}
+	unrecognised := strings.Replace(rulesA, `"firm"`, `"strict"`, 1)
+
+	for _, tc := range []struct {
+		name     string
+		toml     string // "" means no .trellis/rules.toml at all
+		wantHead string
+		wantSaid string // the posture the installer reports on stdout
+	}{
+		{"firm, double quotes (the shipped rules-a.toml)", rulesA, firmHead, "firm"},
+		{"firm, single quotes (TOML's other string form)", singleQuoted, firmHead, "firm"},
+		{"adaptive (the shipped rules-b.toml)", rulesB, adaptiveHead, "adaptive"},
+		{"no rules.toml", "", adaptiveHead, "adaptive"},
+		{"a value the hook does not recognise", unrecognised, adaptiveHead, "adaptive"},
+		{"rows but no strictness key", rowsOnly, adaptiveHead, "adaptive"},
+		{"the first strictness line wins, and a commented one is not a line",
+			"# strictness = \"firm\"\nstrictness = \"adaptive\"\nstrictness = \"firm\"\n" + rowsOnly, adaptiveHead, "adaptive"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			tomlPath := filepath.Join(repo, ".trellis", "rules.toml")
+			if tc.toml != "" {
+				writeFileT(t, tomlPath, tc.toml)
+			}
+			res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+			if res.code != 0 {
+				t.Fatalf("exit %d\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
+			}
+			got := readFileT(t, filepath.Join(repo, ".claude", "rules", "trellis.md"))
+			if want := "<!-- trellis:rendered-begin -->\n" + tc.wantHead; !strings.HasPrefix(got, want) {
+				t.Errorf("the rendered file does not open with the header the hook would serve this project:\nwant prefix:\n%s\ngot:\n%.600s", want, got)
+			}
+			other := firmHead
+			if tc.wantHead == firmHead {
+				other = adaptiveHead
+			}
+			if strings.Contains(got, other) {
+				t.Errorf("the rendered file carries the OTHER posture header too")
+			}
+			// The file the header was read from is the project's own and is never
+			// rewritten; with no file, the seed and the header must agree.
+			if tc.toml != "" {
+				if after := readFileT(t, tomlPath); after != tc.toml {
+					t.Errorf(".trellis/rules.toml was modified by the install — reading the strictness key must never write it back:\nbefore:\n%s\nafter:\n%s", tc.toml, after)
+				}
+			} else if seeded := readFileT(t, tomlPath); seeded != rulesB {
+				t.Errorf("with no rules.toml the seed must be the adaptive preset, so that it agrees with the adaptive header rendered beside it")
+			}
+			// Said out loud (floor-transparency): which posture was rendered and
+			// why, since a reader of stdout otherwise cannot tell a firm project
+			// from an adaptive one, or a recognised value from one that fell
+			// through to the default.
+			if !strings.Contains(res.stdout, "posture header: "+tc.wantSaid) {
+				t.Errorf("stdout must name the posture rendered (%q); got:\n%s", tc.wantSaid, res.stdout)
+			}
+		})
+	}
+}
+
+// The two deliveries have to agree on the same project, and the only way to
+// know is to run both. For each strictness fixture: install, then move the
+// rendered file aside and let the hook take path B (config only) from the
+// vendored bundle — the header sentence the hook injects must be the one the
+// installer rendered. Verified by mutation: with the render pinned to
+// trellis-b.md, the firm fixture fails here.
+func TestRenderedHeaderMatchesTheHooksOwnSelection(t *testing.T) {
+	files := payloadFiles()
+	postureLine := func(name string) string {
+		t.Helper()
+		for _, l := range strings.Split(files[name], "\n") {
+			if strings.HasPrefix(l, "**How strictly to follow them:**") {
+				return l
+			}
+		}
+		t.Fatalf("%s carries no posture sentence; this test's premise has drifted", name)
+		return ""
+	}
+	firmLine, adaptiveLine := postureLine("trellis-a.md"), postureLine("trellis-b.md")
+	if firmLine == adaptiveLine {
+		t.Fatal("premise drifted: both headers carry the same posture sentence")
+	}
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, toml string }{
+		{"firm", files["rules-a.toml"]},
+		{"adaptive", files["rules-b.toml"]},
+		{"unrecognised value", strings.Replace(files["rules-a.toml"], `"firm"`, `"strict"`, 1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := t.TempDir()
+			initGitRepo(t, repo)
+			writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), tc.toml)
+			if res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project"); res.code != 0 {
+				t.Fatalf("install failed: %s", res.stderr)
+			}
+			rendered := filepath.Join(repo, ".claude", "rules", "trellis.md")
+			got := readFileT(t, rendered)
+			if err := os.Remove(rendered); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(hook)
+			cmd.Dir = repo
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+repo,
+				"CLAUDE_PLUGIN_ROOT="+filepath.Join(repo, ".claude", "skills", "trellis"))
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("hook exited non-zero: %v: %s", err, out)
+			}
+			if !strings.Contains(string(out), "inv-directional-flow") {
+				t.Fatalf("the hook did not take path B (no rules injected), so there is nothing to compare against:\n%s", out)
+			}
+			hookFirm, hookAdaptive := strings.Contains(string(out), firmLine), strings.Contains(string(out), adaptiveLine)
+			if hookFirm == hookAdaptive {
+				t.Fatalf("the hook's output carries neither posture sentence or both (firm=%v adaptive=%v); the header format or the JSON escaping has drifted:\n%s", hookFirm, hookAdaptive, out)
+			}
+			fileFirm, fileAdaptive := strings.Contains(got, firmLine), strings.Contains(got, adaptiveLine)
+			if fileFirm != hookFirm || fileAdaptive != hookAdaptive {
+				t.Errorf("the installer and the hook disagree on this project's posture: rendered firm=%v adaptive=%v, hook firm=%v adaptive=%v", fileFirm, fileAdaptive, hookFirm, hookAdaptive)
+			}
+		})
+	}
+}
+
+// install.sh cannot share a file with the hook — the hook is inside the bundle
+// the script vendors — so the strictness parser is a copy, and a copy drifts.
+// decision-0028: a source with a derivative gets a guard per pair. This pins the
+// awk program byte for byte, and the two case arms that map its result.
+func TestInstallScriptStrictnessParserMatchesHook(t *testing.T) {
+	extract := func(path string) string {
+		t.Helper()
+		src := readFileT(t, path)
+		const open = `strictness="$(awk '`
+		i := strings.Index(src, open)
+		if i < 0 {
+			t.Fatalf("%s carries no `%s`; the parser or this guard's premise moved", path, open)
+		}
+		rest := src[i+len(open):]
+		j := strings.Index(rest, "'")
+		if j < 0 {
+			t.Fatalf("%s: the awk program opened at %q never closes", path, open)
+		}
+		prog := rest[:j]
+		if !strings.Contains(prog, "strictness") {
+			t.Fatalf("%s: the extracted awk program does not mention strictness — wrong site:\n%s", path, prog)
+		}
+		return prog
+	}
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h, s := extract(hook), extract(installScriptPath(t)); h != s {
+		t.Errorf("install.sh's strictness parser has drifted from the hook's (plugins/trellis/hooks/staleness.sh); the two deliveries must read the key identically.\nhook:\n%s\ninstall.sh:\n%s", h, s)
+	}
+	script := readFileT(t, installScriptPath(t))
+	for _, arm := range []string{
+		`firm\)\s+header="reference/trellis-a\.md"`,
+		`\*\)\s+header="reference/trellis-b\.md"`,
+	} {
+		if !regexp.MustCompile(arm).MatchString(script) {
+			t.Errorf("install.sh lacks the case arm %s — the hook maps exactly `firm` to trellis-a.md and everything else to trellis-b.md", arm)
+		}
+	}
+}
+
+// Found by review, not by the suite: `[ -f ]` is true for a regular file the
+// invoking user cannot read, and the `<` redirect then fails INSIDE the command
+// substitution — under dash the substitution exits 2, the assignment takes that
+// status, and `set -eu` kills the script after the bundle is already in place,
+// with no rules file, no seed, and only the shell's own "cannot open" as the
+// diagnosis. The hook does not die there (no `set -e`, awk's error swallowed):
+// it serves the adaptive header. So the installer must not diverge from it over
+// a permission bit. Verified by mutation: dropping the `-r` guard and the
+// `|| strictness=""` fails this test with exactly that abort.
+//
+// Skipped when the test process can read a mode-000 file anyway (root, and CI
+// images that run as it) — the fixture cannot exist there.
+func TestVendorUnreadableRulesTomlFallsBackToAdaptiveInsteadOfAborting(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a mode-000 file is still readable, so the fixture cannot be built")
+	}
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	toml := filepath.Join(repo, ".trellis", "rules.toml")
+	writeFileT(t, toml, payloadFiles()["rules-a.toml"])
+	if err := os.Chmod(toml, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(toml, 0o644) })
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+	if res.code != 0 {
+		t.Fatalf("an unreadable rules.toml aborted the install (exit %d) instead of falling back the way the hook does\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
+	}
+	got := readFileT(t, filepath.Join(repo, ".claude", "rules", "trellis.md"))
+	if !strings.Contains(got, "**How strictly to follow them:** **By default**") {
+		t.Errorf("the fallback header must be the adaptive one, matching the hook's own behaviour on an unreadable file")
+	}
+	// Said out loud: silently rendering adaptive over a file that may well say
+	// firm is the failure this whole issue is about.
+	if !strings.Contains(res.stdout, "could not be read") {
+		t.Errorf("the installer must SAY that the posture could not be read rather than quietly defaulting; got:\n%s", res.stdout)
+	}
 }
