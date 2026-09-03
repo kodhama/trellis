@@ -432,7 +432,9 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 # patched, nothing branched on an instructions file. AC2's "never reads" clause
 # WAS amended for this branch (see the spec's frontmatter and AC2d): six reads
 # over five paths, of which ONE read a file's contents — the managed-block
-# opening marker. TRL-37 added a second: the `strictness` key of an existing
+# opening marker. TRL-37 makes it eight reads over the same five paths (the
+# existence-and-readability guard on .trellis/rules.toml, and the key itself),
+# two of them content reads. TRL-37 added a second: the `strictness` key of an existing
 # .trellis/rules.toml, which selects the posture HEADER — trellis-a for `firm`,
 # trellis-b for anything else — with the plugin hook's own parser. Before that
 # the header was trellis-b's prose as a CONSTANT (decision-0068 D5), and a firm
@@ -545,7 +547,7 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   # what the HOOK injects — it cannot un-load a file Claude already read. So this
   # is refused at install time, because there is no runtime fix for it.
   #
-  # Every read this script makes of pre-existing project state — six sites, five
+  # Every read this script makes of pre-existing project state — eight sites, five
   # paths. An earlier version of this comment claimed "the ONE place this script
   # reads .trellis/", which was false; a later one claimed no contents are read
   # anywhere, which is false while the marker check exists. Both are corrected:
@@ -557,9 +559,11 @@ if [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   #                                                   refusal before the mv)
   #   - .trellis/rules.toml                          (existence, for the
   #                                                   floors-only guidance line;
-  #                                                   CONTENT: the strictness
-  #                                                   key, selecting the posture
-  #                                                   header — TRL-37)
+  #                                                   plus existence-and-readable
+  #                                                   as the guard on the read
+  #                                                   below; CONTENT: the
+  #                                                   strictness key, selecting
+  #                                                   the posture header — TRL-37)
   # Two are content reads: the marker, one line-anchored string that only ever
   # refuses; and the strictness key, which selects which SHIPPED header is
   # rendered. Neither patches a marker or writes anything under .trellis/.
@@ -604,16 +608,32 @@ elif [ "$scope" = "project" ]; then
   # served the firm header to that same project. The rendered footer below
   # still says the rows win over the sentence, because strictness can be edited
   # after this file is written and the sentence is frozen at that moment.
+  # `-r` as well as `-f`, and it is not belt-and-braces. A regular file this
+  # user cannot read (a shared checkout, a stray chmod) makes the `<` redirect
+  # fail INSIDE the command substitution: under dash the substitution exits 2,
+  # the assignment takes that status, and `set -eu` kills the script — after the
+  # bundle is already in place, with no rules file, no seed, and only the
+  # shell's own one-line "cannot open" as the diagnosis (the `2>/dev/null`
+  # cannot help: redirections are processed left to right, so the shell's error
+  # is written before it takes effect). Measured under dash as an unprivileged
+  # user. The hook does not die there — it runs without `set -e` and swallows
+  # awk's read error, so it serves the adaptive header — and this script must
+  # not diverge from it over a permission bit. So: unreadable is a posture of
+  # adaptive, exactly as the hook resolves it, said out loud rather than
+  # inferred from silence.
   strictness=""
   toml_state=absent
   if [ -f "$git_root/.trellis/rules.toml" ]; then
     toml_state=present
+    [ -r "$git_root/.trellis/rules.toml" ] || toml_state=unreadable
+  fi
+  if [ "$toml_state" = present ]; then
     strictness="$(awk '
   /^[[:space:]]*strictness[[:space:]]*=/ {
     if (match($0, /"[^"]*"/) || match($0, /\x27[^\x27]*\x27/)) {
       print substr($0, RSTART + 1, RLENGTH - 2); exit
     }
-  }' < "$git_root/.trellis/rules.toml" 2>/dev/null)"
+  }' < "$git_root/.trellis/rules.toml" 2>/dev/null)" || strictness=""
   fi
   case "$strictness" in
     firm) header="reference/trellis-a.md"
@@ -624,8 +644,16 @@ elif [ "$scope" = "project" ]; then
           # install is the one moment someone is reading the output.
           if [ "$toml_state" = absent ]; then
             posture_note="adaptive — no .trellis/rules.toml file; the seed written below, if that path is free, is adaptive too; header from $header"
+          elif [ "$toml_state" = unreadable ]; then
+            posture_note="adaptive — .trellis/rules.toml exists but could not be read (permissions?), so its posture could not be honoured; the plugin hook falls back the same way. Fix the permissions and re-run to render the posture that file actually asks for. Header from $header"
           elif [ -z "$strictness" ]; then
-            posture_note="adaptive — .trellis/rules.toml carries no strictness key, which the plugin hook also resolves to adaptive; header from $header"
+            # NOT "the hook resolves it the same way" without qualification: a
+            # rules.toml holding only `governed = false` also has no strictness
+            # key, and there the hook selects no header at all — it stands down
+            # and delivers nothing, while this rendered file goes on governing.
+            # Rendering over the opt-out is pre-existing behaviour and outside
+            # this change; claiming hook parity on that input would not be.
+            posture_note="adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way. (If that file is the \`governed = false\` opt-out, note that the hook stands down entirely while this rendered file still governs — delete .claude/rules/trellis.md if that is not what you want.) Header from $header"
           elif [ "$strictness" = adaptive ]; then
             posture_note="adaptive — strictness = \"adaptive\" in .trellis/rules.toml; header from $header"
           else

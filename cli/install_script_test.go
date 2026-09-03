@@ -1682,8 +1682,9 @@ func TestInstallScriptNamesNoProjectFileInExecutableCode(t *testing.T) {
 	// bypassed that way.
 	//
 	// `trellis:begin`, `CLAUDE.md` and `AGENTS.md` are deliberately NOT here:
-	// spec-0005 AC2's amendment permits exactly one content read and it names
-	// them. The bounded version of that guard is the exactly-one-read subtest in
+	// spec-0005 AC2's amendment permits the managed-block content read and names
+	// them; TRL-37 argued a second read, the strictness key. The bounded version
+	// of that guard is the exactly-two-reads subtest in
 	// TestVendorGuardsAddedByReviewAreActuallyPinned.
 	terms := []string{"expression.md", "profile-"}
 	for i, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
@@ -1908,5 +1909,44 @@ func TestInstallScriptStrictnessParserMatchesHook(t *testing.T) {
 		if !regexp.MustCompile(arm).MatchString(script) {
 			t.Errorf("install.sh lacks the case arm %s — the hook maps exactly `firm` to trellis-a.md and everything else to trellis-b.md", arm)
 		}
+	}
+}
+
+// Found by review, not by the suite: `[ -f ]` is true for a regular file the
+// invoking user cannot read, and the `<` redirect then fails INSIDE the command
+// substitution — under dash the substitution exits 2, the assignment takes that
+// status, and `set -eu` kills the script after the bundle is already in place,
+// with no rules file, no seed, and only the shell's own "cannot open" as the
+// diagnosis. The hook does not die there (no `set -e`, awk's error swallowed):
+// it serves the adaptive header. So the installer must not diverge from it over
+// a permission bit. Verified by mutation: dropping the `-r` guard and the
+// `|| strictness=""` fails this test with exactly that abort.
+//
+// Skipped when the test process can read a mode-000 file anyway (root, and CI
+// images that run as it) — the fixture cannot exist there.
+func TestVendorUnreadableRulesTomlFallsBackToAdaptiveInsteadOfAborting(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a mode-000 file is still readable, so the fixture cannot be built")
+	}
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	toml := filepath.Join(repo, ".trellis", "rules.toml")
+	writeFileT(t, toml, payloadFiles()["rules-a.toml"])
+	if err := os.Chmod(toml, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(toml, 0o644) })
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+	if res.code != 0 {
+		t.Fatalf("an unreadable rules.toml aborted the install (exit %d) instead of falling back the way the hook does\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
+	}
+	got := readFileT(t, filepath.Join(repo, ".claude", "rules", "trellis.md"))
+	if !strings.Contains(got, "**How strictly to follow them:** **By default**") {
+		t.Errorf("the fallback header must be the adaptive one, matching the hook's own behaviour on an unreadable file")
+	}
+	// Said out loud: silently rendering adaptive over a file that may well say
+	// firm is the failure this whole issue is about.
+	if !strings.Contains(res.stdout, "could not be read") {
+		t.Errorf("the installer must SAY that the posture could not be read rather than quietly defaulting; got:\n%s", res.stdout)
 	}
 }
