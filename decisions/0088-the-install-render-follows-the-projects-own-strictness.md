@@ -1,5 +1,5 @@
 ---
-id: decision-0086
+id: decision-0088
 type: decision
 depends_on: [decision-0068, decision-0070, decision-0079]  # decision-0070 and decision-0079 moved up from informed_by after an independent corpus review: both are coupling under decision-0047's test, not provenance. D2's "still seeded rules-b.toml, so seed and header still agree" is FALSE, not merely less evidenced, if decision-0070 D2 stopped seeding or seeded rules-a.toml; and the Context argument that spec-0005's prohibition is now only a test rests on decision-0079 having retired the spec stage. Same correction decision-0076 made for the same reason
 changes: [decision-0068]
@@ -8,7 +8,7 @@ owner: agent
 date: 2026-09-03
 ---
 
-# 0086 — the install path renders the posture the project's own rows ask for
+# 0088 — the install path renders the posture the project's own rows ask for
 
 ## Context
 
