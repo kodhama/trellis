@@ -379,19 +379,88 @@ function parseRulesToml(source, slugs) {
 // <stamp>". `today` is the caller's `YYYY-MM-DD` for the same reason
 // staleness.sh takes one `date +%Y-%m-%d` call up front rather than one per row:
 // every note in a single reconciliation shares one date.
+// The two provenance strings, as ONE source of truth for the writer below
+// (quarantineNote/addedHeader) and the reader under it (stripPersistedProvenance).
+// A pattern written out by hand next to a string built by hand is two statements
+// of the same text, and they drift silently: the writer's wording changes, the
+// reader keeps matching yesterday's, and the degradation quietly stops degrading
+// — which is TRL-29 again, arrived at from the other side. Deriving both from one
+// template makes that drift impossible rather than merely tested for.
+//
+// staleness.sh:862 and staleness.sh:933 carry the identical text: both hosts
+// write into one .trellis/rules.toml, so a file repaired on Claude must strip on
+// Codex. TestBothHostsReconcileIdentically keeps those two writers in step;
+// these templates keep this side's reader in step with this side's writer.
+const QUARANTINE_NOTE_TEMPLATE =
+  "  # quarantined {date}: not in {stamp}. If a newer Trellis" +
+  " release ships this slug, update the Trellis plugin and uncomment this row.";
+const ADDED_HEADER_TEMPLATE =
+  "# added {count} row(s) below on {date} (missing from {stamp})";
+
+function fillTemplate(template, values) {
+  return template.replace(/\{(\w+)\}/gu, (_match, key) => values[key]);
+}
+
+// A template's literal segments, regex-escaped, rejoined by a same-line
+// wildcard: the pattern matches what the template WROTE on any date, against any
+// payload stamp, for any count. `[^\n]*` rather than `.` so a placeholder can
+// never swallow a line boundary — an over-greedy pattern here would strip a
+// consumer's own lines, and quarantine never deletes.
+function templatePattern(template, wrap) {
+  const body = template
+    .split(/\{\w+\}/u)
+    .map((literal) => literal.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"))
+    .join("[^\\n]*");
+  return new RegExp(wrap(body), "u");
+}
+
 // quarantineNote/addedHeader are the two provenance strings reconcileRows
 // glues onto a row (or a block of rows) it could not match to the payload's
-// slug set. Factored out to a single source of truth so the `withProvenance`
+// slug set. Filled from the templates above, so the `withProvenance`
 // branches below (the ordinary call and TRL-29's degraded one, immediately
 // after) can never drift from each other about what "with provenance" means.
 function quarantineNote(today, stamp) {
-  return (
-    `  # quarantined ${today}: not in ${stamp}. If a newer Trellis` +
-    " release ships this slug, update the Trellis plugin and uncomment this row."
-  );
+  return fillTemplate(QUARANTINE_NOTE_TEMPLATE, { date: today, stamp });
 }
 function addedHeader(count, today, stamp) {
-  return `# added ${count} row(s) below on ${today} (missing from ${stamp})`;
+  return fillTemplate(ADDED_HEADER_TEMPLATE, { count, date: today, stamp });
+}
+
+// A quarantine note is a SUFFIX on a commented-out row; an added-rows header is
+// a whole line of its own. Anchored accordingly. Both tolerate a trailing `\r`
+// (a CRLF file split on "\n" keeps it) via lookahead rather than by consuming
+// it, so a stripped line keeps the line ending the rest of the file uses.
+const QUARANTINE_NOTE_PATTERN = templatePattern(
+  QUARANTINE_NOTE_TEMPLATE,
+  (body) => `(?:${body})[ \\t]*(?=\\r?$)`,
+);
+const ADDED_HEADER_PATTERN = templatePattern(
+  ADDED_HEADER_TEMPLATE,
+  (body) => `^[ \\t]*(?:${body})[ \\t]*\\r?$`,
+);
+
+// TRL-29. The degradation `decision-0084` §6 built drops provenance this hook is
+// about to WRITE. This drops provenance an earlier session already wrote into the
+// file — the other half, and the half whose absence made the degradation
+// one-shot. A session that follows a repair has no mismatch, so it generates no
+// provenance and has nothing to leave off; the file's persisted comments were the
+// only thing left to give up, and the gate above them never opened.
+//
+// Only Trellis's own two forms come off. A comment the PROJECT wrote is the
+// project's content and stays: this is a byte-budget concession on Trellis's own
+// bookkeeping, not a licence to abbreviate a consumer's file.
+//
+// Touches nothing on disk (`decision-0070` D4) and no row's VALUE: a quarantined
+// row keeps its commented-out line verbatim and loses only the note appended to
+// it, which is exactly the shape reconcileRows produces with
+// `withProvenance = false`. Quarantine still never deletes.
+function stripPersistedProvenance(source) {
+  const kept = [];
+  for (const line of source.split("\n")) {
+    if (ADDED_HEADER_PATTERN.test(line)) continue;
+    kept.push(line.replace(QUARANTINE_NOTE_PATTERN, ""));
+  }
+  return kept.join("\n");
 }
 
 // `withProvenance = false` is TRL-29's degradation path: same rows, same

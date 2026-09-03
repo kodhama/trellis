@@ -1505,3 +1505,119 @@ func codexReconciledRowsFromContext(t *testing.T, context string) string {
 	}
 	return m[1]
 }
+
+// TestCodexProvenanceStripperMatchesItsOwnWriter is the anti-drift pin for
+// TRL-29's no-mismatch degradation. stripPersistedProvenance has to recognise
+// provenance an EARLIER session wrote — possibly by the other host, on an older
+// date, against an older payload stamp — and the only thing that keeps a reader
+// honest against a writer it never sees run is a test that runs both.
+//
+// Session 1 (a genuine mismatch, under budget) writes full provenance into the
+// context; the file the agent then writes IS that text. Feeding that file back
+// through the stripper must leave the rows with no Trellis provenance on them at
+// all, which is the shape reconcileRows produces with `withProvenance = false`.
+//
+// The fixture carries BOTH provenance forms — a quarantine note (a suffix on a
+// commented-out row) and an added-rows header (a line of its own) — because they
+// are anchored differently and a single-kind fixture would pin only one of them.
+func TestCodexProvenanceStripperMatchesItsOwnWriter(t *testing.T) {
+	base := payloadFiles()["rules-a.toml"]
+	fixture := strings.Replace(base,
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	if fixture == base {
+		t.Fatal("premise: fixture removed nothing — the case would prove nothing")
+	}
+	fixture += "inv-foreign-rule-a = { active = true }\n"
+
+	// Taken from the CLAUDE host on purpose: the file an agent writes is text
+	// both hosts agree on byte for byte (TestBothHostsReconcileIdentically), so
+	// this cannot be satisfied by the Codex reader agreeing with a writer it
+	// shares a typo with.
+	full := claudeReconciledRows(t, fixture) + "\n"
+	if !strings.Contains(full, "# quarantined ") || !strings.Contains(full, "# added 1 row(s) below on ") {
+		t.Fatalf("premise: the reconciled file must carry BOTH provenance forms:\n%s", full)
+	}
+
+	stripped := codexStripProvenance(t, full)
+	for _, banned := range []string{"# quarantined ", "# added "} {
+		if strings.Contains(stripped, banned) {
+			t.Errorf("stripPersistedProvenance left %q behind — the reader has drifted from the writer:\n%s", banned, stripped)
+		}
+	}
+	// Quarantine never deletes: the commented row keeps its line and its value.
+	if !strings.Contains(stripped, "# inv-foreign-rule-a = { active = true }") {
+		t.Errorf("the quarantined row lost its line — quarantine never deletes:\n%s", stripped)
+	}
+	if !strings.Contains(stripped, "inv-minimal-first = { active = true }") {
+		t.Errorf("the added row did not survive the strip:\n%s", stripped)
+	}
+	// Everything that is not Trellis's own bookkeeping is the project's content
+	// and must come through untouched — the strip is a byte-budget concession on
+	// what Trellis wrote, not a licence to abbreviate a consumer's file.
+	for _, kept := range []string{
+		`seeded_from = "conductor"  # provenance only`,
+		"[rules]  # one row per assessable catalog slug",
+		"floor-intent-gate         = { active = true }  # floor — applies regardless of this row",
+	} {
+		if !strings.Contains(stripped, kept) {
+			t.Errorf("the strip took out %q, which Trellis did not write as provenance:\n%s", kept, stripped)
+		}
+	}
+}
+
+// codexStripProvenance calls stripPersistedProvenance directly, by slicing its
+// self-contained region out of codex-context.mjs into a throwaway ES module.
+// The hook is a top-level script (it reads stdin and exits at once), so it
+// cannot be imported as-is.
+//
+// Direct rather than end-to-end BECAUSE the end-to-end path needs a fixture
+// over MAX_CONTEXT_BYTES, where a stripper defect and a budget-arithmetic
+// defect are indistinguishable. TestCodexDegradesOnASecondSessionOverBudget
+// covers the wired-up path; this covers the reader against its writer.
+func codexStripProvenance(t *testing.T, source string) string {
+	t.Helper()
+	raw, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	start := strings.Index(body, "const QUARANTINE_NOTE_TEMPLATE")
+	if start < 0 {
+		t.Fatal("QUARANTINE_NOTE_TEMPLATE not found in codex-context.mjs — the extraction is broken, and a helper that reads nothing proves nothing")
+	}
+	fn := strings.Index(body, "function stripPersistedProvenance(")
+	if fn < start {
+		t.Fatal("stripPersistedProvenance is not below the templates it derives from — the extraction is broken")
+	}
+	closing := strings.Index(body[fn:], "\n}\n")
+	if closing < 0 {
+		t.Fatal("stripPersistedProvenance has no closing '}' — the extraction is broken")
+	}
+	region := body[start : fn+closing+len("\n}\n")]
+
+	dir := t.TempDir()
+	mod := filepath.Join(dir, "strip.mjs")
+	// Reads stdin rather than embedding the fixture, so no escaping of the
+	// fixture's own quotes and backslashes can quietly change what is measured.
+	script := region + `
+const input = await new Promise((resolve) => {
+  let s = "";
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (c) => { s += c; });
+  process.stdin.on("end", () => resolve(s));
+});
+process.stdout.write(stripPersistedProvenance(input));
+`
+	if err := os.WriteFile(mod, []byte(script), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("node", mod)
+	cmd.Stdin = strings.NewReader(source)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("stripPersistedProvenance harness failed: %v\nstderr: %s", err, stderr.String())
+	}
+	return stdout.String()
+}
