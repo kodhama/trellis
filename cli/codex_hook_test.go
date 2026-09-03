@@ -1116,8 +1116,19 @@ func TestCodexDegradesRatherThanRefusingOverBudget(t *testing.T) {
 			t.Errorf("rule %s must still be delivered when provenance is dropped", slug)
 		}
 	}
-	if !strings.Contains(ctx, "provenance") {
+	if !strings.Contains(ctx, codexDegradedMarker) {
 		t.Errorf("the omission must be announced, not silent:\n%s", ctx)
+	}
+	// decision-0084 §6 calls this "the whole point of the branch": the CONTEXT is
+	// abbreviated, the FILE the mandate asks for is not. The assertion carrying
+	// that claim used to be a bare Contains(ctx, "provenance"), which survives
+	// almost any rewording and would also pass on text that told the agent to
+	// write the abbreviated rows back. The clause is named here instead.
+	if !strings.Contains(ctx, "not the abbreviated ones shown above") {
+		t.Errorf("the degraded mandate must tell the agent to write the FULL-provenance version, not the rows it can see:\n%s", ctx)
+	}
+	if strings.Contains(ctx, "Write .trellis/rules.toml with exactly the rows shown above") {
+		t.Errorf("the degraded mandate fell back to the full-provenance wording — the file would silently lose its provenance:\n%s", ctx)
 	}
 	if n := len([]byte(ctx)); n > 9500 {
 		t.Errorf("degraded context is %d bytes, still over the cap", n)
@@ -1832,4 +1843,109 @@ func TestCodexDegradesPersistedProvenanceOnTheMismatchPathToo(t *testing.T) {
 	if string(after) != drifted {
 		t.Errorf("the hook wrote .trellis/rules.toml — decision-0070 D4 says it never does")
 	}
+}
+
+// TestCodexDoesNotOverRefuseTheLegitimateShapes runs every rules.toml shape a
+// real project can present through the real hook and requires that none of them
+// reaches a refusal.
+//
+// Over-correction is the failure mode this class of work keeps producing: two
+// guards on an earlier TRL-29 branch tightened into refusing healthy payloads,
+// which costs a consumer exactly what the silent case does. The sweep is broad
+// and boring on purpose — a narrow test of the newly-changed path would not have
+// caught either of them.
+func TestCodexDoesNotOverRefuseTheLegitimateShapes(t *testing.T) {
+	files := payloadFiles()
+	firm := files["rules-a.toml"]
+	adaptive := files["rules-b.toml"]
+
+	renamed := strings.Replace(firm,
+		"inv-minimal-first         = { active = true }",
+		"inv-renamed-first         = { active = true }", 1)
+	if renamed == firm {
+		t.Fatal("premise: rename fixture changed nothing")
+	}
+	missingRow := strings.Replace(firm, "inv-minimal-first         = { active = true }\n", "", 1)
+	if missingRow == firm {
+		t.Fatal("premise: missing-row fixture changed nothing")
+	}
+	alreadyQuarantined := claudeReconciledRows(t, firm+"inv-foreign-rule-a = { active = true }\n") + "\n"
+	if !strings.Contains(alreadyQuarantined, "# quarantined ") {
+		t.Fatal("premise: already-quarantined fixture carries no provenance")
+	}
+
+	cases := map[string]string{
+		"unchanged firm preset":     firm,
+		"unchanged adaptive preset": adaptive,
+		"missing row":               missingRow,
+		"unknown row":               firm + "inv-foreign-rule-a = { active = true }\n",
+		"duplicate row":             firm + "inv-minimal-first         = { active = false }\n",
+		"renamed row":               renamed,
+		"already quarantined":       alreadyQuarantined,
+		"hand-written partial":      "strictness  = \"firm\"\n",
+	}
+	for name, toml := range cases {
+		t.Run(name, func(t *testing.T) {
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+			if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(toml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+			if strings.Contains(raw, "context-over-budget") || strings.Contains(raw, "invalid-rules") {
+				t.Fatalf("a legitimate shape was refused:\n%s", raw)
+			}
+			if got.HookSpecificOutput == nil {
+				t.Fatalf("no context injected for a legitimate shape:\n%s", raw)
+			}
+			ctx := got.HookSpecificOutput.AdditionalContext
+			if n := len([]byte(ctx)); n > 9500 {
+				t.Errorf("%s assembled to %d bytes, over the cap", name, n)
+			}
+			for _, slug := range assessableSlugs {
+				if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
+					t.Errorf("rule %s was not delivered for a legitimate shape", slug)
+				}
+			}
+		})
+	}
+
+	// decision-0070 D5: an opt-out is silence, not a refusal — and not a
+	// delivery either. Asserted rather than folded into the table above,
+	// because "emitted nothing" and "refused" are exactly the two outcomes
+	// this sweep exists to tell apart, and a shared assertion would blur them.
+	t.Run("governed = false", func(t *testing.T) {
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte("governed = false\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if raw != "" {
+			t.Fatalf("an opt-out must emit nothing at all — not a refusal, not a delivery:\n%s", raw)
+		}
+	})
+
+	// A project with no .trellis/rules.toml is not a Trellis project on this
+	// host: nearestOverlay walks up looking for exactly that file, so the hook
+	// stops at project-root-not-found before any budget arithmetic runs. What
+	// matters for this sweep is that it is NOT a budget refusal — the byte cap
+	// must not be what a project without an overlay hears about.
+	t.Run("no project rules.toml at all", func(t *testing.T) {
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		if err := os.Remove(filepath.Join(project, ".trellis", "rules.toml")); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if strings.Contains(raw, "context-over-budget") {
+			t.Fatalf("a project with no rules.toml must never be refused for budget:\n%s", raw)
+		}
+		if got.HookSpecificOutput != nil {
+			t.Fatalf("a project with no overlay must not be governed from one:\n%s", raw)
+		}
+		if !strings.Contains(raw, "project-root-not-found") {
+			t.Errorf("expected the overlay-not-found path, got:\n%s", raw)
+		}
+	})
 }
