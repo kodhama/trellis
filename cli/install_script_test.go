@@ -1493,8 +1493,13 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 	// `firm` put the adaptive header over a firm project — the plugin's own hook
 	// reads the same key to pick the same header, so the render reads it too, with
 	// the hook's own parser (TestInstallScriptStrictnessParserMatchesHook).
-	// decision-0088 D5 records that read and says a third "still has to come and
-	// argue itself". This is that argument (TRL-38): a rules.toml holding
+	// decision-0088 D5 records that read; the demand that a third "still has to
+	// come and argue itself" is in that record's CONSEQUENCES, under "What is not
+	// claimed here" — not in D5, which is about the second read and names this
+	// test as one of the two things that answered the demand for it. (TRL-42 and
+	// an earlier draft of decision-0090 both put the sentence in D5; a reviewer
+	// caught it, and this comment carried the same error until decision-0090
+	// fixed the pair.) This is that argument (TRL-38): a rules.toml holding
 	// `governed = false` is a project saying Trellis does not govern here
 	// (decision-0070 D5), and the hook reads that key before every delivery path
 	// and injects nothing on it. The installer, not reading it, rendered the full
@@ -1506,7 +1511,12 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 	// selects nothing, and writes nothing. It still selects nothing from an
 	// instructions file, and still writes nothing under .trellis/ beyond the seed.
 	// Asserting the exact count keeps the widening bounded — a fourth read has to
-	// come here and argue itself.
+	// come here and argue itself, and "here" is now ruled rather than assumed:
+	// decision-0090 D1 makes this comment the home of the COUNT, changed by
+	// argument in the same commit that changes it. D2 keeps the corpus for a read
+	// that DECIDES — one that selects, patches, writes, or removes a refusal —
+	// which is why the strictness read was owed decision-0088 and the governed
+	// read was not.
 	t.Run("exactly three project file content reads: the marker check, the governed key and the strictness key", func(t *testing.T) {
 		// Classify every grep by its OPERAND, not by whether the line happens to
 		// mention `git_root`. That earlier form was bypassed by aliasing:
