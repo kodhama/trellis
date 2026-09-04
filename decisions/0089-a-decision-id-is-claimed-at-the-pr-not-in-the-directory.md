@@ -76,6 +76,11 @@ decision-0089 and #301 renumbers. Reported here, red there."*
 and `decisions/0089.md` are not claims. This is why the status filter lives in the script rather
 than in the workflow's `gh --jq` expression: the rule has to sit in the half the tests can reach.
 
+> *Superseded in practice, 2026-09-04 — see the dated note at the top of `## Consequences`. The
+> shipped guard judges a rename by its **destination** id, accepts `copied`, and also fails a
+> branch that claims one id twice. This point is not corrected here; closing it properly is the
+> maintainer's act.*
+
 **5. The logic is a script, not inline YAML** — `.github/scripts/decision-id-guard.sh`, executed by
 `.github/workflows/decision-id-guard.yml` and by `cli/decision_id_guard_test.go`. Every input is
 injectable (`GUARD_MAIN_FILES`, `GUARD_PR_FILES`, `GUARD_PR_NUMBER`), so the tests run offline
@@ -103,6 +108,9 @@ record does not reopen the rule, only the example it parked.
 > - **Two files claiming one id inside a single diff passed clean** — the base check and the rival
 >   check each compare this PR against *another* source, and nothing compared the branch against
 >   itself.
+> - **`copied` is a claim too**, which point 4's *"an added file … nothing else"* does not authorise
+>   either: a copy puts a new file at a new path. Lower stakes than the two above, and listed so a
+>   successor drafted from this note does not inherit the gap.
 >
 > Three further paths would have failed open: `gh pr list --limit`'s silent cap (claimed in the
 > script's comments, not in this record), `set -u` without `pipefail` letting a failed `awk` read as
@@ -116,7 +124,8 @@ record does not reopen the rule, only the example it parked.
 > scales with the cost of reversal, and this record is his merge). It is deliberately **not**
 > performed here, so what stands is this flag rather than a silent divergence. Points 1–3 and 5–6 are
 > unaffected: the guard, the tie-break, "state the rule and name the winner", script-not-inline-YAML,
-> and the closure of `decision-0078`'s parked observation.
+> and the closure of `decision-0078`'s parked observation — with one qualification on point 3, whose
+> *rule* stands while its second example does not, immediately below.
 >
 > One further error, left in place rather than edited: point 3's second example names **#299** as the
 > PR receiving the notice, where the script interpolates the current PR — the quoted text says
