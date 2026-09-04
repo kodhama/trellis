@@ -1,0 +1,48 @@
+name: Decision id guard
+
+# A branch that adds `decisions/NNNN-*.md` must claim an id nobody else has.
+# TRL-40 / decision-0089 — the third recurrence of a collision `decision-0078`
+# recorded and armed a trigger for.
+#
+# The reason this cannot be a local check: `decisions/` on `main` is not the
+# allocation authority, the merge queue is. `ls decisions/` on a branch cut
+# before a sibling merged is a correct reading of a stale world. Seeing the
+# sibling needs the GitHub API, which is why this job exists and why the logic
+# lives in `.github/scripts/decision-id-guard.sh` — a script the Go suite
+# (`cli/decision_id_guard_test.go`) executes against fixtures, offline. Inline
+# YAML would be untestable.
+#
+# Advisory, like `agent-workflow-parity`: `main` carries no branch protection
+# here, so a red does not block a merge. It replaces a human noticing.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # Only a branch that adds a decision record can claim an id. The guard's own
+    # files are included so a change to it runs against itself.
+    paths:
+      - "decisions/**"
+      - ".github/workflows/decision-id-guard.yml"
+      - ".github/scripts/decision-id-guard.sh"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  decision-id:
+    runs-on: ubuntu-latest
+    steps:
+      # depth 1 is enough: the script shallow-fetches the base branch itself,
+      # because it needs `decisions/` on the base ref and nothing else.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: A new decision id must be free on the base branch and on every older open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUARD_REPO: ${{ github.repository }}
+          GUARD_PR_NUMBER: ${{ github.event.pull_request.number }}
+          GUARD_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: .github/scripts/decision-id-guard.sh
