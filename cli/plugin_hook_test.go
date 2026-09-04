@@ -4143,7 +4143,7 @@ func hookPathForDefaults(t *testing.T) string {
 // covered by its own named subtests in TestStalenessHook instead.
 //
 // The healthy and CRLF rows run in this same table ON PURPOSE. Two of the
-// eleven were the INVERSE defect — a guard that refused a healthy payload, one
+// fifteen were the INVERSE defect — a guard that refused a healthy payload, one
 // of them over CRLF line endings exactly — so a matrix that only proved the
 // hook refuses broken input would be half a guard, and the missing half is the
 // one that has shipped twice.
@@ -4308,7 +4308,7 @@ func TestBrokenPayloadIsNeverSilent(t *testing.T) {
 // What the rules deliberately do NOT forbid is a SECOND read of a variable
 // that has already been through the gateway — $rules is read positionally by
 // three awks after payload_read has proved it readable and non-empty, and that
-// is the safe pattern rather than a bypass. The hazard the eleven instances
+// is the safe pattern rather than a bypass. The hazard the fifteen instances
 // shared was an UNCHECKED first read, not a checked one repeated.
 func TestNoPayloadReadBypassesTheGateway(t *testing.T) {
 	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")

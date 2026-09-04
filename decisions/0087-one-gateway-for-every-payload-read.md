@@ -60,7 +60,7 @@ unreadable `reference/rules-b.toml` was reported as payload incoherence while `r
 project's rows were both perfectly well (`decision-0083` records the general property at
 `:115-116`; the specific fix is in the hook). A CRLF-terminated `rules.md` was reported as
 truncated — **that one is recorded in the hook rather than in either decision**, at
-`plugins/trellis/hooks/staleness.sh:796-804` (*"an exact ASCII comparison fails — reporting
+`plugins/trellis/hooks/staleness.sh:826-829` (*"an exact ASCII comparison fails — reporting
 `not-last` and blacking out a COMPLETE, CORRECT payload"*), and pinned by
 `TestTruncatedRulesMdIsRefusedByItsOwnTerminator`/"a healthy CRLF payload governs and is not
 refused". Cited to its actual source, because a corpus review of an earlier draft of this record
@@ -210,7 +210,8 @@ disposition each turn the covering structural guard red.
   baked bundle manifest advanced in the same commit (`decision-0028`: a source and its derivative
   move together).
   *0.9.0 rather than 0.8.0 is the starting point because `decision-0086` (#263) landed on `main`
-  first and took 0.9.0; a second, different payload under that same string would be exactly the
+  first and took 0.9.0 — `git show 49d938b:plugins/trellis/VERSION`, since `0086` itself records no
+  bump and the corpus carries no other anchor for it; a second, different payload under that same string would be exactly the
   defect the bump exists to prevent — a cached consumer never re-pulls, so this change would
   reach nobody already holding 0.9.0.*
 - **`decision-0043` gains `superseded_in_part_by: [decision-0087]`**, scoped in its trailing
