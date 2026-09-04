@@ -68,10 +68,8 @@ an older #299 gets:
 > `(decisions/0089-the-older-claim.md). TIE-BREAK: the older claim wins — the lower-numbered open PR`
 > `keeps the id, so #299 keeps decision-0089 and this PR (#300) renumbers.`
 
-and #300, against a newer #301, gets the mirror image as a notice: *"this PR (#300) keeps
-decision-0089 and #301 renumbers. Reported here, red there."*  *(Corrected 2026-09-04: this sentence
-read "#299" where the script interpolates the current PR. An example, not a rule — see the note in
-Consequences.)*
+and #299, against a newer #301, gets the mirror image as a notice: *"this PR (#300) keeps
+decision-0089 and #301 renumbers. Reported here, red there."*
 
 **4. A claim is an *added* file with the `decisions/NNNN-*.md` shape — nothing else.** Modifying
 `decision-0087` does not claim `0087`; a rename is a file that already exists; `decisions/README.md`
@@ -94,30 +92,36 @@ record does not reopen the rule, only the example it parked.
 
 ## Consequences
 
-> **Note, 2026-09-04 — point 4's definition of a claim was wrong, and the shipped guard now differs
-> from it.** A review pass after this record merged reproduced two branches the guard passed clean,
-> both against the running script:
+> **Note, 2026-09-04 — the shipped guard now diverges from point 4, and this note does not resolve
+> that.** A review pass after this record merged reproduced two branches the guard passed clean, both
+> run against the shipped script:
 >
 > - **A rename INTO a free id was invisible.** Point 4's *"a rename is a file that already exists"* is
 >   true of the **old** path and false of the **new** one: GitHub reports the destination in
->   `filename` and the source in `previous_filename`, so `0088-old.md` → `0090-new.md` claims `0090`.
->   The guard now judges a rename by its destination, while a slug-only rename (`0087-one-gateway.md`
->   → `0087-a-better-slug.md`, same id at both ends) still claims nothing.
+>   `filename` and the source in `previous_filename`, so `0088-old.md` → `0090-new.md` puts a file at
+>   `decisions/0090-*.md`.
 > - **Two files claiming one id inside a single diff passed clean** — the base check and the rival
 >   check each compare this PR against *another* source, and nothing compared the branch against
->   itself. Now red on that PR alone; no tie-break applies when both files are on one branch.
+>   itself.
 >
-> Three further paths would have failed open and are fixed in the same change: `gh pr list --limit`'s
-> silent cap (the script's own comments claimed "every open PR"; this record does not, so only the
-> script needed correcting), `set -u` without `pipefail` letting a failed `awk` read as *"no id
-> claimed"* and exit 0, and this record's own workflow/script pair test matching substrings that also
-> appear in the workflow's comment, so `run: true` kept it green while CI invoked nothing.
+> Three further paths would have failed open: `gh pr list --limit`'s silent cap (claimed in the
+> script's comments, not in this record), `set -u` without `pipefail` letting a failed `awk` read as
+> *"no id claimed"* and exit 0, and this record's own workflow/script pair test matching substrings
+> that also appear in the workflow's comment, so `run: true` kept it green while CI invoked nothing.
 >
-> **Everything else below stands**, and so do points 1–3 and 5–7 as decisions: the guard, the
-> tie-break, "state the rule and name the winner", script-not-inline-YAML, and the closure of
-> `decision-0078`'s parked observation. **Open for the maintainer:** whether replacing point 4's
-> definition is substance enough to warrant a successor record and a `superseded_in_part_by` pointer,
-> rather than this note. The fix did not wait on that question.
+> **The code is fixed; this record is not.** Point 4 still reads as current truth and the shipped
+> guard no longer implements it. Marking that properly means a successor record and a
+> `superseded_in_part_by` pointer — the shape this record itself used on `decision-0078` at point 6 —
+> and **that is the maintainer's act, not the author's** (`decision-0081`: supersession authority
+> scales with the cost of reversal, and this record is his merge). It is deliberately **not**
+> performed here, so what stands is this flag rather than a silent divergence. Points 1–3 and 5–6 are
+> unaffected: the guard, the tie-break, "state the rule and name the winner", script-not-inline-YAML,
+> and the closure of `decision-0078`'s parked observation.
+>
+> One further error, left in place rather than edited: point 3's second example names **#299** as the
+> PR receiving the notice, where the script interpolates the current PR — the quoted text says
+> *"this PR (#300)"*. An example, not a rule; `decisions/` is append-only, so it is recorded here
+> instead of corrected above.
 
 - **The check is advisory, like `agent-workflow-parity`.** `main` carries no branch protection here,
   so a red does not block a merge; it replaces a human noticing. The maintainer can merge a red PR
