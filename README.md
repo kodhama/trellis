@@ -68,7 +68,9 @@ renders one file it wholly owns, `.claude/rules/trellis.md` — the rules themse
 loads at launch with no hook and no *plugin* trust prompt (the workspace-trust dialog on first
 launch in a project still applies — see the project-scope bullet below) — and seeds `.trellis/rules.toml` from the shipped
 preset when none exists, so the project is governed at 16/16 on the adaptive posture the moment the
-script exits (`decision-0070` D2). That is how the rules actually reach a session:
+script exits (`decision-0070` D2). A project whose `.trellis/rules.toml` declares `governed = false`
+has opted out (`decision-0070` D5): it gets the bundle and **no** rules file, exactly as the plugin
+hook injects nothing there (`TRL-38`). That is how the rules actually reach a session:
 `decision-0068` measured that the vendored bundle alone delivered **none**, which is
 why this paragraph no longer says the script "composes nothing else". It is Claude Code only, and
 `--scope personal` delivers no rules at all; each run prints whichever limit applies to it.

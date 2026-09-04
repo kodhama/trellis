@@ -717,19 +717,32 @@ var codexQuotedSpanRe = regexp.MustCompile("'[^']*'|\"[^\"]*\"|`[^`]*`")
 // first place codex-context.mjs puts an agent-facing instruction into the
 // Codex payload, so the same "no deletion verb reaches the agent" safety
 // argument staleness.sh's guards already enforce must cover this channel too.
+// Every function in codex-context.mjs that concatenates literal text into the
+// agent's context is named here. repairMandate was the first (TRL-30 task 3);
+// provenanceOmittedNotice is TRL-29's counterpart on the path with no repair to
+// mandate. A new channel into the agent's context that these guards cannot see
+// is precisely the hole they exist to close — the "no deletion verb reaches the
+// agent" argument only holds if every channel is enforced, not just the one that
+// existed when the guard was written.
+var codexPayloadFunctions = []string{"repairMandate", "provenanceOmittedNotice"}
+
 func codexPayloadAssembly(t *testing.T, body string) string {
 	t.Helper()
-	const marker = "\nfunction repairMandate("
-	start := strings.Index(body, marker)
-	if start < 0 {
-		t.Fatal("repairMandate(...) not found in codex-context.mjs — the scan is broken")
+	var blocks []string
+	for _, name := range codexPayloadFunctions {
+		marker := "\nfunction " + name + "("
+		start := strings.Index(body, marker)
+		if start < 0 {
+			t.Fatalf("%s(...) not found in codex-context.mjs — the scan is broken", name)
+		}
+		rest := body[start:]
+		end := strings.Index(rest, "\n}\n")
+		if end < 0 {
+			t.Fatalf("%s(...) has no closing '}' — the scan is broken", name)
+		}
+		blocks = append(blocks, rest[:end])
 	}
-	rest := body[start:]
-	end := strings.Index(rest, "\n}\n")
-	if end < 0 {
-		t.Fatal("repairMandate(...) has no closing '}' — the scan is broken")
-	}
-	return rest[:end]
+	return strings.Join(blocks, "\n")
 }
 
 // codexPayloadMessages extracts the literal text of every quoted-string line

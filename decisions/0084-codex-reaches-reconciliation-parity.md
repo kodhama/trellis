@@ -2,6 +2,7 @@
 id: decision-0084
 type: decision
 depends_on: [decision-0072, decision-0083]
+superseded_in_part_by: [decision-0086]  # 2026-09-03 — §6's statement that the degradation is ONE-SHOT and gated on `mismatch !== null` ONLY. TRL-29 was reopened for exactly that half and it is now closed: the trigger is the byte budget, and a session with no mismatch degrades by dropping the provenance its file already carries. Everything else in §6 stands and is depended on — the spill-not-reject finding, the abbreviated-context/full-provenance-file split, the measurement table (which decision-0086 reproduces), and the correction of the "pathologically large / nothing left to degrade" claim, which decision-0086 explicitly does not reintroduce.
 informed_by: [decision-0028, decision-0070, decision-0074, decision-0078, decision-0081, decision-0082]
 owner: agent
 date: 2026-08-30
