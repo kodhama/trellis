@@ -19,12 +19,14 @@ date: 2026-09-03
 > first; nothing else in this record moved.
 >
 > **`decision-0078` recorded this same mechanism and armed a trigger on it**
-> (`decisions/0078-no-orphan-followups.md:146-155`): *"nothing catches two branches claiming one
+> (`decisions/0078-no-orphan-followups.md:147-156`): *"nothing catches two branches claiming one
 > id… if it recurs a third time, that is the trigger to file it."* The two it counted were
 > `0077` and trellis#252's `0076`. **This is the third**, so the trigger has fired and the
 > obligation is discharged rather than noted: filed as
 > [TRL-40](https://linear.app/kodhama/issue/TRL-40). Found by a `corpus-reviewer` pass, not by the
-> author who was standing in the collision.
+> author who was standing in the collision. *TRL-40 has since been decided and merged as
+> `decision-0089`, whose CI guard now fails the higher-numbered claimant at the PR. This record's
+> own claim of `0087` was re-checked against that guard after `main` was merged in, and is clean.*
 
 # 0087 — one gateway for every payload read; a defect class closed by construction, not by patch twelve
 
@@ -203,10 +205,14 @@ disposition each turn the covering structural guard red.
   the containment evidence for a change this wide.
 - **`TRELLIS_STALENESS_UNKNOWN` is a new marker in the agent-facing vocabulary.** Recorded here
   rather than introduced quietly, because a marker is contract.
-- **A `VERSION` bump ships with it** (0.8.0 → 0.9.0) so cached consumers re-pull, with **both
+- **A `VERSION` bump ships with it** (0.9.0 → 0.10.0) so cached consumers re-pull, with **both
   plugin manifests** (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `install.sh`'s
   baked bundle manifest advanced in the same commit (`decision-0028`: a source and its derivative
   move together).
+  *0.9.0 rather than 0.8.0 is the starting point because `decision-0086` (#263) landed on `main`
+  first and took 0.9.0; a second, different payload under that same string would be exactly the
+  defect the bump exists to prevent — a cached consumer never re-pulls, so this change would
+  reach nobody already holding 0.9.0.*
 - **`decision-0043` gains `superseded_in_part_by: [decision-0087]`**, scoped in its trailing
   comment to rule 3's no-op clause and to nothing else. Under `decision-0082` the forward pointer
   is the only mark there is.
