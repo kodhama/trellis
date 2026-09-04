@@ -1588,12 +1588,17 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// makes this comment the count's home and #267 leans on the count to keep
 		// the read widening bounded. It is still LEXICAL, and lexical analysis of
 		// shell cannot be made sound: a word is only a command because of runtime
-		// state this test never has. TWELVE shapes were planted in install.sh and
-		// re-run against this subtest, and NINE are caught: six by the operand
-		// scan (bare pattern, bare path, a path aliased through a variable quoted
-		// or bare, a non-grep reader, an operand on a continuation line), one by
-		// the literal-path rule, two by the redirect scan. THREE ARE NOT CAUGHT,
-		// and no amount of further regex will catch them:
+		// state this test never has. NINETEEN shapes were planted in install.sh and
+		// re-run against this subtest, and SIXTEEN are caught: a bare pattern, a
+		// bare path, a path aliased through a variable quoted or bare, a non-grep
+		// reader, an operand on a continuation line, a literal operand ahead of
+		// the real one, a flag whose value is a separate word (`tail -n 1 "$p"`,
+		// `cut -d : -f 2 "$p"`, `sort -k 2 "$p"`, `head -n 3 "$p"`), a pattern
+		// whose literal text is itself a command name (`grep -q sed "$p"`), a
+		// second reader after `||`, and two stdin redirects. Six of those were
+		// found by review of this PR, three of them regressions this scan's first
+		// version introduced against the one before it. THREE ARE NOT CAUGHT, and
+		// no amount of further regex will catch them:
 		//   eval 'grep -q zzz "$git_root/CLAUDE.md"'   (the command is a string)
 		//   rd=grep; $rd -q zzz "$git_root/CLAUDE.md"  (the command is a value)
 		//   probe() { grep -q "$1" "$2"; }; probe zzz "$git_root/CLAUDE.md"
@@ -1611,7 +1616,16 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// proposed rather than smuggled in here (inv-minimal-first); the
 		// behavioural fixtures elsewhere in this file are what actually establish
 		// what the script reads.
-		reader := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)\s|<\s*['"$]`)
+		// A reader command counts only at a COMMAND POSITION: the start of the
+		// line, or after `; | & ( ) { $(`, with any `VAR=value` prefixes between.
+		// Review of this PR found the earlier `[\s;|(&]` separator matching
+		// command words inside English message strings — `could not be read
+		// (permissions?)`, `the header tail produced nothing` — which is why the
+		// first version of this scan had to stop at the first plain literal
+		// operand to avoid counting a `$var` that was being PRINTED. That
+		// stopping rule was the wrong instrument and cost two shapes the old
+		// guard caught (below); prose is excluded here instead, at the match.
+		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
 		// Quoted runs and bare runs, concatenated: `"$git_root"/CLAUDE.md` is one
 		// word to the shell and must be one word here too.
 		word := regexp.MustCompile(`(?:'[^']*'|"[^"]*"|[^\s'"]+)+`)
@@ -1676,7 +1690,7 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 			// slot — a pipeline can hold several, and each stage gets its own —
 			// flags are skipped, the armed pattern slot eats exactly one word, and
 			// whatever is left is an operand.
-			patternDue, hit := false, false
+			patternDue, hit, inReader := false, false, true
 			for _, raw := range word.FindAllString(cmd, -1) {
 				// Redirection and pipeline punctuation glued to a word:
 				// `>"$stage/x"` is one word to this regex but two to the shell.
@@ -1684,29 +1698,41 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 				if w == "" || assign.MatchString(w) { // `|`, `(`, or `LC_ALL=C`
 					continue
 				}
-				if bare := strings.Trim(w, `"'`); isCommand[bare] {
-					patternDue = takesPattern[bare]
-					continue
-				}
 				if strings.HasPrefix(w, "-") { // a flag, never a file
 					continue
 				}
+				// BEFORE the command-name lookup, not after: an armed pattern slot
+				// consumes the very next word whatever it looks like. Review of
+				// this PR found `grep -q sed "$git_root/CLAUDE.md"` — searching for
+				// the literal string `sed` — re-arming the slot on its own pattern,
+				// so the file after it was eaten as "the pattern" and never tested.
 				if patternDue {
 					patternDue = false // the pattern, whether or not it is quoted
 					continue
 				}
-				if !expands.MatchString(single.ReplaceAllString(w, "")) {
-					if strings.HasPrefix(strings.Trim(w, `"'`), "/") {
-						continue // an absolute literal path: a real operand, no project state in it
-					}
-					// A plain non-path literal in operand position. Every reader
-					// command in this script takes a pattern and then paths, so
-					// this is the signature of a match INSIDE a message string —
-					// `could not be read (permissions?)`, `the header tail
-					// produced nothing` — where the words that follow are English
-					// and any `$var` among them is being printed, not opened.
-					break
+				// `;`, `||`, `&&` end the reader's operand list — what follows is
+				// a different command, and its arguments are not files this reader
+				// opens. A `|` does NOT: the next pipeline stage may itself be a
+				// reader with a file. Without this, the scan ran off the end of
+				// `grep -q … "$stage/…" || fail "…$header…"` and counted the
+				// diagnostic's own text.
+				if strings.Contains(raw, ";") || strings.Contains(raw, "||") || strings.Contains(raw, "&&") {
+					inReader, patternDue = false, false
+					continue
 				}
+				if bare := strings.Trim(w, `"'`); isCommand[bare] {
+					inReader, patternDue = true, takesPattern[bare]
+					continue
+				}
+				if !inReader {
+					continue
+				}
+				// A literal operand is skipped, NOT a reason to stop scanning the
+				// line. Stopping cost the guard two shapes the version before it
+				// caught, both found by review of this PR: `cat missing "$path"`,
+				// and any flag that takes a separate value — `tail -n 1 "$path"`,
+				// `cut -d : -f 2 "$path"`, `sort -k 2 "$path"` — where the bare
+				// value word sits between the command and its file.
 				if isProjectRead(w) {
 					hit = true
 					break
