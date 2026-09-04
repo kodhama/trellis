@@ -26,8 +26,9 @@ date: 2026-09-03
 >
 > **Amended 2026-09-04, second review pass on PR #263** (thread `discussion_r3931029360`): two of
 > §4's byte figures were one fixture's, stated as general — a quarantined row costs 42 B / 192 B
-> only for a two-letter slug suffix. Two dated notes in §4 correct that, one under the table and one
-> under the 2026-09-03 note; the second also records the rename of the test both notes cite. The
+> when its slug is a character longer than the one the tests use. Two dated notes in §4 correct
+> that, one under the table and one under the 2026-09-03 note; the second also records the rename
+> of the test that note cites. The
 > original sentences stand above each, and no runtime behaviour changed in that pass.
 
 # 0086 — The injected copy degrades on any over-budget session, not only a reconciling one
@@ -140,8 +141,10 @@ reaches it with fewer rows. No test asserts the number.
 > The table's first row states a *fixture-specific* measurement as a general one. A quarantined
 > row's cost is not a constant: the injected copy emits `` `# ${line}${note}` ``
 > (`codex-context.mjs:515`), so the row's own text is part of the figure and the figure moves with
-> the slug's length. **42 B / 192 B is the two-letter-suffix case.** The one-letter slug this
-> branch's own tests use — `inv-foreign-rule-a` — costs **41 B stripped / 191 B with its note**.
+> the slug's length. **42 B / 192 B is what a slug one character longer costs** — any 19-character
+> slug, of which a two-letter suffix is one instance. The 18-character slug this branch's own tests
+> use — `inv-foreign-rule-a` — costs **41 B stripped / 191 B with its note**. No committed fixture
+> uses a longer one, so 42/192 was reconstructed rather than measured from anything in the repo.
 >
 > **This record's own baseline table proves it, in both columns.** In the `3f44620` table under
 > *Context*, session 2 delivers 8831 B at N = 5 and 9404 B at N = 8: 573 B for three quarantined
@@ -153,7 +156,21 @@ reaches it with fewer rows. No test asserts the number.
 > What does *not* vary is the note itself: `QUARANTINE_NOTE_TEMPLATE` filled is **150 B** whatever
 > the row it hangs off, which is why "stripping frees 150 B per quarantined row" in the note below
 > holds generally where 42/192 does not. The `N ≥ 30` first-refusal figure in the table is untouched
-> by this, and the `N ≥ 37` it was re-measured to was independently reproduced.
+> by this, and so is the `N ≥ 37` it was re-measured to — but that one was reproduced in a review
+> pass on 2026-09-03, not by anything committed here. No fixture in this repo reaches 37 rows, and
+> none asserts either number, so a reader cannot check them from the tests. Deliberately: the hook's
+> own comment says to treat thirty-seven as a measured order of magnitude, not a threshold to test
+> against.
+>
+> **One instance of the retired figure is left uncorrected**, in the runaway guard's comment
+> (`codex-context.mjs:1113`), which also says 42 B / 192 B. Its next sentence already tells the
+> reader the figures move with slug length — "It is a byte budget, not a row count — a longer slug
+> reaches it sooner" — so what is stale there is the bare number, not the reasoning around it. It is
+> left as it stands, and **nothing tracks it** — said plainly rather than parked, per
+> `decision-0078`. Correcting it means changing a byte of the hook, which fails
+> `TestInstallScriptBundleManifestIsCurrent` until the whole bundle is re-rendered; that price is not
+> worth one figure whose reasoning is already sound. The next change that edits the hook for its own
+> reasons passes within a line of it.
 >
 > **Two dated notes sit under this table now.** The provenance block's and the self-check's phrase
 > "the dated note under §4's table" was written on 2026-09-03 and means the note *below* this one —
@@ -202,10 +219,12 @@ reaches it with fewer rows. No test asserts the number.
 
 > **Dated note, 2026-09-04 — second review pass on PR #263, thread `discussion_r3931029360`.**
 > The "Re-measured" paragraph above restates the table's per-row figure — "**42 B** stripped against
-> **192 B** with its note" — and inherits its error. Those are the two-letter-suffix numbers; the
-> cost varies with the slug's length, and the one-letter slug the tests use costs 41 B / 191 B. See
-> the note under the table for the derivation. Nothing else in the paragraph changes: `N ≥ 37` was
-> independently reproduced.
+> **192 B** with its note" — and inherits its error. Those are the numbers for a slug one character
+> longer than any the tests use; the cost varies with the slug's length, and the 18-character
+> `inv-foreign-rule-a` costs 41 B / 191 B. See
+> the note under the table for the derivation. Nothing else in the paragraph changes, including
+> `N ≥ 37` — reproduced in review on 2026-09-03 rather than by any committed fixture, as the note
+> under the table records.
 >
 > **The test named in the *Pinned* paragraph above was renamed in the same pass.**
 > `TestCodexAnnouncementNeverTipsAFittingBodyOverBudget` is now

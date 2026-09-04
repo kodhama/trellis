@@ -2034,10 +2034,24 @@ func codexContextBytes(t *testing.T, toml string) (string, int) {
 // first assembly that fits; when not even the shortest honest announcement fits
 // beside the body, the hook still refuses, rather than injecting an abbreviated
 // copy with no word that it was abbreviated. The residual is that shortest
-// line's own length — 129 B in the assembly on the no-mismatch path, a 128 B
-// line plus the blank line separating it from the rows — and subtests 3 and 4
-// pin it on both paths, so the deliberate gap can neither widen unnoticed nor be
-// read by the next reader as a bug.
+// line's own length: 129 B in the assembly on the no-mismatch path, being the
+// 128 B notice — its own leading newline, the blank line before the rows,
+// already counted in that — plus the one newline buildContext adds after any
+// non-empty announcement.
+//
+// Two different properties pin that residual, and it is worth being exact about
+// which does which. Subtests 3 and 4 pin that the gap is never closed SILENTLY:
+// a body that fits the cap alone but not beside the announcement is refused,
+// loudly, on both paths. They do NOT bound how far it may widen — a longer
+// announcement is still an announcement, so they stay green as it grows. What
+// bounds the widening is subtests 1 and 2, whose `over = 10` leaves the compact
+// notice 11 B of growth before a one-note file stops being rescued at all.
+// Measured: grow the compact notice by 10 B and nothing here fails; grow it by
+// 40 B and subtest 1 fails, and so does the boundary subtest below, whose
+// fixture can no longer be made to degrade once the notice outgrows what one
+// note's savings buy — while 3 and 4 stay green through both, as they should.
+// Both halves are needed: 3 and 4 keep the refusal honest, 1 and 2 keep it
+// small.
 //
 // Five subtests, none of them resting on a hardcoded assembly total:
 //
