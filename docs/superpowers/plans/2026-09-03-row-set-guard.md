@@ -471,3 +471,14 @@ Open a **draft** PR titled `TRL-28: guard the row set from the one pin — 22 pr
 - [ ] **Step 6: Report on TRL-28 and mark the PR ready**
 
 Comment on TRL-28 with the PR number and the same facts. Mark the PR ready for review. Do not merge.
+
+---
+
+## 2026-09-04 — plan executed, then cut back (record, not a rewrite)
+
+Tasks 1–4 ran as written; the result was reviewed and shrunk on the maintainer's ruling before
+the PR went ready. The 22-site table this plan builds in Task 2 is now 4 sites, the negative
+sweep is gone, and most of the counts those sites carried were deleted from the prose instead of
+pinned. See the dated note at the foot of the spec
+(`docs/superpowers/specs/2026-09-03-row-set-guard-design.md`) for what changed and why. Left
+as executed (`decision-0085` §5) rather than rewritten to look prescient.

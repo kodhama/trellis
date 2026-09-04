@@ -143,3 +143,33 @@ verified, not assumed.
 - A decision record. This is `decision-0028` applied ("a guard per pair"), with `decision-0078`'s
   derived needle as the exemplar, and it changes no maintenance workflow — same ground PR #245
   stood on. Flagged on the ticket; the maintainer can ask for `0089`.
+
+---
+
+## 2026-09-04 — reviewed and shrunk (record, not a rewrite)
+
+This spec's design shipped as written and was then cut. Keeping it as recorded (`decision-0085`
+§5: these are records, not contracts) so the correction is legible:
+
+The design above measured 22 prose count sites and proposed pinning all 22. Review (a local
+Codex pass, then the maintainer: *"I would say shrink the guard yeah"*) found the table was the
+same mistake one layer down — a list of surfaces, in a test file instead of a note. The ruling
+applied the ticket's own order — *shrink the surface first, then guard the rest* — to the
+remainder this spec had chosen to guard.
+
+What changed:
+
+- **The numeral was deleted wherever the sentence still means what it meant** ("all sixteen rules"
+  → "all rules"). That took the prose surface from 22 sites to 4 — plus 2 in
+  `plugins/trellis/README.md` deferred, because deleting them re-bakes `install.sh`'s bundle
+  manifest, off-limits while #262 is open.
+- **The table survives only where the number is the claim**: `install.sh`'s closing `say`,
+  `staleness.sh`'s `emit`, `README.md`'s `16/16`, the catalog's AC1 class breakdown. The
+  whole-file exclusion of `install.sh` and the hooks was replaced by positive checks on exactly
+  their runtime strings.
+- **The bounded negative sweep was dropped.** It was wrong in both directions: it would fail
+  legitimate future prose (a subset count, a date, a version ratio) and still miss noun-first
+  shapes ("the invariant count is 17").
+- **A value check was added** where membership was not the contract: `profiles/trellis-self.md`
+  claims every gene is active, and the row pattern accepted `| false |`, so a flip passed both
+  tests. It now matches `| true |` only.
