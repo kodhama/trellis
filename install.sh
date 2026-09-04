@@ -665,19 +665,30 @@ if [ "$scope" = "project" ] && [ "$opted_out" = yes ]; then
     say "or run /trellis:remove to take Trellis out entirely."
   elif [ -n "$static_conflict" ]; then
     # The one shape this host does not read (TRL-44). $loaded_anyway is NOT
-    # touched: nothing here is loaded over the opt-out, so the summary line must
-    # not say LEFT IN PLACE. A NOTE rather than a WARNING, because for a Claude
-    # session there is nothing to warn about — and the hook agrees by staying
-    # silent on exactly this repo. Said anyway, because the block is real for the
-    # host that does read AGENTS.md, and an opted-out project is entitled to know
-    # its opt-out is not portable.
+    # touched: nothing from this block is loaded over the opt-out, so it must not
+    # join the LEFT IN PLACE summary. A NOTE rather than a WARNING, because for a
+    # Claude session there is nothing to warn about. Said anyway, because the
+    # block is real for the host that does read AGENTS.md, and an opted-out
+    # project is entitled to know its opt-out is not portable.
+    #
+    # EVERY CLAIM IS ABOUT THE BLOCK, not about the project. This branch is
+    # independent of the rendered-file warning above and both fire in the same
+    # run: opt-out + un-imported AGENTS.md block + a pre-existing
+    # .claude/rules/trellis.md prints the WARNING and then this. Review of this
+    # PR caught a first version saying "nothing is loaded over the opt-out here"
+    # and "the hook stays silent on this project" — false in exactly that run,
+    # where the rendered file IS loaded and the hook emits TRELLIS_NOT_GOVERNING.
+    # Reproduced before the reword; the fixture below covers it. A message that
+    # generalises from its own branch's condition to the whole project is the
+    # defect this whole change exists to remove, so it does not get to reappear
+    # inside the fix.
     say ""
     say "NOTE: this project carries a Trellis managed block in AGENTS.md, but CLAUDE.md"
     say "does not import it (no standalone @AGENTS.md line), so Claude Code never reads"
-    say "that file and nothing is loaded over the opt-out here — the plugin hook makes"
-    say "the same test and stays silent on this project. Other hosts DO read AGENTS.md"
-    say "directly (Codex CLI), so the block still governs there: to stop that too,"
-    say "delete $conflict_paths,"
+    say "that file: nothing from that block is loaded over the opt-out, and the plugin"
+    say "hook gates its own AGENTS.md probe on the same line. Other hosts DO read"
+    say "AGENTS.md directly (Codex CLI), so the block still governs there: to stop that"
+    say "too, delete $conflict_paths,"
     say "or run /trellis:remove to take Trellis out entirely."
   fi
   if [ -n "$loaded_anyway" ]; then

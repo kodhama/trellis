@@ -2422,6 +2422,46 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 		}
 	})
 
+	// Found by review OF THIS BRANCH, and it is the same defect one branch over:
+	// the NOTE above is independent of the rendered-file warning, so both fire in
+	// one run, and its first version generalised from its own condition to the
+	// whole project — "nothing is loaded over the opt-out here", "the hook stays
+	// silent on this project". With a pre-existing .claude/rules/trellis.md both
+	// are false: that file IS loaded (the WARNING three lines up says so, and the
+	// summary prints LEFT IN PLACE) and the hook emits TRELLIS_NOT_GOVERNING.
+	// Reproduced before the reword. The subtest above could not see it because it
+	// plants no rendered file, so this one does.
+	t.Run("the unimported-AGENTS.md note claims nothing about a rendered file that IS loaded", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "governed = false\n")
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".claude", "rules", "trellis.md"), "a previous render, contents irrelevant\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("install failed: %s", res.stderr)
+		}
+		// Both branches fire, which is the premise: without the first this test
+		// is the one above with extra steps.
+		for _, want := range []string{"ALREADY EXISTS", "no standalone @AGENTS.md line", "rules: LEFT IN PLACE"} {
+			if !strings.Contains(res.stdout, want) {
+				t.Fatalf("premise drifted — this run must print the rendered-file warning AND the AGENTS.md note (looked for %q):\n%s", want, res.stdout)
+			}
+		}
+		// No claim in either may be about the PROJECT's state. These two were,
+		// and the hook contradicts both on this repo.
+		for _, forbidden := range []string{"nothing is loaded over the opt-out", "stays silent on this project"} {
+			if strings.Contains(res.stdout, forbidden) {
+				t.Errorf("the AGENTS.md note generalises %q to a project whose rendered file is loaded and whose hook emits TRELLIS_NOT_GOVERNING; every claim in that branch must be about the block:\n%s", forbidden, res.stdout)
+			}
+		}
+		out := runHook(t, repo)
+		assertNoRuleDelivered(t, "the hook", out)
+		if !strings.Contains(out, "TRELLIS_NOT_GOVERNING") {
+			t.Fatalf("premise drifted — the hook must override the rendered file here, which is what makes the withdrawn wording false:\n%s", out)
+		}
+	})
+
 	// Review of #267: the governed read opened .trellis/rules.toml before any
 	// `-f` check, so a FIFO at that path blocked the sed forever, ahead of the
 	// non-regular handling the seed step already has. The read is now guarded
