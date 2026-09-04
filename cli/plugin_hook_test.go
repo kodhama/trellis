@@ -4523,14 +4523,19 @@ func TestStalenessHookDoesNotBlockOnNonRegularRulesToml(t *testing.T) {
 			// The refusal names floor-intent-gate in its remedy, as every
 			// destructive remedy in this hook must, so a slug scrape is the
 			// wrong probe here: assert on the delivery shape instead — the
-			// posture header, the rules terminator, and an actual row.
+			// posture header, the rules terminator, and an actual row. On the
+			// DECODED context: deliveredRow anchors at line start, and raw
+			// stdout is one JSON line whose newlines are escaped, so against
+			// it the row check matched nothing even over a full delivery
+			// (review of #268 measured 0 of 16 raw, 16 of 16 decoded).
+			ctx := nudgeContext(t, strings.TrimSpace(got))
 			for _, s := range []string{"**How strictly to follow them:**", "<!-- trellis:rules-loaded -->"} {
-				if strings.Contains(got, s) {
-					t.Errorf("no rule may be delivered over a rules.toml the hook could not read (found %q); got:\n%s", s, got)
+				if strings.Contains(ctx, s) {
+					t.Errorf("no rule may be delivered over a rules.toml the hook could not read (found %q); got:\n%s", s, ctx)
 				}
 			}
-			for slug := range hookSlugs(got) {
-				if deliveredRow(got, slug) {
+			for slug := range hookSlugs(ctx) {
+				if deliveredRow(ctx, slug) {
 					t.Errorf("no row may be delivered over a rules.toml the hook could not read; delivered %s", slug)
 				}
 			}
