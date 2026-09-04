@@ -372,10 +372,87 @@ func TestDecisionIDGuardRefusesAPathWithASpace(t *testing.T) {
 			}
 			mustNotContain(t, out, "adds no decisions/NNNN-*.md file",
 				"a row it cannot parse must never be reported as 'nothing claimed'")
-			mustContain(t, out, "malformed row for PR #300",
+			mustContain(t, out, "unparseable row for PR #300",
 				"the refusal must name the row it could not read")
 		})
 	}
+}
+
+// TestDecisionIDGuardToleratesSpacesOutsideDecisions — the false-FAIL direction,
+// and the test whose absence let the refusal above ship unscoped.
+//
+// The guard reads every row of every open PR. An unscoped space check therefore
+// fires on one `docs/my notes.md` in one unrelated PR and aborts the guard for
+// EVERY pull request in the repository — including ones touching no decision
+// file at all. That is a repo-wide CI outage triggered by somebody naming a
+// file, traded against a hole nobody has hit. A path outside decisions/ cannot
+// become a claim, so its shape is not this check's business.
+func TestDecisionIDGuardToleratesSpacesOutsideDecisions(t *testing.T) {
+	t.Run("this PR claims a free id", func(t *testing.T) {
+		out, code := runGuard(t, "300", guardMainFiles,
+			"299 added docs/my notes.md\n"+
+				"300 added decisions/0091-fine.md")
+
+		if code != 0 {
+			t.Errorf("a spaced path in ANOTHER PR, outside decisions/, must not abort this one; exit %d\n%s", code, out)
+		}
+		mustContain(t, out, "decision-0091 (decisions/0091-fine.md) — free.",
+			"the real claim must still be judged")
+	})
+
+	t.Run("this PR touches no decision file", func(t *testing.T) {
+		out, code := runGuard(t, "300", guardMainFiles,
+			"299 added docs/my notes.md\n"+
+				"300 modified README.md")
+
+		if code != 0 {
+			t.Errorf("a PR claiming nothing must not be failed by another PR's filename; exit %d\n%s", code, out)
+		}
+		mustContain(t, out, "adds no decisions/NNNN-*.md file",
+			"nothing was claimed, so the guard has nothing to do")
+	})
+
+	t.Run("a spaced rename outside decisions/", func(t *testing.T) {
+		out, code := runGuard(t, "300", guardMainFiles,
+			"299 renamed docs/new name.md docs/old name.md\n"+
+				"300 added decisions/0091-fine.md")
+
+		if code != 0 {
+			t.Errorf("a spaced rename outside decisions/ is not this check's business; exit %d\n%s", code, out)
+		}
+	})
+}
+
+// TestDecisionIDGuardHandlesProductionRowShape — the fixtures and the rows CI
+// actually feeds the script had different shapes, and an anchored pattern
+// written against the fixtures was therefore dead in production while green in
+// tests.
+//
+// The live jq template emits the fourth field unconditionally
+// (`previous_filename // ""`), so EVERY non-rename row arrives with a trailing
+// space that no fixture carried. The `removed`-source clause matched
+// `^<pr> removed <path>$` and so never fired in CI. Rows are now normalised on
+// ingest; this test feeds the production shape and asserts it behaves
+// identically to the fixture shape.
+func TestDecisionIDGuardHandlesProductionRowShape(t *testing.T) {
+	// Trailing spaces are deliberate — this is what `gh api --jq` emits.
+	production := "300 removed decisions/0088-old.md \n" +
+		"300 added decisions/0088-new.md "
+	fixture := "300 removed decisions/0088-old.md\n" +
+		"300 added decisions/0088-new.md"
+	base := "decisions/0088-old.md"
+
+	outProd, codeProd := runGuard(t, "300", base, production)
+	outFix, codeFix := runGuard(t, "300", base, fixture)
+
+	if codeProd != codeFix {
+		t.Errorf("production-shaped rows exit %d, fixture-shaped rows exit %d — the tests are not exercising what CI feeds", codeProd, codeFix)
+	}
+	if outProd != outFix {
+		t.Errorf("production and fixture row shapes produce different output.\nproduction:\n%s\nfixture:\n%s", outProd, outFix)
+	}
+	mustContain(t, outProd, "is the very file this pull request moves off that id",
+		"the removed-source clause must fire on the row shape CI actually produces")
 }
 
 // TestDecisionIDGuardExplainsAnIDThisPRIsVacating — behaviour was already right;
@@ -431,8 +508,15 @@ func TestDecisionIDGuardEnumeratesEveryOpenPRWithoutACap(t *testing.T) {
 		!command(`gh api "repos/$repo/pulls"`).MatchString(src) {
 		t.Error("the guard no longer enumerates open PRs through `gh api .../pulls`")
 	}
-	if !command("--paginate").MatchString(src) {
-		t.Error("the open-PR enumeration must be paginated; without it the list is capped and a silent short list is a false pass")
+	// Bound to the open-PR request specifically. A bare `--paginate` search is
+	// satisfied by the PER-PR files request, which carries the same flag, so
+	// deleting --paginate from the enumeration left this green — the third
+	// instance in this file of an assertion matching somewhere other than where
+	// it meant to.
+	paginatedEnumeration := regexp.MustCompile(
+		`(?m)^[^#\n]*` + regexp.QuoteMeta(`gh api "repos/$repo/pulls"`) + `[^\n]*--paginate`)
+	if !paginatedEnumeration.MatchString(src) {
+		t.Error("the OPEN-PR enumeration must carry --paginate on its own command line; without it the list is capped and a silent short list is a false pass")
 	}
 }
 

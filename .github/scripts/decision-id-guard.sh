@@ -142,6 +142,17 @@ else
 	done <"$work/open-prs.sorted"
 fi
 
+# One shape for both sources. The live jq template emits the fourth field
+# unconditionally — `previous_filename // ""` is empty on anything but a rename —
+# so a production row carries a trailing space that an injected fixture does not.
+# An anchored pattern written against the fixtures then silently never matches in
+# CI, which is how the `removed`-source clause below was dead in production while
+# green in tests. Normalising here means the tests exercise the rows CI feeds.
+sed 's/[[:space:]][[:space:]]*$//' "$work/pr-files" >"$work/pr-files.trimmed" ||
+	cannot_run "could not normalise the pull request file rows."
+mv "$work/pr-files.trimmed" "$work/pr-files" ||
+	cannot_run "could not replace the pull request file rows."
+
 # --- what counts as a claim ---------------------------------------------------
 #
 # A claim is a file this PR puts at a NEW `decisions/NNNN-*.md` path:
@@ -177,18 +188,29 @@ fi
 while read -r p st path prev extra; do
 	[ -n "${p:-}" ] || continue
 
-	# A path containing a space splits across fields and then matches no
-	# decision shape — which reads as "not a claim" and passes green against a
-	# taken id. That is the exact direction this guard exists to eliminate, so
-	# a row with more fields than its status allows is a refusal, not a pass.
-	# (Rows are `<pr> <status> <path>` plus `<old-path>` on a rename; the live
-	# jq always emits the fourth slot, empty when there is no rename.)
-	if [ -n "${extra:-}" ]; then
-		cannot_run "malformed row for PR #$p — a path containing a space cannot be parsed: $p $st $path $prev $extra"
-	fi
-	if [ -n "${prev:-}" ] && [ "${st:-}" != "renamed" ]; then
-		cannot_run "malformed row for PR #$p — only a rename carries a fourth field: $p $st $path $prev"
-	fi
+	# A space in a path splits it across fields, so it matches no decision shape
+	# and reads as "not a claim" — green against a taken id, which is the one
+	# direction this guard exists to eliminate. A surplus field is therefore a
+	# refusal rather than a pass.
+	#
+	# SCOPED TO decisions/ ON PURPOSE, and this is load-bearing. The check sees
+	# every row of every open PR, so refusing on any spaced path anywhere would
+	# let one `docs/my notes.md` in one unrelated PR abort the guard for every
+	# PR in the repo — including PRs that touch no decision file at all. That is
+	# a repo-wide CI outage triggered by a filename, traded for a hole nobody
+	# has ever hit. A row whose path field does not begin with `decisions/`
+	# cannot become a claim, so its shape is not this check's business.
+	#
+	# Known over-caution, and it fails closed: a rename INTO decisions/ whose
+	# SOURCE path contains a space refuses too, though the destination parsed
+	# fine. Loud and actionable, unlike the silent pass it replaces.
+	case "${path:-}" in
+	decisions/*)
+		if [ -n "${extra:-}" ] || { [ -n "${prev:-}" ] && [ "${st:-}" != "renamed" ]; }; then
+			cannot_run "unparseable row for PR #$p — a decisions/ path containing a space cannot be read as a claim: $p $st $path $prev ${extra:-}"
+		fi
+		;;
+	esac
 
 	id=$(decision_id "${path:-}")
 	[ -n "$id" ] || continue
