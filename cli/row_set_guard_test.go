@@ -81,7 +81,11 @@ func TestRowSetDerivativesFollowThePin(t *testing.T) {
 		fix  string
 	}{
 		{
-			name: "core/catalog/signature-catalog-v1.md (entries)",
+			// catalogSlugOrder parses the EMBEDDED copy (cli/assets/invariants.md,
+			// generated from this file by `go generate`), not the file on disk.
+			// Equivalent because TestBundledCatalogInSync fails whenever the two
+			// differ by a byte; named for the source you would edit.
+			name: "core/catalog/signature-catalog-v1.md (entries, via the embedded copy)",
 			got:  catalogSlugOrder(),
 			fix:  "add or remove the catalog entry, then `go generate ./...` and regenerate the payload",
 		},
@@ -152,7 +156,9 @@ func numberWord(n int) string {
 
 // catalogClassCounts counts the catalog entries by `class:` — the AC1 breakdown
 // ("the four structural, the ten remaining operating, the two floors") derives
-// from these rather than being typed.
+// from these rather than being typed. Like catalogSlugOrder it reads the embedded
+// copy while the AC1 site below is read from disk; TestBundledCatalogInSync holds
+// the two byte-identical, so the check is against one catalog, not two.
 func catalogClassCounts() (methodology, design, floor int) {
 	re := regexp.MustCompile("(?m)^  - class: `(methodology|trellis-design|floor)`")
 	for _, m := range re.FindAllStringSubmatch(invariantsRef, -1) {
@@ -172,14 +178,17 @@ func catalogClassCounts() (methodology, design, floor int) {
 // claim carry the pin's count, in the shape that site uses. A failure names the
 // file and the exact text expected there.
 //
-// Everywhere else the count was deleted rather than pinned, so this table is
-// deliberately short — four sites, not the twenty-two a first pass tabled. Two
+// Almost everywhere else the count was deleted rather than pinned, so this table
+// is deliberately short — six sites, not the twenty-two a first pass tabled. Two
 // are runtime strings the user reads (the installer's closing line, the hook's
 // not-yet-governing announcement, neither of which can say "all rules" without
 // losing the point); one is the README's headline 16/16; one is the catalog's
 // own acceptance criterion, where the class breakdown is the claim being
-// accepted. The remove skill's own 16/16 is already derived from the pin by
-// remove_skill_test.go, so it is not repeated here.
+// accepted. The last two are the exception that proves the rule: sentences in
+// plugins/trellis/README.md whose numeral SHOULD have been deleted, pinned
+// instead because the deletion is blocked on a file another PR owns (see the
+// note beside them). The remove skill's own 16/16 is already derived from the
+// pin by remove_skill_test.go, so it is not repeated here.
 //
 // There is no sweep for sites this table does not know: at four sites the
 // stopping rule is the review, and a pattern broad enough to find a new count
@@ -209,6 +218,16 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 		{"../core/catalog/signature-catalog-v1.md",
 			"Covers all **%[1]d assessable** slugs (the %[3]s structural, the %[4]s remaining operating, the %[5]s floors",
 			"AC1 — the coverage claim the catalog is accepted against"},
+		// Deferred deletions, pinned so they cannot go stale while they wait.
+		// These two sentences do not need their numeral, but deleting it edits a
+		// file inside the shipped bundle, which forces install.sh's baked manifest
+		// to be re-hashed — and those manifest lines are owned by open trellis#262.
+		// Pinned to the strings present verbatim today; when a change that already
+		// touches the bundle deletes the numerals, delete these two rows with them.
+		{"../plugins/trellis/README.md", "all %[2]s rules at the adaptive posture",
+			"deferred deletion — re-baking install.sh's manifest is owned by trellis#262"},
+		{"../plugins/trellis/README.md", "all %[2]s rows active at",
+			"deferred deletion — re-baking install.sh's manifest is owned by trellis#262"},
 	}
 	contents := map[string]string{}
 	for _, s := range sites {
@@ -217,7 +236,7 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 		}
 		want := fmt.Sprintf(s.template, args...)
 		if !strings.Contains(contents[s.path], want) {
-			t.Errorf("%s does not carry %q — the row count is %d, and here the count is the claim (%s); update this site to that count in this shape [TRL-28]",
+			t.Errorf("%s does not carry %q — the row count is %d, and this site states it (%s); update the site to that count in this shape, or delete the numeral if the sentence no longer needs it [TRL-28]",
 				strings.TrimPrefix(s.path, "../"), want, n, s.why)
 		}
 	}

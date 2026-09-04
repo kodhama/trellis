@@ -192,7 +192,7 @@ Two cards:
    already declares — respected, not imposed. Trellis guides your agents
    on the invariants and gets out of the way of your methodology.
 
-Secondary CTA below the cards: ghost → `invariants.html` — "See each,
+Secondary CTA below the cards: ghost → `invariants.html` — "See them all,
 with why + examples →"
 
 ## Section: Free & open
