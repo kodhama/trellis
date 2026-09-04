@@ -1116,8 +1116,26 @@ func TestCodexDegradesRatherThanRefusingOverBudget(t *testing.T) {
 			t.Errorf("rule %s must still be delivered when provenance is dropped", slug)
 		}
 	}
-	if !strings.Contains(ctx, "provenance") {
+	if !strings.Contains(ctx, codexDegradedMarker) {
 		t.Errorf("the omission must be announced, not silent:\n%s", ctx)
+	}
+	// The announcement is tiered (review of #263): the FULL degraded mandate is
+	// what ships whenever it fits, and this fixture leaves room for it. The
+	// compact line is a fallback for the last few hundred bytes, not a
+	// replacement — a session with the bytes to spare gets the explanation.
+	if !strings.Contains(ctx, "## Rule activation was reconciled this session") {
+		t.Errorf("the full degraded mandate fits here and must be preferred over the compact line:\n%s", ctx)
+	}
+	// decision-0084 §6 calls this "the whole point of the branch": the CONTEXT is
+	// abbreviated, the FILE the mandate asks for is not. The assertion carrying
+	// that claim used to be a bare Contains(ctx, "provenance"), which survives
+	// almost any rewording and would also pass on text that told the agent to
+	// write the abbreviated rows back. The clause is named here instead.
+	if !strings.Contains(ctx, "not the abbreviated ones shown above") {
+		t.Errorf("the degraded mandate must tell the agent to write the FULL-provenance version, not the rows it can see:\n%s", ctx)
+	}
+	if strings.Contains(ctx, "Write .trellis/rules.toml with exactly the rows shown above") {
+		t.Errorf("the degraded mandate fell back to the full-provenance wording — the file would silently lose its provenance:\n%s", ctx)
 	}
 	if n := len([]byte(ctx)); n > 9500 {
 		t.Errorf("degraded context is %d bytes, still over the cap", n)
@@ -1497,11 +1515,669 @@ func TestCROnlyLineEndingsAreTheOneKnownDivergence(t *testing.T) {
 // path, same asymmetry reconciledRowsFromContext already handles on Claude).
 func codexReconciledRowsFromContext(t *testing.T, context string) string {
 	t.Helper()
+	// TRL-29 added a second section in the same slot: on the degraded
+	// NO-mismatch path there is no repair to mandate, so what follows the row
+	// block is provenanceOmittedNotice's own heading instead. Left out of this
+	// alternation it would be swallowed into the "row block" this function
+	// returns, and TestCodexDegradesOnASecondSessionOverBudget's byte-identity
+	// comparison would be comparing rows-plus-notice against bare rows.
+	//
+	// The review of #263 added a COMPACT tier of each announcement, a single
+	// paragraph with no heading, chosen when the full one would not fit. Each
+	// opens with a fixed stem matched here; TestCodexAnnouncementNeverTipsAFittingBodyOverBudget
+	// compares the extracted block against the stripped file to prove the stem is
+	// recognised.
 	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(invariantsTrigger) +
-		`\n\n(.*?)(?:\n\n## Rule activation was reconciled this session|\nTrellis hook loaded installed overlay: )`).
+		`\n\n(.*?)(?:\n\n## Rule activation was reconciled this session` +
+		`|\n\nRule activation was reconciled this session: ` +
+		`|\n\n## Provenance comments were left out of the rows above` +
+		`|\n\n` + regexp.QuoteMeta(codexDegradedMarker) + `; ` +
+		`|\nTrellis hook loaded installed overlay: )`).
 		FindStringSubmatch(context)
 	if m == nil {
 		t.Fatalf("could not find the row block in the codex hook's decoded context:\n%s", context)
 	}
 	return m[1]
+}
+
+// TestCodexProvenanceStripperMatchesItsOwnWriter is the anti-drift pin for
+// TRL-29's no-mismatch degradation. stripPersistedProvenance has to recognise
+// provenance an EARLIER session wrote — possibly by the other host, on an older
+// date, against an older payload stamp — and the only thing that keeps a reader
+// honest against a writer it never sees run is a test that runs both.
+//
+// Session 1 (a genuine mismatch, under budget) writes full provenance into the
+// context; the file the agent then writes IS that text. Feeding that file back
+// through the stripper must leave the rows with no Trellis provenance on them at
+// all, which is the shape reconcileRows produces with `withProvenance = false`.
+//
+// The fixture carries BOTH provenance forms — a quarantine note (a suffix on a
+// commented-out row) and an added-rows header (a line of its own) — because they
+// are anchored differently and a single-kind fixture would pin only one of them.
+func TestCodexProvenanceStripperMatchesItsOwnWriter(t *testing.T) {
+	base := payloadFiles()["rules-a.toml"]
+	fixture := strings.Replace(base,
+		"inv-minimal-first         = { active = true }\n", "", 1)
+	if fixture == base {
+		t.Fatal("premise: fixture removed nothing — the case would prove nothing")
+	}
+	fixture += "inv-foreign-rule-a = { active = true }\n"
+
+	// Taken from the CLAUDE host on purpose: the file an agent writes is text
+	// both hosts agree on byte for byte (TestBothHostsReconcileIdentically), so
+	// this cannot be satisfied by the Codex reader agreeing with a writer it
+	// shares a typo with.
+	full := claudeReconciledRows(t, fixture) + "\n"
+	if !strings.Contains(full, "# quarantined ") || !strings.Contains(full, "# added 1 row(s) below on ") {
+		t.Fatalf("premise: the reconciled file must carry BOTH provenance forms:\n%s", full)
+	}
+
+	stripped := codexStripProvenance(t, full)
+	for _, banned := range []string{"# quarantined ", "# added "} {
+		if strings.Contains(stripped, banned) {
+			t.Errorf("stripPersistedProvenance left %q behind — the reader has drifted from the writer:\n%s", banned, stripped)
+		}
+	}
+	// Quarantine never deletes: the commented row keeps its line and its value.
+	if !strings.Contains(stripped, "# inv-foreign-rule-a = { active = true }") {
+		t.Errorf("the quarantined row lost its line — quarantine never deletes:\n%s", stripped)
+	}
+	if !strings.Contains(stripped, "inv-minimal-first = { active = true }") {
+		t.Errorf("the added row did not survive the strip:\n%s", stripped)
+	}
+	// Everything that is not Trellis's own bookkeeping is the project's content
+	// and must come through untouched — the strip is a byte-budget concession on
+	// what Trellis wrote, not a licence to abbreviate a consumer's file.
+	for _, kept := range []string{
+		`seeded_from = "conductor"  # provenance only`,
+		"[rules]  # one row per assessable catalog slug",
+		"floor-intent-gate         = { active = true }  # floor — applies regardless of this row",
+	} {
+		if !strings.Contains(stripped, kept) {
+			t.Errorf("the strip took out %q, which Trellis did not write as provenance:\n%s", kept, stripped)
+		}
+	}
+}
+
+// codexStripProvenance calls stripPersistedProvenance directly, by slicing its
+// self-contained region out of codex-context.mjs into a throwaway ES module.
+// The hook is a top-level script (it reads stdin and exits at once), so it
+// cannot be imported as-is.
+//
+// Direct rather than end-to-end BECAUSE the end-to-end path needs a fixture
+// over MAX_CONTEXT_BYTES, where a stripper defect and a budget-arithmetic
+// defect are indistinguishable. TestCodexDegradesOnASecondSessionOverBudget
+// covers the wired-up path; this covers the reader against its writer.
+func codexStripProvenance(t *testing.T, source string) string {
+	t.Helper()
+	raw, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	start := strings.Index(body, "const QUARANTINE_NOTE_TEMPLATE")
+	if start < 0 {
+		t.Fatal("QUARANTINE_NOTE_TEMPLATE not found in codex-context.mjs — the extraction is broken, and a helper that reads nothing proves nothing")
+	}
+	fn := strings.Index(body, "function stripPersistedProvenance(")
+	if fn < start {
+		t.Fatal("stripPersistedProvenance is not below the templates it derives from — the extraction is broken")
+	}
+	closing := strings.Index(body[fn:], "\n}\n")
+	if closing < 0 {
+		t.Fatal("stripPersistedProvenance has no closing '}' — the extraction is broken")
+	}
+	region := body[start : fn+closing+len("\n}\n")]
+
+	dir := t.TempDir()
+	mod := filepath.Join(dir, "strip.mjs")
+	// Reads stdin rather than embedding the fixture, so no escaping of the
+	// fixture's own quotes and backslashes can quietly change what is measured.
+	script := region + `
+const input = await new Promise((resolve) => {
+  let s = "";
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (c) => { s += c; });
+  process.stdin.on("end", () => resolve(s));
+});
+process.stdout.write(stripPersistedProvenance(input));
+`
+	if err := os.WriteFile(mod, []byte(script), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("node", mod)
+	cmd.Stdin = strings.NewReader(source)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("stripPersistedProvenance harness failed: %v\nstderr: %s", err, stderr.String())
+	}
+	return stdout.String()
+}
+
+// TestCodexDegradesOnASecondSessionOverBudget is TRL-29's remaining half, run as
+// the sequence that produced it rather than asserted as a unit.
+//
+//  1. Session 1 sees a mismatched file, degrades, delivers, and mandates a
+//     FULL-PROVENANCE write.
+//  2. The agent complies. That file is what session 2 reads.
+//  3. Session 2 has NO mismatch. The degradation used to be gated on
+//     `mismatch !== null`, so nothing was offered up and the hard refusal fired
+//     instead — permanently, because nothing about that file changes again,
+//     while staleness.sh governed happily from the identical bytes.
+//
+// Nine foreign rows is the measured cliff (decision-0084 §6, reproduced on
+// 3f44620 before this fix: at N = 8 session 2 delivered 9404 B unaided, at N = 9
+// it refused). Below the cliff this test would pass without the fix, which is
+// why the fixture is not smaller.
+func TestCodexDegradesOnASecondSessionOverBudget(t *testing.T) {
+	fixture := payloadFiles()["rules-a.toml"]
+	letters := "abcdefghi"
+	for i := 0; i < len(letters); i++ {
+		fixture += fmt.Sprintf("inv-foreign-rule-%c = { active = true }\n", letters[i])
+	}
+
+	session1Rows, session1Degraded := codexReconciledRowsAllowingDegraded(t, fixture)
+	if !session1Degraded {
+		t.Fatal("premise: session 1 must be over budget and degrade, or this fixture is not the reopened case")
+	}
+	// The file the mandate produces, taken from the CLAUDE host: it is text both
+	// hosts agree on byte for byte (TestBothHostsReconcileIdentically), and
+	// sourcing it there keeps this test from being satisfiable by the Codex hook
+	// agreeing with itself.
+	repaired := claudeReconciledRows(t, fixture) + "\n"
+	if !strings.Contains(repaired, "# quarantined ") {
+		t.Fatalf("premise: the file the mandate produces must carry persisted provenance:\n%s", repaired)
+	}
+
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	tomlPath := filepath.Join(project, ".trellis", "rules.toml")
+	if err := os.WriteFile(tomlPath, []byte(repaired), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+
+	if strings.Contains(raw, "context-over-budget") {
+		t.Fatalf("session 2 refused on a file Trellis itself told the agent to write — that is TRL-29's remaining half:\n%s", raw)
+	}
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("session 2 injected nothing:\n%s", raw)
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+	for _, slug := range assessableSlugs {
+		if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
+			t.Errorf("rule %s must still be delivered on the degraded no-mismatch path", slug)
+		}
+	}
+	if n := len([]byte(ctx)); n > 9500 {
+		t.Errorf("degraded session-2 context is %d bytes, still over the cap", n)
+	}
+	if !strings.Contains(ctx, codexDegradedMarker) {
+		t.Errorf("the omission must be announced, not silent:\n%s", ctx)
+	}
+	// Tiered announcement (review of #263): at nine rows there is room for the
+	// full notice, and the full notice is what must ship — the compact line is
+	// for bodies within its own length of the cap, not a shorter default.
+	if !strings.Contains(ctx, "## Provenance comments were left out of the rows above") {
+		t.Errorf("the full notice fits here and must be preferred over the compact line:\n%s", ctx)
+	}
+
+	// The file is the archive, the injection is the working set — two halves.
+	// The file keeps every note...
+	after, err := os.ReadFile(tomlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != repaired {
+		t.Errorf("the hook wrote .trellis/rules.toml — decision-0070 D4 says it never does:\nbefore:\n%s\nafter:\n%s", repaired, after)
+	}
+	// ...and the agent is never told to write the abbreviated copy back. On this
+	// path nothing asked for a repair, so there must be no write instruction at
+	// all; the mismatch path's counterpart of this property is the "not the
+	// abbreviated ones shown above" clause TestCodexDegradesRatherThanRefusingOverBudget
+	// names.
+	if strings.Contains(ctx, "Write .trellis/rules.toml") {
+		t.Errorf("no repair ran, so nothing may instruct a write — an abbreviated file is the one outcome this whole branch exists to prevent:\n%s", ctx)
+	}
+
+	// The strongest statement of "same mechanism, different trigger": what
+	// session 1 injected when IT degraded is what session 2 injects, byte for
+	// byte. If these ever diverge, one path is dropping provenance the other
+	// keeps and the archive/working-set split has grown a seam.
+	session2Rows := codexReconciledRowsFromContext(t, ctx)
+	if session1Rows != session2Rows {
+		t.Errorf("the two degraded paths disagree about the same file\nsession 1:\n%s\nsession 2:\n%s", session1Rows, session2Rows)
+	}
+}
+
+// TestCodexKeepsProvenanceWhenItFits is the over-refusal guard for the branch
+// above: the strip is a byte-budget concession, not a policy. A file carrying
+// persisted provenance that assembles UNDER the cap must be injected verbatim,
+// notes and all. Degrading a session that had the bytes to spare would throw the
+// provenance away for nothing and make every session's context depend on a
+// threshold no reader can see.
+func TestCodexKeepsProvenanceWhenItFits(t *testing.T) {
+	base := payloadFiles()["rules-a.toml"]
+	repaired := claudeReconciledRows(t, base+"inv-foreign-rule-a = { active = true }\n") + "\n"
+	if !strings.Contains(repaired, "# quarantined ") {
+		t.Fatalf("premise: the fixture must carry persisted provenance:\n%s", repaired)
+	}
+
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(repaired), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("an already-repaired file must govern:\n%s", raw)
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+	if n := len([]byte(ctx)); n > 9500 {
+		t.Fatalf("premise: this fixture must fit, or it proves nothing about the fitting case (%d bytes)", n)
+	}
+	if !strings.Contains(ctx, "# quarantined ") {
+		t.Errorf("provenance was dropped from a session that had the budget for it:\n%s", ctx)
+	}
+	if strings.Contains(ctx, codexDegradedMarker) {
+		t.Errorf("a session under budget announced a degradation it did not perform:\n%s", ctx)
+	}
+}
+
+// TestCodexDegradesPersistedProvenanceOnTheMismatchPathToo is the same blackout
+// one step to the left, and the reason the over-budget branch strips before it
+// reconciles rather than only on the no-mismatch side.
+//
+// The degraded MISMATCH path leaves provenance off the notes it would GENERATE.
+// That says nothing about notes the file already carries: a project that was
+// repaired once and then drifts again arrives here with both. Reconciling from
+// the raw file leaves every persisted note in the injected copy, so this session
+// degrades strictly LESS than the identical file with nothing to reconcile —
+// and at nine persisted rows plus one new foreign row that is the difference
+// between governing and injecting nothing.
+//
+// Mutation-proven: `reconcileRows(rulesToml, ...)` in place of
+// `reconcileRows(stripped, ...)` makes this refuse.
+func TestCodexDegradesPersistedProvenanceOnTheMismatchPathToo(t *testing.T) {
+	fixture := payloadFiles()["rules-a.toml"]
+	letters := "abcdefghi"
+	for i := 0; i < len(letters); i++ {
+		fixture += fmt.Sprintf("inv-foreign-rule-%c = { active = true }\n", letters[i])
+	}
+	// An already-repaired file: nine rows quarantined, each carrying its note.
+	repaired := claudeReconciledRows(t, fixture) + "\n"
+	if strings.Count(repaired, "# quarantined ") != len(letters) {
+		t.Fatalf("premise: the fixture must carry one persisted note per foreign row:\n%s", repaired)
+	}
+	// ...which then drifts again. One new foreign row is all it takes.
+	drifted := repaired + "inv-foreign-rule-j = { active = true }\n"
+
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	tomlPath := filepath.Join(project, ".trellis", "rules.toml")
+	if err := os.WriteFile(tomlPath, []byte(drifted), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+
+	if strings.Contains(raw, "context-over-budget") {
+		t.Fatalf("a repaired file that drifted again refused — the degraded mismatch path must give up the file's persisted provenance too:\n%s", raw)
+	}
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("nothing injected:\n%s", raw)
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+	for _, slug := range assessableSlugs {
+		if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
+			t.Errorf("rule %s must still be delivered", slug)
+		}
+	}
+	if n := len([]byte(ctx)); n > 9500 {
+		t.Errorf("degraded context is %d bytes, still over the cap", n)
+	}
+	// Both provenance kinds are off: the notes this session would have written
+	// AND the notes the file already carried.
+	if strings.Contains(ctx, "# quarantined ") {
+		t.Errorf("the degraded mismatch path kept persisted provenance it could have given up:\n%s", ctx)
+	}
+	// Every quarantined row still keeps its line and its value, persisted ones
+	// included — the degradation drops notes, never rows.
+	for i := 0; i <= len(letters); i++ {
+		slug := fmt.Sprintf("inv-foreign-rule-%c", byte('a')+byte(i))
+		if !strings.Contains(ctx, "# "+slug+" = { active = true }") {
+			t.Errorf("quarantined row %s lost its line — quarantine never deletes:\n%s", slug, ctx)
+		}
+	}
+	// The repair still describes what THIS session did, not a running total:
+	// nine rows were already commented out and are invisible to the counters,
+	// so exactly one row is newly quarantined.
+	if !strings.Contains(ctx, "added 0 row(s); quarantined 1 row(s)") {
+		t.Errorf("the strip changed the reconciliation counts — it must only remove comment text:\n%s", ctx)
+	}
+	// The file is the archive: it keeps every note.
+	after, err := os.ReadFile(tomlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != drifted {
+		t.Errorf("the hook wrote .trellis/rules.toml — decision-0070 D4 says it never does")
+	}
+}
+
+// TestCodexDoesNotOverRefuseTheLegitimateShapes runs every rules.toml shape a
+// real project can present through the real hook and requires that none of them
+// reaches a refusal.
+//
+// Over-correction is the failure mode this class of work keeps producing: two
+// guards on an earlier TRL-29 branch tightened into refusing healthy payloads,
+// which costs a consumer exactly what the silent case does. The sweep is broad
+// and boring on purpose — a narrow test of the newly-changed path would not have
+// caught either of them.
+func TestCodexDoesNotOverRefuseTheLegitimateShapes(t *testing.T) {
+	files := payloadFiles()
+	firm := files["rules-a.toml"]
+	adaptive := files["rules-b.toml"]
+
+	renamed := strings.Replace(firm,
+		"inv-minimal-first         = { active = true }",
+		"inv-renamed-first         = { active = true }", 1)
+	if renamed == firm {
+		t.Fatal("premise: rename fixture changed nothing")
+	}
+	missingRow := strings.Replace(firm, "inv-minimal-first         = { active = true }\n", "", 1)
+	if missingRow == firm {
+		t.Fatal("premise: missing-row fixture changed nothing")
+	}
+	alreadyQuarantined := claudeReconciledRows(t, firm+"inv-foreign-rule-a = { active = true }\n") + "\n"
+	if !strings.Contains(alreadyQuarantined, "# quarantined ") {
+		t.Fatal("premise: already-quarantined fixture carries no provenance")
+	}
+
+	cases := map[string]string{
+		"unchanged firm preset":     firm,
+		"unchanged adaptive preset": adaptive,
+		"missing row":               missingRow,
+		"unknown row":               firm + "inv-foreign-rule-a = { active = true }\n",
+		"duplicate row":             firm + "inv-minimal-first         = { active = false }\n",
+		"renamed row":               renamed,
+		"already quarantined":       alreadyQuarantined,
+		"hand-written partial":      "strictness  = \"firm\"\n",
+	}
+	for name, toml := range cases {
+		t.Run(name, func(t *testing.T) {
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+			if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(toml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+			if strings.Contains(raw, "context-over-budget") || strings.Contains(raw, "invalid-rules") {
+				t.Fatalf("a legitimate shape was refused:\n%s", raw)
+			}
+			if got.HookSpecificOutput == nil {
+				t.Fatalf("no context injected for a legitimate shape:\n%s", raw)
+			}
+			ctx := got.HookSpecificOutput.AdditionalContext
+			if n := len([]byte(ctx)); n > 9500 {
+				t.Errorf("%s assembled to %d bytes, over the cap", name, n)
+			}
+			for _, slug := range assessableSlugs {
+				if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
+					t.Errorf("rule %s was not delivered for a legitimate shape", slug)
+				}
+			}
+		})
+	}
+
+	// decision-0070 D5: an opt-out is silence, not a refusal — and not a
+	// delivery either. Asserted rather than folded into the table above,
+	// because "emitted nothing" and "refused" are exactly the two outcomes
+	// this sweep exists to tell apart, and a shared assertion would blur them.
+	t.Run("governed = false", func(t *testing.T) {
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte("governed = false\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if raw != "" {
+			t.Fatalf("an opt-out must emit nothing at all — not a refusal, not a delivery:\n%s", raw)
+		}
+	})
+
+	// A project with no .trellis/rules.toml is not a Trellis project on this
+	// host: nearestOverlay walks up looking for exactly that file, so the hook
+	// stops at project-root-not-found before any budget arithmetic runs. What
+	// matters for this sweep is that it is NOT a budget refusal — the byte cap
+	// must not be what a project without an overlay hears about.
+	t.Run("no project rules.toml at all", func(t *testing.T) {
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		if err := os.Remove(filepath.Join(project, ".trellis", "rules.toml")); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if strings.Contains(raw, "context-over-budget") {
+			t.Fatalf("a project with no rules.toml must never be refused for budget:\n%s", raw)
+		}
+		if got.HookSpecificOutput != nil {
+			t.Fatalf("a project with no overlay must not be governed from one:\n%s", raw)
+		}
+		if !strings.Contains(raw, "project-root-not-found") {
+			t.Errorf("expected the overlay-not-found path, got:\n%s", raw)
+		}
+	})
+}
+
+// tomlCommentOfBytes returns a valid TOML comment block of exactly n bytes —
+// newline-terminated "# ..." lines — so a fixture can be sized to the byte
+// against a measured baseline rather than a hardcoded total that would drift
+// the moment the payload's header changed length.
+func tomlCommentOfBytes(t *testing.T, n int) string {
+	t.Helper()
+	var b strings.Builder
+	for b.Len() < n {
+		remaining := n - b.Len()
+		line := "# project note: " + strings.Repeat("x", 60) + "\n"
+		if remaining < len(line) {
+			if remaining < 3 {
+				b.WriteString(strings.Repeat("\n", remaining))
+			} else {
+				b.WriteString("# " + strings.Repeat("x", remaining-3) + "\n")
+			}
+			break
+		}
+		b.WriteString(line)
+	}
+	if b.Len() != n {
+		t.Fatalf("comment builder produced %d bytes, wanted %d", b.Len(), n)
+	}
+	return b.String()
+}
+
+// codexContextBytes runs the hook on `toml` as the project's rules.toml and
+// returns the injected context and its byte length, failing if the hook refused.
+func codexContextBytes(t *testing.T, toml string) (string, int) {
+	t.Helper()
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(toml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("hook injected nothing:\n%s", raw)
+	}
+	ctx := got.HookSpecificOutput.AdditionalContext
+	return ctx, len([]byte(ctx))
+}
+
+// TestCodexAnnouncementNeverTipsAFittingBodyOverBudget pins the window the
+// review of #263 found (PRRT_kwDOTIeCVc6eu78z): the degraded path stripped the
+// provenance and then appended its announcement UNCONDITIONALLY, with the
+// runaway guard measuring the sum. A body that fit on its own was refused for
+// the announcement's bytes — and since one quarantine note frees 150 B while the
+// full notice costs 414 B (the full degraded mandate 156 B more than the full
+// one), at one or two persisted notes the "degraded" assembly was larger than
+// the full one and the strip could never rescue anything at all.
+//
+// Fixture: the reviewer's own. Firm preset, one persisted quarantine note (the
+// file a Trellis repair produces), and a valid project comment sized against a
+// MEASURED baseline so the full assembly lands a few bytes over the cap. The
+// stripped body then fits with room for the compact announcement but not the
+// full one, which is exactly the window. Sized relative rather than absolute so
+// the test still probes the window if the payload header ever changes length.
+//
+// Both paths are pinned because both had the window: the no-mismatch notice and
+// the mismatch mandate are appended in the same slot by the same code.
+//
+// The one-note fixture is tight on purpose. One note frees 150 B and the compact
+// notice costs 129 B, so a one-note file is rescued only when the full assembly
+// is at most 21 B over; `over = 10` sits in the middle and leaves the compact
+// line 11 B of growth before this subtest refuses again. That is the pin, not a
+// fragility to widen away: a compact notice that has grown past a one-note
+// file's savings has lost exactly the property the review asked for. (Mutation
+// M4 in the #263 review-fix notes — a 27 B deletion verb planted in the line —
+// tripped this subtest as well as both destructive-verb guards.)
+func TestCodexAnnouncementNeverTipsAFittingBodyOverBudget(t *testing.T) {
+	firm := payloadFiles()["rules-a.toml"]
+	const cap = 9500
+	const over = 10 // bytes the FULL assembly lands over the cap
+
+	t.Run("no-mismatch path: the notice", func(t *testing.T) {
+		repaired := claudeReconciledRows(t, firm+"inv-foreign-rule-a = { active = true }\n") + "\n"
+		if !strings.Contains(repaired, "# quarantined ") {
+			t.Fatalf("premise: the repaired file must carry one persisted quarantine note:\n%s", repaired)
+		}
+		baseline, baselineBytes := codexContextBytes(t, repaired)
+		if strings.Contains(baseline, codexDegradedMarker) {
+			t.Fatal("premise: the baseline must deliver in full, or the comment arithmetic below is meaningless")
+		}
+		if baselineBytes >= cap {
+			t.Fatalf("premise: baseline is %d B, already at the cap", baselineBytes)
+		}
+		comment := tomlCommentOfBytes(t, cap-baselineBytes+over)
+		toml := repaired + comment
+
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		tomlPath := filepath.Join(project, ".trellis", "rules.toml")
+		if err := os.WriteFile(tomlPath, []byte(toml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if strings.Contains(raw, "context-over-budget") {
+			t.Fatalf("refused a body that fits: the full assembly was %d B over the cap, the strip frees 150 B, and only the notice pushed it back over:\n%s", over, raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("injected nothing:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if n := len([]byte(ctx)); n > cap {
+			t.Errorf("delivered %d B, over the cap", n)
+		}
+		if !strings.Contains(ctx, codexDegradedMarker) {
+			t.Errorf("the omission must still be announced, however little room there is:\n%s", ctx)
+		}
+		if strings.Contains(ctx, "## Provenance comments were left out of the rows above") {
+			t.Errorf("the full notice cannot fit here; the compact one must have been chosen:\n%s", ctx)
+		}
+		if strings.Contains(ctx, "Write .trellis/rules.toml") {
+			t.Errorf("no repair ran, so nothing may instruct a write:\n%s", ctx)
+		}
+		for _, slug := range assessableSlugs {
+			if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
+				t.Errorf("rule %s must still be delivered", slug)
+			}
+		}
+		if !strings.Contains(ctx, "# inv-foreign-rule-a = { active = true }") {
+			t.Errorf("the quarantined row must still be present, commented, with its note off:\n%s", ctx)
+		}
+		// The compact announcement must be recognised as an announcement, not
+		// swallowed into the row block: the rows the extractor sees are exactly the
+		// file minus its provenance, byte for byte.
+		if rows := codexReconciledRowsFromContext(t, ctx); rows != strings.TrimSuffix(codexStripProvenance(t, toml), "\n") {
+			t.Errorf("extracted row block is not the stripped file — the compact notice was taken for rows:\n%s", rows)
+		}
+		after, err := os.ReadFile(tomlPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(after) != toml {
+			t.Errorf("the hook wrote .trellis/rules.toml — decision-0070 D4 says it never does")
+		}
+	})
+
+	t.Run("mismatch path: the mandate", func(t *testing.T) {
+		const foreign = "inv-foreign-rule-a = { active = true }\n"
+		baseline, baselineBytes := codexContextBytes(t, firm+foreign)
+		if strings.Contains(baseline, codexDegradedMarker) {
+			t.Fatal("premise: the baseline must deliver the full mandate, or the comment arithmetic below is meaningless")
+		}
+		if !strings.Contains(baseline, "Write .trellis/rules.toml with exactly the rows shown above") {
+			t.Fatal("premise: the baseline must carry the full mandate")
+		}
+		if baselineBytes >= cap {
+			t.Fatalf("premise: baseline is %d B, already at the cap", baselineBytes)
+		}
+		// Comment before the foreign row: a fresh mismatch with nothing persisted,
+		// so the only provenance in play is what this session would generate.
+		toml := firm + tomlCommentOfBytes(t, cap-baselineBytes+over) + foreign
+
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		tomlPath := filepath.Join(project, ".trellis", "rules.toml")
+		if err := os.WriteFile(tomlPath, []byte(toml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if strings.Contains(raw, "context-over-budget") {
+			t.Fatalf("refused a body that fits: the full assembly was %d B over the cap and the degraded mandate alone pushed the stripped body back over:\n%s", over, raw)
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("injected nothing:\n%s", raw)
+		}
+		ctx := got.HookSpecificOutput.AdditionalContext
+		if n := len([]byte(ctx)); n > cap {
+			t.Errorf("delivered %d B, over the cap", n)
+		}
+		if !strings.Contains(ctx, codexDegradedMarker) {
+			t.Errorf("the omission must still be announced:\n%s", ctx)
+		}
+		if strings.Contains(ctx, "## Rule activation was reconciled this session") {
+			t.Errorf("the full degraded mandate cannot fit here; the compact one must have been chosen:\n%s", ctx)
+		}
+		// The compact mandate is still a mandate: it asks for the FULL-provenance
+		// file and never for the abbreviated rows — the property
+		// TestCodexDegradesRatherThanRefusingOverBudget names for the full form.
+		if !strings.Contains(ctx, "not the abbreviated ones shown above") {
+			t.Errorf("the compact mandate must still ask for the full-provenance file:\n%s", ctx)
+		}
+		if strings.Contains(ctx, "Write .trellis/rules.toml with exactly the rows shown above") {
+			t.Errorf("the compact mandate must never ask for the abbreviated rows to be written:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "row by row") {
+			t.Errorf("the compact mandate must still have the agent report the repair to the user:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, "# inv-foreign-rule-a = { active = true }") {
+			t.Errorf("the foreign row must be quarantined in the injected copy, note off:\n%s", ctx)
+		}
+		for _, slug := range assessableSlugs {
+			if !regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `[ \t]*=`).MatchString(ctx) {
+				t.Errorf("rule %s must still be delivered", slug)
+			}
+		}
+		if rows := codexReconciledRowsFromContext(t, ctx); strings.Contains(rows, codexDegradedMarker) {
+			t.Errorf("the compact mandate was taken for rows:\n%s", rows)
+		}
+		after, err := os.ReadFile(tomlPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(after) != toml {
+			t.Errorf("the hook wrote .trellis/rules.toml — decision-0070 D4 says it never does")
+		}
+	})
 }

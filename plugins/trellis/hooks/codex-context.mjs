@@ -379,19 +379,88 @@ function parseRulesToml(source, slugs) {
 // <stamp>". `today` is the caller's `YYYY-MM-DD` for the same reason
 // staleness.sh takes one `date +%Y-%m-%d` call up front rather than one per row:
 // every note in a single reconciliation shares one date.
+// The two provenance strings, as ONE source of truth for the writer below
+// (quarantineNote/addedHeader) and the reader under it (stripPersistedProvenance).
+// A pattern written out by hand next to a string built by hand is two statements
+// of the same text, and they drift silently: the writer's wording changes, the
+// reader keeps matching yesterday's, and the degradation quietly stops degrading
+// — which is TRL-29 again, arrived at from the other side. Deriving both from one
+// template makes that drift impossible rather than merely tested for.
+//
+// staleness.sh:862 and staleness.sh:933 carry the identical text: both hosts
+// write into one .trellis/rules.toml, so a file repaired on Claude must strip on
+// Codex. TestBothHostsReconcileIdentically keeps those two writers in step;
+// these templates keep this side's reader in step with this side's writer.
+const QUARANTINE_NOTE_TEMPLATE =
+  "  # quarantined {date}: not in {stamp}. If a newer Trellis" +
+  " release ships this slug, update the Trellis plugin and uncomment this row.";
+const ADDED_HEADER_TEMPLATE =
+  "# added {count} row(s) below on {date} (missing from {stamp})";
+
+function fillTemplate(template, values) {
+  return template.replace(/\{(\w+)\}/gu, (_match, key) => values[key]);
+}
+
+// A template's literal segments, regex-escaped, rejoined by a same-line
+// wildcard: the pattern matches what the template WROTE on any date, against any
+// payload stamp, for any count. `[^\n]*` rather than `.` so a placeholder can
+// never swallow a line boundary — an over-greedy pattern here would strip a
+// consumer's own lines, and quarantine never deletes.
+function templatePattern(template, wrap) {
+  const body = template
+    .split(/\{\w+\}/u)
+    .map((literal) => literal.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"))
+    .join("[^\\n]*");
+  return new RegExp(wrap(body), "u");
+}
+
 // quarantineNote/addedHeader are the two provenance strings reconcileRows
 // glues onto a row (or a block of rows) it could not match to the payload's
-// slug set. Factored out to a single source of truth so the `withProvenance`
+// slug set. Filled from the templates above, so the `withProvenance`
 // branches below (the ordinary call and TRL-29's degraded one, immediately
 // after) can never drift from each other about what "with provenance" means.
 function quarantineNote(today, stamp) {
-  return (
-    `  # quarantined ${today}: not in ${stamp}. If a newer Trellis` +
-    " release ships this slug, update the Trellis plugin and uncomment this row."
-  );
+  return fillTemplate(QUARANTINE_NOTE_TEMPLATE, { date: today, stamp });
 }
 function addedHeader(count, today, stamp) {
-  return `# added ${count} row(s) below on ${today} (missing from ${stamp})`;
+  return fillTemplate(ADDED_HEADER_TEMPLATE, { count, date: today, stamp });
+}
+
+// A quarantine note is a SUFFIX on a commented-out row; an added-rows header is
+// a whole line of its own. Anchored accordingly. Both tolerate a trailing `\r`
+// (a CRLF file split on "\n" keeps it) via lookahead rather than by consuming
+// it, so a stripped line keeps the line ending the rest of the file uses.
+const QUARANTINE_NOTE_PATTERN = templatePattern(
+  QUARANTINE_NOTE_TEMPLATE,
+  (body) => `(?:${body})[ \\t]*(?=\\r?$)`,
+);
+const ADDED_HEADER_PATTERN = templatePattern(
+  ADDED_HEADER_TEMPLATE,
+  (body) => `^[ \\t]*(?:${body})[ \\t]*\\r?$`,
+);
+
+// TRL-29. The degradation `decision-0084` §6 built drops provenance this hook is
+// about to WRITE. This drops provenance an earlier session already wrote into the
+// file — the other half, and the half whose absence made the degradation
+// one-shot. A session that follows a repair has no mismatch, so it generates no
+// provenance and has nothing to leave off; the file's persisted comments were the
+// only thing left to give up, and the gate above them never opened.
+//
+// Only Trellis's own two forms come off. A comment the PROJECT wrote is the
+// project's content and stays: this is a byte-budget concession on Trellis's own
+// bookkeeping, not a licence to abbreviate a consumer's file.
+//
+// Touches nothing on disk (`decision-0070` D4) and no row's VALUE: a quarantined
+// row keeps its commented-out line verbatim and loses only the note appended to
+// it, which is exactly the shape reconcileRows produces with
+// `withProvenance = false`. Quarantine still never deletes.
+function stripPersistedProvenance(source) {
+  const kept = [];
+  for (const line of source.split("\n")) {
+    if (ADDED_HEADER_PATTERN.test(line)) continue;
+    kept.push(line.replace(QUARANTINE_NOTE_PATTERN, ""));
+  }
+  return kept.join("\n");
 }
 
 // `withProvenance = false` is TRL-29's degradation path: same rows, same
@@ -551,7 +620,32 @@ function mismatchCounts(mismatch) {
 // task-4-report.md. A session already over budget cannot also afford asking
 // for the exact template text back; "the full-provenance version, not the
 // abbreviated rows above" is the instruction the byte budget can carry.
-function repairMandate(mismatchText, repairSummary, degraded) {
+//
+// `compact` (review of #263, PRRT_kwDOTIeCVc6eu78z) is the last tier before
+// the runaway guard: the same mandate as one paragraph, 571 B where the
+// degraded form is 928 B. It exists because the degraded mandate is 156 B
+// LONGER than the full one for a single-slug mismatch while the strip it
+// accompanies frees 150 B per row — so at one foreign row the "degraded"
+// assembly was bigger than the full one, and a body that fit on its own was
+// refused for the mandate's bytes. Every load-bearing clause survives the
+// compaction — the counts, "the rows above govern", the degraded marker
+// sentence, "not the abbreviated ones shown above", the no-loss property, and
+// "row by row" — because each is pinned by a test and each is a thing the
+// agent must know to write the file correctly; only the explanatory prose
+// around them is what a session this short of bytes gives up. Lives inside
+// this function rather than beside it so codexPayloadAssembly's scan for
+// ungated deletion verbs covers it with no list to keep in step.
+function repairMandate(mismatchText, repairSummary, degraded, compact) {
+  if (degraded && compact) {
+    return (
+      "\nRule activation was reconciled this session: .trellis/rules.toml did not match the rules this payload ships " +
+      `(${mismatchText}; ${repairSummary}), and the rows above govern. ` +
+      "Provenance was omitted above to fit the context budget. " +
+      "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above: " +
+      "a row the payload does not ship stays in the file, commented out with its reason and the date, and every project value is kept verbatim. " +
+      "Tell the user what you reconciled, row by row, before doing substantive work.\n"
+    );
+  }
   const writeInstruction = degraded
     ? "Provenance was omitted above to fit the context budget and remains in full in the file this mandate instructs writing next. " +
       "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above, so the file matches what governs. "
@@ -578,6 +672,58 @@ function repairMandate(mismatchText, repairSummary, degraded) {
     writeInstruction +
     noLoss +
     "Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent.\n"
+  );
+}
+
+// provenanceOmittedNotice is repairMandate's counterpart on the path where there
+// is nothing to repair (TRL-29). The file already matches the payload's slug set;
+// what does not fit is the provenance the file itself carries from an EARLIER
+// repair, and dropping it from the injected copy is the whole of what this
+// session did.
+//
+// It shares repairMandate's degraded marker sentence verbatim — one sentence,
+// two callers — because "the injected copy was abbreviated" is one fact however
+// the session arrived at it, and cli/codex_hook_test.go's codexDegradedMarker
+// matches on exactly that sentence to tell a degraded response from a full one.
+// Two wordings would leave that helper silently half-blind, and
+// codexReconciledRows would then compare a degraded Codex row block against a
+// full-provenance Claude one and blame host parity for it.
+//
+// It carries NO write instruction, and must not grow one. The mandate has to say
+// "the full-provenance version, not the abbreviated ones shown above" because it
+// is asking for a write at all; here nothing asked for one, the file on disk is
+// already correct, and the only thing an instruction could achieve is the exact
+// failure this branch exists to prevent — an agent helpfully rewriting
+// .trellis/rules.toml from an abbreviated copy and losing the provenance for
+// good. TestCodexDegradesOnASecondSessionOverBudget asserts the string
+// "Write .trellis/rules.toml" never appears on this path.
+//
+// Scanned by TestEveryDeletionInstructionIsGated and
+// TestEveryDestructiveInstructionIsGated alongside repairMandate (see
+// codexPayloadAssembly in cli/plugin_hook_test.go, which names both functions):
+// this is agent-facing text in the Codex payload, so the same "no deletion verb
+// reaches the agent" argument has to cover it.
+//
+// `compact` is the one-line tier (review of #263, PRRT_kwDOTIeCVc6eu78z): 129 B
+// where the full notice is 414 B. One persisted quarantine note frees 150 B when
+// its text comes off, so with the full notice appended unconditionally the
+// "degraded" assembly was 264 B LARGER than the full one at a single note, and
+// a body that fit on its own was refused for the notice's bytes. The line keeps
+// the degraded marker sentence verbatim (codexDegradedMarker keys on it) and the
+// one fact the agent needs — the file has it all and needs no repair — and
+// nothing else. The 129 B are the residual window the over-budget branch below
+// cannot close without going silent: a body that fits alone but not alongside
+// this line is still refused, loudly, rather than injected with no word that it
+// was abbreviated.
+function provenanceOmittedNotice(compact) {
+  if (compact) {
+    return "\nProvenance was omitted above to fit the context budget; .trellis/rules.toml keeps it in full and needs no repair this session.\n";
+  }
+  return (
+    "\n## Provenance comments were left out of the rows above\n\n" +
+    "Provenance was omitted above to fit the context budget and remains in full in .trellis/rules.toml, which matches the rules this payload ships and needs no repair this session. " +
+    "The rows above are what governs; the file on disk is the archive of why each row reads the way it does. " +
+    "Read that file directly if you need a quarantined row's reason or its date.\n"
   );
 }
 
@@ -873,39 +1019,111 @@ if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
   // not reject (MAX_CONTEXT_BYTES' own comment, above), so failing closed was
   // strictly worse than the host's own degradation.
   //
-  // KNOWN LIMITATION — the degradation is ONE-SHOT, and this gate is why.
-  // It runs only when a reconciliation ran this session (mismatch !== null).
-  // The session that follows the repair has NO mismatch: the file the mandate
-  // asked for already carries every row plus the persisted provenance
-  // comments, so this branch is skipped and the hard refusal below fires
-  // instead — permanently, because nothing about that file changes again.
-  // Measured against the real firm payload (rules-a.toml + N foreign rows):
-  // at N >= 9 session 1 degrades and delivers (9129 B), the file the mandate
-  // produces is 2816 B, and session 2 refuses with `context-over-budget` and
-  // injects nothing, while staleness.sh governs happily from the identical
-  // file (9833 B delivered). A 2.8 KB file Trellis itself authored is not
-  // pathological, and its quarantine comments are exactly the provenance
-  // there would be left to drop — the gate, not a shortage of material, is
-  // what stops it. Degrading on the no-mismatch path is a behaviour change
-  // with its own tests, so it is NOT done here; tracked as TRL-29 (reopened
-  // with this measurement).
+  // What degrades is the INJECTED COPY, never the file: the file is the
+  // archive, the injection is the working set. Both kinds of provenance give
+  // way here —
+  //
+  //   * provenance this session would GENERATE (reconcileRows' own notes,
+  //     left off by `withProvenance = false`), and
+  //   * provenance the file ALREADY CARRIES from an earlier repair
+  //     (stripPersistedProvenance).
+  //
+  // The second used to be unreachable, and that is what TRL-29 was reopened
+  // for. This whole branch was gated on `mismatch !== null`, so it ran only in
+  // a session that had something to reconcile — and the session AFTER a repair
+  // has no mismatch, generates no provenance, and never had its persisted
+  // provenance offered up, so the refusal below fired instead. Permanently,
+  // because nothing about that file changes again. Measured against the real
+  // firm payload (rules-a.toml + N foreign rows), reproduced on 3f44620: at
+  // N >= 9 session 1 degraded and delivered (9174 B), the file its mandate
+  // produced was 2861 B, and session 2 refused with `context-over-budget`
+  // while staleness.sh governed happily from the identical bytes (9833 B).
+  // A 2.8 KB file Trellis itself told the agent to write is not pathological,
+  // and its quarantine comments were exactly what was left to drop: the gate,
+  // not a shortage of material, was what stopped it.
+  //
+  // So the trigger is the budget, which is what this branch was always about.
+  // The gate below now only chooses which ANNOUNCEMENTS the session can carry.
+  //
+  // And the announcement is itself budgeted (review of #263,
+  // PRRT_kwDOTIeCVc6eu78z). The first shape of this branch appended one fixed
+  // announcement to the stripped body and let the runaway guard measure the
+  // sum — so a body that fit on its own was refused for the announcement's
+  // bytes. Measured: the full notice costs 414 B and the degraded mandate 156 B
+  // more than the full mandate it replaces at one foreign slug (the full form
+  // names every slug, the degraded one counts them, so the gap narrows by a
+  // slug's length per row), while stripping frees 150 B per quarantined row.
+  // At one or two persisted notes the "degraded" assembly
+  // was therefore LARGER than the full one it stood in for, and the strip
+  // could never rescue anything; above that, a window of 414 B (or 156 B) of
+  // fitting bodies was still refused. The reviewer's fixture — firm preset,
+  // one persisted note, a valid 1450 B project comment — assembled to 9517 B
+  // in full, 9367 B stripped, and was refused at 9781 B with the notice on.
+  //
+  // Now each path lists its announcements from most to least informative and
+  // the first assembly that fits is what ships. The guard fires only when the
+  // body will not fit alongside the SHORTEST honest announcement — the
+  // residual is that line's own length (129 B on the no-mismatch path, 571 B
+  // on the mismatch path), and it is not closed to zero on purpose: doing so
+  // would mean injecting an abbreviated copy with no word that it was
+  // abbreviated, or a reconciliation with no mandate to write it back, and a
+  // loud refusal is better than either of those quiet ones.
+  const stripped = stripPersistedProvenance(rulesToml);
+  let body;
+  let announcements;
   if (mismatch !== null) {
-    const bare = reconcileRows(rulesToml, slugs, stamp, today, false);
+    // Reconciled from the STRIPPED source, not the raw one. A file can carry
+    // persisted provenance AND a fresh mismatch at once, and leaving the
+    // persisted half on would degrade that session strictly less than the same
+    // file with nothing to reconcile — the same permanent blackout, one step
+    // to the left. Safe because reconcileRows classifies from uncommented
+    // `(inv|floor)-... =` rows only: removing comment text changes no
+    // quarantine or addition decision and neither count, so `added` /
+    // `quarantined` — and therefore what governs — are identical either way.
+    const bare = reconcileRows(stripped, slugs, stamp, today, false);
     const repairSummary = `added ${bare.added} row(s); quarantined ${bare.quarantined} row(s)`;
-    repairMandateText = repairMandate(mismatchCounts(mismatch), repairSummary, true);
-    context = buildContext(bare.text, repairMandateText);
+    const counts = mismatchCounts(mismatch);
+    body = bare.text;
+    announcements = [
+      repairMandate(counts, repairSummary, true),
+      repairMandate(counts, repairSummary, true, true),
+    ];
+  } else {
+    // Nothing to reconcile, so no mandate and no write instruction at all —
+    // see provenanceOmittedNotice for why an instruction here would be the
+    // failure rather than the fix. effectiveRulesToml was the file verbatim on
+    // this path; what is injected now is the file minus Trellis's own
+    // bookkeeping, and nothing else.
+    body = stripped;
+    announcements = [provenanceOmittedNotice(false), provenanceOmittedNotice(true)];
   }
-  if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
-    // The last resort rather than the default — but NOT, as this comment
-    // once claimed, a state with "nothing left to degrade". Two ways here:
-    // (a) after a degraded reassembly that still did not fit, where the claim
-    // holds — reconcileRows' own output is small even at sixteen quarantined
-    // and sixteen added rows (Ruling 6, TRL-20 task 3); and (b) the
-    // no-mismatch path, where the branch above was skipped and the file's own
-    // persisted provenance was never offered up. (b) is reachable from a file
-    // Trellis itself told the agent to write — see the gate's comment above —
-    // and is a real, permanent blackout on a project Claude still governs.
-    // TRL-29 (reopened) carries the fix.
+  context = null;
+  for (const announcement of announcements) {
+    const candidate = buildContext(body, announcement);
+    if (Buffer.byteLength(candidate, "utf8") <= MAX_CONTEXT_BYTES) {
+      context = candidate;
+      break;
+    }
+  }
+  if (context === null) {
+    // The runaway guard, and nothing more. Reached only when a context with NO
+    // Trellis provenance left in it — neither generated nor persisted — will
+    // not fit alongside even the one-line announcement that it was
+    // abbreviated. Measured against the real firm payload: a quarantined row
+    // costs the injected copy 42 B once its note is off, against 192 B with
+    // it, and the refusal first appears at THIRTY-SEVEN quarantined rows
+    // where it used to appear at nine (thirty before the announcement was
+    // budgeted). It is a byte budget, not a row count — a longer slug reaches
+    // it sooner — so treat thirty-seven as the measured order of magnitude,
+    // not a threshold to test against.
+    //
+    // Deliberately NOT described as a state with "nothing left to degrade".
+    // An earlier draft of this comment, and of decision-0084, said exactly
+    // that; it was measurably false, and the limitation it concealed is what
+    // TRL-29 was reopened for. What is left to degrade at this point is the
+    // CONSUMER's own content — their comments, their row set — and
+    // abbreviating that is not a call this hook may make on its own. So it
+    // stops here, loudly, at exit 0.
     fail("assembled-context", "context-over-budget");
     process.exit(0);
   }
