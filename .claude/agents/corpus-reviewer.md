@@ -72,7 +72,7 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
 is present):**
 
 8. **Catalog coverage + examples.** A `signature-catalog` covers every **assessable** `invariants-v1`
-   slug (structural + operating + floors — all sixteen, **excluding** the two dials; a collapsed slug is covered by its successor),
+   slug (structural + operating + floors — **excluding** the two dials; a collapsed slug is covered by its successor),
    each with `what`/`directive`/`why`/`signature`/`honored`/`violated`/`class`/`mechanizable`/`default_C1`/
    `default_C2`, where `honored`/`violated` are **≥2 matched pairs** (`violated[i]`/`honored[i]` share a
    use-case tag, `decision-0027`). Flag an uncovered assessable slug, a missing field (incl. a missing

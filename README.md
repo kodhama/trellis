@@ -22,7 +22,7 @@ That is the whole install:
 ```
 
 Installing the plugin at **project scope is the adoption act** — no further command, no file
-required (`decision-0070`). The shipped defaults apply: all sixteen rules, adaptive posture.
+required (`decision-0070`). The shipped defaults apply: all rules, adaptive posture.
 To change that, the recipe depends on whether you already have a `.trellis/rules.toml`:
 
 - **No file yet** — copy a complete preset from the installed plugin: `reference/rules-a.toml`
@@ -41,7 +41,7 @@ To change that, the recipe depends on whether you already have a `.trellis/rules
 - **The file is the one-line `governed = false` opt-out** — Trellis is switched off for this
   project (`decision-0070` D5). Editing `strictness` beside the opt-out leaves it in force and the
   hook stays silent, so that is not re-enabling. Deleting the line alone **does** re-enable
-  governance — but the file is then empty, so it reconciles to **all sixteen rows active at the
+  governance — but the file is then empty, so it reconciles to **all rows active at the
   adaptive posture**, whatever this project ran before, on either host (`decision-0083`,
   `decision-0084`). Confirm that turning governance back on is what you want, then write a
   complete preset over it if you want a posture or a row set of your own. The plugin vendors

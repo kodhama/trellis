@@ -34,7 +34,7 @@ ratified: 2026-07-04
 > `invariants-v1` registry. **The benefits page derives from the `why` + honored/violated here** — no
 > claim on the page without a rule behind it (`decision-0020`). `trellis-product` scope — one, shipped.
 
-> **Coverage (AC1).** Covers the **16 assessable invariants** — the structural set, the
+> **Coverage (AC1).** Covers the **assessable invariants** — the structural set, the
 > operating set (incl. **`inv-self-improvement`**, `decision-0018`, **`inv-deliberate-succession`**,
 > `decision-0074`, and **`inv-no-orphan-followups`**, `decision-0078`), the floors. `inv-reference-relationship`
 > was **collapsed into `floor-transparency` + the adopt/adapt dial** (`decision-0021`) — its "divergence from a framework"
@@ -52,22 +52,35 @@ ratified: 2026-07-04
 > bundled reference). Change an example here → regenerate all three. A CI check enforces it
 > (`cli/sync_test.go`) — but this note is here so you see the dependents *before* the check does.
 >
-> **Adding or removing a row costs more than an example edit does**, and this note named only the
-> three above until `decision-0078` — `decision-0074`'s review caught four obligations its author's
-> sweep missed, three of them the same root cause. A **row-set change** additionally touches: the
-> `invariants-v1` registry (a slug is a set amendment); the activation rows in
-> `plugins/trellis/reference/rules-a.toml` / `rules-b.toml` and this repo's own `.trellis/rules.toml`
-> (**without a row the rule ships but is inactive**); *(retired `decision-0083` — this list used to
-> name `plugins/trellis/hooks/codex-context.mjs`'s hardcoded `SLUGS` here; that array is gone, and
-> the Codex hook now derives its slug set from the generated `reference/rules.md` like the Claude
-> hook does, so a row-set change no longer touches it)*; the contract layer that states the count — this catalog's own Coverage note
-> and AC1, `core/rubrics/artifact-contract.md`, the `corpus-reviewer` checklist; `profiles/trellis-self.md`;
-> the prose counts in `README.md`, `plugins/trellis/README.md`, `install.sh`, `docs/index.html`,
-> `docs/lp-content.md` and `docs/invariants.html` (which also needs a new card);
-> `plugins/trellis/skills/remove/SKILL.md` and the needle pinning it; and the release stamp `plugins/trellis/VERSION` (**unguarded — trellis#245 is still open** — and
-> without it every cached consumer keeps the old rule set, `d4a2c7b`). Prose counts go stale in more
-> shapes than one grep matches: the digits, the word spelled out, the `N/N` form. Positional slug
-> indices are gone from `cli/rules_test.go` — every count there now derives from one pinned list.
+> **Adding or removing a row costs more than an example edit does — and the sweep is guarded,
+> not listed.** `cli/row_set_guard_test.go` reads the pinned slug set (`assessableSlugs`,
+> `cli/payload_test.go` — the one pin) and fails naming what has not followed: this catalog's own
+> entry list, the `invariants-v1` registry, `profiles/trellis-self.md` (each gene present *and*
+> active), the `docs/invariants.html` cards, this repo's `.trellis/rules.toml`, and the rendered
+> `reference/rules-*.toml` (**without a row the rule ships but is inactive**). Run
+> `go test -count=1 ./...` in `cli/` and follow the failures.
+>
+> **The count itself is guarded where the number is the claim** — the installer's closing line,
+> the staleness hook's announcement, the README's `16/16`, and AC1's class breakdown below — **and
+> in one place where it is not.** `plugins/trellis/README.md` still spells the count out twice;
+> those two sentences are pinned rather than deleted because editing a numeral inside the shipped
+> bundle forces `install.sh`'s baked manifest to be re-hashed, and those manifest lines are owned
+> by open **trellis#262**. The pin is where that deferral is recorded, so it cannot go stale while
+> it waits — delete the two rows when a change that already touches the bundle deletes the
+> numerals.
+>
+> Elsewhere — the root README, `docs/`, the corpus — the numeral was simply deleted ("all sixteen
+> rules" → "all rules"), because a list of count sites kept here was found short twice
+> (`decision-0074`, `decision-0078`), and a twenty-two-row table of them in a test file was the
+> same mistake one layer down (TRL-28). **If you are about to write a row count into prose, delete
+> it instead.** Two classes keep their numbers unguarded on purpose: code comments narrating a past
+> measurement, and the `invariants-v1` registry's own account of how the set was composed.
+>
+> Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
+> rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
+> (**unguarded — trellis#245 is still open**; without it every cached consumer keeps the old rule
+> set, `d4a2c7b`). The Codex hook is not a surface: it derives its slug set from the generated
+> `reference/rules.md` since `decision-0083`.
 
 ## Entries
 
