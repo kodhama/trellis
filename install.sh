@@ -336,14 +336,14 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-f9dc4b86b24e6809009f2877067422b68e9baa12c763f37cd8d5f9965e3358c9  .claude-plugin/plugin.json
-1fbe1c3a1ec0dc598a83ba44cc8a74e50baed43e42a59589ab49044c915ede9e  .codex-plugin/plugin.json
+247939304b22cfb3501eb2dbc0e5887916f97a72f166b62c655b74c7f26b5ac0  .claude-plugin/plugin.json
+ed6f132cf7446df1a059b3394a9313eb05bce2d4f69f4d4edf0a479ecad829a3  .codex-plugin/plugin.json
 3e969e059b4e979ee4f853680726adb3e7e80e8c34c2fa3b809203fc673a2284  README.md
-dc24feb5bd35084d8ae32a4eafbec12352707d4662401fcbcc9bbd696cde77a9  VERSION
+795d6bc79574d2aec03ad9cfec404bb95083c9dd210e6521e0d4199772d28d44  VERSION
 7507ad4734ddb6f5ccf0340364839f0c44f81a0a94b81f016efe8109d1a549c0  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-4f12dc39466009437e521d79fadb2c2ba719e78abf093cfec7afd6e94a946e59  hooks/staleness.sh
+89e695adc435bc04f6794ff02b2eea4fefa7b0fe56963d92defd6e14522a7074  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 979d825724f8467513b4e8e7a50b3fbfbd7a3124825239599673e18fdcf202e3  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -588,21 +588,58 @@ if [ "$scope" = "project" ]; then
   # decision-0073 D2's reason: never be wrong about the reader's state. The
   # fourth content read below closes the gap on the side that was wrong.
   #
-  # It changes WHAT IS PRINTED for an opted-out project and nothing else. The
-  # render refusal further down still runs off $static_conflict, ungated, so an
-  # un-imported AGENTS.md block refuses the render exactly as it did before this
-  # change. That is deliberate: gating the REFUSAL would REMOVE one, which
-  # decision-0090 D2 sends to the corpus before it lands, and it is not a wording
-  # fix. Measured, and worth the record: opt-out plus a block in AGENTS.md and no
-  # CLAUDE.md, this script printed "Claude Code loads those at launch over the
-  # opt-out" while the hook on the same repo emitted nothing at all; add the
-  # `@AGENTS.md` line and the two agree.
+  # TRL-48, decision-0091: the gate now reaches the RENDER REFUSAL too, which is
+  # the half TRL-44 deliberately left ungated because removing a refusal is
+  # decision-0090 D2's fourth clause and had to come to the corpus first. It
+  # came, and D1 of 0091 rules that a managed block is a static-delivery conflict
+  # for a given delivery only when the host that consumes that delivery loads the
+  # block. This script renders .claude/rules/trellis.md, which only Claude Code
+  # reads; a block in an AGENTS.md that CLAUDE.md does not import is, so far as
+  # either component can see, read by neither — so there is no second delivery
+  # for it to be doubled against, and refusing over it said the opposite in
+  # terms. "So far as either component can see" is the whole of the claim, and
+  # 0091 D1 is careful about it: the ground is the ADAPTER CONTRACT (one
+  # standalone @AGENTS.md line, decision-0057 rule 2), which is the line both
+  # scripts read, NOT an assertion that the host reaches AGENTS.md only that way.
+  # It does not: an @-import chain via a third file is followed by the host and
+  # seen by neither probe, and on that repo this gate is wrong. TRL-49 carries
+  # the resolver; the NOTE below names the case rather than papering it.
+  # Measured on main before the change: a
+  # non-opted-out repo with the shipped block-inline-b.md at AGENTS.md and no
+  # import line got "NOT rendering ... this project already delivers the rules
+  # statically (managed block in AGENTS.md)" and a remedy telling the author to
+  # delete the block — the one thing that DOES deliver rules there, to Codex —
+  # while staleness.sh on that same repo injected the full rule set.
+  #
+  # decision-0073 D1's per-component relevance clause, said where it is done, as
+  # that clause requires: the two-file subset above is now a two-file subset with
+  # ONE of them conditional, and the condition is the same S4-row scoping — the
+  # files THIS HOST loads. The pointer is decision-0073 for the closed set, and
+  # decision-0091 for the ruling that the refusal, not only the message, is
+  # scoped that way.
+  #
+  # The asymmetry that kept it ungated, answered rather than dropped, and at the
+  # strength the answer actually has: this script WRITES, so a false negative is
+  # durable, while the hook only injects and is re-evaluated every session. The
+  # durable state has TWO watchers and is GUARANTEED BY NEITHER. Render here, a
+  # standalone `@AGENTS.md` line arrives later, and the host loads both — then
+  # (a) the hook re-reads that line every session and emits
+  # TRELLIS_STATIC_SHAPES_CONFLICT naming AGENTS.md and the remedy, and (b) a
+  # re-run of this script takes the gate the other way and reports the double
+  # delivery as live. Both verified in sequence on scratch repos. Both are
+  # conditional: (a) needs the project-scope plugin to load, which decision-0068
+  # records a headless run cannot grant — and headless is the case this install
+  # path exists to serve — and (b) needs somebody to re-run. Neither watcher sees
+  # the @-import CHAIN at all, which is why that case is a regression here and is
+  # stated as one in 0091 rather than filed under pre-existing. What is claimed
+  # is only this: the false positive being removed was UNCONDITIONAL, and its
+  # remedy told the author to delete the block that governs Codex.
   #
   # ANCHORED, not a substring, and the anchor is the hook's: the contract is one
   # standalone `@AGENTS.md` line, and an unanchored match reads documentation
   # ABOUT the import — prose, or a fenced example — as the import itself.
   claude_imports_agents=no
-  grep -qE '^[[:space:]]*@AGENTS\.md[[:space:]]*$' "$git_root/CLAUDE.md" 2>/dev/null && claude_imports_agents=yes
+  grep -qE "^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$" "$git_root/CLAUDE.md" 2>/dev/null && claude_imports_agents=yes
   if [ -z "$static_conflict" ]; then
     for f in CLAUDE.md AGENTS.md; do
       grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$git_root/$f" 2>/dev/null || continue
@@ -697,7 +734,7 @@ if [ "$scope" = "project" ] && [ "$opted_out" = yes ]; then
   say "To adopt Trellis here instead, replace the governed = false line with the rows from"
   say "the installed plugin's reference/rules-b.toml (rules-a.toml for firm) and re-run"
   say "this installer."
-elif [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
+elif [ "$scope" = "project" ] && [ -n "$static_conflict" ] && [ "$static_host_reads" = yes ]; then
   # A pre-plugin-delivery consumer whose CLAUDE.md managed block imports
   # @.trellis/internal/trellis.md. Rendering here would put BOTH static chains
   # into context: Claude loads the managed block's imports AND .claude/rules/*.md
@@ -732,20 +769,24 @@ elif [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   #   - .trellis/internal/         1  (existence, above)
   #   - .trellis/trellis.md        1  (existence, above)
   #   - CLAUDE.md                  1  (CONTENT: the standalone @AGENTS.md import
-  #                                    line, deciding only whether the opt-out
-  #                                    branch's static warning is true of THIS
-  #                                    host — TRL-44)
+  #                                    line, deciding whether THIS HOST reads
+  #                                    AGENTS.md at all — TRL-44 for the opt-out
+  #                                    branch's warning, TRL-48 for the refusal)
   #   - CLAUDE.md / AGENTS.md      1  (CONTENT: opening marker, one loop)
   # Four are content reads, and decision-0090 splits them by what they DO, not by
-  # how many there are. Three only ever REFUSE or print: the marker, one
-  # line-anchored string; the governed key; and the @AGENTS.md gate, which selects
-  # no artifact and removes no refusal — the render refusal above still runs off
-  # the ungated $static_conflict, exactly as it did before that read existed.
+  # how many there are. Two only ever REFUSE or print: the marker, one
+  # line-anchored string, and the governed key. One REMOVES A REFUSAL: the
+  # @AGENTS.md gate, which since TRL-48 decides whether the static-delivery
+  # refusal below fires at all. That is D2's fourth clause, so it came to the
+  # corpus before it landed and got decision-0091 — TRL-44 shipped this read
+  # wired to the MESSAGE only, and said so in terms, for exactly that reason.
   # One SELECTS: the strictness key, choosing which SHIPPED header is rendered,
-  # and D2 is why that one was owed decision-0088 and these three were not. None
-  # patches a marker or writes anything under .trellis/. spec-0005 AC2's second
-  # amendment permitted the marker; the rest are argued, and the count is pinned,
-  # in cli/install_script_test.go — decision-0090 D1 makes that the count's home.
+  # and D2 is why that one was owed decision-0088 and the two refuse-only reads
+  # were not. None patches a marker or writes anything under .trellis/.
+  # spec-0005 AC2's second amendment permitted the marker; the rest are argued,
+  # and the count is pinned, in cli/install_script_test.go — decision-0090 D1
+  # makes that the count's home. The count is unchanged by TRL-48: the gate moved
+  # what an EXISTING read decides, and added no read.
   rendered_note="no rules file — $static_conflict present"
   say "NOT rendering .claude/rules/trellis.md: this project already delivers the"
   say "rules statically ($static_conflict). Adding the rendered file would deliver"
@@ -1066,6 +1107,34 @@ if [ "$scope" = "project" ]; then
   say "get nothing from it. On those hosts the rules arrive through the plugin, or not"
   say "at all."
   say ""
+  # TRL-48 / decision-0091 D1. The block this run RENDERED OVER, said out loud.
+  # The refusal above no longer fires for it, and a removed refusal that says
+  # nothing is a silent decision (floor-transparency). Gated on the opt-out too:
+  # that branch never renders and prints its own NOTE for the same shape, so
+  # without this test an opted-out project would get both.
+  #
+  # EVERY CLAIM IS ABOUT THE BLOCK AND THIS HOST, the discipline TRL-44's review
+  # imposed on the sibling NOTE: what is asserted is that Claude does not read
+  # that file, which the line above decides, and NOT that the project is
+  # single-delivery — a nested import chain (CLAUDE.md -> foo.md -> @AGENTS.md)
+  # is loaded by the host and seen by neither this gate nor the hook's, which is
+  # why the last two lines name the condition rather than promise its absence.
+  if [ "$opted_out" = no ] && [ -n "$static_conflict" ] && [ "$static_host_reads" = no ]; then
+    say "NOTE: this project carries a Trellis managed block in AGENTS.md, and the rules"
+    say "file above was rendered anyway. CLAUDE.md carries no standalone @AGENTS.md line,"
+    say "which is the only route to that file this installer can see, and the plugin hook"
+    say "reads the same one line — so neither expects Claude Code to load the block, and"
+    say "the hook stands down to the rendered file. Hosts that DO read AGENTS.md directly"
+    say "(Codex CLI) get their rules from the block and nothing from the rendered file —"
+    say "deleting the block would ungovern them."
+    say "CHECK THIS IF YOUR CLAUDE.md IMPORTS OTHER FILES: an @-import chain that reaches"
+    say "AGENTS.md indirectly IS followed by the host and is NOT seen by either component,"
+    say "and then the block and the rendered file are the same rules twice with nothing"
+    say "reporting it. If that is this project, delete one of the two static shapes."
+    say "Adding a standalone @AGENTS.md line to CLAUDE.md later has the same effect, and"
+    say "is the case the hook does catch (TRELLIS_STATIC_SHAPES_CONFLICT)."
+    say ""
+  fi
 fi
 case "${seeded_rows:-}" in
   yes)
