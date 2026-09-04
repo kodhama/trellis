@@ -34,7 +34,7 @@ ratified: 2026-07-04
 > `invariants-v1` registry. **The benefits page derives from the `why` + honored/violated here** — no
 > claim on the page without a rule behind it (`decision-0020`). `trellis-product` scope — one, shipped.
 
-> **Coverage (AC1).** Covers the **16 assessable invariants** — the structural set, the
+> **Coverage (AC1).** Covers the **assessable invariants** — the structural set, the
 > operating set (incl. **`inv-self-improvement`**, `decision-0018`, **`inv-deliberate-succession`**,
 > `decision-0074`, and **`inv-no-orphan-followups`**, `decision-0078`), the floors. `inv-reference-relationship`
 > was **collapsed into `floor-transparency` + the adopt/adapt dial** (`decision-0021`) — its "divergence from a framework"
@@ -54,20 +54,24 @@ ratified: 2026-07-04
 >
 > **Adding or removing a row costs more than an example edit does — and the sweep is guarded,
 > not listed.** `cli/row_set_guard_test.go` reads the pinned slug set (`assessableSlugs`,
-> `cli/payload_test.go` — the one pin) and fails naming what has not followed: every derivative
-> that carries the set — the `invariants-v1` registry, `profiles/trellis-self.md`, the
-> `docs/invariants.html` cards, this repo's `.trellis/rules.toml`, the rendered `reference/rules-*.toml`
-> (**without a row the rule ships but is inactive**) — and every prose site that states the count
-> (the READMEs, `install.sh`, the hooks' announcements, `docs/`, this catalog's Coverage note and
-> AC1, the contract, the reviewer charter, the remove skill), each in the shape it uses there:
-> digits, the word spelled out, `N/N`, the class breakdown. Run `go test -count=1 ./...` in `cli/`
-> and follow the failures. The list lives in the test because a list kept here was found short
-> twice (`decision-0074`, `decision-0078`) and the sweep that rebuilt it found 22 sites where this
-> note named six files (TRL-28). Two obligations the guard cannot see: a new card in
-> `docs/invariants.html` needs its *examples* rendered (`cli/sync_test.go` catches those), and the
-> release stamp `plugins/trellis/VERSION` (**unguarded — trellis#245 is still open**; without it
-> every cached consumer keeps the old rule set, `d4a2c7b`). The Codex hook is not a surface: it
-> derives its slug set from the generated `reference/rules.md` since `decision-0083`.
+> `cli/payload_test.go` — the one pin) and fails naming what has not followed: the `invariants-v1`
+> registry, `profiles/trellis-self.md` (each gene present *and* active), the `docs/invariants.html`
+> cards, this repo's `.trellis/rules.toml`, and the rendered `reference/rules-*.toml` (**without a
+> row the rule ships but is inactive**). Run `go test -count=1 ./...` in `cli/` and follow the
+> failures.
+>
+> **The count itself is guarded only where the number is the claim** — the installer's closing
+> line, the staleness hook's announcement, the README's `16/16`, and AC1's class breakdown below.
+> Everywhere else the numeral was deleted rather than pinned ("all sixteen rules" → "all rules"),
+> because a list of count sites kept here was found short twice (`decision-0074`, `decision-0078`),
+> and a twenty-two-row table of them in a test file was the same mistake one layer down (TRL-28).
+> **If you are about to write a row count into prose, delete it instead.**
+>
+> Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
+> rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
+> (**unguarded — trellis#245 is still open**; without it every cached consumer keeps the old rule
+> set, `d4a2c7b`). The Codex hook is not a surface: it derives its slug set from the generated
+> `reference/rules.md` since `decision-0083`.
 
 ## Entries
 

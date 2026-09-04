@@ -3,10 +3,18 @@ package main
 // The row-set guard (TRL-28). Minting or retiring an invariant slug used to
 // oblige a hand-swept edit across a dozen surfaces, enforced only by a prose
 // note in the catalog that decision-0074's and decision-0078's reviews each
-// found short. The note now points here. Both tests read the one pin —
-// assessableSlugs in payload_test.go — so every derivative and every prose
-// count is checked against the same list, and a miss is red instead of a
-// review comment (decision-0028: a guard per source↔derivative pair).
+// found short. Both tests here read the one pin — assessableSlugs in
+// payload_test.go — so a miss is red instead of a review comment
+// (decision-0028: a guard per source↔derivative pair).
+//
+// The surface was SHRUNK before the remainder was guarded (the maintainer's
+// ruling on TRL-28, 2026-09-04). A first pass tabled 22 prose sites; review
+// found most of them stated a count the sentence did not need, so those
+// numerals were deleted ("all sixteen rules" → "all rules") rather than
+// pinned. What is left below is only the prose where the NUMBER IS THE CLAIM:
+// two runtime strings a user actually reads, one headline claim, and the
+// catalog's own acceptance criterion. Do not grow this table by adding a count
+// to prose — delete the count instead.
 //
 // Nothing here edits a surface; the tests read them. When one of these fails,
 // the failure names the file and the exact expected text — follow it.
@@ -60,6 +68,11 @@ func captureAll(re *regexp.Regexp, s string) []string {
 // elsewhere too (TestPayloadRulesTomlSeeds, TestVendoredPayloadIsCurrent,
 // rules_test.go); they are listed here so this one test's output is the
 // complete map of what has not followed.
+//
+// Membership is the contract for every derivative but one: the profile also
+// carries a per-row VALUE, and profiles/trellis-self.md claims in prose that
+// every gene is active, so its pattern matches `| true |` only — a row flipped
+// to false reads here as missing, which is what that claim means.
 func TestRowSetDerivativesFollowThePin(t *testing.T) {
 	tomlRowRe := regexp.MustCompile(`(?m)^([a-z][a-z-]*)\s*= \{`)
 	derivatives := []struct {
@@ -82,10 +95,10 @@ func TestRowSetDerivativesFollowThePin(t *testing.T) {
 			fix: "a slug is a set amendment — add or retire the registry entry (and its legacy-map row if any)",
 		},
 		{
-			name: "profiles/trellis-self.md (table rows)",
-			got: captureAll(regexp.MustCompile("(?m)^\\| `([a-z][a-z-]*)` \\| (?:true|false) \\|"),
+			name: "profiles/trellis-self.md (active table rows)",
+			got: captureAll(regexp.MustCompile("(?m)^\\| `([a-z][a-z-]*)` \\| true \\|"),
 				readFileT(t, "../profiles/trellis-self.md")),
-			fix: "add or remove the profile row — the reference organism assesses every gene",
+			fix: "add the profile row, or set its `active` back to true — the reference organism assesses every gene AND holds it active (the Profile note says so in prose); a row present but false reads as missing here",
 		},
 		{
 			name: "docs/invariants.html (cards)",
@@ -155,50 +168,47 @@ func catalogClassCounts() (methodology, design, floor int) {
 	return
 }
 
-// TestRowCountProseSitesFollowThePin: every prose site that states the row
-// count carries the pin's count, in the shape that site uses — digits, the
-// word spelled out, N/N, or the class breakdown. One table row per site; a
-// failure names the file and the exact text expected there. The sweep that
-// produced this table (TRL-28, 2026-09-03) found 22 sites where the catalog
-// note named six files, because `git grep -E '\bsixteen\b'` matches nothing on
-// macOS — a pattern is not a guard, a table is.
+// TestRowCountProseSitesFollowThePin: the few places where the row count IS the
+// claim carry the pin's count, in the shape that site uses. A failure names the
+// file and the exact text expected there.
 //
-// Template verbs: %[1]d count · %[2]s count spelled · %[3]s count Spelled ·
-// %[4]s %[5]s %[6]s the methodology / trellis-design / floor class counts spelled.
+// Everywhere else the count was deleted rather than pinned, so this table is
+// deliberately short — four sites, not the twenty-two a first pass tabled. Two
+// are runtime strings the user reads (the installer's closing line, the hook's
+// not-yet-governing announcement, neither of which can say "all rules" without
+// losing the point); one is the README's headline 16/16; one is the catalog's
+// own acceptance criterion, where the class breakdown is the claim being
+// accepted. The remove skill's own 16/16 is already derived from the pin by
+// remove_skill_test.go, so it is not repeated here.
+//
+// There is no sweep for sites this table does not know: at four sites the
+// stopping rule is the review, and a pattern broad enough to find a new count
+// also failed legitimate prose ("twelve of the sixteen are methodology rules")
+// while still missing the noun-first shapes. Delete the count instead of
+// adding a row.
+//
+// Template verbs: %[1]d count · %[2]s count spelled · %[3]s %[4]s %[5]s the
+// methodology / trellis-design / floor class counts spelled.
 func TestRowCountProseSitesFollowThePin(t *testing.T) {
 	n := len(assessableSlugs)
-	word := numberWord(n)
 	m, d, f := catalogClassCounts()
 	if m+d+f != n {
 		// Errorf, not Fatalf: when the pin grows before the catalog entry lands
 		// this fires too, and the site failures below must still be listed.
 		t.Errorf("catalog class counts %d+%d+%d do not sum to the pin's %d — the catalog entry has not followed the pin (see TestRowSetDerivativesFollowThePin), and the AC1 breakdown below is checked against the catalog as it stands", m, d, f, n)
 	}
-	args := []any{n, word, strings.ToUpper(word[:1]) + word[1:], numberWord(m), numberWord(d), numberWord(f)}
+	args := []any{n, numberWord(n), numberWord(m), numberWord(d), numberWord(f)}
 
-	sites := []struct{ path, template string }{
-		{"../README.md", "all %[2]s rules, adaptive posture"},
-		{"../README.md", "all %[2]s rows active at the"},
-		{"../README.md", "governed at %[1]d/%[1]d"},
-		{"../plugins/trellis/README.md", "all %[2]s rules at the adaptive posture"},
-		{"../plugins/trellis/README.md", "all %[2]s rows active at"},
-		{"../install.sh", "all %[2]s rules are active"},
-		{"../install.sh", "two rules out of %[2]s"},
-		{"../plugins/trellis/hooks/staleness.sh", "— %[1]d rules, followed by default"},
-		{"../docs/index.html", "all %[1]d rules active, adaptive posture"},
-		{"../docs/index.html", "%[3]s load-bearing invariants"},
-		{"../docs/index.html", "See all %[2]s, with why + examples"},
-		{"../docs/lp-content.md", "all %[1]d rules active, adaptive posture"},
-		{"../docs/lp-content.md", "%[3]s load-bearing"},
-		{"../docs/lp-content.md", "%[2]s, with why + examples"},
-		{"../docs/invariants.html", "The %[2]s Trellis invariants"},
-		{"../docs/invariants.html", "<h1>%[3]s invariants."},
-		{"../profiles/trellis-self.md", "All %[1]d assessable genes"},
-		{"../core/catalog/signature-catalog-v1.md", "Covers the **%[1]d assessable invariants**"},
-		{"../core/catalog/signature-catalog-v1.md", "Covers all **%[1]d assessable** slugs (the %[4]s structural, the %[5]s remaining operating, the %[6]s floors"},
-		{"../core/rubrics/artifact-contract.md", "all %[2]s, **excluding** the two dials"},
-		{"../.claude/agents/corpus-reviewer.md", "all %[2]s, **excluding** the two dials"},
-		{"../plugins/trellis/skills/remove/SKILL.md", "governs it at %[1]d/%[1]d"},
+	sites := []struct{ path, template, why string }{
+		{"../README.md", "governed at %[1]d/%[1]d",
+			"the headline claim for what one install leaves you governed at"},
+		{"../install.sh", "all %[2]s rules are active",
+			"the installer says this to the user as it finishes"},
+		{"../plugins/trellis/hooks/staleness.sh", "— %[1]d rules, followed by default",
+			"the hook's announcement, quoted to a user who has not adopted yet"},
+		{"../core/catalog/signature-catalog-v1.md",
+			"Covers all **%[1]d assessable** slugs (the %[3]s structural, the %[4]s remaining operating, the %[5]s floors",
+			"AC1 — the coverage claim the catalog is accepted against"},
 	}
 	contents := map[string]string{}
 	for _, s := range sites {
@@ -207,46 +217,8 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 		}
 		want := fmt.Sprintf(s.template, args...)
 		if !strings.Contains(contents[s.path], want) {
-			t.Errorf("%s does not carry %q — the row count is %d; update this site to that count in this shape [TRL-28]",
-				strings.TrimPrefix(s.path, "../"), want, n)
-		}
-	}
-
-	// Negative sweep, pure-doc files only: any other count in the row-count range
-	// next to the row nouns, or any N/N with N ≠ the pin, is a stale site — one the
-	// table above does not know about yet. install.sh and the hooks are excluded:
-	// they carry comments that narrate historical counts on purpose.
-	docs := []string{
-		"../README.md", "../plugins/trellis/README.md", "../docs/index.html", "../docs/lp-content.md",
-		"../docs/invariants.html", "../profiles/trellis-self.md", "../core/catalog/signature-catalog-v1.md",
-		"../core/rubrics/artifact-contract.md", "../.claude/agents/corpus-reviewer.md",
-		"../plugins/trellis/skills/remove/SKILL.md",
-	}
-	numAlt := `(1[0-9]|2[0-9]|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty(?:-(?:one|two|three|four|five|six|seven|eight|nine))?)`
-	staleRe := regexp.MustCompile(`(?i)\b` + numAlt + `\b[^\n]{0,20}?\b(?:rules?|rows?|invariants?|genes?|slugs?)\b`)
-	nnRe := regexp.MustCompile(`\b(1[0-9]|2[0-9])/(1[0-9]|2[0-9])\b`)
-	isPin := func(tok string) bool {
-		tok = strings.ToLower(tok)
-		return tok == fmt.Sprint(n) || tok == word
-	}
-	for _, path := range docs {
-		body, ok := contents[path]
-		if !ok {
-			body = readFileT(t, path)
-		}
-		for i, line := range strings.Split(body, "\n") {
-			for _, mm := range staleRe.FindAllStringSubmatch(line, -1) {
-				if !isPin(mm[1]) {
-					t.Errorf("%s:%d: %q names a row count that is not the pin's (%d) — a stale count, or a new site missing from the table above [TRL-28]",
-						strings.TrimPrefix(path, "../"), i+1, mm[0], n)
-				}
-			}
-			for _, mm := range nnRe.FindAllStringSubmatch(line, -1) {
-				if !isPin(mm[1]) || !isPin(mm[2]) {
-					t.Errorf("%s:%d: %q is not %d/%d — a stale N/N count [TRL-28]",
-						strings.TrimPrefix(path, "../"), i+1, mm[0], n, n)
-				}
-			}
+			t.Errorf("%s does not carry %q — the row count is %d, and here the count is the claim (%s); update this site to that count in this shape [TRL-28]",
+				strings.TrimPrefix(s.path, "../"), want, n, s.why)
 		}
 	}
 }

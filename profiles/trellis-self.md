@@ -42,7 +42,7 @@ ratified: 2026-07-04
 
 ## Profile
 
-*All 16 assessable genes are active and honored natively — unsurprising for the reference organism
+*All assessable genes are active and honored natively — unsurprising for the reference organism
 (see the discount above; `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`). Each
 `evidence` points at a real artifact in this repo.*
 
