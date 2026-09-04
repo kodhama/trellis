@@ -1588,17 +1588,21 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// makes this comment the count's home and #267 leans on the count to keep
 		// the read widening bounded. It is still LEXICAL, and lexical analysis of
 		// shell cannot be made sound: a word is only a command because of runtime
-		// state this test never has. NINETEEN shapes were planted in install.sh and
-		// re-run against this subtest, and SIXTEEN are caught: a bare pattern, a
-		// bare path, a path aliased through a variable quoted or bare, a non-grep
-		// reader, an operand on a continuation line, a literal operand ahead of
-		// the real one, a flag whose value is a separate word (`tail -n 1 "$p"`,
-		// `cut -d : -f 2 "$p"`, `sort -k 2 "$p"`, `head -n 3 "$p"`), a pattern
-		// whose literal text is itself a command name (`grep -q sed "$p"`), a
-		// second reader after `||`, and two stdin redirects. Six of those were
-		// found by review of this PR, three of them regressions this scan's first
-		// version introduced against the one before it. THREE ARE NOT CAUGHT, and
-		// no amount of further regex will catch them:
+		// state this test never has. TWENTY-FOUR shapes were planted in install.sh
+		// and re-run against this subtest. SEVENTEEN hidden reads are caught: a
+		// bare pattern, a bare path, a path aliased through a variable quoted or
+		// bare, a non-grep reader, an operand on a continuation line, a literal
+		// operand ahead of the real one absolute or relative, a flag whose value
+		// is a separate word (`tail -n 1 "$p"`, `cut -d : -f 2 "$p"`,
+		// `sort -k 2 "$p"`, `head -n 3 "$p"`), a pattern whose literal text is
+		// itself a command name (`grep -q sed "$p"`), a second reader after `||`,
+		// a read sharing a line with a `>` write, and two stdin redirects. FOUR
+		// more are correctly NOT counted — `>`, `>>`, `1>` and a glued `>"$p"`
+		// write target, which an earlier revision counted as reads (an OVERcount,
+		// the one failure mode needing no eval or indirection). Eight of the
+		// twenty-four were found by review of this PR, four of them defects this
+		// scan's own revisions introduced. THREE ARE NOT CAUGHT, and no amount of
+		// further regex will catch them:
 		//   eval 'grep -q zzz "$git_root/CLAUDE.md"'   (the command is a string)
 		//   rd=grep; $rd -q zzz "$git_root/CLAUDE.md"  (the command is a value)
 		//   probe() { grep -q "$1" "$2"; }; probe zzz "$git_root/CLAUDE.md"
@@ -1635,6 +1639,10 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// `<` but not `<<` (a heredoc, skipped above) and not the `<!--` inside
 		// the marker pattern, which the operand test rejects as a literal anyway.
 		redirect := regexp.MustCompile(`(^|[^<])<[ \t]*([^\s<>|;&()]+)`)
+		// An output redirect, optionally with a leading fd and optionally with the
+		// target glued on: `>`, `>>`, `1>`, `>"$path"`. Group 1 is the glued
+		// target, empty when the target is the next word.
+		outRedirect := regexp.MustCompile(`^[0-9]*>>?(.*)$`)
 		takesPattern := map[string]bool{"grep": true, "sed": true, "awk": true}
 		// One word: is it a path built from this script's variables that names
 		// pre-existing project state? Used for operands and redirect targets
@@ -1662,7 +1670,16 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		var lines []struct{ joined, first string }
 		for _, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
 			l := strings.TrimSpace(line)
-			if n := len(lines); n > 0 && strings.HasSuffix(lines[n-1].joined, `\`) {
+			// NEVER fold into a comment. The shell does not continue a `#` line —
+			// the comment ends at the newline and the next line is its own
+			// statement — so joining there diverges from what actually runs.
+			// Review of this PR: a comment ending in `\` (wrapped prose) swallowed
+			// the command line after it into a string still starting with `#`,
+			// which the skip below then dropped whole. Reproduced by putting such
+			// a comment above the `governed` read: the count fell from four to
+			// three and the read vanished from the scan.
+			if n := len(lines); n > 0 && strings.HasSuffix(lines[n-1].joined, `\`) &&
+				!strings.HasPrefix(lines[n-1].joined, "#") {
 				lines[n-1].joined = strings.TrimSuffix(lines[n-1].joined, `\`) + " " + l
 				continue
 			}
@@ -1690,12 +1707,30 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 			// slot — a pipeline can hold several, and each stage gets its own —
 			// flags are skipped, the armed pattern slot eats exactly one word, and
 			// whatever is left is an operand.
-			patternDue, hit, inReader := false, false, true
+			patternDue, hit, inReader, writeDue := false, false, true, false
 			for _, raw := range word.FindAllString(cmd, -1) {
-				// Redirection and pipeline punctuation glued to a word:
-				// `>"$stage/x"` is one word to this regex but two to the shell.
-				w := strings.TrimLeft(raw, "<>|;()&")
+				// An OUTPUT redirect names a write target, not a read. Review of
+				// this PR: `>` was stripped as punctuation with nothing recorded,
+				// so the target after it fell through to the operand test and any
+				// project-rooted path there was counted as a read — an OVERcount,
+				// and the one failure mode that needs no eval or indirection, just
+				// an ordinary `>` on a reader line. Reproduced with
+				// `cat "$stage/manifest" > "$git_root/leftover"`: five reads.
+				// Both spellings, since `>"$path"` is one word here and two to the
+				// shell, and a leading fd (`1>`) is still a redirect.
+				if m := outRedirect.FindStringSubmatch(raw); m != nil {
+					if m[1] == "" {
+						writeDue = true // the target is the next word
+					}
+					continue // a bare `>`, or the glued target itself
+				}
+				// Remaining redirection and pipeline punctuation glued to a word.
+				w := strings.TrimLeft(raw, "<|;()&")
 				if w == "" || assign.MatchString(w) { // `|`, `(`, or `LC_ALL=C`
+					continue
+				}
+				if writeDue { // the target of the `>` just seen
+					writeDue = false
 					continue
 				}
 				if strings.HasPrefix(w, "-") { // a flag, never a file
