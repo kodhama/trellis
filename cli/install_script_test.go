@@ -1554,27 +1554,140 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// the path through more indirection. It closes the demonstrated bypass and
 		// raises the cost of the next one; the behavioural fixtures above are what
 		// actually establish the property.
-		// grep's first quoted operand is the PATTERN; every one after it is a
-		// FILE. Classifying by position beats matching the line for `git_root`,
-		// which an alias walks straight past, and beats "operand contains a
-		// slash", which the same alias also defeats.
+		// A scripted command takes its PATTERN first and its FILES after, so the
+		// pattern has to be identified and dropped before anything is counted.
 		// Every command that can read a file, not just grep. The earlier version
 		// keyed on `grep`, and a reviewer walked past it with
 		//   sed -n '/inv-directional-flow/p' "$git_root/README.md"
 		// which reads project content and left the whole suite green.
 		//
-		// Operands are counted only when they are double-quoted and $-rooted —
-		// that is what a path built from this script's variables looks like, and
-		// it excludes heredoc delimiters and /dev/tty. Command names are matched
-		// at word boundaries, since a substring match makes `chmod` look like
-		// `od`. `scripted` commands take their pattern first and files after.
-		reader := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)\s|<\s*"`)
-		quoted := regexp.MustCompile(`'[^']*'|"[^"]*"`)
-		scripted := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk)\s`)
-		operand := regexp.MustCompile(`"\$\{?[A-Za-z_][A-Za-z0-9_]*[^"]*"`)
-		var reads []string
+		// TRL-45. The version before this one tokenised only the QUOTED runs of a
+		// line and then took the first of them as the pattern. Two idiomatic
+		// forms walked past it, both reproduced against this suite with an extra
+		// read planted in install.sh and the whole suite still green:
+		//   grep -q zzz "$git_root/CLAUDE.md"                     (bare pattern:
+		//     the only quoted token is the FILE, so "first quoted = pattern"
+		//     dropped the file and left nothing to count)
+		//   sed -n "/^strictness/p" $git_root/.trellis/rules.toml  (bare path:
+		//     an unquoted operand was never tokenised at all)
+		// Both are what the shell accepts and what a hurried edit writes. So the
+		// unit is now a WORD — quoted runs and bare runs, concatenated, which is
+		// what the shell itself splits on — and quoting decides nothing about
+		// whether a word is counted. What decides it is position (the pattern
+		// slot) and expansion.
+		//
+		// A word is a read of pre-existing state when it EXPANDS a variable
+		// outside single quotes — that is what a path built from this script's
+		// variables looks like, and it drops literals, heredoc delimiters,
+		// /dev/tty, and single-quoted `sed` scripts like '$d' whose `$` is inert
+		// — and is not rooted at the staged bundle, the render temp file, or the
+		// vendor target. Command names are matched as whole words, since a
+		// substring match makes `chmod` look like `od`.
+		//
+		// WHAT THIS GUARD IS AND IS NOT, stated here because decision-0090 D1
+		// makes this comment the count's home and #267 leans on the count to keep
+		// the read widening bounded. It is still LEXICAL, and lexical analysis of
+		// shell cannot be made sound: a word is only a command because of runtime
+		// state this test never has. TWENTY-FOUR shapes were planted in install.sh
+		// and re-run against this subtest. SEVENTEEN hidden reads are caught: a
+		// bare pattern, a bare path, a path aliased through a variable quoted or
+		// bare, a non-grep reader, an operand on a continuation line, a literal
+		// operand ahead of the real one absolute or relative, a flag whose value
+		// is a separate word (`tail -n 1 "$p"`, `cut -d : -f 2 "$p"`,
+		// `sort -k 2 "$p"`, `head -n 3 "$p"`), a pattern whose literal text is
+		// itself a command name (`grep -q sed "$p"`), a second reader after `||`,
+		// a read sharing a line with a `>` write, and two stdin redirects. FOUR
+		// more are correctly NOT counted — `>`, `>>`, `1>` and a glued `>"$p"`
+		// write target, which an earlier revision counted as reads (an OVERcount,
+		// the one failure mode needing no eval or indirection). Eight of the
+		// twenty-four were found by review of this PR, four of them defects this
+		// scan's own revisions introduced. THREE ARE NOT CAUGHT, and no amount of
+		// further regex will catch them:
+		//   eval 'grep -q zzz "$git_root/CLAUDE.md"'   (the command is a string)
+		//   rd=grep; $rd -q zzz "$git_root/CLAUDE.md"  (the command is a value)
+		//   probe() { grep -q "$1" "$2"; }; probe zzz "$git_root/CLAUDE.md"
+		//                                              (the call site names no
+		//                                               command and the body no
+		//                                               path)
+		// So this subtest raises the cost of a laundered read and states its own
+		// ceiling; it is not proof that install.sh reads exactly four files. The
+		// instrument that WOULD prove it is behavioural, not lexical: run the
+		// installer against a scratch repo under an open(2) audit (strace, an
+		// LD_PRELOAD shim) and count the opens whose path is under the repo root.
+		// Expansion, aliasing, eval and indirection are all resolved by the
+		// kernel before the count is taken. That is a real piece of test
+		// infrastructure with its own portability question in CI, so it is
+		// proposed rather than smuggled in here (inv-minimal-first); the
+		// behavioural fixtures elsewhere in this file are what actually establish
+		// what the script reads.
+		// A reader command counts only at a COMMAND POSITION: the start of the
+		// line, or after `; | & ( ) { $(`, with any `VAR=value` prefixes between.
+		// Review of this PR found the earlier `[\s;|(&]` separator matching
+		// command words inside English message strings — `could not be read
+		// (permissions?)`, `the header tail produced nothing` — which is why the
+		// first version of this scan had to stop at the first plain literal
+		// operand to avoid counting a `$var` that was being PRINTED. That
+		// stopping rule was the wrong instrument and cost two shapes the old
+		// guard caught (below); prose is excluded here instead, at the match.
+		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
+		// Quoted runs and bare runs, concatenated: `"$git_root"/CLAUDE.md` is one
+		// word to the shell and must be one word here too.
+		word := regexp.MustCompile(`(?:'[^']*'|"[^"]*"|[^\s'"]+)+`)
+		single := regexp.MustCompile(`'[^']*'`)
+		expands := regexp.MustCompile(`\$\{?[A-Za-z_]`)
+		assign := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
+		// `<` but not `<<` (a heredoc, skipped above) and not the `<!--` inside
+		// the marker pattern, which the operand test rejects as a literal anyway.
+		redirect := regexp.MustCompile(`(^|[^<])<[ \t]*([^\s<>|;&()]+)`)
+		// An output redirect, optionally with a leading fd and optionally with the
+		// target glued on: `>`, `>>`, `1>`, `>"$path"`. Group 1 is the glued
+		// target, empty when the target is the next word.
+		outRedirect := regexp.MustCompile(`^[0-9]*>>?(.*)$`)
+		takesPattern := map[string]bool{"grep": true, "sed": true, "awk": true}
+		// One word: is it a path built from this script's variables that names
+		// pre-existing project state? Used for operands and redirect targets
+		// alike, since the shell reads both the same way.
+		isProjectRead := func(w string) bool {
+			if !expands.MatchString(single.ReplaceAllString(w, "")) {
+				return false
+			}
+			p := strings.ReplaceAll(strings.ReplaceAll(w, `"`, ""), "'", "")
+			// The staged bundle, the render temp file, and the vendor target are
+			// this script's own outputs, not the project's pre-existing state.
+			return !strings.HasPrefix(p, "$stage/") && p != "$rendered_tmp" && !strings.HasPrefix(p, "$target/")
+		}
+		isCommand := map[string]bool{"grep": true, "sed": true, "awk": true, "cat": true,
+			"head": true, "tail": true, "wc": true, "cut": true, "tr": true,
+			"sort": true, "od": true, "read": true}
+		// A trailing `\` continues the command, so the operand can sit on the next
+		// line — install.sh already writes reads that way. Join first, or the
+		// scan below sees a command with no file and a file with no command, and
+		// counts neither.
+		// `first` is what a failure REPORTS and what the three assertions below
+		// match on: the physical line the command starts on, unchanged by the
+		// join, so a continuation does not drag the next line's prose into an
+		// assertion about this one's grep pattern.
+		var lines []struct{ joined, first string }
 		for _, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
-			trimmed := strings.TrimSpace(line)
+			l := strings.TrimSpace(line)
+			// NEVER fold into a comment. The shell does not continue a `#` line —
+			// the comment ends at the newline and the next line is its own
+			// statement — so joining there diverges from what actually runs.
+			// Review of this PR: a comment ending in `\` (wrapped prose) swallowed
+			// the command line after it into a string still starting with `#`,
+			// which the skip below then dropped whole. Reproduced by putting such
+			// a comment above the `governed` read: the count fell from four to
+			// three and the read vanished from the scan.
+			if n := len(lines); n > 0 && strings.HasSuffix(lines[n-1].joined, `\`) &&
+				!strings.HasPrefix(lines[n-1].joined, "#") {
+				lines[n-1].joined = strings.TrimSuffix(lines[n-1].joined, `\`) + " " + l
+				continue
+			}
+			lines = append(lines, struct{ joined, first string }{l, l})
+		}
+		var reads []string
+		for _, line := range lines {
+			trimmed, reported := line.joined, line.first
 			if strings.HasPrefix(trimmed, "#") || strings.Contains(trimmed, "<<") {
 				continue
 			}
@@ -1590,27 +1703,88 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 			if r := strings.Index(cmd, " 2>"); r > 0 {
 				cmd = cmd[:r]
 			}
-			// Two stages. First every quoted token, in order, because for a
-			// scripted command the FIRST is the pattern and must not be mistaken
-			// for a file. Then keep only $-rooted ones: that is what a path built
-			// from this script's variables looks like, and it drops heredoc
-			// delimiters, /dev/tty, and literal patterns.
-			ops := quoted.FindAllString(cmd, -1)
-			if scripted.MatchString(cmd) {
-				if len(ops) == 0 {
+			// One pass over the words. A command name arms or disarms the pattern
+			// slot — a pipeline can hold several, and each stage gets its own —
+			// flags are skipped, the armed pattern slot eats exactly one word, and
+			// whatever is left is an operand.
+			patternDue, hit, inReader, writeDue := false, false, true, false
+			for _, raw := range word.FindAllString(cmd, -1) {
+				// An OUTPUT redirect names a write target, not a read. Review of
+				// this PR: `>` was stripped as punctuation with nothing recorded,
+				// so the target after it fell through to the operand test and any
+				// project-rooted path there was counted as a read — an OVERcount,
+				// and the one failure mode that needs no eval or indirection, just
+				// an ordinary `>` on a reader line. Reproduced with
+				// `cat "$stage/manifest" > "$git_root/leftover"`: five reads.
+				// Both spellings, since `>"$path"` is one word here and two to the
+				// shell, and a leading fd (`1>`) is still a redirect.
+				if m := outRedirect.FindStringSubmatch(raw); m != nil {
+					if m[1] == "" {
+						writeDue = true // the target is the next word
+					}
+					continue // a bare `>`, or the glued target itself
+				}
+				// Remaining redirection and pipeline punctuation glued to a word.
+				w := strings.TrimLeft(raw, "<|;()&")
+				if w == "" || assign.MatchString(w) { // `|`, `(`, or `LC_ALL=C`
 					continue
 				}
-				ops = ops[1:]
+				if writeDue { // the target of the `>` just seen
+					writeDue = false
+					continue
+				}
+				if strings.HasPrefix(w, "-") { // a flag, never a file
+					continue
+				}
+				// BEFORE the command-name lookup, not after: an armed pattern slot
+				// consumes the very next word whatever it looks like. Review of
+				// this PR found `grep -q sed "$git_root/CLAUDE.md"` — searching for
+				// the literal string `sed` — re-arming the slot on its own pattern,
+				// so the file after it was eaten as "the pattern" and never tested.
+				if patternDue {
+					patternDue = false // the pattern, whether or not it is quoted
+					continue
+				}
+				// `;`, `||`, `&&` end the reader's operand list — what follows is
+				// a different command, and its arguments are not files this reader
+				// opens. A `|` does NOT: the next pipeline stage may itself be a
+				// reader with a file. Without this, the scan ran off the end of
+				// `grep -q … "$stage/…" || fail "…$header…"` and counted the
+				// diagnostic's own text.
+				if strings.Contains(raw, ";") || strings.Contains(raw, "||") || strings.Contains(raw, "&&") {
+					inReader, patternDue = false, false
+					continue
+				}
+				if bare := strings.Trim(w, `"'`); isCommand[bare] {
+					inReader, patternDue = true, takesPattern[bare]
+					continue
+				}
+				if !inReader {
+					continue
+				}
+				// A literal operand is skipped, NOT a reason to stop scanning the
+				// line. Stopping cost the guard two shapes the version before it
+				// caught, both found by review of this PR: `cat missing "$path"`,
+				// and any flag that takes a separate value — `tail -n 1 "$path"`,
+				// `cut -d : -f 2 "$path"`, `sort -k 2 "$path"` — where the bare
+				// value word sits between the command and its file.
+				if isProjectRead(w) {
+					hit = true
+					break
+				}
 			}
-			for _, f := range ops {
-				if !operand.MatchString(f) {
-					continue // a literal, not a path built from a variable
+			// A `<` redirect is a read whatever command it is attached to, and it
+			// does not sit in the operand list at all: `done < "$git_root/x"`
+			// closes a `while read` loop whose own words stop the scan above. So
+			// every redirect operand on the line is tested independently.
+			for _, m := range redirect.FindAllStringSubmatch(cmd, -1) {
+				if isProjectRead(m[2]) {
+					hit = true
+					break
 				}
-				if strings.HasPrefix(f, `"$stage/`) || f == `"$rendered_tmp"` || strings.HasPrefix(f, `"$target/`) {
-					continue // the staged bundle, the temp file, or the vendor target
-				}
-				reads = append(reads, trimmed)
-				break
+			}
+			if hit {
+				reads = append(reads, reported)
 			}
 		}
 		if len(reads) != 4 {
@@ -2251,10 +2425,28 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 	// first fixture), and deleting the rendered file would leave the project MORE
 	// governed, not less. The note must now claim only the parity these fixtures
 	// demonstrate.
+	// TRL-45. The THIRD fixture is the exactly-one-key condition itself, and it
+	// was the gap: TestInstallScriptGovernedParserMatchesHook pins three lines of
+	// the matcher — the head sed, the count, and the false test — but NOT the
+	// `[ "${governed_n:-0}" -eq 1 ]` that consumes the count, and no fixture fed
+	// the installer a file with two top-level `governed` keys. Mutating that test
+	// to `-ge 1` left the whole suite green while the installer began opting out
+	// on `governed = false\ngoverned = true` and the hook — whose own count is
+	// still `-eq 1` — went on rendering: the two-hosts-disagree class that the
+	// comment above staleness.sh's own `governed_n` says the count exists to
+	// prevent (cited by content, not by line: TRL-45's report cited the line
+	// numbers and they had already drifted). Reproduced on a scratch repo,
+	// installer and hook both run, before this fixture was written. A malformed
+	// file is not an opt-out on either side; whichever key came first must not
+	// decide it. It is also the shape the note above names but could not show:
+	// the second top-level key that carries the words `governed = false` without
+	// opting out.
 	for _, tc := range []struct{ name, toml, wantPosture string }{
 		{"misplaced under [rules]", "[rules]\ngoverned = false\ninv-directional-flow = { active = true }\n",
 			"posture header: adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way; header from"},
 		{"governed = true", "governed = true\n" + payloadFiles()["rules-b.toml"], ""},
+		{"two top-level governed keys", "governed = false\ngoverned = true\n",
+			"posture header: adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way; header from"},
 	} {
 		t.Run("renders for "+tc.name, func(t *testing.T) {
 			repo := t.TempDir()
