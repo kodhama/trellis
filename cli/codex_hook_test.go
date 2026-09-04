@@ -1524,7 +1524,7 @@ func codexReconciledRowsFromContext(t *testing.T, context string) string {
 	//
 	// The review of #263 added a COMPACT tier of each announcement, a single
 	// paragraph with no heading, chosen when the full one would not fit. Each
-	// opens with a fixed stem matched here; TestCodexAnnouncementNeverTipsAFittingBodyOverBudget
+	// opens with a fixed stem matched here; TestCodexBudgetsTheAnnouncementAlongsideTheBody
 	// compares the extracted block against the stripped file to prove the stem is
 	// recognised.
 	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(invariantsTrigger) +
@@ -2014,34 +2014,64 @@ func codexContextBytes(t *testing.T, toml string) (string, int) {
 	return ctx, len([]byte(ctx))
 }
 
-// TestCodexAnnouncementNeverTipsAFittingBodyOverBudget pins the window the
-// review of #263 found (PRRT_kwDOTIeCVc6eu78z): the degraded path stripped the
-// provenance and then appended its announcement UNCONDITIONALLY, with the
-// runaway guard measuring the sum. A body that fit on its own was refused for
-// the announcement's bytes — and since one quarantine note frees 150 B while the
+// TestCodexBudgetsTheAnnouncementAlongsideTheBody pins the mechanism the review
+// of #263 asked for (PRRT_kwDOTIeCVc6eu78z): the announcement is one of the
+// things the assembly is MEASURED WITH, not a fixed suffix appended after the
+// fit check. The first shape of the degraded path stripped the provenance and
+// then appended its announcement unconditionally, with the runaway guard
+// measuring the sum. A body that fit on its own was refused for the
+// announcement's bytes — and since one quarantine note frees 150 B while the
 // full notice costs 414 B (the full degraded mandate 156 B more than the full
 // one), at one or two persisted notes the "degraded" assembly was larger than
 // the full one and the strip could never rescue anything at all.
 //
-// Fixture: the reviewer's own. Firm preset, one persisted quarantine note (the
-// file a Trellis repair produces), and a valid project comment sized against a
-// MEASURED baseline so the full assembly lands a few bytes over the cap. The
-// stripped body then fits with room for the compact announcement but not the
-// full one, which is exactly the window. Sized relative rather than absolute so
-// the test still probes the window if the payload header ever changes length.
+// A budget, not a guarantee — and the name says budget on purpose. This test was
+// first called TestCodexAnnouncementNeverTipsAFittingBodyOverBudget, which
+// claimed more than the code does: codex-context.mjs contradicts "never" in one
+// sentence of its own (provenanceOmittedNotice's comment — "a body that fits
+// alone but not alongside this line is still refused, loudly"). What each path
+// actually does is list its announcements most-informative first and ship the
+// first assembly that fits; when not even the shortest honest announcement fits
+// beside the body, the hook still refuses, rather than injecting an abbreviated
+// copy with no word that it was abbreviated. The residual is that shortest
+// line's own length — 129 B in the assembly on the no-mismatch path, a 128 B
+// line plus the blank line separating it from the rows — and subtests 3 and 4
+// pin it on both paths, so the deliberate gap can neither widen unnoticed nor be
+// read by the next reader as a bug.
 //
-// Both paths are pinned because both had the window: the no-mismatch notice and
-// the mismatch mandate are appended in the same slot by the same code.
+// Five subtests, none of them resting on a hardcoded assembly total:
 //
-// The one-note fixture is tight on purpose. One note frees 150 B and the compact
-// notice costs 129 B, so a one-note file is rescued only when the full assembly
-// is at most 21 B over; `over = 10` sits in the middle and leaves the compact
-// line 11 B of growth before this subtest refuses again. That is the pin, not a
-// fragility to widen away: a compact notice that has grown past a one-note
-// file's savings has lost exactly the property the review asked for. (Mutation
-// M4 in the #263 review-fix notes — a 27 B deletion verb planted in the line —
-// tripped this subtest as well as both destructive-verb guards.)
-func TestCodexAnnouncementNeverTipsAFittingBodyOverBudget(t *testing.T) {
+//  1. and 2. the window the review found, on the no-mismatch and mismatch paths:
+//     a full assembly a few bytes over the cap, where the strip frees more than
+//     the compact announcement costs, is DELIVERED where it used to be refused.
+//     Fixture: the reviewer's own. Firm preset, one persisted quarantine note
+//     (the file a Trellis repair produces), and a valid project comment sized
+//     against a MEASURED baseline so the full assembly lands `over` bytes over
+//     the cap — relative rather than absolute, so the test still probes the
+//     window if the payload header ever changes length.
+//  3. and 4. the residual window, on both paths: an overshoot where the body
+//     fits the cap ALONE but not alongside the compact announcement is refused.
+//     Both ends of that window are measured from what the hook did with the
+//     delivering fixture, so neither subtest can drift into pinning a body that
+//     is simply too big.
+//  5. the boundary itself: a candidate of exactly MAX_CONTEXT_BYTES is accepted,
+//     at both comparisons that spell the cap — the gate that decides whether to
+//     degrade at all, and the loop that picks an announcement. Every other
+//     fixture here lands strictly inside or strictly outside, so `<=` could be
+//     flipped to `<` with the file still green.
+//
+// The one-note fixture in 1 and 2 is tight on purpose. One note frees 150 B and
+// the compact notice costs 129 B, so a one-note file is rescued only when the
+// full assembly is at most 21 B over; `over = 10` sits in the middle and leaves
+// the compact line 11 B of growth before those subtests refuse again. That is
+// the pin, not a fragility to widen away: a compact notice that has grown past a
+// one-note file's savings has lost exactly the property the review asked for.
+// (Mutation M4 in the #263 review-fix notes — a 27 B deletion verb planted in
+// the line — tripped this subtest as well as both destructive-verb guards.)
+//
+// Both paths are pinned throughout because both had the window: the no-mismatch
+// notice and the mismatch mandate are chosen in the same slot by the same loop.
+func TestCodexBudgetsTheAnnouncementAlongsideTheBody(t *testing.T) {
 	firm := payloadFiles()["rules-a.toml"]
 	const cap = 9500
 	const over = 10 // bytes the FULL assembly lands over the cap
@@ -2179,5 +2209,196 @@ func TestCodexAnnouncementNeverTipsAFittingBodyOverBudget(t *testing.T) {
 		if string(after) != toml {
 			t.Errorf("the hook wrote .trellis/rules.toml — decision-0070 D4 says it never does")
 		}
+	})
+
+	// The two subtests above pin the delivering side of the budget. The three
+	// below pin its edges: the residual window the branch deliberately leaves
+	// open, on both paths, and the byte at which "fits" is decided.
+
+	t.Run("residual window, no-mismatch path: a body that fits alone is still refused for the notice", func(t *testing.T) {
+		// Where the budget stops being a guarantee, asserted as what the code
+		// does rather than as what the old test name wished it did. The
+		// stripped body here fits the cap with nothing appended at all, and is
+		// still refused, because the shortest honest notice does not fit beside
+		// it. codex-context.mjs says so itself (provenanceOmittedNotice's
+		// comment: "a body that fits alone but not alongside this line is still
+		// refused, loudly"), and the alternative is worse — an abbreviated copy
+		// injected with no word that it was abbreviated. Pinned so the window
+		// cannot silently widen, and so the next reader who meets this refusal
+		// meets a test that expects it.
+		repaired := claudeReconciledRows(t, firm+"inv-foreign-rule-a = { active = true }\n") + "\n"
+		if !strings.Contains(repaired, "# quarantined ") {
+			t.Fatalf("premise: the repaired file must carry one persisted quarantine note:\n%s", repaired)
+		}
+		baseline, baselineBytes := codexContextBytes(t, repaired)
+		if strings.Contains(baseline, codexDegradedMarker) {
+			t.Fatal("premise: the baseline must deliver in full, or the arithmetic below is meaningless")
+		}
+		// Everything buildContext contributes around the body: trigger,
+		// rules.md, footer. Measurable because this path injects the file
+		// verbatim and appends no announcement at all when it fits.
+		overhead := baselineBytes - len(repaired)
+
+		// 100 B clears the one-note rescue (150 B freed against 129 B spent on
+		// the compact notice, so at most a 21 B overshoot is rescued) without
+		// making the body itself too big. The premise below is what checks
+		// that, on measured bytes rather than on this arithmetic.
+		const overshoot = 100
+		toml := repaired + tomlCommentOfBytes(t, cap-baselineBytes+overshoot)
+		stripped := codexStripProvenance(t, toml)
+		if bodyAlone := overhead + len(stripped); bodyAlone > cap {
+			t.Fatalf("premise: the stripped body must fit the cap on its own (assembles to %d B) — otherwise this pins a body that is simply too big, not the notice's residual", bodyAlone)
+		}
+
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(toml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if got.HookSpecificOutput != nil {
+			t.Fatalf("injected a body that does not fit alongside the shortest honest notice — the omission is then unannounced, which is the one outcome worse than refusing:\n%s", raw)
+		}
+		if !strings.Contains(raw, "context-over-budget") {
+			t.Errorf("the refusal must stay loud and keep its vocabulary:\n%s", raw)
+		}
+	})
+
+	t.Run("residual window, mismatch path: a body that fits alone is still refused for the mandate", func(t *testing.T) {
+		// Same residual, the other path, and the more expensive one: the
+		// shortest honest announcement here is a whole compact mandate, so the
+		// window is several hundred bytes wide rather than 129. It is left open
+		// for the same reason — a reconciliation injected with no mandate to
+		// write it back is a quiet failure, and this branch trades quiet
+		// failures for loud ones.
+		const foreign = "inv-foreign-rule-a = { active = true }\n"
+		// The overhead is path-independent — same trigger, same rules.md, same
+		// footer — so it is measured on the one fixture that carries no
+		// announcement at all: the payload's own seed, which matches the slug
+		// set it ships and fits.
+		pristine, pristineBytes := codexContextBytes(t, firm)
+		if strings.Contains(pristine, codexDegradedMarker) || strings.Contains(pristine, "Rule activation was reconciled") {
+			t.Fatal("premise: the payload's own seed must deliver verbatim with no announcement, or it does not measure the overhead")
+		}
+		overhead := pristineBytes - len(firm)
+
+		// The degraded body on this path is a RECONCILIATION, not the file, so
+		// it is measured rather than derived: run the delivering fixture from
+		// the subtest above, read back the row block the hook injected, and the
+		// announcement is whatever the assembly spent beyond the two.
+		_, probeBaselineBytes := codexContextBytes(t, firm+foreign)
+		probeComment := cap - probeBaselineBytes + over
+		probeCtx, probeBytes := codexContextBytes(t, firm+tomlCommentOfBytes(t, probeComment)+foreign)
+		if !strings.Contains(probeCtx, codexDegradedMarker) {
+			t.Fatal("premise: the probe fixture must degrade, or there is no compact mandate to measure")
+		}
+		body := len(codexReconciledRowsFromContext(t, probeCtx)) + 1 // + the trailing newline the extractor drops
+		announcement := probeBytes - overhead - body
+		headroom := cap - (overhead + body) // how much further the body may grow and still fit alone
+		if announcement <= 1 || headroom < 0 {
+			t.Fatalf("premise: measured a %d B announcement against %d B of headroom; the window this pins is the announcement's own length", announcement, headroom)
+		}
+		// Land in the middle of the window: past what the body can carry
+		// alongside the mandate, short of what it can carry alone.
+		grow := headroom - announcement/2
+		if grow < 1 {
+			t.Fatalf("premise: nothing between the two ends (headroom %d B, announcement %d B)", headroom, announcement)
+		}
+		bodyAlone := overhead + body + grow
+		if bodyAlone > cap {
+			t.Fatalf("premise: the degraded body must fit the cap on its own (assembles to %d B)", bodyAlone)
+		}
+		if bodyAlone+announcement <= cap {
+			t.Fatalf("premise: the compact mandate must NOT fit beside it (%d B together), or there is no residual to pin", bodyAlone+announcement)
+		}
+		toml := firm + tomlCommentOfBytes(t, probeComment+grow) + foreign
+
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(toml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+		if got.HookSpecificOutput != nil {
+			t.Fatalf("injected a reconciliation that leaves no room for the mandate to write it back — the file would keep the abbreviated rows for good:\n%s", raw)
+		}
+		if !strings.Contains(raw, "context-over-budget") {
+			t.Errorf("the refusal must stay loud and keep its vocabulary:\n%s", raw)
+		}
+	})
+
+	t.Run("exact boundary: a candidate of exactly the cap is accepted", func(t *testing.T) {
+		// Two comparisons spell the cap — `> MAX_CONTEXT_BYTES` decides whether
+		// to degrade, `<= MAX_CONTEXT_BYTES` decides which announcement ships —
+		// and every other fixture in this file lands strictly inside or
+		// strictly outside them. So `<=` could become `<` with the whole file
+		// still green, and the byte at which "fits" is decided would be
+		// documented by nothing. One fixture per comparison, each landing on
+		// the boundary exactly.
+		repaired := claudeReconciledRows(t, firm+"inv-foreign-rule-a = { active = true }\n") + "\n"
+		baseline, baselineBytes := codexContextBytes(t, repaired)
+		if strings.Contains(baseline, codexDegradedMarker) {
+			t.Fatal("premise: the baseline must deliver in full, or the arithmetic below is meaningless")
+		}
+		overhead := baselineBytes - len(repaired)
+
+		t.Run("the gate that decides whether to degrade at all", func(t *testing.T) {
+			toml := repaired + tomlCommentOfBytes(t, cap-baselineBytes)
+			ctx, n := codexContextBytes(t, toml)
+			if n != cap {
+				t.Fatalf("premise: this fixture must assemble to exactly %d B, got %d", cap, n)
+			}
+			if strings.Contains(ctx, codexDegradedMarker) {
+				t.Errorf("a session exactly AT the cap degraded — the gate is `> MAX_CONTEXT_BYTES`, and a context that fills the budget exactly is not over it:\n%s", ctx)
+			}
+			if !strings.Contains(ctx, "# quarantined ") {
+				t.Errorf("provenance was dropped from a session that fits exactly:\n%s", ctx)
+			}
+		})
+
+		t.Run("the loop that picks an announcement", func(t *testing.T) {
+			// The comment that puts the CHOSEN candidate exactly on the cap is
+			// arithmetic, not a search: cap = overhead + (stripped file +
+			// comment) + announcement, with the announcement measured from a
+			// run that already chose the compact notice.
+			probeCtx, probeBytes := codexContextBytes(t, repaired+tomlCommentOfBytes(t, cap-baselineBytes+over))
+			if !strings.Contains(probeCtx, codexDegradedMarker) {
+				t.Fatal("premise: the probe must degrade, or there is no compact notice to measure")
+			}
+			probeBody := len(codexReconciledRowsFromContext(t, probeCtx)) + 1
+			announcement := probeBytes - overhead - probeBody
+			bare := codexStripProvenance(t, repaired)
+			comment := cap - announcement - overhead - len(bare)
+			if comment < 1 {
+				t.Fatalf("premise: no room left for a project comment (announcement %d B, overhead %d B, stripped file %d B)", announcement, overhead, len(bare))
+			}
+			toml := repaired + tomlCommentOfBytes(t, comment)
+			if stripped := codexStripProvenance(t, toml); len(stripped) != len(bare)+comment {
+				t.Fatalf("premise: the project comment must survive the strip untouched (%d B, wanted %d B)", len(stripped), len(bare)+comment)
+			}
+			if full := overhead + len(toml); full <= cap {
+				t.Fatalf("premise: the full assembly must be over the cap (%d B), or nothing degrades and no candidate is measured", full)
+			}
+
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+			if err := os.WriteFile(filepath.Join(project, ".trellis", "rules.toml"), []byte(toml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
+			if got.HookSpecificOutput == nil {
+				t.Fatalf("refused a candidate of exactly %d B: `<= MAX_CONTEXT_BYTES` is what admits a context that fills the budget exactly, and a `<` there turns the boundary into a refusal:\n%s", cap, raw)
+			}
+			ctx := got.HookSpecificOutput.AdditionalContext
+			if n := len([]byte(ctx)); n != cap {
+				t.Errorf("the candidate that fits exactly must be the one delivered: expected %d B, got %d B", cap, n)
+			}
+			if !strings.Contains(ctx, codexDegradedMarker) {
+				t.Errorf("premise: this fixture is the degraded one, and its announcement is what the boundary is measured with:\n%s", ctx)
+			}
+			if strings.Contains(ctx, "## Provenance comments were left out of the rows above") {
+				t.Errorf("the full notice does not fit here; the compact one is the candidate this pins:\n%s", ctx)
+			}
+		})
 	})
 }
