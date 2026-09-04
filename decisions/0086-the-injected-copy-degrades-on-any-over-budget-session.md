@@ -23,6 +23,12 @@ date: 2026-09-03
 > the degraded path appends was itself unbudgeted, and §4's claim about when the guard is reached
 > was false by the announcement's own length. The dated note under §4's table records what was
 > found, what changed, and the re-measured threshold. The original sentences stand above it.
+>
+> **Amended 2026-09-04, second review pass on PR #263** (thread `discussion_r3931029360`): two of
+> §4's byte figures were one fixture's, stated as general — a quarantined row costs 42 B / 192 B
+> only for a two-letter slug suffix. Two dated notes in §4 correct that, one under the table and one
+> under the 2026-09-03 note; the second also records the rename of the test both notes cite. The
+> original sentences stand above each, and no runtime behaviour changed in that pass.
 
 # 0086 — The injected copy degrades on any over-budget session, not only a reconciling one
 
@@ -130,6 +136,29 @@ consumer's file rather than nothing.
 Thirty is a measured order of magnitude, not a threshold: it is a byte budget, and a longer slug
 reaches it with fewer rows. No test asserts the number.
 
+> **Dated note, 2026-09-04 — second review pass on PR #263, thread `discussion_r3931029360`.**
+> The table's first row states a *fixture-specific* measurement as a general one. A quarantined
+> row's cost is not a constant: the injected copy emits `` `# ${line}${note}` ``
+> (`codex-context.mjs:515`), so the row's own text is part of the figure and the figure moves with
+> the slug's length. **42 B / 192 B is the two-letter-suffix case.** The one-letter slug this
+> branch's own tests use — `inv-foreign-rule-a` — costs **41 B stripped / 191 B with its note**.
+>
+> **This record's own baseline table proves it, in both columns.** In the `3f44620` table under
+> *Context*, session 2 delivers 8831 B at N = 5 and 9404 B at N = 8: 573 B for three quarantined
+> rows carrying their notes, which is **191 B each**, not 192. The stripped column agrees — session
+> 1 delivers 9010 B at N = 5, 9133 B at N = 8 and 9174 B at N = 9: 123 B for three rows and 41 B for
+> one, which is **41 B each**, not 42. (The N = 12 step is 125 B rather than 123 because the mandate
+> spells the counts, and "9" became "12" in two places.)
+>
+> What does *not* vary is the note itself: `QUARANTINE_NOTE_TEMPLATE` filled is **150 B** whatever
+> the row it hangs off, which is why "stripping frees 150 B per quarantined row" in the note below
+> holds generally where 42/192 does not. The `N ≥ 30` first-refusal figure in the table is untouched
+> by this, and the `N ≥ 37` it was re-measured to was independently reproduced.
+>
+> **Two dated notes sit under this table now.** The provenance block's and the self-check's phrase
+> "the dated note under §4's table" was written on 2026-09-03 and means the note *below* this one —
+> the one about the unbudgeted announcement. Both locators are left as written.
+
 > **Dated note, 2026-09-03 — review of PR #263, thread `PRRT_kwDOTIeCVc6eu78z`.** The paragraph
 > above says the guard is reached "only when a context with no Trellis provenance left in it at all
 > is still over the cap." That was not what shipped. The degraded path appended its announcement —
@@ -170,6 +199,24 @@ reaches it with fewer rows. No test asserts the number.
 > of growth, which is the pin for the reviewer's case); the extractor without the compact stems;
 > the compact mandate asking for the abbreviated rows; the guard measuring the body without its
 > announcement; a deletion verb in the compact mandate.
+
+> **Dated note, 2026-09-04 — second review pass on PR #263, thread `discussion_r3931029360`.**
+> The "Re-measured" paragraph above restates the table's per-row figure — "**42 B** stripped against
+> **192 B** with its note" — and inherits its error. Those are the two-letter-suffix numbers; the
+> cost varies with the slug's length, and the one-letter slug the tests use costs 41 B / 191 B. See
+> the note under the table for the derivation. Nothing else in the paragraph changes: `N ≥ 37` was
+> independently reproduced.
+>
+> **The test named in the *Pinned* paragraph above was renamed in the same pass.**
+> `TestCodexAnnouncementNeverTipsAFittingBodyOverBudget` is now
+> `TestCodexBudgetsTheAnnouncementAlongsideTheBody`. "Never" claimed a guarantee the code does not
+> make and says it does not make: a body that fits alone but not alongside even the *compact*
+> announcement is still refused, deliberately, because injecting an abbreviated copy with no word
+> that it was abbreviated is the worse failure. Three subtests were added — the residual window on
+> each path, and the cap's own boundary, where a candidate of exactly `MAX_CONTEXT_BYTES` must be
+> accepted. Two further mutations, each killed: `<` for `<=` in the announcement loop (the boundary
+> subtest refuses at exactly the cap), and an empty last-resort announcement that lets the guard
+> inject unannounced (both residual-window subtests). No runtime behaviour changed.
 
 ## Consequences
 
