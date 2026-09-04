@@ -54,18 +54,20 @@ ratified: 2026-07-04
 >
 > **Adding or removing a row costs more than an example edit does — and the sweep is guarded,
 > not listed.** `cli/row_set_guard_test.go` reads the pinned slug set (`assessableSlugs`,
-> `cli/payload_test.go` — the one pin) and fails naming what has not followed: the `invariants-v1`
-> registry, `profiles/trellis-self.md` (each gene present *and* active), the `docs/invariants.html`
-> cards, this repo's `.trellis/rules.toml`, and the rendered `reference/rules-*.toml` (**without a
-> row the rule ships but is inactive**). Run `go test -count=1 ./...` in `cli/` and follow the
-> failures.
+> `cli/payload_test.go` — the one pin) and fails naming what has not followed: this catalog's own
+> entry list, the `invariants-v1` registry, `profiles/trellis-self.md` (each gene present *and*
+> active), the `docs/invariants.html` cards, this repo's `.trellis/rules.toml`, and the rendered
+> `reference/rules-*.toml` (**without a row the rule ships but is inactive**). Run
+> `go test -count=1 ./...` in `cli/` and follow the failures.
 >
 > **The count itself is guarded only where the number is the claim** — the installer's closing
 > line, the staleness hook's announcement, the README's `16/16`, and AC1's class breakdown below.
-> Everywhere else the numeral was deleted rather than pinned ("all sixteen rules" → "all rules"),
-> because a list of count sites kept here was found short twice (`decision-0074`, `decision-0078`),
-> and a twenty-two-row table of them in a test file was the same mistake one layer down (TRL-28).
-> **If you are about to write a row count into prose, delete it instead.**
+> In the READMEs, `docs/` and the corpus the numeral was deleted instead ("all sixteen rules" →
+> "all rules"), because a list of count sites kept here was found short twice (`decision-0074`,
+> `decision-0078`), and a twenty-two-row table of them in a test file was the same mistake one layer
+> down (TRL-28). **If you are about to write a row count into prose, delete it instead.** Two
+> classes keep their numbers unguarded on purpose: code comments narrating a past measurement, and
+> the `invariants-v1` registry's own account of how the set was composed.
 >
 > Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
 > rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
