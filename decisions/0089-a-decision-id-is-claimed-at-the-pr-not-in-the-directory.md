@@ -4,6 +4,7 @@ type: decision
 depends_on: [decision-0078, decision-0082]
 changes: [decision-0078]
 informed_by: [decision-0005, decision-0010, decision-0028, decision-0077, decision-0085]
+superseded_in_part_by: [decision-0090]  # 2026-09-04 — Decision point 4 (what counts as a claim) is REPLACED, and point 1 gains a third clause; a rename is judged by its destination id, and a branch can collide with itself. Both were false passes reproduced against the shipped script. What stands: points 2 (the tie-break), 3 (state the rule, name the winner), 5 (script not inline YAML), 6 and 7 (decision-0078's parked observation closed) — and the guard itself.
 owner: agent
 date: 2026-09-03
 ---
@@ -91,6 +92,15 @@ edit that makes the record look prescient). **`inv-no-orphan-followups` itself i
 record does not reopen the rule, only the example it parked.
 
 ## Consequences
+
+> **Note, 2026-09-04 — points 1 and 4 were wrong, and `decision-0090` corrects them.** A review pass
+> after this record merged reproduced two branches the guard passed clean: a rename INTO a free id
+> (point 4's *"a rename is a file that already exists"* is true of the old path and false of the new
+> one) and two files claiming one id inside a single diff (nothing compared the branch against
+> itself). Three further paths would have failed open — `gh pr list --limit`'s silent cap, `set -u`
+> without `pipefail` turning a failed `awk` into a clean pass, and this record's own
+> workflow/script pair test matching substrings that also appear in the workflow's comment. Fixed in
+> `decision-0090`; the guard, the tie-break and everything else below stand as written.
 
 - **The check is advisory, like `agent-workflow-parity`.** `main` carries no branch protection here,
   so a red does not block a merge; it replaces a human noticing. The maintainer can merge a red PR
