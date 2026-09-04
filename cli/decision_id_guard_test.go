@@ -421,6 +421,54 @@ func TestDecisionIDGuardToleratesSpacesOutsideDecisions(t *testing.T) {
 			t.Errorf("a spaced rename outside decisions/ is not this check's business; exit %d\n%s", code, out)
 		}
 	})
+
+	// The first fix scoped the refusal to `decisions/*`, which closed the
+	// outage for paths OUTSIDE the directory and left it open one directory in.
+	// `decisions/` holds non-record files too, so a spaced one there aborted
+	// every PR in the repo exactly as `docs/my notes.md` had.
+	t.Run("a spaced NON-RECORD file inside decisions/", func(t *testing.T) {
+		out, code := runGuard(t, "300", guardMainFiles,
+			"299 added decisions/notes on ids.md\n"+
+				"300 added decisions/0091-fine.md")
+
+		if code != 0 {
+			t.Errorf("a spaced non-record file in decisions/ cannot become a claim and must not abort; exit %d\n%s", code, out)
+		}
+		mustContain(t, out, "decision-0091 (decisions/0091-fine.md) — free.",
+			"the real claim must still be judged")
+	})
+}
+
+// TestDecisionIDGuardCopiedRowCarriesAPreviousFilename — the `copied` claim arm
+// was unreachable. GitHub populates `previous_filename` for `copied` the same
+// way it does for `renamed`, but the space refusal tolerated a fourth field only
+// on `renamed`, so a well-formed copy was rejected as unparseable with a message
+// about a space it did not contain. No test exercised `copied` WITH a fourth
+// field, which is why it shipped green.
+func TestDecisionIDGuardCopiedRowCarriesAPreviousFilename(t *testing.T) {
+	t.Run("a copy claims its destination id", func(t *testing.T) {
+		out, code := runGuard(t, "300", guardMainFiles,
+			"300 copied decisions/0090-new.md decisions/0086-the-injected-copy-degrades.md")
+
+		if code != 0 {
+			t.Errorf("a well-formed copy row must be judged, not refused; exit %d\n%s", code, out)
+		}
+		mustNotContain(t, out, "cannot be read as a claim",
+			"the row is well-formed; refusing it as unparseable is a false statement about it")
+		mustContain(t, out, "decision-0090 (decisions/0090-new.md) — free.",
+			"a copy puts a new file at a new path, so it claims that id")
+	})
+
+	t.Run("a copy onto a taken id still collides", func(t *testing.T) {
+		out, code := runGuard(t, "300", guardMainFiles,
+			"300 copied decisions/0087-a-copy.md decisions/0086-the-injected-copy-degrades.md")
+
+		if code != 1 {
+			t.Errorf("a copy onto an id already on the base branch must be red; exit %d\n%s", code, out)
+		}
+		mustContain(t, out, "decision-0087 is already on main",
+			"the copy's destination id is judged like any other claim")
+	})
 }
 
 // TestDecisionIDGuardHandlesProductionRowShape — the fixtures and the rows CI

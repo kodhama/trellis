@@ -193,21 +193,37 @@ while read -r p st path prev extra; do
 	# direction this guard exists to eliminate. A surplus field is therefore a
 	# refusal rather than a pass.
 	#
-	# SCOPED TO decisions/ ON PURPOSE, and this is load-bearing. The check sees
-	# every row of every open PR, so refusing on any spaced path anywhere would
-	# let one `docs/my notes.md` in one unrelated PR abort the guard for every
-	# PR in the repo — including PRs that touch no decision file at all. That is
-	# a repo-wide CI outage triggered by a filename, traded for a hole nobody
-	# has ever hit. A row whose path field does not begin with `decisions/`
-	# cannot become a claim, so its shape is not this check's business.
+	# SCOPED TO THE RECORD-ID PREFIX ON PURPOSE, and this is load-bearing. The
+	# check sees every row of every open PR, so refusing on any spaced path
+	# would let one `docs/my notes.md` — or one `decisions/notes on ids.md` —
+	# in one unrelated PR abort the guard for every PR in the repo, including
+	# PRs touching no decision file at all. That is a repo-wide CI outage
+	# triggered by somebody naming a file, traded for a hole nobody has hit.
 	#
-	# Known over-caution, and it fails closed: a rename INTO decisions/ whose
+	# The pattern is the four-digit PREFIX, not the full record shape, and that
+	# is the whole subtlety: splitting on whitespace truncates the path BEFORE
+	# its suffix, so `decisions/0088 old.md` arrives as `decisions/0088`.
+	# Matching `decisions/[0-9][0-9][0-9][0-9]-*.md` would therefore stop
+	# refusing the very case this check exists for, while matching plain
+	# `decisions/*` re-opens the outage one directory in. Only the prefix
+	# catches the truncation without swallowing `decisions/README.md`.
+	#
+	# `copied` tolerates a fourth field for the same reason `renamed` does:
+	# GitHub populates previous_filename for both. Omitting it made the
+	# `added | copied` claim arm below unreachable — a well-formed copy was
+	# refused with a message about a space it did not contain.
+	#
+	# Known over-caution, and it fails closed: a rename INTO a record path whose
 	# SOURCE path contains a space refuses too, though the destination parsed
 	# fine. Loud and actionable, unlike the silent pass it replaces.
 	case "${path:-}" in
-	decisions/*)
-		if [ -n "${extra:-}" ] || { [ -n "${prev:-}" ] && [ "${st:-}" != "renamed" ]; }; then
-			cannot_run "unparseable row for PR #$p — a decisions/ path containing a space cannot be read as a claim: $p $st $path $prev ${extra:-}"
+	decisions/[0-9][0-9][0-9][0-9]*)
+		case "${st:-}" in
+		renamed | copied) surplus_ok=yes ;;
+		*) surplus_ok=no ;;
+		esac
+		if [ -n "${extra:-}" ] || { [ -n "${prev:-}" ] && [ "$surplus_ok" = no ]; }; then
+			cannot_run "unparseable row for PR #$p — a decision-record path containing a space cannot be read as a claim: $p $st $path $prev ${extra:-}"
 		fi
 		;;
 	esac
