@@ -4501,6 +4501,10 @@ func TestStalenessHookDoesNotBlockOnNonRegularRulesToml(t *testing.T) {
 				}
 			case <-time.After(30 * time.Second):
 				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+				// Wait joins the copier goroutines that write into out; reading
+				// the buffer before it returns is a data race. The group kill
+				// above is what makes this Wait return at all.
+				<-done
 				t.Fatalf("the hook hung on %s at .trellis/rules.toml — a read opened the path before checking it is a regular file\noutput so far: %s", tc.name, out.String())
 			}
 
