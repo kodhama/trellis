@@ -229,33 +229,130 @@ func TestStalenessHook(t *testing.T) {
 			t.Errorf("want silent (internal/version is current; the leftover flat file must not fire), got %q", out)
 		}
 	})
-	t.Run("empty stamp is silent", func(t *testing.T) {
-		if out := run(t, ".trellis/internal/version", ""); out != "" {
-			t.Errorf("want silent (nothing to compare), got %q", out)
+	// INVERTED by TRL-33. This subtest asserted the defect: it required SILENCE
+	// from a broken vendored overlay, on the same path where a MISSING stamp had
+	// always refused loudly. Absent-vs-empty was never chosen; it fell out of
+	// `[ ! -f ]` for one and `[ -n "$overlay" ] || exit 0` for the other, and the
+	// two sibling files in the same directory already refused loudly when empty.
+	// Reproduced before changing anything: an empty .trellis/internal/version
+	// produced 0 bytes of stdout at exit 0.
+	t.Run("an empty overlay stamp is a broken overlay, said out loud", func(t *testing.T) {
+		out := run(t, ".trellis/internal/version", "")
+		ctx := nudgeContext(t, out)
+		if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Errorf("an empty overlay stamp must refuse loudly, as a missing one already did:\n%s", ctx)
 		}
-		if out := run(t, ".trellis/version", ""); out != "" {
-			t.Errorf("want silent (empty legacy stamp), got %q", out)
+		if !strings.Contains(ctx, ".trellis/internal/version") {
+			t.Errorf("the refusal must name the file that could not be read:\n%s", ctx)
 		}
 	})
-	t.Run("unreadable plugin reference is silent", func(t *testing.T) {
-		proj := t.TempDir()
-		p := filepath.Join(proj, ".trellis", "internal", "version")
-		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-			t.Fatal(err)
+	// The legacy flat overlay is stale BY ITS LAYOUT, so the migration nudge is
+	// correct whether or not either stamp can be read. It used to vanish instead.
+	t.Run("an empty legacy stamp still draws the migration nudge", func(t *testing.T) {
+		ctx := nudgeContext(t, run(t, ".trellis/version", ""))
+		if !strings.Contains(ctx, "predates the .trellis/internal/ layout") {
+			t.Errorf("a legacy overlay must still be told to migrate when its stamp cannot be read:\n%s", ctx)
 		}
-		if err := os.WriteFile(p, []byte("payload@abc\n"), 0o644); err != nil {
-			t.Fatal(err)
+		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+			t.Errorf("a legacy overlay still governs the session — this is a migration nudge, not a blackout:\n%s", ctx)
 		}
-		writeVendoredPayload(t, filepath.Dir(p))
-		cmd := exec.Command(hook)
-		cmd.Dir = proj
-		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+t.TempDir())
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("hook exited non-zero (%v): %s", err, out)
-		}
-		if strings.TrimSpace(string(out)) != "" {
-			t.Errorf("want silent (can't read the installed payload stamp), got %q", out)
+	})
+	// INVERTED by TRL-34, which this subtest pinned: it required SILENCE when the
+	// hook could not read the installed plugin's own reference/version, so the
+	// staleness warning this hook exists to produce was withheld with no signal
+	// at all. Reproduced against main before changing anything — mode 000 on that
+	// file, a healthy vendored overlay present: 0 bytes of stdout at exit 0.
+	//
+	// The marker is deliberately NOT TRELLIS_RULES_NOT_LOADED. The overlay is
+	// intact and the session IS governed by it; what is withheld is a warning,
+	// not governance. Reusing the blackout marker would be the over-correction
+	// this suite has already caught twice on this hook.
+	t.Run("an unreadable plugin stamp says so instead of vanishing", func(t *testing.T) {
+		// The REAL stamp, which is also what the project's overlay carries in
+		// every case below. The corruption fixtures are built around it on
+		// purpose: with the pre-fix `head -n1 | tr -d '[:space:]'` read, each
+		// of the last four reduced to exactly this value, compared EQUAL to the
+		// project's, and produced zero bytes of output. Hardcoding some other
+		// hash would have made them compare unequal and draw a stale nudge — a
+		// visible wrong answer instead of the silent one that actually shipped,
+		// so the fixture would have tested the wrong failure.
+		real := strings.TrimSpace(payloadFiles()["version"])
+		for _, tc := range []struct {
+			name  string
+			stamp string // "" means: do not create reference/ at all
+		}{
+			{"absent", ""},
+			{"empty", "\n"},
+			{"truncated to a short hash", "payload@abc\n"},
+			{"a stamp from the pre-payload@ era", "plugin@abcdef123456\n"},
+			{"a stamp with non-hex in it", "payload@zzzzzzzzzzzz\n"},
+			// The four below are the P2 from review on #262. `head -n1` threw
+			// away every byte after line 1 and `tr -d '[:space:]'` every space
+			// INSIDE the stamp, both before any check ran, so a corrupted
+			// payload stamp was accepted as authoritative. Reproduced at zero
+			// bytes of stdout before the fix; pinned here so it cannot return.
+			{"a valid stamp followed by garbage", real + "\nGARBAGE\n"},
+			{"a valid stamp followed by a decoy stamp", real + "\npayload@ffffffffffff\n"},
+			{"whitespace inside the stamp", "payload@" + real[8:12] + " " + real[12:] + "\n"},
+			{"a stamp preceded by a garbage line", "GARBAGE\n" + real + "\n"},
+			// The other direction, in the same table so it cannot be forgotten:
+			// these are HEALTHY files an editor or a core.autocrlf=true
+			// checkout produces, and refusing them would be the over-correction.
+			// They must draw NO marker at all — the stamps match.
+			{"CRLF line ending is healthy", real + "\r\n"},
+			{"trailing blank lines are healthy", real + "\n\n\n"},
+			{"trailing whitespace on the stamp line is healthy", real + "  \n"},
+		} {
+			healthy := strings.HasSuffix(tc.name, "healthy")
+			t.Run(tc.name, func(t *testing.T) {
+				proj := t.TempDir()
+				p := filepath.Join(proj, ".trellis", "internal", "version")
+				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte(payloadFiles()["version"]), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				writeVendoredPayload(t, filepath.Dir(p))
+				broken := t.TempDir()
+				if tc.stamp != "" {
+					if err := os.MkdirAll(filepath.Join(broken, "reference"), 0o755); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(broken, "reference", "version"), []byte(tc.stamp), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				cmd := exec.Command(hook)
+				cmd.Dir = proj
+				cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+broken)
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("hook exited non-zero (%v): %s", err, out)
+				}
+				raw := strings.TrimSpace(string(out))
+				if healthy {
+					// The stamps match, so silence is the CORRECT answer here —
+					// and it is the one answer the corruption rows must never
+					// get. Same table, opposite direction, so a guard that
+					// over-tightens the stamp shape fails here rather than
+					// reaching a consumer.
+					if raw != "" {
+						t.Fatalf("a %s reference/version is a healthy file and its stamp matches — refusing or nudging over it is the over-correction:\n%s", tc.name, raw)
+					}
+					return
+				}
+				ctx := nudgeContext(t, raw)
+				if !strings.Contains(ctx, "TRELLIS_STALENESS_UNKNOWN") {
+					t.Errorf("an unusable plugin stamp must say staleness could not be checked, not vanish:\n%s", ctx)
+				}
+				if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+					t.Errorf("the overlay is intact and governs this session — this must not read as a blackout:\n%s", ctx)
+				}
+				if strings.Contains(ctx, "may be stale") {
+					t.Errorf("nothing may be reported STALE against a stamp that could not be read:\n%s", ctx)
+				}
+			})
 		}
 	})
 
@@ -3905,7 +4002,10 @@ func TestEveryLegitimateShapeStillGoverns(t *testing.T) {
 	// repointed at the payload's OWN rules-b.toml, so an unusable rules-b.toml
 	// stops being a comparison file and becomes the rows themselves. Both
 	// directions are pinned here, because the blind spot was the bug.
-	defaultsRun := func(t *testing.T, presetBody string, presetMode os.FileMode) string {
+	// absent=true builds the plugin root WITHOUT reference/rules-b.toml at all —
+	// TRL-33's shape, and the one this table was missing. Its three states were
+	// all files that EXIST and cannot be used; the absent case exited silently.
+	defaultsRun := func(t *testing.T, presetBody string, presetMode os.FileMode, absent bool) string {
 		t.Helper()
 		// decision-0070 D6: project scope is the vendored bundle under
 		// <repo>/.claude/skills/, and only that. Anywhere else and the hook
@@ -3923,11 +4023,13 @@ func TestEveryLegitimateShapeStillGoverns(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", "rules-b.toml"), []byte(presetBody), presetMode); err != nil {
-			t.Fatal(err)
-		}
-		if presetMode == 0o000 {
-			t.Cleanup(func() { _ = os.Chmod(filepath.Join(pluginRoot, "reference", "rules-b.toml"), 0o644) })
+		if !absent {
+			if err := os.WriteFile(filepath.Join(pluginRoot, "reference", "rules-b.toml"), []byte(presetBody), presetMode); err != nil {
+				t.Fatal(err)
+			}
+			if presetMode == 0o000 {
+				t.Cleanup(func() { _ = os.Chmod(filepath.Join(pluginRoot, "reference", "rules-b.toml"), 0o644) })
+			}
 		}
 		// No .trellis/rules.toml, on purpose: that absence IS this shape.
 		if _, err := os.Stat(filepath.Join(proj, ".trellis", "rules.toml")); !os.IsNotExist(err) {
@@ -3946,7 +4048,7 @@ func TestEveryLegitimateShapeStillGoverns(t *testing.T) {
 	}
 
 	t.Run("no project file at all: the shipped defaults govern", func(t *testing.T) {
-		ctx := defaultsRun(t, files["rules-b.toml"], 0o644)
+		ctx := defaultsRun(t, files["rules-b.toml"], 0o644, false)
 		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
 			t.Fatalf("an adopted project with no rules.toml must govern from the shipped defaults:\n%s", ctx)
 		}
@@ -3967,10 +4069,15 @@ func TestEveryLegitimateShapeStillGoverns(t *testing.T) {
 	// reach the reconciler, because on this path the repair mandate names a
 	// file the project does not have and has never had.
 	for _, tc := range []struct {
-		name string
-		body string
-		mode os.FileMode
+		name   string
+		body   string
+		mode   os.FileMode
+		absent bool
 	}{
+		// TRL-33's own shape, added here beside its three siblings. It was the
+		// odd one out: these three all refused loudly while the absent file
+		// exited with completely empty stdout at exit 0. Nothing chose that.
+		{name: "absent", absent: true},
 		{name: "zero bytes", body: "", mode: 0o644},
 		{name: "no rows, only a comment", body: "# nothing here\n", mode: 0o644},
 		{name: "unreadable", body: "", mode: 0o000},
@@ -3979,7 +4086,7 @@ func TestEveryLegitimateShapeStillGoverns(t *testing.T) {
 			if tc.mode == 0o000 && os.Geteuid() == 0 {
 				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
 			}
-			ctx := defaultsRun(t, tc.body, tc.mode)
+			ctx := defaultsRun(t, tc.body, tc.mode, tc.absent)
 			if !strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
 				t.Fatalf("a payload whose own row file carries no rows must refuse, not reconcile against nothing:\n%s", ctx)
 			}
@@ -4005,4 +4112,319 @@ func hookPathForDefaults(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return hook
+}
+
+// TestBrokenPayloadIsNeverSilent is the behavioural half of the guard TRL-33
+// asks for, and the primary deliverable of that issue.
+//
+// Fifteen defects, counted 2026-09-03, shared one shape: an absent, empty,
+// truncated or unreadable payload input reached downstream logic and the
+// session ran ungoverned at exit 0 with nothing signalling a problem. The
+// count is decision-0087's own measurement, not a total either predecessor
+// states — decision-0083 records eight and decision-0084 several more without
+// adding them up, and four were still open when it was taken.
+//
+// ALMOST NONE was found by this suite or by reading the code — every one was
+// found by a reviewer RUNNING the hook against a deliberately broken input,
+// one file at a time, as they thought of it. This test is that reviewer,
+// written down.
+//
+// THE FILE LIST IS READ FROM THE BUNDLE, never hardcoded. That is what makes
+// the NEXT instance caught by construction: a payload file added to
+// plugins/trellis/reference/ later joins this matrix without anyone
+// remembering, and if the hook starts reading it unguarded, this test says so.
+//
+// DELIBERATE SUBSET of decision-0073 D1's delivery states, stated here where it
+// is done, per D1's own per-component relevance clause. It runs on the two
+// states where the hook DELIVERS — config-only and vendored-defaults — because
+// only there is "silence is wrong" unconditional. On path A a healthy, current
+// overlay is legitimately silent, and a payload file that path never reads
+// would make an unconditional assertion there simply false; that path is
+// covered by its own named subtests in TestStalenessHook instead.
+//
+// The healthy and CRLF rows run in this same table ON PURPOSE. Two of the
+// fifteen were the INVERSE defect — a guard that refused a healthy payload, one
+// of them over CRLF line endings exactly — so a matrix that only proved the
+// hook refuses broken input would be half a guard, and the missing half is the
+// one that has shipped twice.
+func TestBrokenPayloadIsNeverSilent(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundleRef := filepath.Join(vendoredBundleAbs(t), "reference")
+	entries, err := os.ReadDir(bundleRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payloadNames []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			payloadNames = append(payloadNames, e.Name())
+		}
+	}
+	sort.Strings(payloadNames)
+	if len(payloadNames) < 10 {
+		t.Fatalf("found only %d payload files in %s — the enumeration is broken, and a matrix over nothing passes", len(payloadNames), bundleRef)
+	}
+
+	// breaks are applied to ONE payload file at a time. "healthy" and "crlf"
+	// break nothing; they are the discrimination controls.
+	breaks := []string{"healthy", "crlf", "absent", "zero-byte", "unreadable", "truncated"}
+
+	// shapes are the two delivering project layouts. Both put the plugin root
+	// inside the repo under .claude/skills/, which decision-0070 D6 requires
+	// for the defaults path; config-only adds the project file that claims
+	// path B.
+	shapes := []string{"config-only", "vendored-defaults"}
+
+	files := payloadFiles()
+
+	for _, name := range payloadNames {
+		for _, brk := range breaks {
+			for _, shape := range shapes {
+				t.Run(name+"/"+brk+"/"+shape, func(t *testing.T) {
+					if brk == "unreadable" && os.Geteuid() == 0 {
+						t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+					}
+					proj := t.TempDir()
+					pluginRoot := filepath.Join(proj, ".claude", "skills", "trellis")
+					refDir := filepath.Join(pluginRoot, "reference")
+					if err := os.MkdirAll(refDir, 0o755); err != nil {
+						t.Fatal(err)
+					}
+					for _, f := range payloadNames {
+						body := readFileT(t, filepath.Join(bundleRef, f))
+						target := filepath.Join(refDir, f)
+						if f != name {
+							if err := os.WriteFile(target, []byte(body), 0o644); err != nil {
+								t.Fatal(err)
+							}
+							continue
+						}
+						switch brk {
+						case "healthy":
+							if err := os.WriteFile(target, []byte(body), 0o644); err != nil {
+								t.Fatal(err)
+							}
+						case "crlf":
+							crlf := strings.ReplaceAll(body, "\n", "\r\n")
+							if err := os.WriteFile(target, []byte(crlf), 0o644); err != nil {
+								t.Fatal(err)
+							}
+						case "absent":
+							// written by no one — that IS this row
+						case "zero-byte":
+							if err := os.WriteFile(target, nil, 0o644); err != nil {
+								t.Fatal(err)
+							}
+						case "unreadable":
+							if err := os.WriteFile(target, []byte(body), 0o000); err != nil {
+								t.Fatal(err)
+							}
+							t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+							// The premise, checked rather than assumed: a
+							// filesystem without POSIX modes would make this
+							// row silently test the healthy case instead.
+							if _, err := os.ReadFile(target); err == nil {
+								t.Skipf("premise: %s is still readable at mode 0000", target)
+							}
+						case "truncated":
+							if err := os.WriteFile(target, []byte(body[:len(body)/2]), 0o644); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+					if shape == "config-only" {
+						if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+							t.Fatal(err)
+						}
+						if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(files["rules-b.toml"]), 0o644); err != nil {
+							t.Fatal(err)
+						}
+					}
+
+					cmd := exec.Command(hook)
+					cmd.Dir = proj
+					cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+					var stdout, stderr bytes.Buffer
+					cmd.Stdout = &stdout
+					cmd.Stderr = &stderr
+					if err := cmd.Run(); err != nil {
+						t.Fatalf("a hook must never fail the session, but it exited non-zero (%v)\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+					}
+					raw := strings.TrimSpace(stdout.String())
+					if raw == "" {
+						t.Fatalf("SILENT: breaking %s (%s) on the %s path produced no output at all — this is the whole defect class, and it is what TRL-33 measured on main", name, brk, shape)
+					}
+					ctx := nudgeContext(t, raw)
+
+					loud := strings.Contains(ctx, "TRELLIS_")
+					// A COMPLETE injection is the rules body AND the rows. The
+					// damage shape this catches is neither of the two obvious
+					// ones: a payload that looks substantive and delivers an
+					// activation list with NO RULES under it — measured four
+					// ways on the posture header, at exit 0 with no marker.
+					governed := strings.Contains(ctx, rulesLoadedSentinel) &&
+						deliveredRow(ctx, "floor-intent-gate") &&
+						deliveredRow(ctx, "inv-minimal-first")
+
+					if !loud && !governed {
+						t.Fatalf("breaking %s (%s) on the %s path produced neither a complete governed injection nor a loud refusal — a partial delivery with nothing signalling it:\n%s", name, brk, shape, ctx)
+					}
+
+					// The other direction, which has shipped twice: a healthy
+					// payload must NOT be refused. CRLF is not a corruption —
+					// a collaborator on core.autocrlf=true has one by default.
+					if brk == "healthy" || brk == "crlf" {
+						if !governed {
+							t.Fatalf("a %s payload must govern, and %s was not delivered complete on the %s path:\n%s", brk, name, shape, ctx)
+						}
+						if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+							t.Fatalf("a %s payload was refused as broken — this is the over-correction, and it is as bad for a consumer as the silence:\n%s", brk, ctx)
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestNoPayloadReadBypassesTheGateway is the structural half of the guard
+// TRL-33 asks for. TestBrokenPayloadIsNeverSilent is the behavioural half and
+// the primary one; this half is what makes a read added LATER safe, at the
+// moment it is written rather than the moment someone breaks it.
+//
+// Two rules, and between them they have no false positives on the shapes this
+// hook legitimately uses:
+//
+//  1. Every shell variable assigned a path under the installed plugin must be
+//     passed to payload_read. This is what catches a NEW payload file — you
+//     cannot read one without naming it, and naming it puts you in the scan.
+//  2. No literal "$plugin/..." may be a file operand outside payload_read.
+//     This catches the shortcut around rule 1: reading the path inline without
+//     ever binding it to a variable.
+//
+// What the rules deliberately do NOT forbid is a SECOND read of a variable
+// that has already been through the gateway — $rules is read positionally by
+// three awks after payload_read has proved it readable and non-empty, and that
+// is the safe pattern rather than a bypass. The hazard the fifteen instances
+// shared was an UNCHECKED first read, not a checked one repeated.
+func TestNoPayloadReadBypassesTheGateway(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+
+	gateStart := strings.Index(src, "\npayload_read() {")
+	if gateStart < 0 {
+		t.Fatal("payload_read() not found in staleness.sh — the scan is broken, and a guard that reads nothing passes")
+	}
+	gateEnd := strings.Index(src[gateStart:], "\n}\n")
+	if gateEnd < 0 {
+		t.Fatal("payload_read() has no closing brace at column 0 — the scan is broken")
+	}
+	gateLo := strings.Count(src[:gateStart], "\n") + 1
+	gateHi := gateLo + strings.Count(src[gateStart:gateStart+gateEnd], "\n")
+
+	// Rule 1.
+	//
+	// ANCHORED ON A DELIMITER, NOT ON LINE START. `^[ \t]*([a-z_]+)="\$plugin/`
+	// was the first version and it had a blind spot review found on #262: the
+	// posture header is assigned inside a `case` arm —
+	// `firm) header="$plugin/reference/trellis-a.md" ;;` — so `$header`, a real
+	// payload path variable, was invisible to the scan. It happened to be
+	// guarded anyway, but a NEW payload path introduced the same way would have
+	// bypassed both rules undetected, which is the one thing this test exists to
+	// prevent. The mutation that proved the guard used a line-start assignment,
+	// so it never exercised the shape that was missing: a guard is only known to
+	// work against the mutations you actually try.
+	assignRe := regexp.MustCompile(`(?m)(?:^|[ \t;)&|])([a-z_]+)="\$plugin/`)
+	found := assignRe.FindAllStringSubmatch(src, -1)
+	seen := map[string]bool{}
+	var names []string
+	for _, m := range found {
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		names = append(names, m[1])
+	}
+	sort.Strings(names)
+	// Named, not counted. A count says nothing about WHICH variables were found,
+	// and the previous version's floor passed while missing $header because an
+	// unrelated variable filled the slot its own failure message attributed to
+	// the posture header. Every payload path staleness.sh reads today is listed;
+	// a scan that stops seeing one of them fails here rather than passing
+	// quietly on a smaller set.
+	for _, want := range []string{"header", "preset", "ref", "rules", "toml"} {
+		if !seen[want] {
+			t.Errorf("the payload-path scan no longer sees $%s — it found %v, and a guard that stops seeing a payload read passes on nothing", want, names)
+		}
+	}
+	for _, name := range names {
+		if !strings.Contains(src, `payload_read "$`+name+`"`) {
+			t.Errorf("$%s holds a path inside the installed plugin but is never passed to payload_read — every payload read goes through the gateway, so that an absent, empty or unreadable file is refused loudly instead of reaching downstream logic", name)
+		}
+	}
+
+	// Rule 2. A literal "$plugin/... as the operand of a read command or a file
+	// test. `emit` lines are excluded: they NAME payload paths in prose (the
+	// remedy tells the reader where to copy a preset from), which is text, not
+	// a read.
+	inlineRe := regexp.MustCompile(`(cat|head|tail|sed|awk|grep|wc|sort|\[ *!? *-[fser])\b[^\n]*"\$plugin/`)
+	for i, line := range strings.Split(src, "\n") {
+		n := i + 1
+		if n >= gateLo && n <= gateHi {
+			continue
+		}
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "emit ") {
+			continue
+		}
+		if inlineRe.MatchString(line) {
+			t.Errorf("staleness.sh:%d opens a payload path inline instead of through payload_read:\n  %s", n, trimmed)
+		}
+	}
+}
+
+// TestEveryReadRequiredStatesWhatEmptyMeans is the Codex half of the same
+// guard. readRequired has been the model for this all along — it reports
+// missing-file and unreadable-file where the shell hook used to swallow both —
+// but a zero-byte file came back as { value: "" }, a SUCCESS, and emptiness was
+// caught only by post-checks each caller remembered to write. That is guarded
+// by remembering, which is the failure mode TRL-33 was filed about — see
+// decision-0087 for the count and how it was arrived at.
+//
+// The third argument makes the default loud: a call that says nothing gets
+// empty-file. A call site where empty is legitimate — the project's own
+// .trellis/rules.toml, the supported hand-written-partial shape — says so in
+// its own source, where a reader sees it.
+func TestEveryReadRequiredStatesWhatEmptyMeans(t *testing.T) {
+	body, err := os.ReadFile("../plugins/trellis/hooks/codex-context.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+
+	// Every call site is an assignment, which is what separates them from the
+	// `function readRequired(...)` definition.
+	callRe := regexp.MustCompile(`(?s)=\s*readRequired\(([^;]*?)\);`)
+	calls := callRe.FindAllStringSubmatch(src, -1)
+	if len(calls) < 2 {
+		t.Fatalf("found only %d readRequired call sites — the scan is broken, and a guard that reads nothing passes", len(calls))
+	}
+	// The scan must see every occurrence but the definition. A call whose result
+	// is not assigned would otherwise slip past the pattern above unexamined,
+	// which is the failure mode of a source guard: passing on what it cannot see.
+	if occurrences := strings.Count(src, "readRequired("); occurrences != len(calls)+1 {
+		t.Fatalf("codex-context.mjs mentions readRequired( %d times but the scan matched %d call sites plus one definition — something is calling it in a shape this guard cannot read", occurrences, len(calls))
+	}
+	for _, m := range calls {
+		args := strings.Join(strings.Fields(m[1]), " ")
+		if !strings.Contains(args, "emptyError") && !strings.Contains(args, "emptyIsValid") {
+			t.Errorf("a readRequired call site does not say what an empty read means — pass { emptyError: ... } or { emptyIsValid: true }:\n  readRequired(%s)", args)
+		}
+	}
 }

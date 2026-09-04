@@ -105,7 +105,27 @@ function nearestOverlay(cwd, boundary) {
   }
 }
 
-function readRequired(projectRoot, relativePath) {
+// The third argument is the point of this signature, and TRL-33 is why it
+// exists. readRequired has always been the model the Claude hook is now built
+// to match — it reports missing-file and unreadable-file where staleness.sh
+// used to swallow both — but a ZERO-BYTE file came back as { value: "" }, a
+// SUCCESS. Emptiness was caught only by post-checks each caller remembered to
+// write (empty-prose for the prose and the rules, the version regex for the
+// stamp), and the project config had none at all. That is guarded by
+// remembering, which is precisely the failure mode decision-0083 and
+// decision-0084 kept shipping fixes for, one instance at a time.
+//
+// So the DEFAULT is now loud: a call that says nothing about emptiness gets
+// empty-file. A call site where an empty read is legitimate says so in its own
+// source, where a reader sees it, rather than by omission.
+//
+//   options.emptyError   the failure class to report for a zero-byte read
+//   options.emptyIsValid true when empty is a supported state for this file
+//
+// Every existing failure class is preserved byte for byte: the callers pass the
+// classes their post-checks already produced, so this is a structural change
+// with no behaviour change. TestEveryReadRequiredStatesWhatEmptyMeans holds it.
+function readRequired(projectRoot, relativePath, options = {}) {
   const absolute = path.join(projectRoot, relativePath);
   let stat;
   try {
@@ -144,7 +164,11 @@ function readRequired(projectRoot, relativePath) {
     if (total > MAX_CONTEXT_BYTES) {
       return { label: "assembled-context", error: "context-over-budget" };
     }
-    return { value: buffer.subarray(0, total).toString("utf8") };
+    const value = buffer.subarray(0, total).toString("utf8");
+    if (value.length === 0 && options.emptyIsValid !== true) {
+      return { error: options.emptyError ?? "empty-file" };
+    }
+    return { value };
   } catch {
     return { error: "unreadable-file" };
   } finally {
@@ -801,7 +825,15 @@ if (projectRoot === null) {
 
 // The rows are read first: they carry the posture that selects which prose
 // variant the plugin payload should supply.
-const configResult = readRequired(projectRoot, PROJECT_CONFIG);
+// emptyIsValid, and this is the ONE read in this file that gets it. A
+// zero-byte .trellis/rules.toml is a PROJECT file, not payload: the supported
+// hand-written-partial shape, which parseRulesToml reconciles into the full row
+// set exactly as an intentionally sparse file is reconciled. Refusing it would
+// be the over-correction — the same failure direction as the CRLF and
+// unreadable-preset blackouts the Claude hook shipped and had to withdraw.
+const configResult = readRequired(projectRoot, PROJECT_CONFIG, {
+  emptyIsValid: true,
+});
 // decision-0070 D5. A project that declares `governed = false` is not governed —
 // on EITHER host. Checked here, before the rules are parsed or assembled, for the
 // same reason the Claude hook checks it before every delivery path: an opt-out
@@ -872,9 +904,21 @@ const sources = vendored
       version: "reference/version",
     };
 
+// Each payload read states what an empty file means, in the class the
+// post-check below it already produced. Nothing observable changes; what
+// changes is that the statement is now at the READ, so a fourth key added to
+// this loop without one is refused as empty-file rather than delivered as "".
+const PAYLOAD_EMPTY_CLASS = {
+  prose: "empty-prose",
+  rules: "empty-prose",
+  version: "invalid-version",
+};
+
 const payload = {};
 for (const key of ["prose", "rules", "version"]) {
-  const result = readRequired(sources.root, sources[key]);
+  const result = readRequired(sources.root, sources[key], {
+    emptyError: PAYLOAD_EMPTY_CLASS[key] ?? "empty-file",
+  });
   if (result.error) {
     fail(result.label ?? sources[key], result.error);
     process.exit(0);
@@ -886,6 +930,10 @@ const trellis = payload.prose;
 const rules = payload.rules;
 const version = payload.version;
 
+// The three length/shape checks that follow are now the SECOND lock on the
+// same door — readRequired refuses a zero-byte file before they run. They stay
+// because they catch what emptiness cannot: a version stamp that is present
+// and malformed, and prose that is non-empty and truncated.
 if (trellis.length === 0) {
   fail(sources.prose, "empty-prose");
   process.exit(0);
@@ -898,8 +946,14 @@ if (!/^payload@[0-9a-f]{12}\n?$/u.test(version)) {
   fail(sources.version, "invalid-version");
   process.exit(0);
 }
+// sources.prose, not a hardcoded path. This named .trellis/internal/trellis.md
+// on BOTH branches, so on the plugin-native path it reported a failure against
+// a file that was never read — the file actually read is
+// reference/trellis-{a,b}.md. Same class of defect as every message this
+// change set corrects: right diagnosis, wrong file named. On the vendored
+// branch sources.prose IS that path, so nothing the tests assert moves.
 if (trellis.split("@rules.md").length - 1 !== 1) {
-  fail(".trellis/internal/trellis.md", "invalid-placeholder-count");
+  fail(sources.prose, "invalid-placeholder-count");
   process.exit(0);
 }
 // The rules payload's own well-formedness (the sentinel gate) must be checked
@@ -913,7 +967,10 @@ if (
   rules.split(SENTINEL).length - 1 !== 1 ||
   !rules.endsWith(`${SENTINEL}\n`)
 ) {
-  fail(".trellis/internal/rules.md", "invalid-rules");
+  // sources.rules, for the same reason as sources.prose above: hardcoded, this
+  // named the vendored path on the plugin-native branch too, where the file
+  // actually read is reference/rules.md.
+  fail(sources.rules, "invalid-rules");
   process.exit(0);
 }
 // Derived from the payload actually resolved above (vendored or plugin-native,
