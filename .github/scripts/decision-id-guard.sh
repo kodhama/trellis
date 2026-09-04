@@ -36,8 +36,12 @@
 #   GUARD_PR_FILES    newline-separated `<pr-number> <status> <path> [old-path]`
 #                     rows, covering every open PR INCLUDING this one. The
 #                     fourth field is GitHub's `previous_filename` and is
-#                     present only on a rename. Paths are assumed space-free,
-#                     which every `decisions/NNNN-slug.md` is.
+#                     present only on a rename. Paths must be space-free, which
+#                     every `decisions/NNNN-slug.md` is; a row with more fields
+#                     than its status allows is REFUSED (exit 2), never treated
+#                     as "no claim" — a space would otherwise split the path
+#                     across fields, match no decision shape, and pass green
+#                     against a taken id.
 #                     Unset -> `gh api` over every open PR, paginated.
 #
 # EXIT: 0 clean (a notice is still exit 0), 1 collision, 2 could not run.
@@ -123,9 +127,13 @@ else
 	while read -r n; do
 		[ -n "$n" ] || continue
 		# previous_filename is GitHub's OLD path, present only on a rename.
+		# </dev/null: this loop's stdin IS the PR list. `gh api` does not read
+		# stdin on a GET, so nothing is broken today; closing it costs nothing
+		# and means a future flag that does read stdin cannot silently eat the
+		# remaining PR numbers and shorten the sweep.
 		gh api "repos/$repo/pulls/$n/files" --paginate \
 			--jq '.[] | "\(.status) \(.filename) \(.previous_filename // "")"' \
-			>"$work/one-pr" ||
+			< /dev/null >"$work/one-pr" ||
 			cannot_run "could not read the files of PR #$n."
 		while IFS= read -r row; do
 			[ -n "$row" ] || continue
@@ -156,9 +164,32 @@ fi
 # this guard exists to prevent. So the source id stays taken. If that is ever
 # wrong, it is wrong in the direction of one wasted number rather than a
 # duplicate.
+#
+# KNOWN, AND NOT FIXED HERE: rename detection is GitHub's, not ours. If a
+# re-slug changes enough of the file that the API reports it as `removed` +
+# `added` rather than `renamed`, the `added` row claims an id that is on the
+# base branch — its own — and the guard reds a legitimate retitle. Renumbering
+# to dodge that would be wrong; the remedy is to merge anyway (the check is
+# advisory) or to split the rename from the content edit. Pre-dates the rename
+# rule above rather than being caused by it: under the old `added`-only rule
+# the same pair failed the same way.
 : >"$work/claims" # `<pr> <id> <path>`
-while read -r p st path prev; do
+while read -r p st path prev extra; do
 	[ -n "${p:-}" ] || continue
+
+	# A path containing a space splits across fields and then matches no
+	# decision shape — which reads as "not a claim" and passes green against a
+	# taken id. That is the exact direction this guard exists to eliminate, so
+	# a row with more fields than its status allows is a refusal, not a pass.
+	# (Rows are `<pr> <status> <path>` plus `<old-path>` on a rename; the live
+	# jq always emits the fourth slot, empty when there is no rename.)
+	if [ -n "${extra:-}" ]; then
+		cannot_run "malformed row for PR #$p — a path containing a space cannot be parsed: $p $st $path $prev $extra"
+	fi
+	if [ -n "${prev:-}" ] && [ "${st:-}" != "renamed" ]; then
+		cannot_run "malformed row for PR #$p — only a rename carries a fourth field: $p $st $path $prev"
+	fi
+
 	id=$(decision_id "${path:-}")
 	[ -n "$id" ] || continue
 	case "${st:-}" in
@@ -189,7 +220,9 @@ cut -d' ' -f1 "$work/mine" >"$work/mine-ids" ||
 sort "$work/mine-ids" >"$work/mine-ids.sorted" ||
 	cannot_run "could not sort the claimed ids."
 
-echo "PR #$pr claims: $(tr '\n' ' ' <"$work/mine-ids.sorted")"
+tr '\n' ' ' <"$work/mine-ids.sorted" >"$work/mine-ids.line" ||
+	cannot_run "could not format the claimed ids for display."
+echo "PR #$pr claims: $(cat "$work/mine-ids.line")"
 echo "Checking against $base and every other open pull request."
 echo
 
@@ -214,7 +247,18 @@ while read -r id path; do
 	taken=$(awk -v i="$id" '$1 == i { print $2; exit }' "$work/base-ids") ||
 		cannot_run "could not check decision-$id against $base."
 	if [ -n "$taken" ]; then
-		echo "::error file=$path::decision-$id is already on $base as $taken. Ids are allocated by whoever merges first, so a branch cut before that merge cannot see it. Renumber to an id free on $base AND on every open pull request."
+		# When the file named as "already on $base" is the one THIS PR is
+		# renaming away, the message reads as a contradiction. The behaviour is
+		# right — the source id stays taken until the rename merges — but that
+		# reasoning lives in a comment the reader never sees, so say it here.
+		# Arises when one diff both moves a record away from an id and puts
+		# another record on it — two renames, or a remove plus an add.
+		same_pr_source=""
+		if grep -q "^$pr renamed [^ ]* $taken\$" "$work/pr-files" 2>/dev/null ||
+			grep -q "^$pr removed $taken\$" "$work/pr-files" 2>/dev/null; then
+			same_pr_source=" NOTE: $taken is the very file this pull request moves off that id. It still counts, because the id is only free once this pull request merges, and handing it out before then would cause the collision this check exists to prevent — a branch cannot free an id for its own use."
+		fi
+		echo "::error file=$path::decision-$id is already on $base as $taken. Ids are allocated by whoever merges first, so a branch cut before that merge cannot see it. Renumber to an id free on $base AND on every open pull request.$same_pr_source"
 		fail=1
 	fi
 

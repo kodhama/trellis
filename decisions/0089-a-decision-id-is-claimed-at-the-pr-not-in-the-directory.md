@@ -55,6 +55,11 @@ check in this repository used before this one.
 file **newly added** by the branch carries an id that is already on the base branch, or that is also
 newly added by a **lower-numbered open pull request**.
 
+> *Diverges in practice, 2026-09-04 — see the dated note at the top of `## Consequences`, and
+> **TRL-46**. This point names **two** failure conditions, both keyed to "newly added". The shipped
+> guard has **three** — the third is a branch claiming one id twice in its own diff — and "newly
+> added" is broadened to `added`, `copied`, and the **destination** of a rename.*
+
 **2. The tie-break is "the older claim was there first".** Two open PRs claiming one id is a
 collision on both, but only the **higher-numbered** one goes red. Failing both would leave neither
 able to merge without first talking to the other, which is the coordination cost the check exists to
@@ -76,7 +81,8 @@ decision-0089 and #301 renumbers. Reported here, red there."*
 and `decisions/0089.md` are not claims. This is why the status filter lives in the script rather
 than in the workflow's `gh --jq` expression: the rule has to sit in the half the tests can reach.
 
-> *Superseded in practice, 2026-09-04 — see the dated note at the top of `## Consequences`. The
+> *Diverges in practice, 2026-09-04 — see the dated note at the top of `## Consequences`, and
+> **TRL-46**. The
 > shipped guard judges a rename by its **destination** id, accepts `copied`, and also fails a
 > branch that claims one id twice. This point is not corrected here; closing it properly is the
 > maintainer's act.*
@@ -122,10 +128,18 @@ record does not reopen the rule, only the example it parked.
 > `superseded_in_part_by` pointer — the shape this record itself used on `decision-0078` at point 6 —
 > and **that is the maintainer's act, not the author's** (`decision-0081`: supersession authority
 > scales with the cost of reversal, and this record is his merge). It is deliberately **not**
-> performed here, so what stands is this flag rather than a silent divergence. Points 1–3 and 5–6 are
-> unaffected: the guard, the tie-break, "state the rule and name the winner", script-not-inline-YAML,
-> and the closure of `decision-0078`'s parked observation — with one qualification on point 3, whose
-> *rule* stands while its second example does not, immediately below.
+> performed here, so what stands is this flag rather than a silent divergence. **The consumer is
+> `TRL-46`** — *"decision-0089 diverges from the shipped guard at points 1 and 4 — a successor record
+> is owed"* — which is what makes this a deferral with an address rather than the orphan
+> `inv-no-orphan-followups` forbids. That this record, of all of them, nearly parked one without a
+> consumer is worth naming: it is the rule of `decision-0078`, which point 6 closed, failing inside
+> the record that closed it.
+>
+> **What is and is not affected.** **Point 1 diverges too** and carries its own marker: it names two
+> failure conditions where the guard now has three, and "newly added" is broadened. **Point 4** is
+> replaced outright. **Points 2, 5 and 6 stand** — the tie-break, script-not-inline-YAML, and the
+> closure of `decision-0078`'s parked observation. **Point 3's rule stands; its second example does
+> not**, immediately below.
 >
 > One further error, left in place rather than edited: point 3's second example names **#299** as the
 > PR receiving the notice, where the script interpolates the current PR — the quoted text says

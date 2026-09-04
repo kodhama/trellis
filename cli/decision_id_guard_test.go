@@ -355,6 +355,51 @@ func TestDecisionIDGuardFailsClosedOnProcessingError(t *testing.T) {
 		"the empty result of a failed awk must not be reported as 'nothing claimed'")
 }
 
+// TestDecisionIDGuardRefusesAPathWithASpace — a silent pass, and the direction
+// this guard exists to eliminate. Rows are whitespace-split, so a path
+// containing a space lands half in `path` and half in the next field, matches no
+// decision shape, and reads as "not a claim" — green against a taken id. A row
+// with more fields than its status allows is now a refusal, not a pass.
+func TestDecisionIDGuardRefusesAPathWithASpace(t *testing.T) {
+	for _, tc := range []struct{ name, prFiles string }{
+		{"added", "300 added decisions/0088 old.md"},
+		{"rename destination", "300 renamed decisions/0090 new.md decisions/0086-old.md"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out, code := runGuard(t, "300", guardMainFiles, tc.prFiles)
+			if code != 2 {
+				t.Errorf("an unparseable row must refuse (exit 2), not pass; exit %d\n%s", code, out)
+			}
+			mustNotContain(t, out, "adds no decisions/NNNN-*.md file",
+				"a row it cannot parse must never be reported as 'nothing claimed'")
+			mustContain(t, out, "malformed row for PR #300",
+				"the refusal must name the row it could not read")
+		})
+	}
+}
+
+// TestDecisionIDGuardExplainsAnIDThisPRIsVacating — behaviour was already right;
+// the message was not. When one diff both moves a record off an id and puts
+// another record on it (two renames, or a remove plus an add), the base-collision
+// error names a file THIS PR is moving away, which reads as a contradiction. The
+// reasoning lived only in a source comment the reader never sees.
+func TestDecisionIDGuardExplainsAnIDThisPRIsVacating(t *testing.T) {
+	out, code := runGuard(t, "300",
+		"decisions/0088-old.md\ndecisions/0087-y.md",
+		"300 renamed decisions/0091-x.md decisions/0088-old.md\n"+
+			"300 renamed decisions/0088-z.md decisions/0087-y.md")
+
+	if code != 1 {
+		t.Errorf("an id on the base branch is taken even when this PR is vacating it; exit %d\n%s", code, out)
+	}
+	mustContain(t, out, "is the very file this pull request moves off that id",
+		"the error must explain why a file this PR is moving still blocks the id")
+	mustContain(t, out, "a branch cannot free an id for its own use",
+		"the reason has to be in the message, not only in a source comment")
+	mustContain(t, out, "decision-0091 (decisions/0091-x.md) — free.",
+		"the other rename claims a free id and must not be dragged red with it")
+}
+
 // TestDecisionIDGuardEnumeratesEveryOpenPR — a source-level assertion, and
 // labelled as one: the live enumeration cannot run offline, so this binds the
 // fix rather than the behaviour.
@@ -407,18 +452,32 @@ func TestDecisionIDGuardWorkflowRunsTheScript(t *testing.T) {
 	}
 	body := string(wf)
 
+	// Deliberately exact: the whole `run:` value must be the script path and
+	// nothing else. A block scalar (`run: |`), a wrapper, or a trailing
+	// `|| exit 1` all fail this — which is the intent, since each changes what
+	// CI actually executes or what it does with the exit status, and the guard's
+	// three exit codes are load-bearing. Widen it only with a reason.
 	runsIt := regexp.MustCompile(`(?m)^[ \t]*run:[ \t]+(\./)?\.github/scripts/decision-id-guard\.sh[ \t]*$`)
 	if !runsIt.MatchString(body) {
 		t.Error("decision-id-guard.yml has no `run:` step invoking .github/scripts/decision-id-guard.sh — the tested script is not what CI runs")
 	}
 
-	for _, want := range []string{
-		"GUARD_PR_NUMBER:",    // the input it refuses to run without
-		"GUARD_REPO:",         // the one the live gh path needs
-		"pull-requests: read", // reading sibling PRs is the whole point
+	// Anchored for the same reason `runsIt` is. A plain Contains is satisfied by
+	// a COMMENT naming the variable: replacing the whole `env:` block with prose
+	// mentioning GUARD_REPO and GUARD_PR_NUMBER would keep this green while the
+	// script exited 2 on every run. These must be real mapping keys, indented
+	// under `env:`, with a value.
+	for _, want := range []struct{ key, why string }{
+		{`GUARD_PR_NUMBER`, "the input the script refuses to run without"},
+		{`GUARD_REPO`, "the input the live gh path needs"},
 	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("decision-id-guard.yml no longer carries %q; the guard cannot do its job without it", want)
+		re := regexp.MustCompile(`(?m)^[ \t]+` + want.key + `:[ \t]*\S`)
+		if !re.MatchString(body) {
+			t.Errorf("decision-id-guard.yml has no `%s:` env entry with a value — %s", want.key, want.why)
 		}
+	}
+	// A permissions grant, not a mention of one.
+	if !regexp.MustCompile(`(?m)^[ \t]+pull-requests:[ \t]+read[ \t]*$`).MatchString(body) {
+		t.Error("decision-id-guard.yml no longer grants `pull-requests: read`; reading sibling PRs is the whole point")
 	}
 }
