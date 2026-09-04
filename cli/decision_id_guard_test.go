@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -196,23 +197,87 @@ func TestDecisionIDGuardFailsOnlyTheCollidingID(t *testing.T) {
 		"the free id must be reported clear, so the author knows which one to move")
 }
 
-// TestDecisionIDGuardIgnoresNonAddedFiles — a claim is an ADDED file. Editing
-// decision-0087 does not take 0087, and a rename is a file that already exists.
-// This rule lives in the script rather than in the workflow's `gh --jq` filter
-// precisely so this test can reach it.
+// TestDecisionIDGuardIgnoresNonAddedFiles — editing decision-0087 does not take
+// 0087, and removing a file takes nothing. This rule lives in the script rather
+// than in the workflow's `gh --jq` filter precisely so this test can reach it.
+//
+// `renamed` is NOT in this list: it used to be, and that was a false pass. See
+// TestDecisionIDGuardTreatsRenameDestinationAsAClaim.
 func TestDecisionIDGuardIgnoresNonAddedFiles(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
 		"300 modified decisions/0087-one-gateway-for-every-payload-read.md\n"+
-			"300 renamed decisions/0089-renamed-into-place.md\n"+
 			"300 removed decisions/0086-the-injected-copy-degrades.md\n"+
+			"300 changed decisions/0088-the-install-render-follows-strictness.md\n"+
 			"299 added decisions/0089-the-older-claim.md")
 
 	if code != 0 {
-		t.Errorf("modified/renamed/removed decision files are not claims; exit %d\n%s", code, out)
+		t.Errorf("modified/removed/changed decision files are not claims; exit %d\n%s", code, out)
 	}
-	mustNotContain(t, out, "::error", "no file was added, so no id was claimed")
+	mustNotContain(t, out, "::error", "no file was put at a new decision path")
 	mustContain(t, out, "adds no decisions/NNNN-*.md file",
 		"the guard should say it found no claim")
+}
+
+// TestDecisionIDGuardTreatsRenameDestinationAsAClaim — a confirmed false pass,
+// fixed here. The guard used to skip every `renamed` row on the reasoning that
+// "a rename is a file that already exists somewhere". That is true of the OLD
+// path and false of the NEW one: renaming 0088-old.md to 0090-new.md claims
+// 0090 as surely as adding it would, and the guard passed such a branch clean
+// while a lower-numbered PR held 0090.
+//
+// GitHub reports the destination in `filename` and the source in
+// `previous_filename`, which is the fourth field of a GUARD_PR_FILES row.
+func TestDecisionIDGuardTreatsRenameDestinationAsAClaim(t *testing.T) {
+	out, code := runGuard(t, "300", guardMainFiles,
+		"299 added decisions/0090-the-older-claim.md\n"+
+			"300 renamed decisions/0090-new.md decisions/0086-old.md")
+
+	if code != 1 {
+		t.Errorf("a rename INTO a new decision id is a claim and must collide; exit %d\n%s", code, out)
+	}
+	mustContain(t, out, "::error file=decisions/0090-new.md::",
+		"the error belongs on the destination path, which is what claims the id")
+	mustContain(t, out, "open PR #299 (decisions/0090-the-older-claim.md)",
+		"the rival holding the id must still be named")
+}
+
+// TestDecisionIDGuardIgnoresSlugOnlyRename — the other half of the rename rule,
+// and the reason it cannot simply be "renamed counts as added". Retitling
+// decision-0087 moves `0087-one-gateway.md` to `0087-a-better-slug.md`: same id
+// at both ends, so the record claims nothing it did not already hold. Counting
+// it would make the guard red on every legitimate retitle, since 0087 is on the
+// base branch by definition.
+func TestDecisionIDGuardIgnoresSlugOnlyRename(t *testing.T) {
+	out, code := runGuard(t, "300", guardMainFiles,
+		"300 renamed decisions/0087-a-better-slug.md decisions/0087-one-gateway-for-every-payload-read.md")
+
+	if code != 0 {
+		t.Errorf("a rename keeping its own id claims nothing; exit %d\n%s", code, out)
+	}
+	mustNotContain(t, out, "::error", "the record already held 0087")
+	mustContain(t, out, "adds no decisions/NNNN-*.md file",
+		"nothing was claimed, so there is nothing to report")
+}
+
+// TestDecisionIDGuardFailsOnDuplicateIDWithinOnePR — the second confirmed false
+// pass. Two files claiming one id inside a single diff went green: the base and
+// rival checks both compare against OTHER sources, so a branch colliding with
+// itself was invisible. No tie-break applies here — both files are on the same
+// branch and the author picks which one moves.
+func TestDecisionIDGuardFailsOnDuplicateIDWithinOnePR(t *testing.T) {
+	out, code := runGuard(t, "300", guardMainFiles,
+		"300 added decisions/0090-a.md\n"+
+			"300 added decisions/0090-b.md")
+
+	if code != 1 {
+		t.Errorf("one id under two filenames in one PR must be red; exit %d\n%s", code, out)
+	}
+	mustContain(t, out, "adds two files claiming decision-0090",
+		"the error must say what is wrong")
+	mustContain(t, out, "decisions/0090-a.md decisions/0090-b.md",
+		"both colliding files must be named — the author has to pick one to move")
+	mustNotContain(t, out, "— free.",
+		"an id claimed twice is not free; saying so would contradict the error")
 }
 
 // TestDecisionIDGuardIgnoresNonDecisionFilenames — `decisions/` holds more than
@@ -245,24 +310,115 @@ func TestDecisionIDGuardRequiresItsPRNumber(t *testing.T) {
 		"the failure must say what is missing")
 }
 
+// TestDecisionIDGuardFailsClosedOnProcessingError — `set -u` alone does not make
+// a shell script fail closed, and this script is `sh`, so `pipefail` is not
+// portably available. The original wrote `awk … | sort -u > mine`: a failing awk
+// left `sort` writing an empty file, exit 0, and the script reported "no id
+// claimed, nothing to check" — a clean pass produced by an internal error.
+//
+// Induced here by putting a failing `awk` first on PATH, which is the real
+// failure this guards against rather than a mocked return value.
+func TestDecisionIDGuardFailsClosedOnProcessingError(t *testing.T) {
+	shim := t.TempDir()
+	broken := "#!/bin/sh\necho 'awk: simulated failure' >&2\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(shim, "awk"), []byte(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(decisionIDGuardPath(t))
+	cmd.Dir = t.TempDir()
+	cmd.Env = []string{
+		"PATH=" + shim + string(os.PathListSeparator) + os.Getenv("PATH"),
+		"GUARD_PR_NUMBER=300",
+		"GUARD_BASE_REF=main",
+		"GUARD_MAIN_FILES=" + guardMainFiles,
+		// An id already on main: were awk working, this would be exit 1.
+		"GUARD_PR_FILES=300 added decisions/0087-a-different-slug.md",
+	}
+	out, err := cmd.CombinedOutput()
+	code := 0
+	if err != nil {
+		ee, ok := err.(*exec.ExitError)
+		if !ok {
+			t.Fatalf("running the guard: %v\n%s", err, out)
+		}
+		code = ee.ExitCode()
+	}
+
+	if code == 0 {
+		t.Fatalf("a processing failure must never read as a clean pass; exit 0\n%s", out)
+	}
+	if code != 2 {
+		t.Errorf("a processing failure is exit 2 (could not run), not %d\n%s", code, out)
+	}
+	mustNotContain(t, string(out), "adds no decisions/NNNN-*.md file",
+		"the empty result of a failed awk must not be reported as 'nothing claimed'")
+}
+
+// TestDecisionIDGuardEnumeratesEveryOpenPR — a source-level assertion, and
+// labelled as one: the live enumeration cannot run offline, so this binds the
+// fix rather than the behaviour.
+//
+// `gh pr list --limit N` caps SILENTLY — past the cap it returns a short list
+// and exits 0, so an id held by an unlisted PR reads as free. That contradicts
+// the script's own "every open PR" claim, and the failure is invisible. The
+// paginated API call has no cap. Verified equivalent against this repository
+// live before the swap: both forms returned 266 264 263 262 245 208.
+func TestDecisionIDGuardEnumeratesEveryOpenPRWithoutACap(t *testing.T) {
+	b, err := os.ReadFile(decisionIDGuardPath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(b)
+
+	// Match a COMMAND, not a mention. The script names `gh pr list` in the
+	// comment explaining why it does not use it, so a plain Contains flags the
+	// fix as the defect — the identical trap agent-workflow-parity.yml
+	// documents at its own USES_RE. A line with a `#` before the text is prose.
+	command := func(needle string) *regexp.Regexp {
+		return regexp.MustCompile(`(?m)^[^#\n]*` + regexp.QuoteMeta(needle))
+	}
+
+	if command("gh pr list").MatchString(src) {
+		t.Error("the guard enumerates open PRs with `gh pr list`, whose --limit caps silently; use the paginated API instead")
+	}
+	if !command(`gh api "$repo/pulls"`).MatchString(src) &&
+		!command(`gh api "repos/$repo/pulls"`).MatchString(src) {
+		t.Error("the guard no longer enumerates open PRs through `gh api .../pulls`")
+	}
+	if !command("--paginate").MatchString(src) {
+		t.Error("the open-PR enumeration must be paginated; without it the list is capped and a silent short list is a false pass")
+	}
+}
+
 // TestDecisionIDGuardWorkflowRunsTheScript — the pair this change creates: the
 // workflow is the only caller of the script, and the script is the only thing
 // these tests cover. If the workflow stops invoking it, the suite above goes on
 // passing while nothing runs in CI (decision-0028's source/derivative pair).
+//
+// The assertion is bound to the actual `run:` line, NOT to a substring search.
+// A plain Contains for the script path was satisfied by the workflow's own
+// comment and its `paths:` list, so rewriting `run:` to `run: true` kept this
+// test green while CI invoked nothing.
 func TestDecisionIDGuardWorkflowRunsTheScript(t *testing.T) {
 	wf, err := os.ReadFile("../.github/workflows/decision-id-guard.yml")
 	if err != nil {
 		t.Fatalf("the guard's workflow is missing: %v", err)
 	}
 	body := string(wf)
+
+	runsIt := regexp.MustCompile(`(?m)^[ \t]*run:[ \t]+(\./)?\.github/scripts/decision-id-guard\.sh[ \t]*$`)
+	if !runsIt.MatchString(body) {
+		t.Error("decision-id-guard.yml has no `run:` step invoking .github/scripts/decision-id-guard.sh — the tested script is not what CI runs")
+	}
+
 	for _, want := range []string{
-		".github/scripts/decision-id-guard.sh", // it runs the tested script
-		"GUARD_PR_NUMBER:",                     // ...with the input it refuses to run without
-		"GUARD_REPO:",                          // ...and the one the live gh path needs
-		"pull-requests: read",                  // reading sibling PRs is the whole point
+		"GUARD_PR_NUMBER:",    // the input it refuses to run without
+		"GUARD_REPO:",         // the one the live gh path needs
+		"pull-requests: read", // reading sibling PRs is the whole point
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("decision-id-guard.yml no longer carries %q; the tested script may not be what CI runs", want)
+			t.Errorf("decision-id-guard.yml no longer carries %q; the guard cannot do its job without it", want)
 		}
 	}
 }
