@@ -177,7 +177,7 @@ longer true.)*
 **Heading:** A small set of invariants, held as firmly as you choose.
 **Lede:** Not a process — the layer above it. The load-bearing
 invariants (directional flow, ratifiable artifacts, gate-at-handover,
-independent judgment, transparency…), each set along two dials: how
+independent judgment, transparency…), each set along dials: how
 strictly it applies, and who gates it. Everything else, Trellis
 respects.
 
