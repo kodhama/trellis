@@ -28,7 +28,7 @@ ratified: 2026-06-29
 > by id + supersession, `invariants-v0` → `invariants-v1`) to bump. POINTER: `decision-0047`
 > Consequence 4, `grove/adr-0011`.*
 
-> **What v1 changes, in one breath:** v0 was a flat list of 9. v1 splits it into a small
+> **What v1 changes, in one breath:** v0 was a flat list. v1 splits it into a small
 > **structural gate** (what a methodology must *have the shape for*), a **configurable
 > operating layer** (what Trellis supplies on top), **two dials** (how strict, who enforces),
 > and **two floors** (the two things never configurable to "off"). The driving evidence:
@@ -311,7 +311,7 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 
 ## Acceptance criteria
 
-- The **admission gate is small** (4 structural properties) and is the *only* set
+- The **admission gate is small** and is the *only* set
   `decision-0003`'s ingestion check uses.
 - Each operating invariant is something Trellis *supplies*, not something the methodology
   must already have.
@@ -359,11 +359,12 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   v1 itself.
 - **Minimal-first, applied to v1 itself (resolved this round):** the epistemic-integrity
   candidate merged into `inv-independent-judgment` (intent face); the bounded-correction
-  candidate dropped (durable half into `floor-transparency`). Operating layer trimmed back
-  **11 → 9** *in that round*; two entries have since been minted (`inv-deliberate-succession`,
-  `decision-0074`; `inv-no-orphan-followups`, `decision-0078`), so the set is now 4 structural +
-  10 operating + dials + floors. *(The trim is the v1 history; the total is current truth and moves
-  with the set — it read 9 until `decision-0078` re-derived it.)*
+  candidate dropped (durable half into `floor-transparency`). **The trim is the argument:**
+  minimal-first was applied to v1's own operating layer and cost it both of those — the round's
+  change history, with the rationale for each change, is `decision-0014`. Entries have been minted
+  since (`inv-deliberate-succession`, `decision-0074`; `inv-no-orphan-followups`, `decision-0078`);
+  the live set is the entries listed above, and its composition is stated once — and guarded
+  there — in `signature-catalog-v1`'s acceptance criteria.
 - **Adherence (`decision-0002`):** working stance is two coarse modes — *adopt* (one
   framework) vs *adapt* (synthesize from several); deliberately **not** formalized into the
   invariant model until instance #2 can test it. v1 encodes only the durable part
