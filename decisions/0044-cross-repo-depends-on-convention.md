@@ -60,8 +60,9 @@ date: 2026-07-10
 > corpus-wide `depends_on` migration (`decision-0047`) explicitly **exempted** frozen `decisions/`
 > — though that was a provenance *reclassification* into `informed_by`, a change of what the edge
 > means, where this changes only how the same edge is spelled. The prevailing shape for a merged
-> record is *"a dated note, 0 deletions"* (PR #272 on `decision-0089`); this change is 14
-> insertions and **1 deletion**, and does not meet it. It is done anyway because a note alone
+> record is *"a dated note, 0 deletions"* (PR #272 on `decision-0089`); this change carries
+> **exactly one deletion**, and does not meet it. That deletion is the retrofit itself — the
+> citation on line 5 — and every other line here is an append. It is done anyway because a note alone
 > cannot discharge the ruling: rubric check 4 reads frontmatter, not prose, so nothing short of
 > line 5 clears the FAIL. **What leaving it cost:** the corpus's only conformance check carried an
 > unconditional FAIL, so `decision-0076`, `-0088`, `-0090` and `-0092` each had to re-record the
