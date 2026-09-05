@@ -15,8 +15,9 @@ date: 2026-09-05
 > maintainer ruled the general shape on 2026-09-05, relayed to this session: *"Factual corrections
 > get dated notes. Rule divergences get successors."* The two marked points are rules, so this is the
 > successor. Written by a session that authored neither `#266` nor `#272`: the divergence below was
-> re-derived from the script and its tests rather than taken from the ticket, and point 4 turns out
-> **narrower** than both the ticket and the record's own marker state it.
+> re-derived from the script and its tests rather than taken from the ticket, and neither existing
+> summary of point 4 survives it — the record's own marker overstates the point, the ticket
+> understates it.
 
 # 0092 — a claim is a new record path, and a branch can collide with itself
 
@@ -63,12 +64,13 @@ code path, not off a test — no fixture exercises a rival whose claim is a rena
 | "`decisions/README.md` and `decisions/0089.md` are not claims" | **stands** | script `:78-86`; `…IgnoresNonDecisionFilenames` |
 | "the status filter lives in the script rather than in the workflow's `gh --jq` expression" | **stands** | the workflow passes env and one `run:` line; the filter is at script `:233-243` |
 
-So the marker at `decision-0089:140-141` — *"**Point 4** is replaced outright"* — **overstates it**, and
-so does TRL-46's *"a rename is not a claim"* row, which reduces the point to the one clause that is
-false. Two of its three examples and its whole rationale survive; its headline rule and one example do
-not. A successor that retired the point wholesale would take true statements down with the false ones,
-which is the disposal `decision-0040` guards against by requiring the scope to be stated at clause
-level.
+**Both existing summaries of this point are wrong, in opposite directions.** The marker at
+`decision-0089:140-141` — *"**Point 4** is replaced outright"* — **overstates it**: two of its three
+examples and its whole rationale survive. TRL-46 **understates it**, rendering the point as *"a rename
+is not a claim"*, which is one of the five clauses above; the headline rule is false independently of
+renames, because of `copied`. Retiring the point wholesale would take three true statements down with
+the two false ones — the disposal `decision-0040` guards against by requiring the scope to be stated
+at clause level, which is what the forward pointer on `decision-0089` does.
 
 ### Wider than points 1 and 4, in one place
 
