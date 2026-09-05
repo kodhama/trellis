@@ -40,6 +40,8 @@ so each rule here names the test that pins it.
 > file **newly added** by the branch carries an id that is already on the base branch, or that is also
 > newly added by a **lower-numbered open pull request**.
 
+*The first sentence is not in dispute and is not superseded; everything below concerns the second.*
+
 | what it says | what the guard does | where |
 | --- | --- | --- |
 | two failure conditions | **three** — the third is one diff claiming an id twice | script `:13-21`, `:267-279`; `TestDecisionIDGuardFailsOnDuplicateIDWithinOnePR` |
@@ -109,7 +111,10 @@ that whitespace-splitting would otherwise silence into "no claim". This is `sh`,
 `pipefail` is unavailable and every step's status is checked instead. **An internal failure must
 never read as "no id claimed, nothing to check."**
 
-**5. What of `decision-0089` stands, exactly.** Points 2, 3 (its rule), 5 and 6 are untouched. Within
+**5. What of `decision-0089` stands, exactly.** Points 2, 3 (its rule), 5 and 6 are untouched — and so
+is **point 1's first sentence**, that the check is a CI check on the pull request named
+`decision-id-guard`: nothing above restates it, point 5 independently names the same script and
+workflow, and it remains true. What point 1 loses is its **second sentence**, the rule. Within
 point 4: modifying a record does not claim its id, `decisions/README.md` and `decisions/0089.md` are
 not claims, and the status filter belongs in the script because the tests can only reach that half.
 The forward pointer added to `decision-0089` carries this scope, and nothing wider.
@@ -191,9 +196,25 @@ The forward pointer added to `decision-0089` carries this scope, and nothing wid
   `Grep`/`Glob` failed on every call (`ENOENT … posix_spawn 'rg'`, the known sandbox defect), which
   silently skips the corpus-wide checks. It enumerated the corpus from the repository index and read
   all 106 artifacts individually instead, so the sweep was completed by another route rather than
-  truncated. The author separately swept every citation of `decision-0089` outside the two records —
-  four sites, none of which cites point 1 or point 4, which is why `AGENTS.md:51` is the only
-  derivative here.
+  truncated.
+
+- **The author's own sweep is repository-wide, and its first version was not.** `0089` occurs on
+  **25 lines across 9 files** outside the two records, and they fall into four groups that add to 25:
+
+  | group | count | sites |
+  | --- | --- | --- |
+  | the number used as a fixture path, an example, or an id someone might allocate | 15 | 12 assertion/fixture strings in `cli/decision_id_guard_test.go`, `decision-id-guard.sh:75`, and 2 in `docs/superpowers/` |
+  | provenance headers naming TRL-40 / this record | 3 | `decision-id-guard.sh:4`, `decision-id-guard.yml:4`, `decision_id_guard_test.go:5` |
+  | citations of a point that **stands** | 6 | `cli-ci.yml:17` → p5 · `decision_id_guard_test.go:120` → p3 · `decision-0087:28` → p2 · `decision-0078:7` and `:160` → p6 · `decision-id-guard.sh:77` → the clause of p4 that survives |
+  | the derivative this change updates | 1 | `AGENTS.md:51` |
+
+  **Nothing outside `AGENTS.md:51` restates point 1's rule or a superseded clause of point 4.** *An
+  earlier draft of this bullet said "four sites", from a sweep over `decisions/`, `research/`,
+  `core/`, `profiles/`, `docs/` and the two root instruction files — scoped to the corpus while the
+  sentence claimed the repository, so `.github/` and `cli/` went unswept. Its replacement then
+  double-counted two test lines as fixtures. Both corrected against a re-run before merge; the
+  conclusion survived each pass and only the count moved. Recorded rather than quietly fixed: a
+  record about a claim left standing after its subject moved is the wrong place to leave one.*
 
 - **The unverified half is unchanged and still unverified.** These tests never reach `gh` or the
   network, so the live fetch path — pagination over every open PR, `previous_filename` arriving as the
