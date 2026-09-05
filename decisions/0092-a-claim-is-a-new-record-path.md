@@ -8,14 +8,15 @@ owner: agent
 date: 2026-09-05
 ---
 
-> **Provenance.** Filed as **TRL-46** by the session that shipped `#272` (`85594bf`), which fixed the
-> code, marked the record with dated notes, and deliberately did **not** perform the supersession —
-> *"that is the maintainer's act, not the author's"* (`decision-0089:107-148`, citing
-> `decision-0081`). The maintainer ruled the general shape on 2026-09-05, relayed to this session:
-> *"Factual corrections get dated notes. Rule divergences get successors."* The two marked points are
-> rules, so this is the successor. Written by a session that authored neither `#266` nor `#272`; the
-> divergence below was re-derived from the script and its tests rather than taken from the ticket,
-> and it does not land where the ticket said it would.
+> **Provenance.** `#272` (`85594bf`) fixed the code, marked the record with dated notes, and
+> deliberately did **not** perform the supersession — *"that is the maintainer's act, not the
+> author's"* (`decision-0089:107-148`, citing `decision-0081`). **TRL-46** was filed by the
+> coordinating session from `#272`'s code review, *"as the consumer `decision-0078` requires"*. The
+> maintainer ruled the general shape on 2026-09-05, relayed to this session: *"Factual corrections
+> get dated notes. Rule divergences get successors."* The two marked points are rules, so this is the
+> successor. Written by a session that authored neither `#266` nor `#272`: the divergence below was
+> re-derived from the script and its tests rather than taken from the ticket, and point 4 turns out
+> **narrower** than both the ticket and the record's own marker state it.
 
 # 0092 — a claim is a new record path, and a branch can collide with itself
 
@@ -62,18 +63,21 @@ code path, not off a test — no fixture exercises a rival whose claim is a rena
 | "`decisions/README.md` and `decisions/0089.md` are not claims" | **stands** | script `:78-86`; `…IgnoresNonDecisionFilenames` |
 | "the status filter lives in the script rather than in the workflow's `gh --jq` expression" | **stands** | the workflow passes env and one `run:` line; the filter is at script `:233-243` |
 
-So the marker at `decision-0089:140-141` — *"**Point 4** is replaced outright"* — **overstates it**. Two of
-its three examples and its whole rationale survive; its headline rule and one example do not. A
-successor that retired the point wholesale would take true statements down with the false ones, which
-is the disposal `decision-0040` guards against by requiring the scope to be stated at clause level.
+So the marker at `decision-0089:140-141` — *"**Point 4** is replaced outright"* — **overstates it**, and
+so does TRL-46's *"a rename is not a claim"* row, which reduces the point to the one clause that is
+false. Two of its three examples and its whole rationale survive; its headline rule and one example do
+not. A successor that retired the point wholesale would take true statements down with the false ones,
+which is the disposal `decision-0040` guards against by requiring the scope to be stated at clause
+level.
 
 ### Wider than points 1 and 4, in one place
 
 **No point of `decision-0089` states what a rename does to the id it leaves behind.** The shipped
 guard decides it: the source id stays taken while the PR is open, and the guard says so in the error
 rather than leaving the reader with a message that reads as a contradiction (script `:288-299`,
-`…ExplainsAnIDThisPRIsVacating`). The record has no clause to supersede here — this is an addition,
-not a correction.
+`…ExplainsAnIDThisPRIsVacating`). TRL-46 names the behaviour, in point 4's row; the *record* has no
+clause there to supersede, so point 3 below is an addition rather than a correction, and it is stated
+here because a reader of `decision-0089` alone would have no way to reach it.
 
 ## Decision
 
