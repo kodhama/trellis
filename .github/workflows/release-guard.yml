@@ -30,10 +30,15 @@ name: release-guard
 # check would have waved both through. A guard that misses the last two releases is not
 # a guard.
 #
-# THE EXCEPTIONS are the version bookkeeping files themselves — `VERSION` and the two
-# `plugin.json` manifests that TestPluginPackageParity keeps in step with it. Those ARE
-# the bump, so counting them as payload would make every release trip the guard on
-# itself, and a PR that touched only them would be a bump with nothing to bump for.
+# THE EXCEPTION is the version bookkeeping itself — `VERSION`, and the `version` FIELD
+# of the two `plugin.json` manifests that TestPluginPackageParity keeps in step with it.
+# That is the bump, so counting it as payload would make every release trip the guard on
+# itself, and a PR that touched only it would be a bump with nothing to bump for. The
+# exception is the field, not the files: the manifests also carry `description` and, on
+# the Codex side, the `hooks` and `skills` pointers, which are shipped content that
+# install.sh vends and the bundle manifest pins. Any change to a manifest OTHER than
+# its version line counts as payload. (Review of this PR: excluding the files wholesale
+# let a repointed `hooks` path or an edited `description` through with no bump.)
 #
 # A payload edit committed WITHOUT regenerating `reference/checksums` and
 # `reference/version` is a different defect, already caught by the regenerate-and-diff
@@ -67,6 +72,16 @@ jobs:
             ':(exclude)plugins/trellis/VERSION' \
             ':(exclude)plugins/trellis/.claude-plugin/plugin.json' \
             ':(exclude)plugins/trellis/.codex-plugin/plugin.json' || true)"
+          # The manifests are payload too, except for their version line. A changed
+          # line in one of them that is not `"version": ...` is shipped content.
+          for manifest in plugins/trellis/.claude-plugin/plugin.json plugins/trellis/.codex-plugin/plugin.json; do
+            if git diff "$range" -- "$manifest" \
+                | grep -E '^[+-]' \
+                | grep -vE '^(\+\+\+ |--- )' \
+                | grep -qvE '^[+-][[:space:]]*"version"[[:space:]]*:'; then
+              payload="$(printf '%s\n%s\n' "$payload" "$manifest" | sed '/^$/d')"
+            fi
+          done
           if [ -z "$payload" ]; then
             echo "ok — this PR does not change the plugin payload"
             exit 0
