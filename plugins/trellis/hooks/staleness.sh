@@ -300,7 +300,21 @@ bom="$(printf '\357\273\277')"
 # having a header at all, so the whole file was searched and a `governed = false`
 # under [rules] opted the project out, restoring the exact defect the header scan
 # was added to prevent.
-governed_head="$(sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+#
+# REGULAR AND READABLE BEFORE IT IS OPENED (TRL-43). This is the first thing in
+# the hook to open .trellis/rules.toml, and it used to open it before anything
+# asked what the path was. A FIFO there blocks open(2) until a writer appears,
+# so the sed never returned and the SessionStart hook never did either: the
+# host either hung on it or killed it on its timeout, and the project ran
+# ungoverned with no message. Same guard, same shape, as install.sh's copy of
+# this read (#267). An unreadable or non-regular file leaves $governed_head
+# empty, so it is never an opt-out: a path the hook cannot read cannot be a
+# project's refusal. What it IS is decided where the rows are read (path B).
+# The `-f` and `-r` tests are stat(2) and access(2); neither opens the path.
+governed_head=""
+if [ -f "$root/.trellis/rules.toml" ] && [ -r "$root/.trellis/rules.toml" ]; then
+  governed_head="$(sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+fi
 # Exactly ONE top-level assignment counts. Two — `governed = false` and
 # `governed = true` — is a malformed file, and opting out on whichever came first
 # would honour a config the parser would reject.
@@ -681,6 +695,33 @@ fi
 
 # ---------------------------------------------------------------------- path B
 toml="$root/.trellis/rules.toml"
+
+# A path that EXISTS but is not a regular file — a directory, a FIFO, a socket,
+# a device node — is neither a rules file nor a missing one, and every read
+# below is guarded by `-f`, so without this it fell into the missing-file
+# branch: a vendored bundle governed with the shipped defaults under a heading
+# saying the project "has no .trellis/rules.toml", and a user-scope install
+# announced the same and told the user to WRITE that file — over a FIFO, a
+# write that blocks exactly as the read did. Both were wrong about the
+# reader's state (decision-0073's class). Measured on the guarded hook before
+# this check: `mkdir .trellis/rules.toml` drew TRELLIS_NOT_YET_GOVERNING and
+# "has no .trellis/rules.toml". So it is refused, loudly, like the mode-000
+# file the slug check catches further down — the same disposition as an
+# unreadable regular file, said before anything tries to read it.
+#
+# HOSTS AGREE HERE, with different words. codex-context.mjs stat-checks
+# `isFile()` while locating the overlay and never reaches its `unreadable-file`
+# class on this input: measured, a FIFO or a directory at .trellis/rules.toml
+# draws `project-root: project-root-not-found` from Codex. Neither host governs,
+# neither is silent; only the label differs, and Codex's names the walk that
+# skipped the path rather than the path itself. Recorded so the next reader
+# does not go looking for the `unreadable-file` that TRL-43's text expected.
+# `-e` follows symlinks, as `-f` does and as Codex's statSync does, so a
+# dangling symlink is missing on both hosts and a symlink to a FIFO is this.
+if [ -e "$toml" ] && [ ! -f "$toml" ]; then
+  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml exists but is not a regular file (a directory, a FIFO, a socket or a device node; \`ls -l $toml\` says which), so the Trellis plugin hook did not open it. This project is configured for Trellis: something sits at .trellis/rules.toml, but it is not a rules file and it is not a governed = false opt-out, so the session is running ungoverned and NO rules and NO rows were injected. Nothing on disk was changed. To govern this project, replace it with a regular file holding the rows (copy $plugin/reference/rules-b.toml there) or the single line governed = false to opt out — show the user the exact path you would replace and get explicit confirmation before removing anything (floor-intent-gate): this hook advises, it never authorises a deletion. Tell the user before doing substantive work."
+  exit 0
+fi
 
 # decision-0070. Adoption is the consent act, and every path has one; what a
 # missing rules.toml means now depends on WHICH path installed this plugin.

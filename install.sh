@@ -336,14 +336,14 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-247939304b22cfb3501eb2dbc0e5887916f97a72f166b62c655b74c7f26b5ac0  .claude-plugin/plugin.json
-ed6f132cf7446df1a059b3394a9313eb05bce2d4f69f4d4edf0a479ecad829a3  .codex-plugin/plugin.json
+412a109f6442861f23a077d0bb3999ec669924254d6cb93d4f714a17bb9dd06b  .claude-plugin/plugin.json
+82c2484ca801439ecbc54bbcff02c1ca7ce1a1e70851be77efbf3789900e0a01  .codex-plugin/plugin.json
 3e969e059b4e979ee4f853680726adb3e7e80e8c34c2fa3b809203fc673a2284  README.md
-795d6bc79574d2aec03ad9cfec404bb95083c9dd210e6521e0d4199772d28d44  VERSION
+8a932413d42f95082f8323447652379a4885e328329efca3a67ec9c793c09940  VERSION
 7507ad4734ddb6f5ccf0340364839f0c44f81a0a94b81f016efe8109d1a549c0  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-89e695adc435bc04f6794ff02b2eea4fefa7b0fe56963d92defd6e14522a7074  hooks/staleness.sh
+25e30397547126fe4280fc4cc6f9ed31b14c358eb072742a21a5792cd9bdcecb  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 979d825724f8467513b4e8e7a50b3fbfbd7a3124825239599673e18fdcf202e3  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -492,8 +492,9 @@ if [ "$scope" = "project" ]; then
   # in the render branch below. Regular-and-readable BEFORE the open, as the
   # strictness read below is guarded: a FIFO at that path (review found it)
   # would block the sed forever waiting for a writer, ahead of the non-regular
-  # handling the seed step already has. The hook opens unguarded; that is the
-  # hook's own defect and is not fixed here.
+  # handling the seed step already has. The hook takes the same guard on its
+  # own copy of this read (TRL-43, this change); the parity test pins the
+  # guard lines too, so the two cannot drift apart again.
   governed_head=""
   if [ -f "$git_root/.trellis/rules.toml" ] && [ -r "$git_root/.trellis/rules.toml" ]; then
     governed_head="$(sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"

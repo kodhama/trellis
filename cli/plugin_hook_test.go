@@ -9,7 +9,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // TestStalenessHook exercises the plugin's SessionStart staleness hook — decision-0039
@@ -4426,5 +4428,121 @@ func TestEveryReadRequiredStatesWhatEmptyMeans(t *testing.T) {
 		if !strings.Contains(args, "emptyError") && !strings.Contains(args, "emptyIsValid") {
 			t.Errorf("a readRequired call site does not say what an empty read means — pass { emptyError: ... } or { emptyIsValid: true }:\n  readRequired(%s)", args)
 		}
+	}
+}
+
+// TRL-43. The hook read .trellis/rules.toml for the `governed` key before every
+// delivery path, and that read opened the file before anything checked it was
+// a regular file — so a FIFO at that path blocked the SessionStart hook until
+// the host gave up on it. Reproduced on main (49d938b): `timeout 10` on the
+// real hook against a `mkfifo .trellis/rules.toml` project exits 124 every
+// time. Every read of that file is now behind a regular-file check, and a path
+// that exists but is not a regular file is refused loudly rather than read as
+// "no rules.toml" (which it is not) or as an opt-out (which it is not either).
+//
+// A real FIFO, not a stand-in: the defect is the open blocking, and only a FIFO
+// blocks. The directory row cannot hang, so it pins the disposition alone.
+// Verified by mutation: with the `-f && -r` guard removed from the governed
+// read, the FIFO row hangs and this test reports it at the timeout.
+func TestStalenessHookDoesNotBlockOnNonRegularRulesToml(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range payloadFiles() {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		make func(t *testing.T, path string)
+	}{
+		{"a FIFO", func(t *testing.T, path string) {
+			if err := syscall.Mkfifo(path, 0o644); err != nil {
+				t.Skipf("cannot create a FIFO here: %v", err)
+			}
+		}},
+		{"a directory", func(t *testing.T, path string) {
+			if err := os.Mkdir(path, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(tc.name+" at .trellis/rules.toml", func(t *testing.T) {
+			proj := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			tc.make(t, filepath.Join(proj, ".trellis", "rules.toml"))
+
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
+			// Its own process group, so a timeout kills the sed blocked on the
+			// FIFO too and not just the shell that spawned it — an orphaned
+			// reader would hold the output pipe and stall Wait forever.
+			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+			var out bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &out, &out
+			if err := cmd.Start(); err != nil {
+				t.Fatal(err)
+			}
+			done := make(chan error, 1)
+			go func() { done <- cmd.Wait() }()
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); output:\n%s", err, out.String())
+				}
+			case <-time.After(30 * time.Second):
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+				// Wait joins the copier goroutines that write into out; reading
+				// the buffer before it returns is a data race. The group kill
+				// above is what makes this Wait return at all.
+				<-done
+				t.Fatalf("the hook hung on %s at .trellis/rules.toml — a read opened the path before checking it is a regular file\noutput so far: %s", tc.name, out.String())
+			}
+
+			got := out.String()
+			if !strings.Contains(got, "TRELLIS_RULES_NOT_LOADED") {
+				t.Errorf("%s at .trellis/rules.toml must be refused loudly; got:\n%s", tc.name, got)
+			}
+			if !strings.Contains(got, "not a regular file") {
+				t.Errorf("the refusal must say what is wrong with the path — that it is not a regular file; got:\n%s", got)
+			}
+			// Neither of the two things it is not: the "no rules.toml" branch
+			// (project-scope defaults, or the user-scope announcement) would be
+			// wrong about the reader's state, and its remedy — write the file —
+			// would block on the very FIFO it is describing.
+			for _, wrong := range []string{"has no .trellis/rules.toml", "TRELLIS_NOT_YET_GOVERNING", "TRELLIS_NOT_GOVERNING", "shipped defaults"} {
+				if strings.Contains(got, wrong) {
+					t.Errorf("%s at .trellis/rules.toml must not be read as a missing file or as an opt-out (found %q); got:\n%s", tc.name, wrong, got)
+				}
+			}
+			// The refusal names floor-intent-gate in its remedy, as every
+			// destructive remedy in this hook must, so a slug scrape is the
+			// wrong probe here: assert on the delivery shape instead — the
+			// posture header, the rules terminator, and an actual row. On the
+			// DECODED context: deliveredRow anchors at line start, and raw
+			// stdout is one JSON line whose newlines are escaped, so against
+			// it the row check matched nothing even over a full delivery
+			// (review of #268 measured 0 of 16 raw, 16 of 16 decoded).
+			ctx := nudgeContext(t, strings.TrimSpace(got))
+			for _, s := range []string{"**How strictly to follow them:**", "<!-- trellis:rules-loaded -->"} {
+				if strings.Contains(ctx, s) {
+					t.Errorf("no rule may be delivered over a rules.toml the hook could not read (found %q); got:\n%s", s, ctx)
+				}
+			}
+			for slug := range hookSlugs(ctx) {
+				if deliveredRow(ctx, slug) {
+					t.Errorf("no row may be delivered over a rules.toml the hook could not read; delivered %s", slug)
+				}
+			}
+		})
 	}
 }

@@ -2705,7 +2705,9 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 	})
 }
 
-// decision-0028: a guard per pair. The `governed` matcher — the head-of-file
+// decision-0028: a guard per pair. The `governed` matcher — the regular-and-
+// readable guard around the read (TRL-43: the empty init and the `-f && -r`
+// test, since a copy that drops it reopens the FIFO hang), the head-of-file
 // sed, the exactly-one count and the false test — is copied from the hook into
 // install.sh for the same reason the strictness awk is: the hook ships inside
 // the bundle the script vendors, so the two cannot share a file, and a copy
@@ -2718,14 +2720,17 @@ func TestInstallScriptGovernedParserMatchesHook(t *testing.T) {
 		for _, line := range strings.Split(readFileT(t, path), "\n") {
 			l := strings.TrimSpace(line)
 			switch {
-			case strings.HasPrefix(l, `governed_head="$(sed `),
+			case l == `governed_head=""`,
+				strings.HasPrefix(l, `if [ -f "$root/.trellis/rules.toml" ] && [ -r `),
+				strings.HasPrefix(l, `if [ -f "$git_root/.trellis/rules.toml" ] && [ -r `),
+				strings.HasPrefix(l, `governed_head="$(sed `),
 				strings.HasPrefix(l, `governed_n="$(printf `),
 				strings.HasPrefix(l, `printf '%s\n' "$governed_head" | LC_ALL=C grep -qE`):
 				got = append(got, strings.ReplaceAll(l, `"$root/`, `"$git_root/`))
 			}
 		}
-		if len(got) != 3 {
-			t.Fatalf("%s: expected the three governed-matcher lines (head sed, count, false test), found %d:\n%s", path, len(got), strings.Join(got, "\n"))
+		if len(got) != 5 {
+			t.Fatalf("%s: expected the five governed-matcher lines (empty init, regular-and-readable guard, head sed, count, false test), found %d:\n%s", path, len(got), strings.Join(got, "\n"))
 		}
 		return got
 	}
