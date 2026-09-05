@@ -40,7 +40,7 @@ framing, which is why this copy changed):
 
 - `cc` (Claude Code, default/active tab):
   ```
-  > /plugin marketplace add kodhama/kodhama
+  > /plugin marketplace add kodhama/stewards
   > /plugin install trellis@kodhama
   ```
 - `curl` (same plugin, no marketplace — kodhama/trellis#124):

@@ -108,7 +108,7 @@ From the kodhama family marketplace — the single front door for the whole fami
 resolved):
 
 ```
-/plugin marketplace add kodhama/kodhama
+/plugin marketplace add kodhama/stewards
 /plugin install trellis@kodhama
 ```
 

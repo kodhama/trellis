@@ -76,6 +76,6 @@ usage:
   trellis help       show this message
 
 This is not the installer. Install Trellis via the Claude Code plugin
-(/plugin marketplace add kodhama/kodhama → /plugin install trellis@kodhama)
+(/plugin marketplace add kodhama/stewards → /plugin install trellis@kodhama)
 or the manual copy path in the repo README.`)
 }
