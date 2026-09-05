@@ -53,6 +53,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -1517,7 +1518,29 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 	// that DECIDES — one that selects, patches, writes, or removes a refusal —
 	// which is why the strictness read was owed decision-0088 and the governed
 	// read was not.
-	t.Run("exactly three project file content reads: the marker check, the governed key and the strictness key", func(t *testing.T) {
+	//
+	// THE FOURTH READ CAME (TRL-44), and this is its argument, made here because
+	// decision-0090 D1 puts the count here and D2 keeps only a read that DECIDES
+	// in the corpus. It is the standalone `@AGENTS.md` import line of CLAUDE.md,
+	// copied from the hook's own `claude_imports_agents` gate. Why it is owed:
+	// install.sh probed CLAUDE.md and AGENTS.md alike for the managed-block
+	// marker, then told an opted-out project that "Claude Code loads those at
+	// launch over the opt-out" — of a file this host reads ONLY through that
+	// import line (decision-0057). Measured on an opt-out plus a block in
+	// AGENTS.md and no CLAUDE.md: the installer printed that warning and
+	// `rules: LEFT IN PLACE` while the hook, which gates the same probe, emitted
+	// nothing at all. Two components contradicting each other about the reader's
+	// state is what decision-0073 D2 exists to end.
+	//
+	// Why it does not go to the corpus under D2: it selects no output artifact,
+	// patches nothing, writes nothing, and removes no refusal. The render refusal
+	// still runs off the ungated $static_conflict, so an un-imported AGENTS.md
+	// block refuses exactly as before; the read changes which WARNING/NOTE is
+	// printed and whether the shape joins the `LEFT IN PLACE` summary, nothing
+	// else. Gating the refusal on it WOULD remove one, and that is D2's fourth
+	// clause — a corpus question, deliberately left open rather than taken here.
+	// A fifth read still has to come here and argue itself.
+	t.Run("exactly four project file content reads: the marker check, the governed key, the strictness key and the @AGENTS.md gate", func(t *testing.T) {
 		// Classify every grep by its OPERAND, not by whether the line happens to
 		// mention `git_root`. That earlier form was bypassed by aliasing:
 		//   claude_md="${git_root}/CLAUDE.md"
@@ -1531,27 +1554,140 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// the path through more indirection. It closes the demonstrated bypass and
 		// raises the cost of the next one; the behavioural fixtures above are what
 		// actually establish the property.
-		// grep's first quoted operand is the PATTERN; every one after it is a
-		// FILE. Classifying by position beats matching the line for `git_root`,
-		// which an alias walks straight past, and beats "operand contains a
-		// slash", which the same alias also defeats.
+		// A scripted command takes its PATTERN first and its FILES after, so the
+		// pattern has to be identified and dropped before anything is counted.
 		// Every command that can read a file, not just grep. The earlier version
 		// keyed on `grep`, and a reviewer walked past it with
 		//   sed -n '/inv-directional-flow/p' "$git_root/README.md"
 		// which reads project content and left the whole suite green.
 		//
-		// Operands are counted only when they are double-quoted and $-rooted —
-		// that is what a path built from this script's variables looks like, and
-		// it excludes heredoc delimiters and /dev/tty. Command names are matched
-		// at word boundaries, since a substring match makes `chmod` look like
-		// `od`. `scripted` commands take their pattern first and files after.
-		reader := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)\s|<\s*"`)
-		quoted := regexp.MustCompile(`'[^']*'|"[^"]*"`)
-		scripted := regexp.MustCompile(`(^|[\s;|(&])(grep|sed|awk)\s`)
-		operand := regexp.MustCompile(`"\$\{?[A-Za-z_][A-Za-z0-9_]*[^"]*"`)
-		var reads []string
+		// TRL-45. The version before this one tokenised only the QUOTED runs of a
+		// line and then took the first of them as the pattern. Two idiomatic
+		// forms walked past it, both reproduced against this suite with an extra
+		// read planted in install.sh and the whole suite still green:
+		//   grep -q zzz "$git_root/CLAUDE.md"                     (bare pattern:
+		//     the only quoted token is the FILE, so "first quoted = pattern"
+		//     dropped the file and left nothing to count)
+		//   sed -n "/^strictness/p" $git_root/.trellis/rules.toml  (bare path:
+		//     an unquoted operand was never tokenised at all)
+		// Both are what the shell accepts and what a hurried edit writes. So the
+		// unit is now a WORD — quoted runs and bare runs, concatenated, which is
+		// what the shell itself splits on — and quoting decides nothing about
+		// whether a word is counted. What decides it is position (the pattern
+		// slot) and expansion.
+		//
+		// A word is a read of pre-existing state when it EXPANDS a variable
+		// outside single quotes — that is what a path built from this script's
+		// variables looks like, and it drops literals, heredoc delimiters,
+		// /dev/tty, and single-quoted `sed` scripts like '$d' whose `$` is inert
+		// — and is not rooted at the staged bundle, the render temp file, or the
+		// vendor target. Command names are matched as whole words, since a
+		// substring match makes `chmod` look like `od`.
+		//
+		// WHAT THIS GUARD IS AND IS NOT, stated here because decision-0090 D1
+		// makes this comment the count's home and #267 leans on the count to keep
+		// the read widening bounded. It is still LEXICAL, and lexical analysis of
+		// shell cannot be made sound: a word is only a command because of runtime
+		// state this test never has. TWENTY-FOUR shapes were planted in install.sh
+		// and re-run against this subtest. SEVENTEEN hidden reads are caught: a
+		// bare pattern, a bare path, a path aliased through a variable quoted or
+		// bare, a non-grep reader, an operand on a continuation line, a literal
+		// operand ahead of the real one absolute or relative, a flag whose value
+		// is a separate word (`tail -n 1 "$p"`, `cut -d : -f 2 "$p"`,
+		// `sort -k 2 "$p"`, `head -n 3 "$p"`), a pattern whose literal text is
+		// itself a command name (`grep -q sed "$p"`), a second reader after `||`,
+		// a read sharing a line with a `>` write, and two stdin redirects. FOUR
+		// more are correctly NOT counted — `>`, `>>`, `1>` and a glued `>"$p"`
+		// write target, which an earlier revision counted as reads (an OVERcount,
+		// the one failure mode needing no eval or indirection). Eight of the
+		// twenty-four were found by review of this PR, four of them defects this
+		// scan's own revisions introduced. THREE ARE NOT CAUGHT, and no amount of
+		// further regex will catch them:
+		//   eval 'grep -q zzz "$git_root/CLAUDE.md"'   (the command is a string)
+		//   rd=grep; $rd -q zzz "$git_root/CLAUDE.md"  (the command is a value)
+		//   probe() { grep -q "$1" "$2"; }; probe zzz "$git_root/CLAUDE.md"
+		//                                              (the call site names no
+		//                                               command and the body no
+		//                                               path)
+		// So this subtest raises the cost of a laundered read and states its own
+		// ceiling; it is not proof that install.sh reads exactly four files. The
+		// instrument that WOULD prove it is behavioural, not lexical: run the
+		// installer against a scratch repo under an open(2) audit (strace, an
+		// LD_PRELOAD shim) and count the opens whose path is under the repo root.
+		// Expansion, aliasing, eval and indirection are all resolved by the
+		// kernel before the count is taken. That is a real piece of test
+		// infrastructure with its own portability question in CI, so it is
+		// proposed rather than smuggled in here (inv-minimal-first); the
+		// behavioural fixtures elsewhere in this file are what actually establish
+		// what the script reads.
+		// A reader command counts only at a COMMAND POSITION: the start of the
+		// line, or after `; | & ( ) { $(`, with any `VAR=value` prefixes between.
+		// Review of this PR found the earlier `[\s;|(&]` separator matching
+		// command words inside English message strings — `could not be read
+		// (permissions?)`, `the header tail produced nothing` — which is why the
+		// first version of this scan had to stop at the first plain literal
+		// operand to avoid counting a `$var` that was being PRINTED. That
+		// stopping rule was the wrong instrument and cost two shapes the old
+		// guard caught (below); prose is excluded here instead, at the match.
+		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
+		// Quoted runs and bare runs, concatenated: `"$git_root"/CLAUDE.md` is one
+		// word to the shell and must be one word here too.
+		word := regexp.MustCompile(`(?:'[^']*'|"[^"]*"|[^\s'"]+)+`)
+		single := regexp.MustCompile(`'[^']*'`)
+		expands := regexp.MustCompile(`\$\{?[A-Za-z_]`)
+		assign := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
+		// `<` but not `<<` (a heredoc, skipped above) and not the `<!--` inside
+		// the marker pattern, which the operand test rejects as a literal anyway.
+		redirect := regexp.MustCompile(`(^|[^<])<[ \t]*([^\s<>|;&()]+)`)
+		// An output redirect, optionally with a leading fd and optionally with the
+		// target glued on: `>`, `>>`, `1>`, `>"$path"`. Group 1 is the glued
+		// target, empty when the target is the next word.
+		outRedirect := regexp.MustCompile(`^[0-9]*>>?(.*)$`)
+		takesPattern := map[string]bool{"grep": true, "sed": true, "awk": true}
+		// One word: is it a path built from this script's variables that names
+		// pre-existing project state? Used for operands and redirect targets
+		// alike, since the shell reads both the same way.
+		isProjectRead := func(w string) bool {
+			if !expands.MatchString(single.ReplaceAllString(w, "")) {
+				return false
+			}
+			p := strings.ReplaceAll(strings.ReplaceAll(w, `"`, ""), "'", "")
+			// The staged bundle, the render temp file, and the vendor target are
+			// this script's own outputs, not the project's pre-existing state.
+			return !strings.HasPrefix(p, "$stage/") && p != "$rendered_tmp" && !strings.HasPrefix(p, "$target/")
+		}
+		isCommand := map[string]bool{"grep": true, "sed": true, "awk": true, "cat": true,
+			"head": true, "tail": true, "wc": true, "cut": true, "tr": true,
+			"sort": true, "od": true, "read": true}
+		// A trailing `\` continues the command, so the operand can sit on the next
+		// line — install.sh already writes reads that way. Join first, or the
+		// scan below sees a command with no file and a file with no command, and
+		// counts neither.
+		// `first` is what a failure REPORTS and what the three assertions below
+		// match on: the physical line the command starts on, unchanged by the
+		// join, so a continuation does not drag the next line's prose into an
+		// assertion about this one's grep pattern.
+		var lines []struct{ joined, first string }
 		for _, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
-			trimmed := strings.TrimSpace(line)
+			l := strings.TrimSpace(line)
+			// NEVER fold into a comment. The shell does not continue a `#` line —
+			// the comment ends at the newline and the next line is its own
+			// statement — so joining there diverges from what actually runs.
+			// Review of this PR: a comment ending in `\` (wrapped prose) swallowed
+			// the command line after it into a string still starting with `#`,
+			// which the skip below then dropped whole. Reproduced by putting such
+			// a comment above the `governed` read: the count fell from four to
+			// three and the read vanished from the scan.
+			if n := len(lines); n > 0 && strings.HasSuffix(lines[n-1].joined, `\`) &&
+				!strings.HasPrefix(lines[n-1].joined, "#") {
+				lines[n-1].joined = strings.TrimSuffix(lines[n-1].joined, `\`) + " " + l
+				continue
+			}
+			lines = append(lines, struct{ joined, first string }{l, l})
+		}
+		var reads []string
+		for _, line := range lines {
+			trimmed, reported := line.joined, line.first
 			if strings.HasPrefix(trimmed, "#") || strings.Contains(trimmed, "<<") {
 				continue
 			}
@@ -1567,39 +1703,102 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 			if r := strings.Index(cmd, " 2>"); r > 0 {
 				cmd = cmd[:r]
 			}
-			// Two stages. First every quoted token, in order, because for a
-			// scripted command the FIRST is the pattern and must not be mistaken
-			// for a file. Then keep only $-rooted ones: that is what a path built
-			// from this script's variables looks like, and it drops heredoc
-			// delimiters, /dev/tty, and literal patterns.
-			ops := quoted.FindAllString(cmd, -1)
-			if scripted.MatchString(cmd) {
-				if len(ops) == 0 {
+			// One pass over the words. A command name arms or disarms the pattern
+			// slot — a pipeline can hold several, and each stage gets its own —
+			// flags are skipped, the armed pattern slot eats exactly one word, and
+			// whatever is left is an operand.
+			patternDue, hit, inReader, writeDue := false, false, true, false
+			for _, raw := range word.FindAllString(cmd, -1) {
+				// An OUTPUT redirect names a write target, not a read. Review of
+				// this PR: `>` was stripped as punctuation with nothing recorded,
+				// so the target after it fell through to the operand test and any
+				// project-rooted path there was counted as a read — an OVERcount,
+				// and the one failure mode that needs no eval or indirection, just
+				// an ordinary `>` on a reader line. Reproduced with
+				// `cat "$stage/manifest" > "$git_root/leftover"`: five reads.
+				// Both spellings, since `>"$path"` is one word here and two to the
+				// shell, and a leading fd (`1>`) is still a redirect.
+				if m := outRedirect.FindStringSubmatch(raw); m != nil {
+					if m[1] == "" {
+						writeDue = true // the target is the next word
+					}
+					continue // a bare `>`, or the glued target itself
+				}
+				// Remaining redirection and pipeline punctuation glued to a word.
+				w := strings.TrimLeft(raw, "<|;()&")
+				if w == "" || assign.MatchString(w) { // `|`, `(`, or `LC_ALL=C`
 					continue
 				}
-				ops = ops[1:]
+				if writeDue { // the target of the `>` just seen
+					writeDue = false
+					continue
+				}
+				if strings.HasPrefix(w, "-") { // a flag, never a file
+					continue
+				}
+				// BEFORE the command-name lookup, not after: an armed pattern slot
+				// consumes the very next word whatever it looks like. Review of
+				// this PR found `grep -q sed "$git_root/CLAUDE.md"` — searching for
+				// the literal string `sed` — re-arming the slot on its own pattern,
+				// so the file after it was eaten as "the pattern" and never tested.
+				if patternDue {
+					patternDue = false // the pattern, whether or not it is quoted
+					continue
+				}
+				// `;`, `||`, `&&` end the reader's operand list — what follows is
+				// a different command, and its arguments are not files this reader
+				// opens. A `|` does NOT: the next pipeline stage may itself be a
+				// reader with a file. Without this, the scan ran off the end of
+				// `grep -q … "$stage/…" || fail "…$header…"` and counted the
+				// diagnostic's own text.
+				if strings.Contains(raw, ";") || strings.Contains(raw, "||") || strings.Contains(raw, "&&") {
+					inReader, patternDue = false, false
+					continue
+				}
+				if bare := strings.Trim(w, `"'`); isCommand[bare] {
+					inReader, patternDue = true, takesPattern[bare]
+					continue
+				}
+				if !inReader {
+					continue
+				}
+				// A literal operand is skipped, NOT a reason to stop scanning the
+				// line. Stopping cost the guard two shapes the version before it
+				// caught, both found by review of this PR: `cat missing "$path"`,
+				// and any flag that takes a separate value — `tail -n 1 "$path"`,
+				// `cut -d : -f 2 "$path"`, `sort -k 2 "$path"` — where the bare
+				// value word sits between the command and its file.
+				if isProjectRead(w) {
+					hit = true
+					break
+				}
 			}
-			for _, f := range ops {
-				if !operand.MatchString(f) {
-					continue // a literal, not a path built from a variable
+			// A `<` redirect is a read whatever command it is attached to, and it
+			// does not sit in the operand list at all: `done < "$git_root/x"`
+			// closes a `while read` loop whose own words stop the scan above. So
+			// every redirect operand on the line is tested independently.
+			for _, m := range redirect.FindAllStringSubmatch(cmd, -1) {
+				if isProjectRead(m[2]) {
+					hit = true
+					break
 				}
-				if strings.HasPrefix(f, `"$stage/`) || f == `"$rendered_tmp"` || strings.HasPrefix(f, `"$target/`) {
-					continue // the staged bundle, the temp file, or the vendor target
-				}
-				reads = append(reads, trimmed)
-				break
+			}
+			if hit {
+				reads = append(reads, reported)
 			}
 		}
-		if len(reads) != 3 {
-			t.Fatalf("install.sh makes %d content read(s) of a project file; exactly three are argued (the managed-block marker, and the governed and strictness keys of .trellis/rules.toml):\n%s", len(reads), strings.Join(reads, "\n"))
+		if len(reads) != 4 {
+			t.Fatalf("install.sh makes %d content read(s) of a project file; exactly four are argued (the managed-block marker, the governed and strictness keys of .trellis/rules.toml, and CLAUDE.md's @AGENTS.md import gate):\n%s", len(reads), strings.Join(reads, "\n"))
 		}
-		var marker, governed, strictness string
+		var marker, governed, strictness, importGate string
 		for _, r := range reads {
 			switch {
 			case strings.Contains(r, `<!-- trellis:begin`):
 				marker = r
 			case strings.HasPrefix(r, `governed_head=`):
 				governed = r
+			case strings.Contains(r, `@AGENTS`):
+				importGate = r
 			case strings.Contains(r, `.trellis/rules.toml`):
 				strictness = r
 			}
@@ -1622,6 +1821,27 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// this scan matches by construction.
 		if strictness == "" || !strings.Contains(strictness, `< "$git_root/.trellis/rules.toml"`) {
 			t.Errorf("the other permitted content read must be the strictness key of .trellis/rules.toml, read via a `< \"$git_root/.trellis/rules.toml\"` redirect; reads were:\n%s", strings.Join(reads, "\n"))
+		}
+		// The import gate reads CLAUDE.md and nothing else, and reads it for ONE
+		// line. Two properties, both load-bearing since TRL-48 made this read
+		// decide the RENDER and not only the wording:
+		//   - ANCHORED. An unanchored form is the defect the hook already fixed
+		//     once: documentation ABOUT the import — prose, or a fenced example —
+		//     read as the import itself, which puts the installer back to
+		//     claiming this host loads a file it does not.
+		//   - BOM-TOLERANT, `($bom)?`, exactly as the marker grep four lines down
+		//     already is. A CLAUDE.md whose `@AGENTS.md` line is line 1 and whose
+		//     encoding an editor rewrote on a Windows-default checkout otherwise
+		//     reads as NOT importing — and the render then proceeds over a block
+		//     the host does load. Reproduced against this script before the fix
+		//     (BOM'd import + AGENTS.md block: rendered, and the NOTE asserted
+		//     the host "never reads that file"); the hook carries the identical
+		//     probe, so nothing reported it. Found by an automated reviewer on
+		//     the PR that made this read gate the refusal, not by this guard,
+		//     which is why the property is now asserted rather than assumed.
+		if importGate == "" || !strings.Contains(importGate, `"^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$"`) ||
+			!strings.Contains(importGate, `"$git_root/CLAUDE.md"`) {
+			t.Errorf("the fourth permitted content read must be the ANCHORED, BOM-tolerant standalone @AGENTS.md import line of \"$git_root/CLAUDE.md\"; reads were:\n%s", strings.Join(reads, "\n"))
 		}
 	})
 }
@@ -1689,6 +1909,68 @@ func TestVendorRejectsAnEmptyScopeFlag(t *testing.T) {
 	}
 }
 
+// TRL-44. install.sh carries a comment enumerating every read it makes of
+// pre-existing project state, with a headline count. That comment has been wrong
+// three times — twice for claiming too little ("the ONE place this script reads
+// .trellis/"; "no contents are read anywhere"), then for a stale count that TRL-38
+// updated by adjusting rather than counting and left short of the read it had just
+// added. Each correction was a fix to the instance; this is the fix to the class
+// (inv-self-improvement), and it is the reason the enumeration now counts LINES:
+// a unit a scan can reproduce, so the seventeenth read fails here in the commit
+// that adds it instead of two releases later in a review.
+//
+// This is deliberately NOT the paranoid classifier the content-read subtest uses.
+// The stake is different: a laundered EXISTENCE test leaves a comment stale, not a
+// script that reads a declared posture, and the content reads — the ones AC2
+// actually bounds — are already scanned by operand over there. What this pins is
+// that the number in the comment and the number in the code are the same number.
+func TestInstallScriptReadEnumerationIsCounted(t *testing.T) {
+	src := readFileT(t, installScriptPath(t))
+	// The enumeration's own unit, transcribed: a line, outside a comment, that
+	// tests or reads one of the project paths as "$git_root/…" or "$rules_dir/…".
+	// Writes are excluded by construction — cp/mv/mkdir name their target as an
+	// operand of a command this pattern does not match.
+	site := regexp.MustCompile(`(\[ *!? *-[a-z] +"\$(git_root|rules_dir)/|(grep|sed|awk|cat|head|tail) [^|]*"\$(git_root|rules_dir)/|< *"\$(git_root|rules_dir)/)`)
+	var sites []string
+	for _, line := range strings.Split(src, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		if site.MatchString(line) {
+			sites = append(sites, strings.TrimSpace(line))
+		}
+	}
+	// The headline the comment states, in words, so the two cannot be edited
+	// past each other by a digit.
+	const want, stated = 16, "SIXTEEN LINES"
+	if !strings.Contains(src, "pre-existing project state — "+stated) {
+		t.Fatalf("the read enumeration's headline has moved or been reworded; this guard reads it verbatim and cannot check a count it cannot find (looked for %q)", stated)
+	}
+	if len(sites) != want {
+		t.Errorf("install.sh reads pre-existing project state on %d lines; its enumeration says %s. Re-count and update the comment in the same commit — that is the whole point of the unit being a line:\n%s", len(sites), stated, strings.Join(sites, "\n"))
+	}
+	// The per-path tallies have to sum to the headline, or the enumeration is
+	// internally inconsistent even when the total happens to be right — the shape
+	// of the "existence x2" defect, which was a per-path count that had gone stale
+	// under a headline that had not.
+	tally := regexp.MustCompile(`(?m)^  #   - .*? (\d+)  \(`)
+	sum := 0
+	rows := tally.FindAllStringSubmatch(src, -1)
+	for _, m := range rows {
+		n, err := strconv.Atoi(m[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum += n
+	}
+	if len(rows) == 0 {
+		t.Fatal("the read enumeration's per-path rows no longer parse; this guard checks that they sum to the headline")
+	}
+	if sum != want {
+		t.Errorf("the read enumeration's per-path counts sum to %d across %d rows, but its headline says %s", sum, len(rows), stated)
+	}
+}
+
 // TestInstallScriptNamesNoProjectFileInExecutableCode (spec-0005 AC2's
 // checkable-by-absence clause). The clause names five strings; before this test
 // nothing enforced it, and the clause had silently gone false once already —
@@ -1713,9 +1995,12 @@ func TestInstallScriptNamesNoProjectFileInExecutableCode(t *testing.T) {
 	//
 	// `trellis:begin`, `CLAUDE.md` and `AGENTS.md` are deliberately NOT here:
 	// spec-0005 AC2's amendment permits the managed-block content read and names
-	// them; TRL-37 argued a second read, the strictness key. The bounded version
-	// of that guard is the exactly-two-reads subtest in
-	// TestVendorGuardsAddedByReviewAreActuallyPinned.
+	// them; TRL-37 argued a second read, the strictness key; TRL-38 a third, the
+	// governed key; TRL-44 a fourth, CLAUDE.md's @AGENTS.md import line. The
+	// bounded version of that guard is the exactly-N-reads subtest in
+	// TestVendorGuardsAddedByReviewAreActuallyPinned, which is where
+	// decision-0090 D1 puts the count — "two" was this sentence's number for two
+	// reads longer than it was true, which is the drift TRL-44 is about.
 	terms := []string{"expression.md", "profile-"}
 	for i, line := range strings.Split(readFileT(t, installScriptPath(t)), "\n") {
 		for _, term := range terms {
@@ -1996,6 +2281,61 @@ func TestVendorUnreadableRulesTomlFallsBackToAdaptiveInsteadOfAborting(t *testin
 	}
 }
 
+// TRL-44. The posture is not the only thing an unreadable .trellis/rules.toml
+// loses. The `governed` read is guarded regular-and-readable by the same
+// reasoning, so its head comes back empty and $opted_out stays `no`: a file
+// declaring `governed = false` at mode 000 is rendered over, and the project is
+// then governed by all sixteen rules while its own config says it is not. That
+// behaviour is decision-0088 D3's, taken deliberately, and this test does not
+// contest it — an install that stops halfway is the worse state. What it pins is
+// the DISCLOSURE: the message spoke only of a posture that could not be honoured,
+// so the reader was never told the opt-out itself may have been missed, and the
+// install is the one moment anyone reads this output (floor-transparency).
+func TestVendorUnreadableRulesTomlSaysTheOptOutMayHaveBeenMissed(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a mode-000 file is still readable, so the fixture cannot be built")
+	}
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	toml := filepath.Join(repo, ".trellis", "rules.toml")
+	writeFileT(t, toml, "strictness = \"firm\"\ngoverned = false\n")
+	if err := os.Chmod(toml, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(toml, 0o644) })
+	res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+	if res.code != 0 {
+		t.Fatalf("exit %d\nstdout: %s\nstderr: %s", res.code, res.stdout, res.stderr)
+	}
+	// The behaviour D3 chose, asserted so that a later "fix" to the wording
+	// cannot quietly become a change to what happens.
+	rendered := filepath.Join(repo, ".claude", "rules", "trellis.md")
+	if !strings.Contains(readFileT(t, rendered), "inv-directional-flow") {
+		t.Fatalf("decision-0088 D3 renders on an unreadable rules.toml rather than stopping halfway; that is not what happened, and this test is about the message, not a behaviour change")
+	}
+	// The opt-out file itself is never rewritten, unreadable or not — checked by
+	// mode rather than by content, since reading it back would need the chmod
+	// undone and would then not be testing this fixture.
+	if fi, err := os.Stat(toml); err != nil || fi.Mode().Perm() != 0 {
+		t.Fatalf("the fixture file was replaced or its mode changed by the install (err=%v); the project's own rules.toml is never written: %v", err, fi)
+	}
+	for _, want := range []string{"NOR any opt-out", "governed = false", "governed by the rules file it declined"} {
+		if !strings.Contains(res.stdout, want) {
+			t.Errorf("the installer must say the OPT-OUT may have been missed, not only the posture (looked for %q); got:\n%s", want, res.stdout)
+		}
+	}
+	// NOT a count. TRL-44's report says such a project is "governed 16/16", and
+	// that is the one part of the finding this test does not encode: the rendered
+	// file gates activation on rows it imports from @../../.trellis/rules.toml,
+	// which is the very file that cannot be read, so how many rules survive into
+	// context is not something measured here. The defect being fixed is the
+	// disclosure — the reader was told only about a posture — and it does not
+	// depend on the number.
+	if strings.Contains(res.stdout, "sixteen rules") {
+		t.Errorf("the message claims a rule count for a project whose activation rows come from the unreadable file itself; say what governs, not how much:\n%s", res.stdout)
+	}
+}
+
 // TRL-38. A .trellis/rules.toml holding `governed = false` is a project saying
 // Trellis does not govern here (decision-0070 D5). The hook reads that key
 // before every delivery path and injects nothing on it, floors included. The
@@ -2087,9 +2427,38 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 	// therefore so must the installer. `governed = true` is not an opt-out
 	// either. Both render, and the hook (path B, with the rendered file moved
 	// aside as TestRenderedHeaderMatchesTheHooksOwnSelection does) injects rules.
-	for _, tc := range []struct{ name, toml string }{
-		{"misplaced under [rules]", "[rules]\ngoverned = false\ninv-directional-flow = { active = true }\n"},
-		{"governed = true", "governed = true\n" + payloadFiles()["rules-b.toml"]},
+	//
+	// TRL-44. These are also the ONLY inputs that reach the no-strictness-key
+	// posture note carrying the words `governed = false`, because a real opt-out
+	// is refused above — and that note used to answer them with advice written
+	// for a project it can no longer see: "the hook stands down entirely while
+	// this rendered file still governs — delete .claude/rules/trellis.md". Both
+	// halves are false here (measured: the hook injects the full rule set on the
+	// first fixture), and deleting the rendered file would leave the project MORE
+	// governed, not less. The note must now claim only the parity these fixtures
+	// demonstrate.
+	// TRL-45. The THIRD fixture is the exactly-one-key condition itself, and it
+	// was the gap: TestInstallScriptGovernedParserMatchesHook pins three lines of
+	// the matcher — the head sed, the count, and the false test — but NOT the
+	// `[ "${governed_n:-0}" -eq 1 ]` that consumes the count, and no fixture fed
+	// the installer a file with two top-level `governed` keys. Mutating that test
+	// to `-ge 1` left the whole suite green while the installer began opting out
+	// on `governed = false\ngoverned = true` and the hook — whose own count is
+	// still `-eq 1` — went on rendering: the two-hosts-disagree class that the
+	// comment above staleness.sh's own `governed_n` says the count exists to
+	// prevent (cited by content, not by line: TRL-45's report cited the line
+	// numbers and they had already drifted). Reproduced on a scratch repo,
+	// installer and hook both run, before this fixture was written. A malformed
+	// file is not an opt-out on either side; whichever key came first must not
+	// decide it. It is also the shape the note above names but could not show:
+	// the second top-level key that carries the words `governed = false` without
+	// opting out.
+	for _, tc := range []struct{ name, toml, wantPosture string }{
+		{"misplaced under [rules]", "[rules]\ngoverned = false\ninv-directional-flow = { active = true }\n",
+			"posture header: adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way; header from"},
+		{"governed = true", "governed = true\n" + payloadFiles()["rules-b.toml"], ""},
+		{"two top-level governed keys", "governed = false\ngoverned = true\n",
+			"posture header: adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way; header from"},
 	} {
 		t.Run("renders for "+tc.name, func(t *testing.T) {
 			repo := t.TempDir()
@@ -2108,6 +2477,20 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 			}
 			if out := runHook(t, repo); !strings.Contains(out, "inv-directional-flow") {
 				t.Errorf("the hook governs this project (its matcher does not opt out on this file) but the installer's disposition was checked above as a render — the two disagree if the hook injects nothing:\n%s", out)
+			}
+			// The posture note may not describe the hook as standing down, nor
+			// advise deleting the rendered file: the hook just injected sixteen
+			// rules for this project, so both would be false, and the deletion
+			// would leave it governed by the plugin instead of by a file it can
+			// edit. Matched on the claim, not on the old sentence, so a reword
+			// cannot bring it back under different words.
+			for _, forbidden := range []string{"stands down entirely", "delete .claude/rules/trellis.md if that is not what you want"} {
+				if strings.Contains(res.stdout, forbidden) {
+					t.Errorf("the posture note tells a project the hook GOVERNS that the hook stands down / that it should delete the rendered file (%q); measured on this same repo, the hook injects the full rule set:\n%s", forbidden, res.stdout)
+				}
+			}
+			if tc.wantPosture != "" && !strings.Contains(res.stdout, tc.wantPosture) {
+				t.Errorf("stdout must carry the corrected posture note %q; got:\n%s", tc.wantPosture, res.stdout)
 			}
 		})
 	}
@@ -2162,6 +2545,15 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 			func(t *testing.T, repo string) {
 				writeFileT(t, filepath.Join(repo, "CLAUDE.md"), inlineBlockFixture(t))
 			}},
+		// TRL-44, the positive control for the import gate: a block in AGENTS.md
+		// that CLAUDE.md DOES import is loaded at launch exactly like one in
+		// CLAUDE.md, so the warning is true here and must still fire. Its twin —
+		// the same block with no import — is the subtest below.
+		{"an inline managed block in an IMPORTED AGENTS.md", "managed block in AGENTS.md", "the managed block in AGENTS.md",
+			func(t *testing.T, repo string) {
+				writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+				writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "# Project\n\n@AGENTS.md\n")
+			}},
 	} {
 		t.Run(tc.name+" already present is left in place and warned about", func(t *testing.T) {
 			repo := t.TempDir()
@@ -2187,6 +2579,92 @@ func TestVendorRefusesToRenderOverGovernedFalseOptOut(t *testing.T) {
 			}
 		})
 	}
+
+	// TRL-44, the shape the warning above was wrong about and the one #267's own
+	// fixture could not see, because it planted the block in CLAUDE.md only.
+	// Claude Code reaches AGENTS.md ONLY through a standalone @AGENTS.md import
+	// in CLAUDE.md (decision-0057), which is why the hook gates its probe on that
+	// line. The installer did not, so on this repo it warned that "Claude Code
+	// loads those at launch over the opt-out", reported rules: LEFT IN PLACE, and
+	// offered a remedy that changes nothing for Claude — while the hook, on the
+	// same repo, emitted nothing at all. Measured before the fix; both halves are
+	// asserted here so neither can drift back alone.
+	t.Run("a managed block in an UNIMPORTED AGENTS.md is not claimed to be loaded", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "governed = false\n")
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("install failed: %s", res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+			t.Errorf("rendered over an opt-out (stat err=%v)", err)
+		}
+		// The false claim, and the summary line that followed from it. Nothing
+		// this host reads is loaded here, so neither may appear.
+		for _, forbidden := range []string{"Claude Code loads those at launch over the opt-out", "rules: LEFT IN PLACE"} {
+			if strings.Contains(res.stdout, forbidden) {
+				t.Errorf("stdout claims %q for a block in an AGENTS.md that no CLAUDE.md imports; this host never reads that file:\n%s", forbidden, res.stdout)
+			}
+		}
+		// Still SAID, because the block is real for a host that reads AGENTS.md
+		// directly, and because an opted-out project is owed the fact that its
+		// opt-out does not travel. Silence would trade one wrong statement for a
+		// missing one.
+		for _, want := range []string{"managed block in AGENTS.md", "no standalone @AGENTS.md line", "Codex", "/trellis:remove"} {
+			if !strings.Contains(res.stdout, want) {
+				t.Errorf("stdout must still name the block and why it is inert for this host (%q); got:\n%s", want, res.stdout)
+			}
+		}
+		// And the two components must now agree on this repo: the hook's gate
+		// leaves it with nothing to override, so it says nothing.
+		out := runHook(t, repo)
+		assertNoRuleDelivered(t, "the hook", out)
+		if strings.TrimSpace(out) != "" {
+			t.Errorf("the hook's gate should leave nothing to override on this repo; got:\n%s", out)
+		}
+	})
+
+	// Found by review OF THIS BRANCH, and it is the same defect one branch over:
+	// the NOTE above is independent of the rendered-file warning, so both fire in
+	// one run, and its first version generalised from its own condition to the
+	// whole project — "nothing is loaded over the opt-out here", "the hook stays
+	// silent on this project". With a pre-existing .claude/rules/trellis.md both
+	// are false: that file IS loaded (the WARNING three lines up says so, and the
+	// summary prints LEFT IN PLACE) and the hook emits TRELLIS_NOT_GOVERNING.
+	// Reproduced before the reword. The subtest above could not see it because it
+	// plants no rendered file, so this one does.
+	t.Run("the unimported-AGENTS.md note claims nothing about a rendered file that IS loaded", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "governed = false\n")
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".claude", "rules", "trellis.md"), "a previous render, contents irrelevant\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("install failed: %s", res.stderr)
+		}
+		// Both branches fire, which is the premise: without the first this test
+		// is the one above with extra steps.
+		for _, want := range []string{"ALREADY EXISTS", "no standalone @AGENTS.md line", "rules: LEFT IN PLACE"} {
+			if !strings.Contains(res.stdout, want) {
+				t.Fatalf("premise drifted — this run must print the rendered-file warning AND the AGENTS.md note (looked for %q):\n%s", want, res.stdout)
+			}
+		}
+		// No claim in either may be about the PROJECT's state. These two were,
+		// and the hook contradicts both on this repo.
+		for _, forbidden := range []string{"nothing is loaded over the opt-out", "stays silent on this project"} {
+			if strings.Contains(res.stdout, forbidden) {
+				t.Errorf("the AGENTS.md note generalises %q to a project whose rendered file is loaded and whose hook emits TRELLIS_NOT_GOVERNING; every claim in that branch must be about the block:\n%s", forbidden, res.stdout)
+			}
+		}
+		out := runHook(t, repo)
+		assertNoRuleDelivered(t, "the hook", out)
+		if !strings.Contains(out, "TRELLIS_NOT_GOVERNING") {
+			t.Fatalf("premise drifted — the hook must override the rendered file here, which is what makes the withdrawn wording false:\n%s", out)
+		}
+	})
 
 	// Review of #267: the governed read opened .trellis/rules.toml before any
 	// `-f` check, so a FIFO at that path blocked the sed forever, ahead of the
@@ -2266,4 +2744,276 @@ func TestInstallScriptGovernedParserMatchesHook(t *testing.T) {
 			t.Errorf("install.sh's governed matcher has drifted from the hook's (plugins/trellis/hooks/staleness.sh); the two deliveries must read the opt-out identically.\nhook:      %s\ninstall.sh: %s", h[i], s[i])
 		}
 	}
+}
+
+// TRL-44, decision-0028 again: the third copied matcher gets the third guard.
+// Whether Claude Code reads AGENTS.md is decided by one line in each script, and
+// they must decide it the same way — the whole point of the read is that the
+// installer stops asserting what the hook denies. As with the other two, the
+// hook's root variable is `$root` and the script's is `$git_root`; nothing else
+// may differ.
+func TestInstallScriptAgentsImportGateMatchesHook(t *testing.T) {
+	extract := func(path string) string {
+		t.Helper()
+		var got []string
+		for _, line := range strings.Split(readFileT(t, path), "\n") {
+			l := strings.TrimSpace(line)
+			if strings.HasPrefix(l, `grep -qE "^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$"`) {
+				got = append(got, strings.ReplaceAll(l, `"$root/`, `"$git_root/`))
+			}
+		}
+		if len(got) != 1 {
+			t.Fatalf("%s: expected exactly one @AGENTS.md import-gate line, found %d:\n%s", path, len(got), strings.Join(got, "\n"))
+		}
+		return got[0]
+	}
+	hookPath, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h, s := extract(hookPath), extract(installScriptPath(t)); h != s {
+		t.Errorf("install.sh's @AGENTS.md import gate has drifted from the hook's (plugins/trellis/hooks/staleness.sh); the two must agree on whether this host reads AGENTS.md at all.\nhook:      %s\ninstall.sh: %s", h, s)
+	}
+}
+
+// TRL-48, decision-0091 D1. The gate TRL-44 wired to the MESSAGE now also gates
+// the RENDER REFUSAL, and this is the test that pins the two deliveries to each
+// other on the shape where they disagreed. Both are run on the SAME scratch repo,
+// the way #273's fixtures do, because the defect was never visible in either one
+// alone: install.sh refused with "this project already delivers the rules
+// statically (managed block in AGENTS.md)" while staleness.sh on that same repo
+// injected the full rule set. Measured on 700ca30 before the change.
+//
+// Both directions, because a gate that never fires and a gate that always fires
+// are equally wrong: the un-imported block must RENDER, the imported one must
+// still REFUSE, and a block in CLAUDE.md must be untouched by any of it.
+func TestVendorAgentsBlockRefusalFollowsTheImportGate(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runHook := func(t *testing.T, repo string) string {
+		t.Helper()
+		cmd := exec.Command(hook)
+		cmd.Dir = repo
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+repo,
+			"CLAUDE_PLUGIN_ROOT="+filepath.Join(repo, ".claude", "skills", "trellis"))
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero: %v: %s", err, out)
+		}
+		return string(out)
+	}
+	// The rule body actually reaching a session, by a string from the payload
+	// rather than a landmark this test invents.
+	const aRule = "inv-directional-flow"
+
+	t.Run("an UNIMPORTED AGENTS.md block does not refuse the render", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		// The refusal, gone. Claude Code reaches AGENTS.md only through a
+		// standalone @AGENTS.md line in CLAUDE.md (decision-0057), there is none
+		// here, and .claude/rules/trellis.md is a file only Claude reads — so the
+		// two cannot be one delivery doubled, which is what the refusal claimed.
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+			t.Fatalf("the render was refused over a block in an AGENTS.md that no CLAUDE.md imports (stat err=%v); this host never reads that file, so there is no second delivery to double against — and the hook injects on this repo:\n%s", err, res.stdout)
+		}
+		if strings.Contains(res.stdout, "rules statically (managed block in AGENTS.md)") {
+			t.Errorf("stdout still claims static delivery for a file this host does not read:\n%s", res.stdout)
+		}
+		// Removing a refusal silently is a silent decision. The block is real for
+		// Codex, and the remedy the old refusal offered — delete it — would have
+		// ungoverned that host, so the NOTE has to say which way round it is.
+		for _, want := range []string{
+			"NOTE: this project carries a Trellis managed block in AGENTS.md",
+			"no standalone @AGENTS.md line",
+			"Codex",
+			"deleting the block would ungovern them",
+			"TRELLIS_STATIC_SHAPES_CONFLICT",
+			// The NOTE may not assert what neither component can know. An
+			// @-import chain (CLAUDE.md -> foo.md -> @AGENTS.md) IS followed by
+			// the host and is seen by neither anchored one-line probe, so on that
+			// repo the block and the rendered file are the same rules twice —
+			// and headless, where the plugin does not load (decision-0068), no
+			// watcher reports it. Found by an automated reviewer on #276 and
+			// measured: run 1 renders, run 2 renders again in silence.
+			"CHECK THIS IF YOUR CLAUDE.md IMPORTS OTHER FILES",
+		} {
+			if !strings.Contains(res.stdout, want) {
+				t.Errorf("the render path must SAY what it rendered over (%q); got:\n%s", want, res.stdout)
+			}
+		}
+		// The withdrawn sentence, by name. It claimed a fact about the host that
+		// this installer cannot establish from one anchored line.
+		if strings.Contains(res.stdout, "so Claude Code never reads that file") {
+			t.Errorf("the NOTE asserts the host never reads AGENTS.md; one anchored line in CLAUDE.md cannot establish that — an import chain reaching it is invisible to this probe:\n%s", res.stdout)
+		}
+		// And the two components now agree on this repo, which is the whole
+		// point: the installer delivers, the hook stands down to what it
+		// delivered. Neither is silent and neither contradicts the other.
+		out := runHook(t, repo)
+		if strings.Contains(out, aRule) {
+			t.Errorf("the hook injected the rule set alongside the file the installer just rendered — that is double delivery, the state the refusal existed to prevent:\n%s", out)
+		}
+		if !strings.Contains(out, "already loaded from .claude/rules/trellis.md") {
+			t.Errorf("the hook must stand down to the rendered file on this repo; got:\n%s", out)
+		}
+	})
+
+	// The positive control, and the direction that fails if the gate is widened
+	// into "never refuse over AGENTS.md". With the import line the host DOES load
+	// that file, both deliveries would be live, and no hook can un-load either.
+	t.Run("an IMPORTED AGENTS.md block still refuses the render", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "# Project\n\n@AGENTS.md\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+			t.Fatalf("rendered over a block in an AGENTS.md that CLAUDE.md DOES import (stat err=%v); the host loads both files, so this is live double delivery:\n%s", err, res.stdout)
+		}
+		if !strings.Contains(res.stdout, "rules statically (managed block in AGENTS.md)") {
+			t.Errorf("the refusal must still name the shape it found; got:\n%s", res.stdout)
+		}
+		// The render-path NOTE belongs to the render path only. Printing it here
+		// would tell an author their block was rendered over when nothing was.
+		if strings.Contains(res.stdout, "file above was rendered anyway") {
+			t.Errorf("the rendered-over NOTE fired on a run that rendered nothing:\n%s", res.stdout)
+		}
+		out := runHook(t, repo)
+		if !strings.Contains(out, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("the hook must refuse over the same block on the same repo; got:\n%s", out)
+		}
+	})
+
+	// The gate reads CLAUDE.md and only CLAUDE.md. A block THERE is loaded by the
+	// host whatever any import line says, so it must be unaffected — this is what
+	// fails if the gate is applied to $static_conflict as a whole rather than to
+	// the one shape the host may not read.
+	t.Run("a block in CLAUDE.md is refused with or without the import line", func(t *testing.T) {
+		for _, tc := range []struct{ name, claude string }{
+			{"no import line", ""},
+			{"with an import line", "\n@AGENTS.md\n"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				repo := t.TempDir()
+				initGitRepo(t, repo)
+				writeFileT(t, filepath.Join(repo, "CLAUDE.md"), inlineBlockFixture(t)+tc.claude)
+				writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+				res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+				if res.code != 0 {
+					t.Fatalf("exit %d: %s", res.code, res.stderr)
+				}
+				if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+					t.Fatalf("rendered over a managed block in CLAUDE.md (stat err=%v); the host loads that file unconditionally:\n%s", err, res.stdout)
+				}
+			})
+		}
+	})
+
+	// The two NOTEs for this shape are mutually exclusive and neither branch knows
+	// about the other. An opted-out project renders nothing, so the render-path
+	// NOTE would be telling its author about a file that does not exist, beside
+	// the opt-out branch's own NOTE about the same block. TRL-44 built that
+	// second one; this is the guard that stops the first from joining it.
+	t.Run("an opted-out project gets the opt-out NOTE and not the rendered-over one", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "governed = false\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+			t.Fatalf("premise drifted — the opt-out must still refuse the render (stat err=%v):\n%s", err, res.stdout)
+		}
+		if strings.Contains(res.stdout, "file above was rendered anyway") {
+			t.Errorf("the rendered-over NOTE fired on an opted-out run, which renders nothing; that sentence is false the moment it is printed:\n%s", res.stdout)
+		}
+		if !strings.Contains(res.stdout, "no standalone @AGENTS.md line") {
+			t.Errorf("the opt-out branch's own NOTE for this shape (TRL-44) must still fire; got:\n%s", res.stdout)
+		}
+	})
+
+	// Found by an automated reviewer on the PR that made this read gate the
+	// refusal, and it is the worst shape either component can be in: the import
+	// grep was anchored `^[[:space:]]*@` with NO BOM tolerance, while the marker
+	// grep four lines below it has been BOM-tolerant since #273 for the documented
+	// reason — an editor on a Windows-default checkout rewrites the encoding of a
+	// file whose first line is the thing being matched.
+	//
+	// Before TRL-48 that mis-selected a MESSAGE. After it, it selects the RENDER:
+	// a CLAUDE.md that really does import AGENTS.md reads as not importing, the
+	// refusal is skipped, and the host loads both the block and the rendered file.
+	// Reproduced on this branch before the fix — rendered, with the NOTE asserting
+	// "Claude Code never reads that file", which was false on that repo. And the
+	// hook carries the byte-identical probe, so it stood down quietly and
+	// TRELLIS_STATIC_SHAPES_CONFLICT never fired: silent and permanent, not the
+	// transient false negative decision-0091 D1's argument is built on. Fixed in
+	// both files in the same commit (decision-0028) and asserted here on the
+	// installer and the hook together, because a fix in one is worth nothing.
+	t.Run("a BOM'd @AGENTS.md import line is still an import line", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "\ufeff@AGENTS.md\n\n# Project\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+			t.Errorf("rendered over an AGENTS.md block whose import line is real and merely BOM'd (stat err=%v); the host loads both, and nothing downstream reports it:\n%s", err, res.stdout)
+		}
+		if strings.Contains(res.stdout, "never reads that file") {
+			t.Errorf("the NOTE asserts this host does not read AGENTS.md, on a repo that imports it:\n%s", res.stdout)
+		}
+		// The hook's copy of the probe, on the same repo. A fix in one script and
+		// not the other puts the two back to disagreeing, which is the whole
+		// defect TRL-48 exists to close.
+		out := runHook(t, repo)
+		if !strings.Contains(out, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("the hook must see the BOM'd import too and refuse over the block; got:\n%s", out)
+		}
+	})
+
+	// The asymmetry that kept the refusal ungated, pinned as a fixture rather than
+	// argued: this script WRITES, so its false negative is durable, while the hook
+	// only injects. What answers it is that the durable state has a named watcher.
+	// Render over an un-imported block, let the import line arrive afterwards, and
+	// the hook — which re-reads that line every session — reports the conflict at
+	// the next session start. If that ever stops being true, decision-0091 D1
+	// loses the argument it was decided on, and this subtest is where that shows.
+	t.Run("the import line arriving after the render is caught by the hook", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+			t.Fatalf("premise drifted — this run must render (stat err=%v):\n%s", err, res.stdout)
+		}
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "# Project\n\n@AGENTS.md\n")
+		out := runHook(t, repo)
+		if !strings.Contains(out, "TRELLIS_STATIC_SHAPES_CONFLICT") {
+			t.Fatalf("nothing reported the double delivery this render made possible once the import line arrived; that watcher is decision-0091 D1's answer to the write/inject asymmetry:\n%s", out)
+		}
+		if !strings.Contains(out, "AGENTS.md") {
+			t.Errorf("the hook's report must name the file whose block is now loaded; got:\n%s", out)
+		}
+	})
 }

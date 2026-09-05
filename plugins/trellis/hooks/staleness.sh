@@ -386,7 +386,7 @@ governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*g
 # defect on this change: a check that matched text NEAR the thing instead of
 # the thing.
 claude_imports_agents=no
-grep -qE '^[[:space:]]*@AGENTS\.md[[:space:]]*$' "$root/CLAUDE.md" 2>/dev/null && claude_imports_agents=yes
+grep -qE "^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$" "$root/CLAUDE.md" 2>/dev/null && claude_imports_agents=yes
 
 inline_file=""
 inline_files=""

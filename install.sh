@@ -336,14 +336,14 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-247939304b22cfb3501eb2dbc0e5887916f97a72f166b62c655b74c7f26b5ac0  .claude-plugin/plugin.json
-ed6f132cf7446df1a059b3394a9313eb05bce2d4f69f4d4edf0a479ecad829a3  .codex-plugin/plugin.json
+412a109f6442861f23a077d0bb3999ec669924254d6cb93d4f714a17bb9dd06b  .claude-plugin/plugin.json
+82c2484ca801439ecbc54bbcff02c1ca7ce1a1e70851be77efbf3789900e0a01  .codex-plugin/plugin.json
 3e969e059b4e979ee4f853680726adb3e7e80e8c34c2fa3b809203fc673a2284  README.md
-795d6bc79574d2aec03ad9cfec404bb95083c9dd210e6521e0d4199772d28d44  VERSION
+8a932413d42f95082f8323447652379a4885e328329efca3a67ec9c793c09940  VERSION
 7507ad4734ddb6f5ccf0340364839f0c44f81a0a94b81f016efe8109d1a549c0  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a289f0cd911c4392a89f3339d03feead7a2735dacfb893ff886ccb625bd2c809  hooks/hooks.json
-6bebb225a0155feb0c01157798aca9b28b2e776b677bda4e045ab329a506641b  hooks/staleness.sh
+25e30397547126fe4280fc4cc6f9ed31b14c358eb072742a21a5792cd9bdcecb  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 979d825724f8467513b4e8e7a50b3fbfbd7a3124825239599673e18fdcf202e3  reference/block-codex.md
 c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
@@ -469,6 +469,11 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 #      machine's layout to every collaborator.
 rendered_note="no rules file (project scope only)"
 static_conflict=""
+# Whether THIS HOST reads the shape $static_conflict names. Every shape it can
+# take is loaded by Claude Code except one — a managed block in AGENTS.md that
+# CLAUDE.md does not import — so `yes` is the default and the gate below is the
+# only thing that clears it (TRL-44).
+static_host_reads=yes
 opted_out=no
 bom="$(printf '\357\273\277')"
 if [ "$scope" = "project" ]; then
@@ -574,10 +579,74 @@ if [ "$scope" = "project" ]; then
   # — and the alternative is parsing markdown in POSIX sh to find fences. The
   # author can move the example or indent it. Chosen over the fail-OPEN
   # alternative of dropping the anchor, which reopens the prose case.
+  #
+  # TRL-44. A block in AGENTS.md is a block THIS HOST MAY NEVER READ. Claude Code
+  # reaches AGENTS.md only through a standalone `@AGENTS.md` import line in
+  # CLAUDE.md (decision-0057: "Claude Code can import AGENTS.md from CLAUDE.md;
+  # Codex discovers AGENTS.md directly"), and the hook gates its own AGENTS.md
+  # probe on exactly that line — `claude_imports_agents` in staleness.sh — for
+  # decision-0073 D2's reason: never be wrong about the reader's state. The
+  # fourth content read below closes the gap on the side that was wrong.
+  #
+  # TRL-48, decision-0091: the gate now reaches the RENDER REFUSAL too, which is
+  # the half TRL-44 deliberately left ungated because removing a refusal is
+  # decision-0090 D2's fourth clause and had to come to the corpus first. It
+  # came, and D1 of 0091 rules that a managed block is a static-delivery conflict
+  # for a given delivery only when the host that consumes that delivery loads the
+  # block. This script renders .claude/rules/trellis.md, which only Claude Code
+  # reads; a block in an AGENTS.md that CLAUDE.md does not import is, so far as
+  # either component can see, read by neither — so there is no second delivery
+  # for it to be doubled against, and refusing over it said the opposite in
+  # terms. "So far as either component can see" is the whole of the claim, and
+  # 0091 D1 is careful about it: the ground is the ADAPTER CONTRACT (one
+  # standalone @AGENTS.md line, decision-0057 rule 2), which is the line both
+  # scripts read, NOT an assertion that the host reaches AGENTS.md only that way.
+  # It does not: an @-import chain via a third file is followed by the host and
+  # seen by neither probe, and on that repo this gate is wrong. TRL-49 carries
+  # the resolver; the NOTE below names the case rather than papering it.
+  # Measured on main before the change: a
+  # non-opted-out repo with the shipped block-inline-b.md at AGENTS.md and no
+  # import line got "NOT rendering ... this project already delivers the rules
+  # statically (managed block in AGENTS.md)" and a remedy telling the author to
+  # delete the block — the one thing that DOES deliver rules there, to Codex —
+  # while staleness.sh on that same repo injected the full rule set.
+  #
+  # decision-0073 D1's per-component relevance clause, said where it is done, as
+  # that clause requires: the two-file subset above is now a two-file subset with
+  # ONE of them conditional, and the condition is the same S4-row scoping — the
+  # files THIS HOST loads. The pointer is decision-0073 for the closed set, and
+  # decision-0091 for the ruling that the refusal, not only the message, is
+  # scoped that way.
+  #
+  # The asymmetry that kept it ungated, answered rather than dropped, and at the
+  # strength the answer actually has: this script WRITES, so a false negative is
+  # durable, while the hook only injects and is re-evaluated every session. The
+  # durable state has TWO watchers and is GUARANTEED BY NEITHER. Render here, a
+  # standalone `@AGENTS.md` line arrives later, and the host loads both — then
+  # (a) the hook re-reads that line every session and emits
+  # TRELLIS_STATIC_SHAPES_CONFLICT naming AGENTS.md and the remedy, and (b) a
+  # re-run of this script takes the gate the other way and reports the double
+  # delivery as live. Both verified in sequence on scratch repos. Both are
+  # conditional: (a) needs the project-scope plugin to load, which decision-0068
+  # records a headless run cannot grant — and headless is the case this install
+  # path exists to serve — and (b) needs somebody to re-run. Neither watcher sees
+  # the @-import CHAIN at all, which is why that case is a regression here and is
+  # stated as one in 0091 rather than filed under pre-existing. What is claimed
+  # is only this: the false positive being removed was UNCONDITIONAL, and its
+  # remedy told the author to delete the block that governs Codex.
+  #
+  # ANCHORED, not a substring, and the anchor is the hook's: the contract is one
+  # standalone `@AGENTS.md` line, and an unanchored match reads documentation
+  # ABOUT the import — prose, or a fenced example — as the import itself.
+  claude_imports_agents=no
+  grep -qE "^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$" "$git_root/CLAUDE.md" 2>/dev/null && claude_imports_agents=yes
   if [ -z "$static_conflict" ]; then
     for f in CLAUDE.md AGENTS.md; do
-      grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$git_root/$f" 2>/dev/null \
-        && { static_conflict="managed block in $f"; conflict_paths="the managed block in $f, from its trellis:begin marker to its trellis:end marker (there is no overlay directory in this shape)"; break; }
+      grep -q "^\($bom\)\{0,1\}<!-- trellis:begin" "$git_root/$f" 2>/dev/null || continue
+      static_conflict="managed block in $f"
+      conflict_paths="the managed block in $f, from its trellis:begin marker to its trellis:end marker (there is no overlay directory in this shape)"
+      [ "$f" = AGENTS.md ] && [ "$claude_imports_agents" = no ] && static_host_reads=no
+      break
     done
   fi
 fi
@@ -624,12 +693,39 @@ if [ "$scope" = "project" ] && [ "$opted_out" = yes ]; then
     say "disregard them, which is second-best — this installer did not create that file"
     say "and has not removed it. Delete it, or run /trellis:remove."
   fi
-  if [ -n "$static_conflict" ]; then
+  if [ -n "$static_conflict" ] && [ "$static_host_reads" = yes ]; then
     loaded_anyway="${loaded_anyway:+$loaded_anyway and }$static_conflict"
     say ""
     say "WARNING: this project also delivers Trellis rules STATICALLY ($static_conflict),"
     say "and Claude Code loads those at launch over the opt-out — the hook can only tell"
     say "each session to disregard them. To stop them loading, delete $conflict_paths,"
+    say "or run /trellis:remove to take Trellis out entirely."
+  elif [ -n "$static_conflict" ]; then
+    # The one shape this host does not read (TRL-44). $loaded_anyway is NOT
+    # touched: nothing from this block is loaded over the opt-out, so it must not
+    # join the LEFT IN PLACE summary. A NOTE rather than a WARNING, because for a
+    # Claude session there is nothing to warn about. Said anyway, because the
+    # block is real for the host that does read AGENTS.md, and an opted-out
+    # project is entitled to know its opt-out is not portable.
+    #
+    # EVERY CLAIM IS ABOUT THE BLOCK, not about the project. This branch is
+    # independent of the rendered-file warning above and both fire in the same
+    # run: opt-out + un-imported AGENTS.md block + a pre-existing
+    # .claude/rules/trellis.md prints the WARNING and then this. Review of this
+    # PR caught a first version saying "nothing is loaded over the opt-out here"
+    # and "the hook stays silent on this project" — false in exactly that run,
+    # where the rendered file IS loaded and the hook emits TRELLIS_NOT_GOVERNING.
+    # Reproduced before the reword; the fixture below covers it. A message that
+    # generalises from its own branch's condition to the whole project is the
+    # defect this whole change exists to remove, so it does not get to reappear
+    # inside the fix.
+    say ""
+    say "NOTE: this project carries a Trellis managed block in AGENTS.md, but CLAUDE.md"
+    say "does not import it (no standalone @AGENTS.md line), so Claude Code never reads"
+    say "that file: nothing from that block is loaded over the opt-out, and the plugin"
+    say "hook gates its own AGENTS.md probe on the same line. Other hosts DO read"
+    say "AGENTS.md directly (Codex CLI), so the block still governs there: to stop that"
+    say "too, delete $conflict_paths,"
     say "or run /trellis:remove to take Trellis out entirely."
   fi
   if [ -n "$loaded_anyway" ]; then
@@ -638,7 +734,7 @@ if [ "$scope" = "project" ] && [ "$opted_out" = yes ]; then
   say "To adopt Trellis here instead, replace the governed = false line with the rows from"
   say "the installed plugin's reference/rules-b.toml (rules-a.toml for firm) and re-run"
   say "this installer."
-elif [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
+elif [ "$scope" = "project" ] && [ -n "$static_conflict" ] && [ "$static_host_reads" = yes ]; then
   # A pre-plugin-delivery consumer whose CLAUDE.md managed block imports
   # @.trellis/internal/trellis.md. Rendering here would put BOTH static chains
   # into context: Claude loads the managed block's imports AND .claude/rules/*.md
@@ -646,32 +742,51 @@ elif [ "$scope" = "project" ] && [ -n "$static_conflict" ]; then
   # what the HOOK injects — it cannot un-load a file Claude already read. So this
   # is refused at install time, because there is no runtime fix for it.
   #
-  # Every read this script makes of pre-existing project state — nine sites, five
-  # paths. An earlier version of this comment claimed "the ONE place this script
-  # reads .trellis/", which was false; a later one claimed no contents are read
-  # anywhere, which is false while the marker check exists. Both are corrected:
-  #   - .trellis/internal/ and .trellis/trellis.md   (existence, above)
-  #   - CLAUDE.md / AGENTS.md                        (CONTENT: opening marker)
-  #   - .claude/rules/trellis.md                     (existence x2: the live
-  #                                                   double-delivery warning
-  #                                                   below, and the non-regular
-  #                                                   refusal before the mv)
-  #   - .trellis/rules.toml                          (existence, for the
-  #                                                   floors-only guidance line;
-  #                                                   plus existence-and-readable
-  #                                                   as the guard on the read
-  #                                                   below; CONTENT x2: the
-  #                                                   top-level governed key,
-  #                                                   refusing over the opt-out —
-  #                                                   TRL-38; and the strictness
-  #                                                   key, selecting the posture
-  #                                                   header — TRL-37)
-  # Three are content reads: the marker, one line-anchored string that only ever
-  # refuses; the governed key, which only ever refuses; and the strictness key,
-  # which selects which SHIPPED header is rendered. None patches a marker or
-  # writes anything under .trellis/. spec-0005 AC2's second amendment permitted
-  # the first; the second and third are argued in the test that pins the count
-  # (cli/install_script_test.go).
+  # Every read this script makes of pre-existing project state — SIXTEEN LINES,
+  # six paths. An earlier version of this comment claimed "the ONE place this
+  # script reads .trellis/", which was false; a later one claimed no contents are
+  # read anywhere, which is false while the marker check exists; the two after
+  # those were miscounted, once by adjusting the number and once by not touching
+  # it. So the unit is now one a reader can re-derive rather than trust: a LINE
+  # of this script, outside a comment, that tests or reads one of the six paths
+  # below as `"$git_root/…"` or `"$rules_dir/…"`. Writes are not reads and are
+  # not counted (the seed's cp, the render's mv, the mkdir). Counting lines, not
+  # purposes, is what lets TestInstallScriptReadEnumerationIsCounted fail in the
+  # commit that adds the seventeenth — which is the only reason the last three
+  # corrections were needed at all (inv-self-improvement).
+  #   - .trellis/rules.toml        9  (existence for the floors-only guidance
+  #                                    line and for the seed's two guards;
+  #                                    existence-and-readable twice, as the guard
+  #                                    on each content read; CONTENT x2: the
+  #                                    top-level governed key, refusing over the
+  #                                    opt-out — TRL-38; and the strictness key,
+  #                                    selecting the posture header — TRL-37)
+  #   - .claude/rules/trellis.md   3  (existence: the opt-out branch's ALREADY
+  #                                    EXISTS warning, the live double-delivery
+  #                                    warning below, and the non-regular refusal
+  #                                    before the mv. TRL-38 added the first and
+  #                                    this line said "x2" for a release after it)
+  #   - .trellis/internal/         1  (existence, above)
+  #   - .trellis/trellis.md        1  (existence, above)
+  #   - CLAUDE.md                  1  (CONTENT: the standalone @AGENTS.md import
+  #                                    line, deciding whether THIS HOST reads
+  #                                    AGENTS.md at all — TRL-44 for the opt-out
+  #                                    branch's warning, TRL-48 for the refusal)
+  #   - CLAUDE.md / AGENTS.md      1  (CONTENT: opening marker, one loop)
+  # Four are content reads, and decision-0090 splits them by what they DO, not by
+  # how many there are. Two only ever REFUSE or print: the marker, one
+  # line-anchored string, and the governed key. One REMOVES A REFUSAL: the
+  # @AGENTS.md gate, which since TRL-48 decides whether the static-delivery
+  # refusal below fires at all. That is D2's fourth clause, so it came to the
+  # corpus before it landed and got decision-0091 — TRL-44 shipped this read
+  # wired to the MESSAGE only, and said so in terms, for exactly that reason.
+  # One SELECTS: the strictness key, choosing which SHIPPED header is rendered,
+  # and D2 is why that one was owed decision-0088 and the two refuse-only reads
+  # were not. None patches a marker or writes anything under .trellis/.
+  # spec-0005 AC2's second amendment permitted the marker; the rest are argued,
+  # and the count is pinned, in cli/install_script_test.go — decision-0090 D1
+  # makes that the count's home. The count is unchanged by TRL-48: the gate moved
+  # what an EXISTING read decides, and added no read.
   rendered_note="no rules file — $static_conflict present"
   say "NOT rendering .claude/rules/trellis.md: this project already delivers the"
   say "rules statically ($static_conflict). Adding the rendered file would deliver"
@@ -733,6 +848,22 @@ elif [ "$scope" = "project" ]; then
   # with a vendored bundle and no rules file, is the worse state, and the
   # install is the one moment someone reads the output. So: unreadable renders
   # adaptive, says so, and says what the hook does instead.
+  #
+  # TRL-44. It now also says the OPT-OUT may have been missed, which is the
+  # bigger of the two things this input can lose. The `governed` read above is
+  # guarded regular-and-readable by the same reasoning, so an unreadable file
+  # yields an empty $governed_head and $opted_out stays `no` — a project whose
+  # rules.toml says `governed = false` at mode 000 is rendered over and governed
+  # by the file it declined. That behaviour is D3's, deliberately, and is not
+  # changed here; what changes is that the message stops describing the loss as a
+  # posture question. Measured as an unprivileged user on
+  # `strictness = "firm"\ngoverned = false` at mode 000: renders adaptive, and
+  # the hook then stands down to the rendered file (path C).
+  #
+  # NOT "governed 16/16", which is how TRL-44 reported it. The rendered file gates
+  # activation on rows it imports from @../../.trellis/rules.toml — the same file
+  # that cannot be read — so the row table is absent and the count is not a thing
+  # this branch can state. The message says what governs, not how much.
   strictness=""
   toml_state=absent
   if [ -f "$git_root/.trellis/rules.toml" ]; then
@@ -757,15 +888,26 @@ elif [ "$scope" = "project" ]; then
           if [ "$toml_state" = absent ]; then
             posture_note="adaptive — no .trellis/rules.toml file; the seed written below, if that path is free, is adaptive too; header from $header"
           elif [ "$toml_state" = unreadable ]; then
-            posture_note="adaptive — .trellis/rules.toml exists but could not be read (permissions?), so its posture could not be honoured. The plugin hook does NOT fall back this way: on a file it cannot read it emits TRELLIS_RULES_NOT_LOADED and injects nothing, and once this rendered file exists it stands down to it — so this adaptive file is what governs until you fix the permissions and re-run to render the posture that file actually asks for (decision-0088 D3). Header from $header"
+            posture_note="adaptive — .trellis/rules.toml exists but could not be read (permissions?), so neither its posture NOR any opt-out in it could be honoured: the governed = false check above reads the same file under the same guard and comes back empty, so if that file DECLINES Trellis it has just been rendered over, and this project is now governed by the rules file it declined. The plugin hook does NOT fall back this way: on a file it cannot read it emits TRELLIS_RULES_NOT_LOADED and injects nothing, and once this rendered file exists it stands down to it — so this adaptive file is what governs until you fix the permissions and re-run, which will then honour the posture, or the opt-out, that file actually asks for (decision-0088 D3). Header from $header"
           elif [ -z "$strictness" ]; then
-            # NOT "the hook resolves it the same way" without qualification: a
-            # rules.toml holding only `governed = false` also has no strictness
-            # key, and there the hook selects no header at all — it stands down
-            # and delivers nothing, while this rendered file goes on governing.
-            # Rendering over the opt-out is pre-existing behaviour and outside
-            # this change; claiming hook parity on that input would not be.
-            posture_note="adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way. (If that file is the \`governed = false\` opt-out, note that the hook stands down entirely while this rendered file still governs — delete .claude/rules/trellis.md if that is not what you want.) Header from $header"
+            # Unqualified parity, and TRL-38 is what earned it. This branch used
+            # to carry a parenthetical — "if that file is the `governed = false`
+            # opt-out, the hook stands down entirely while this rendered file
+            # still governs; delete .claude/rules/trellis.md" — under a comment
+            # saying rendering over the opt-out was "pre-existing behaviour and
+            # outside this change". TRL-38 IS that change: a real opt-out is
+            # refused above and never reaches this branch, so the parenthetical
+            # could only fire where its own claim was false, and following its
+            # advice left the project MORE governed, not less.
+            #
+            # What still reaches here carrying the words `governed = false` is a
+            # file where they do not opt out — under a [table], or a second
+            # top-level `governed` key — and the hook governs those normally too.
+            # Measured on `[rules]\ngoverned = false`: this branch renders the
+            # adaptive header, and the hook on the same repo injects that same
+            # adaptive header and the full rule set. So there is nothing left to
+            # qualify, and the sentence says only what it can now stand behind.
+            posture_note="adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way; header from $header"
           elif [ "$strictness" = adaptive ]; then
             posture_note="adaptive — strictness = \"adaptive\" in .trellis/rules.toml; header from $header"
           else
@@ -965,6 +1107,34 @@ if [ "$scope" = "project" ]; then
   say "get nothing from it. On those hosts the rules arrive through the plugin, or not"
   say "at all."
   say ""
+  # TRL-48 / decision-0091 D1. The block this run RENDERED OVER, said out loud.
+  # The refusal above no longer fires for it, and a removed refusal that says
+  # nothing is a silent decision (floor-transparency). Gated on the opt-out too:
+  # that branch never renders and prints its own NOTE for the same shape, so
+  # without this test an opted-out project would get both.
+  #
+  # EVERY CLAIM IS ABOUT THE BLOCK AND THIS HOST, the discipline TRL-44's review
+  # imposed on the sibling NOTE: what is asserted is that Claude does not read
+  # that file, which the line above decides, and NOT that the project is
+  # single-delivery — a nested import chain (CLAUDE.md -> foo.md -> @AGENTS.md)
+  # is loaded by the host and seen by neither this gate nor the hook's, which is
+  # why the last two lines name the condition rather than promise its absence.
+  if [ "$opted_out" = no ] && [ -n "$static_conflict" ] && [ "$static_host_reads" = no ]; then
+    say "NOTE: this project carries a Trellis managed block in AGENTS.md, and the rules"
+    say "file above was rendered anyway. CLAUDE.md carries no standalone @AGENTS.md line,"
+    say "which is the only route to that file this installer can see, and the plugin hook"
+    say "reads the same one line — so neither expects Claude Code to load the block, and"
+    say "the hook stands down to the rendered file. Hosts that DO read AGENTS.md directly"
+    say "(Codex CLI) get their rules from the block and nothing from the rendered file —"
+    say "deleting the block would ungovern them."
+    say "CHECK THIS IF YOUR CLAUDE.md IMPORTS OTHER FILES: an @-import chain that reaches"
+    say "AGENTS.md indirectly IS followed by the host and is NOT seen by either component,"
+    say "and then the block and the rendered file are the same rules twice with nothing"
+    say "reporting it. If that is this project, delete one of the two static shapes."
+    say "Adding a standalone @AGENTS.md line to CLAUDE.md later has the same effect, and"
+    say "is the case the hook does catch (TRELLIS_STATIC_SHAPES_CONFLICT)."
+    say ""
+  fi
 fi
 case "${seeded_rows:-}" in
   yes)
