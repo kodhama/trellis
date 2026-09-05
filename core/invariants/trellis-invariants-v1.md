@@ -363,8 +363,8 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   minimal-first was applied to v1's own operating layer and cost it both of those — the round's
   change history, with the rationale for each change, is `decision-0014`. Entries have been minted
   since (`inv-deliberate-succession`, `decision-0074`; `inv-no-orphan-followups`, `decision-0078`);
-  the live set is the entries listed above, and its composition is stated once — and guarded
-  there — in `signature-catalog-v1`'s acceptance criteria.
+  the live set is the entries listed above, and its composition is stated, and guarded, in
+  `signature-catalog-v1`'s acceptance criteria.
 - **Adherence (`decision-0002`):** working stance is two coarse modes — *adopt* (one
   framework) vs *adapt* (synthesize from several); deliberately **not** formalized into the
   invariant model until instance #2 can test it. v1 encodes only the durable part

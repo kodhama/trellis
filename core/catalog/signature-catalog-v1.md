@@ -73,8 +73,10 @@ ratified: 2026-07-04
 > rules" → "all rules"), because a list of count sites kept here was found short twice
 > (`decision-0074`, `decision-0078`), and a twenty-two-row table of them in a test file was the
 > same mistake one layer down (TRL-28). **If you are about to write a row count into prose, delete
-> it instead.** Two classes keep their numbers unguarded on purpose: code comments narrating a past
-> measurement, and the `invariants-v1` registry's own account of how the set was composed.
+> it instead.** One class still keeps its numbers unguarded on purpose: code comments narrating a
+> past measurement. The `invariants-v1` registry's own account of how the set was composed was the
+> other, until TRL-47 deleted those numerals too — that round's history is `decision-0014`'s change
+> table, which records what changed and why, and states no totals.
 >
 > Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
 > rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
