@@ -87,6 +87,12 @@ and CI (`decision-0075`).
   test cache does not track — edit a hook with no `.go` change and a cached PASS replays over the
   mutation. No dedicated linter is configured; `gofmt -l cli/` is available locally but is not
   CI-enforced.
+- **A payload change is a release** (`decision-0028`, applied to the plugin package). Bump
+  `plugins/trellis/VERSION` in the same PR as any change under `plugins/trellis/` — an existing
+  install re-pulls only when the version string moves, so an unbumped payload reaches fresh
+  installs and no one else. `release-guard` fails that pair, keyed on the whole shipped bundle
+  rather than `reference/`: #275 edited `hooks/staleness.sh` and was a release (0.10.0 → 0.11.0)
+  though `reference/version`, which hashes `reference/` only, never moved.
 - **Artifact conformance is agent-applied, not CI-applied** (`decision-0010` — the contract and
   its conformance check ship as agent instructions with no runtime). Invoke the repo-owned
   `corpus-reviewer` (`.claude/agents/`) before merging a change to `decisions/`, `research/`

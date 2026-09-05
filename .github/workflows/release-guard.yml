@@ -1,0 +1,128 @@
+name: release-guard
+
+# decision-0028 (derived resources stay in sync) applied to the plugin package:
+# `plugins/trellis/VERSION` is a DERIVATIVE of the payload, and the pair was unguarded.
+#
+# Why it needs a guard. Per the marketplace contract, `plugin.json`'s version string is
+# what gates re-pull: an existing install keeps its cached copy until that string changes.
+# So a payload edit that ships without a bump reaches FRESH installs — which have no cache
+# and materialize whatever is on `main` — and reaches no one else. The two populations then
+# run different rule catalogs while reporting the same version.
+#
+# That is not hypothetical. VERSION bumped 2026-07-31 (#212), then the payload changed on
+# 2026-08-03 (#227), 2026-08-04 (#231) and 2026-08-22 (#237) before the next bump on
+# 2026-08-23 (#244) — three payload changes across 23 days under a stale version string.
+# A consumer container installed in that window reported `v0.4.0` while carrying the
+# 15-rule `payload@457ab23911d9`, and the consuming repo's 14-row rules.toml no longer
+# matched the catalog, so its SessionStart hook refused to inject and every session there
+# ran with no overlay at all.
+#
+# WHAT COUNTS AS THE PAYLOAD: everything under `plugins/trellis/`. That is not a guess —
+# it is the file set install.sh vends, pinned hash-by-hash in its baked
+# TRELLIS_BUNDLE_MANIFEST and held current by TestInstallScriptBundleManifestIsCurrent,
+# which walks `plugins/trellis/` and fails on any drift in content OR file set. So
+# `hooks/`, `skills/` and `README.md` ship exactly as much as `reference/` does.
+#   This guard deliberately does NOT key on `reference/version`, the payload content
+# stamp, which was the obvious hook and is the wrong one: that stamp hashes `reference/`
+# only, so it does not move for a hook change. The two most recent releases prove the
+# gap — #275 (0.10.0 → 0.11.0) and #268 (0.11.0 → 0.12.0) each changed
+# `hooks/staleness.sh` and each was correctly bumped by hand, and a `reference/version`
+# check would have waved both through. A guard that misses the last two releases is not
+# a guard.
+#
+# THE EXCEPTION is the version bookkeeping itself — `VERSION`, and the `version` FIELD
+# of the two `plugin.json` manifests that TestPluginPackageParity keeps in step with it.
+# That is the bump, so counting it as payload would make every release trip the guard on
+# itself, and a PR that touched only it would be a bump with nothing to bump for. The
+# exception is the field, not the files: the manifests also carry `description` and, on
+# the Codex side, the `hooks` and `skills` pointers, which are shipped content that
+# install.sh vends and the bundle manifest pins. Any change to a manifest OTHER than
+# its version line counts as payload. (Review of this PR: excluding the files wholesale
+# let a repointed `hooks` path or an edited `description` through with no bump.)
+#
+# A payload edit committed WITHOUT regenerating `reference/checksums` and
+# `reference/version` is a different defect, already caught by the regenerate-and-diff
+# test in cli-ci; the two guards compose and neither substitutes for the other.
+#
+# Draft PRs are exempt: marking a PR draft is this repo's sanctioned "keep it clearly
+# WIP" escape, and a release bump is reasonably the last commit on a branch.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+jobs:
+  release-guard:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Fail when the payload changed without a VERSION bump
+        run: |
+          set -eu
+          git fetch origin "${{ github.base_ref }}" --quiet
+          range="origin/${{ github.base_ref }}...HEAD"
+
+          # The shipped bundle, minus the version bookkeeping that IS the bump.
+          payload="$(git diff --name-only "$range" -- \
+            'plugins/trellis/' \
+            ':(exclude)plugins/trellis/VERSION' \
+            ':(exclude)plugins/trellis/.claude-plugin/plugin.json' \
+            ':(exclude)plugins/trellis/.codex-plugin/plugin.json' || true)"
+          # The manifests are payload too, except for their version line. A changed
+          # line in one of them that is not `"version": ...` is shipped content.
+          for manifest in plugins/trellis/.claude-plugin/plugin.json plugins/trellis/.codex-plugin/plugin.json; do
+            if git diff "$range" -- "$manifest" \
+                | grep -E '^[+-]' \
+                | grep -vE '^(\+\+\+ |--- )' \
+                | grep -qvE '^[+-][[:space:]]*"version"[[:space:]]*:'; then
+              payload="$(printf '%s\n%s\n' "$payload" "$manifest" | sed '/^$/d')"
+            fi
+          done
+          if [ -z "$payload" ]; then
+            echo "ok — this PR does not change the plugin payload"
+            exit 0
+          fi
+
+          echo "payload files changed by this PR:"
+          echo "$payload" | sed 's/^/  /'
+
+          version="$(git diff --name-only "$range" -- 'plugins/trellis/VERSION' || true)"
+          if [ -n "$version" ]; then
+            # Bumped means STRICTLY NEWER, not merely edited. A re-pull is gated on the
+            # version string changing to one a consumer has not cached: a payload shipped
+            # under a reused or older number (0.12.0 -> 0.11.0 while the manifests are
+            # kept in step) passes an edited-at-all check and recreates the split
+            # population this guard exists to prevent — installs that cached that
+            # number never re-pull. TestPluginPackageParity checks shape and parity,
+            # not direction, so direction is checked here, against the base branch.
+            base_version="$(git show "origin/${{ github.base_ref }}:plugins/trellis/VERSION" 2>/dev/null | tr -d '[:space:]' || true)"
+            head_version="$(tr -d '[:space:]' < plugins/trellis/VERSION)"
+            newest="$(printf '%s\n%s\n' "$base_version" "$head_version" | sort -V | tail -n 1)"
+            if [ -n "$head_version" ] && [ "$head_version" != "$base_version" ] && [ "$newest" = "$head_version" ]; then
+              echo "ok — payload changed and plugins/trellis/VERSION was bumped with it (${base_version:-none} -> $head_version)"
+              exit 0
+            fi
+            echo "::error::This PR changes the plugin payload and edits plugins/trellis/VERSION, but ${base_version:-none} -> ${head_version:-empty} is not a bump to a newer version."
+            echo "decision-0028: a consumer re-pulls only when the version string moves to one it has"
+            echo "not cached. A reused or older number ships this payload to fresh installs only."
+            echo ""
+            echo "Fix: set plugins/trellis/VERSION to a version newer than ${base_version:-none} on the base branch."
+            exit 1
+          fi
+
+          echo "::error::This PR changes the plugin payload but does not bump plugins/trellis/VERSION."
+          echo "decision-0028: VERSION derives from the payload — update it in the same change."
+          echo "Consumers keep their cached copy until the version string changes, so as it"
+          echo "stands this payload would reach fresh installs only, and existing installs"
+          echo "would keep serving the previous catalog under the same version number."
+          echo ""
+          echo "The payload is every file install.sh vends — all of plugins/trellis/, so"
+          echo "hooks/ and skills/ count as much as reference/ does."
+          echo ""
+          echo "Fix: bump plugins/trellis/VERSION (TestPluginPackageParity keeps plugin.json"
+          echo "and the Codex manifest in step), or mark this PR as draft if it is still WIP."
+          exit 1
