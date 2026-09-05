@@ -179,8 +179,8 @@ func catalogClassCounts() (methodology, design, floor int) {
 // file and the exact text expected there.
 //
 // Almost everywhere else the count was deleted rather than pinned, so this table
-// is deliberately short — six sites, not the twenty-two a first pass tabled. Two
-// are runtime strings the user reads (the installer's closing line, the hook's
+// is deliberately short — far shorter than the twenty-two a first pass tabled.
+// Some are runtime strings the user reads (the installer's closing line, the hook's
 // not-yet-governing announcement, neither of which can say "all rules" without
 // losing the point); one is the README's headline 16/16; one is the catalog's
 // own acceptance criterion, where the class breakdown is the claim being
@@ -190,7 +190,7 @@ func catalogClassCounts() (methodology, design, floor int) {
 // note beside them). The remove skill's own 16/16 is already derived from the
 // pin by remove_skill_test.go, so it is not repeated here.
 //
-// There is no sweep for sites this table does not know: at four sites the
+// There is no sweep for sites this table does not know: at this size the
 // stopping rule is the review, and a pattern broad enough to find a new count
 // also failed legitimate prose ("twelve of the sixteen are methodology rules")
 // while still missing the noun-first shapes. Delete the count instead of
@@ -228,6 +228,18 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 			"deferred deletion — re-baking install.sh's manifest is owned by trellis#262"},
 		{"../plugins/trellis/README.md", "all %[2]s rows active at",
 			"deferred deletion — re-baking install.sh's manifest is owned by trellis#262"},
+		// The floor-class count, pinned rather than narrowed (the maintainer's
+		// ruling on TRL-47). Both name the floors and then say something true of
+		// exactly those rows, so "the floors" would lose which rows are meant —
+		// the number is the claim. Templated on %[5]s, the floor class count, so
+		// the pin follows the class rather than freezing "two": elevate or fold a
+		// floor and these fail by name instead of going quietly stale. That is
+		// what makes the catalog's "no unguarded home" sentence true as written.
+		{"../plugins/trellis/README.md",
+			"The %[5]s floors (`floor-transparency`, `floor-intent-gate`) have rows too",
+			"the bundle's own account of which rows apply regardless of their value"},
+		{"../install.sh", "injects nothing here, the %[5]s floor- rules",
+			"the installer says this to a user who has opted out, naming what is still withheld"},
 	}
 	contents := map[string]string{}
 	for _, s := range sites {

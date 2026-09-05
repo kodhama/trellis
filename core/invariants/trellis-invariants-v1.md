@@ -28,7 +28,7 @@ ratified: 2026-06-29
 > by id + supersession, `invariants-v0` → `invariants-v1`) to bump. POINTER: `decision-0047`
 > Consequence 4, `grove/adr-0011`.*
 
-> **What v1 changes, in one breath:** v0 was a flat list. v1 splits it into a small
+> **What v1 changes, in one breath:** v0 was a flat list of 9. v1 splits it into a small
 > **structural gate** (what a methodology must *have the shape for*), a **configurable
 > operating layer** (what Trellis supplies on top), **dials** (how strict, who enforces),
 > and **floors** (the things never configurable to "off"). The driving evidence:
@@ -311,8 +311,8 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 
 ## Acceptance criteria
 
-- The **admission gate is small** and is the *only* set
-  `decision-0003`'s ingestion check uses.
+- The **admission gate is small** — the structural set, and the *only* set `decision-0003`'s
+  ingestion check uses.
 - Each operating invariant is something Trellis *supplies*, not something the methodology
   must already have.
 - Strictness and gatekeeper are **dials with surfaced defaults**, not hard-coded — so the
