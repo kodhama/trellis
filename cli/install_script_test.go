@@ -1823,13 +1823,25 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 			t.Errorf("the other permitted content read must be the strictness key of .trellis/rules.toml, read via a `< \"$git_root/.trellis/rules.toml\"` redirect; reads were:\n%s", strings.Join(reads, "\n"))
 		}
 		// The import gate reads CLAUDE.md and nothing else, and reads it for ONE
-		// line. An unanchored form is the defect the hook already fixed once:
-		// documentation ABOUT the import — prose, or a fenced example — read as
-		// the import itself, which puts the installer back to claiming this host
-		// loads a file it does not.
-		if importGate == "" || !strings.Contains(importGate, `'^[[:space:]]*@AGENTS\.md[[:space:]]*$'`) ||
+		// line. Two properties, both load-bearing since TRL-48 made this read
+		// decide the RENDER and not only the wording:
+		//   - ANCHORED. An unanchored form is the defect the hook already fixed
+		//     once: documentation ABOUT the import — prose, or a fenced example —
+		//     read as the import itself, which puts the installer back to
+		//     claiming this host loads a file it does not.
+		//   - BOM-TOLERANT, `($bom)?`, exactly as the marker grep four lines down
+		//     already is. A CLAUDE.md whose `@AGENTS.md` line is line 1 and whose
+		//     encoding an editor rewrote on a Windows-default checkout otherwise
+		//     reads as NOT importing — and the render then proceeds over a block
+		//     the host does load. Reproduced against this script before the fix
+		//     (BOM'd import + AGENTS.md block: rendered, and the NOTE asserted
+		//     the host "never reads that file"); the hook carries the identical
+		//     probe, so nothing reported it. Found by an automated reviewer on
+		//     the PR that made this read gate the refusal, not by this guard,
+		//     which is why the property is now asserted rather than assumed.
+		if importGate == "" || !strings.Contains(importGate, `"^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$"`) ||
 			!strings.Contains(importGate, `"$git_root/CLAUDE.md"`) {
-			t.Errorf("the fourth permitted content read must be the ANCHORED standalone @AGENTS.md import line of \"$git_root/CLAUDE.md\"; reads were:\n%s", strings.Join(reads, "\n"))
+			t.Errorf("the fourth permitted content read must be the ANCHORED, BOM-tolerant standalone @AGENTS.md import line of \"$git_root/CLAUDE.md\"; reads were:\n%s", strings.Join(reads, "\n"))
 		}
 	})
 }
@@ -2741,7 +2753,7 @@ func TestInstallScriptAgentsImportGateMatchesHook(t *testing.T) {
 		var got []string
 		for _, line := range strings.Split(readFileT(t, path), "\n") {
 			l := strings.TrimSpace(line)
-			if strings.HasPrefix(l, `grep -qE '^[[:space:]]*@AGENTS\.md[[:space:]]*$'`) {
+			if strings.HasPrefix(l, `grep -qE "^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$"`) {
 				got = append(got, strings.ReplaceAll(l, `"$root/`, `"$git_root/`))
 			}
 		}
@@ -2757,4 +2769,246 @@ func TestInstallScriptAgentsImportGateMatchesHook(t *testing.T) {
 	if h, s := extract(hookPath), extract(installScriptPath(t)); h != s {
 		t.Errorf("install.sh's @AGENTS.md import gate has drifted from the hook's (plugins/trellis/hooks/staleness.sh); the two must agree on whether this host reads AGENTS.md at all.\nhook:      %s\ninstall.sh: %s", h, s)
 	}
+}
+
+// TRL-48, decision-0091 D1. The gate TRL-44 wired to the MESSAGE now also gates
+// the RENDER REFUSAL, and this is the test that pins the two deliveries to each
+// other on the shape where they disagreed. Both are run on the SAME scratch repo,
+// the way #273's fixtures do, because the defect was never visible in either one
+// alone: install.sh refused with "this project already delivers the rules
+// statically (managed block in AGENTS.md)" while staleness.sh on that same repo
+// injected the full rule set. Measured on 700ca30 before the change.
+//
+// Both directions, because a gate that never fires and a gate that always fires
+// are equally wrong: the un-imported block must RENDER, the imported one must
+// still REFUSE, and a block in CLAUDE.md must be untouched by any of it.
+func TestVendorAgentsBlockRefusalFollowsTheImportGate(t *testing.T) {
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runHook := func(t *testing.T, repo string) string {
+		t.Helper()
+		cmd := exec.Command(hook)
+		cmd.Dir = repo
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+repo,
+			"CLAUDE_PLUGIN_ROOT="+filepath.Join(repo, ".claude", "skills", "trellis"))
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero: %v: %s", err, out)
+		}
+		return string(out)
+	}
+	// The rule body actually reaching a session, by a string from the payload
+	// rather than a landmark this test invents.
+	const aRule = "inv-directional-flow"
+
+	t.Run("an UNIMPORTED AGENTS.md block does not refuse the render", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		// The refusal, gone. Claude Code reaches AGENTS.md only through a
+		// standalone @AGENTS.md line in CLAUDE.md (decision-0057), there is none
+		// here, and .claude/rules/trellis.md is a file only Claude reads — so the
+		// two cannot be one delivery doubled, which is what the refusal claimed.
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+			t.Fatalf("the render was refused over a block in an AGENTS.md that no CLAUDE.md imports (stat err=%v); this host never reads that file, so there is no second delivery to double against — and the hook injects on this repo:\n%s", err, res.stdout)
+		}
+		if strings.Contains(res.stdout, "rules statically (managed block in AGENTS.md)") {
+			t.Errorf("stdout still claims static delivery for a file this host does not read:\n%s", res.stdout)
+		}
+		// Removing a refusal silently is a silent decision. The block is real for
+		// Codex, and the remedy the old refusal offered — delete it — would have
+		// ungoverned that host, so the NOTE has to say which way round it is.
+		for _, want := range []string{
+			"NOTE: this project carries a Trellis managed block in AGENTS.md",
+			"no standalone @AGENTS.md line",
+			"Codex",
+			"deleting the block would ungovern them",
+			"TRELLIS_STATIC_SHAPES_CONFLICT",
+			// The NOTE may not assert what neither component can know. An
+			// @-import chain (CLAUDE.md -> foo.md -> @AGENTS.md) IS followed by
+			// the host and is seen by neither anchored one-line probe, so on that
+			// repo the block and the rendered file are the same rules twice —
+			// and headless, where the plugin does not load (decision-0068), no
+			// watcher reports it. Found by an automated reviewer on #276 and
+			// measured: run 1 renders, run 2 renders again in silence.
+			"CHECK THIS IF YOUR CLAUDE.md IMPORTS OTHER FILES",
+		} {
+			if !strings.Contains(res.stdout, want) {
+				t.Errorf("the render path must SAY what it rendered over (%q); got:\n%s", want, res.stdout)
+			}
+		}
+		// The withdrawn sentence, by name. It claimed a fact about the host that
+		// this installer cannot establish from one anchored line.
+		if strings.Contains(res.stdout, "so Claude Code never reads that file") {
+			t.Errorf("the NOTE asserts the host never reads AGENTS.md; one anchored line in CLAUDE.md cannot establish that — an import chain reaching it is invisible to this probe:\n%s", res.stdout)
+		}
+		// And the two components now agree on this repo, which is the whole
+		// point: the installer delivers, the hook stands down to what it
+		// delivered. Neither is silent and neither contradicts the other.
+		out := runHook(t, repo)
+		if strings.Contains(out, aRule) {
+			t.Errorf("the hook injected the rule set alongside the file the installer just rendered — that is double delivery, the state the refusal existed to prevent:\n%s", out)
+		}
+		if !strings.Contains(out, "already loaded from .claude/rules/trellis.md") {
+			t.Errorf("the hook must stand down to the rendered file on this repo; got:\n%s", out)
+		}
+	})
+
+	// The positive control, and the direction that fails if the gate is widened
+	// into "never refuse over AGENTS.md". With the import line the host DOES load
+	// that file, both deliveries would be live, and no hook can un-load either.
+	t.Run("an IMPORTED AGENTS.md block still refuses the render", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "# Project\n\n@AGENTS.md\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+			t.Fatalf("rendered over a block in an AGENTS.md that CLAUDE.md DOES import (stat err=%v); the host loads both files, so this is live double delivery:\n%s", err, res.stdout)
+		}
+		if !strings.Contains(res.stdout, "rules statically (managed block in AGENTS.md)") {
+			t.Errorf("the refusal must still name the shape it found; got:\n%s", res.stdout)
+		}
+		// The render-path NOTE belongs to the render path only. Printing it here
+		// would tell an author their block was rendered over when nothing was.
+		if strings.Contains(res.stdout, "file above was rendered anyway") {
+			t.Errorf("the rendered-over NOTE fired on a run that rendered nothing:\n%s", res.stdout)
+		}
+		out := runHook(t, repo)
+		if !strings.Contains(out, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("the hook must refuse over the same block on the same repo; got:\n%s", out)
+		}
+	})
+
+	// The gate reads CLAUDE.md and only CLAUDE.md. A block THERE is loaded by the
+	// host whatever any import line says, so it must be unaffected — this is what
+	// fails if the gate is applied to $static_conflict as a whole rather than to
+	// the one shape the host may not read.
+	t.Run("a block in CLAUDE.md is refused with or without the import line", func(t *testing.T) {
+		for _, tc := range []struct{ name, claude string }{
+			{"no import line", ""},
+			{"with an import line", "\n@AGENTS.md\n"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				repo := t.TempDir()
+				initGitRepo(t, repo)
+				writeFileT(t, filepath.Join(repo, "CLAUDE.md"), inlineBlockFixture(t)+tc.claude)
+				writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+				res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+				if res.code != 0 {
+					t.Fatalf("exit %d: %s", res.code, res.stderr)
+				}
+				if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+					t.Fatalf("rendered over a managed block in CLAUDE.md (stat err=%v); the host loads that file unconditionally:\n%s", err, res.stdout)
+				}
+			})
+		}
+	})
+
+	// The two NOTEs for this shape are mutually exclusive and neither branch knows
+	// about the other. An opted-out project renders nothing, so the render-path
+	// NOTE would be telling its author about a file that does not exist, beside
+	// the opt-out branch's own NOTE about the same block. TRL-44 built that
+	// second one; this is the guard that stops the first from joining it.
+	t.Run("an opted-out project gets the opt-out NOTE and not the rendered-over one", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "governed = false\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+			t.Fatalf("premise drifted — the opt-out must still refuse the render (stat err=%v):\n%s", err, res.stdout)
+		}
+		if strings.Contains(res.stdout, "file above was rendered anyway") {
+			t.Errorf("the rendered-over NOTE fired on an opted-out run, which renders nothing; that sentence is false the moment it is printed:\n%s", res.stdout)
+		}
+		if !strings.Contains(res.stdout, "no standalone @AGENTS.md line") {
+			t.Errorf("the opt-out branch's own NOTE for this shape (TRL-44) must still fire; got:\n%s", res.stdout)
+		}
+	})
+
+	// Found by an automated reviewer on the PR that made this read gate the
+	// refusal, and it is the worst shape either component can be in: the import
+	// grep was anchored `^[[:space:]]*@` with NO BOM tolerance, while the marker
+	// grep four lines below it has been BOM-tolerant since #273 for the documented
+	// reason — an editor on a Windows-default checkout rewrites the encoding of a
+	// file whose first line is the thing being matched.
+	//
+	// Before TRL-48 that mis-selected a MESSAGE. After it, it selects the RENDER:
+	// a CLAUDE.md that really does import AGENTS.md reads as not importing, the
+	// refusal is skipped, and the host loads both the block and the rendered file.
+	// Reproduced on this branch before the fix — rendered, with the NOTE asserting
+	// "Claude Code never reads that file", which was false on that repo. And the
+	// hook carries the byte-identical probe, so it stood down quietly and
+	// TRELLIS_STATIC_SHAPES_CONFLICT never fired: silent and permanent, not the
+	// transient false negative decision-0091 D1's argument is built on. Fixed in
+	// both files in the same commit (decision-0028) and asserted here on the
+	// installer and the hook together, because a fix in one is worth nothing.
+	t.Run("a BOM'd @AGENTS.md import line is still an import line", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "\ufeff@AGENTS.md\n\n# Project\n")
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); !os.IsNotExist(err) {
+			t.Errorf("rendered over an AGENTS.md block whose import line is real and merely BOM'd (stat err=%v); the host loads both, and nothing downstream reports it:\n%s", err, res.stdout)
+		}
+		if strings.Contains(res.stdout, "never reads that file") {
+			t.Errorf("the NOTE asserts this host does not read AGENTS.md, on a repo that imports it:\n%s", res.stdout)
+		}
+		// The hook's copy of the probe, on the same repo. A fix in one script and
+		// not the other puts the two back to disagreeing, which is the whole
+		// defect TRL-48 exists to close.
+		out := runHook(t, repo)
+		if !strings.Contains(out, "TRELLIS_INLINE_BLOCK") {
+			t.Errorf("the hook must see the BOM'd import too and refuse over the block; got:\n%s", out)
+		}
+	})
+
+	// The asymmetry that kept the refusal ungated, pinned as a fixture rather than
+	// argued: this script WRITES, so its false negative is durable, while the hook
+	// only injects. What answers it is that the durable state has a named watcher.
+	// Render over an un-imported block, let the import line arrive afterwards, and
+	// the hook — which re-reads that line every session — reports the conflict at
+	// the next session start. If that ever stops being true, decision-0091 D1
+	// loses the argument it was decided on, and this subtest is where that shows.
+	t.Run("the import line arriving after the render is caught by the hook", func(t *testing.T) {
+		repo := t.TempDir()
+		initGitRepo(t, repo)
+		writeFileT(t, filepath.Join(repo, "AGENTS.md"), inlineBlockFixture(t))
+		writeFileT(t, filepath.Join(repo, ".trellis", "rules.toml"), "# rows only\n")
+		res := runVendor(t, repo, "", vendoredBundleAbs(t), "--scope", "project")
+		if res.code != 0 {
+			t.Fatalf("exit %d: %s", res.code, res.stderr)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".claude", "rules", "trellis.md")); err != nil {
+			t.Fatalf("premise drifted — this run must render (stat err=%v):\n%s", err, res.stdout)
+		}
+		writeFileT(t, filepath.Join(repo, "CLAUDE.md"), "# Project\n\n@AGENTS.md\n")
+		out := runHook(t, repo)
+		if !strings.Contains(out, "TRELLIS_STATIC_SHAPES_CONFLICT") {
+			t.Fatalf("nothing reported the double delivery this render made possible once the import line arrived; that watcher is decision-0091 D1's answer to the write/inject asymmetry:\n%s", out)
+		}
+		if !strings.Contains(out, "AGENTS.md") {
+			t.Errorf("the hook's report must name the file whose block is now loaded; got:\n%s", out)
+		}
+	})
 }
