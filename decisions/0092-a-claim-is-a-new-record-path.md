@@ -174,3 +174,7 @@ The forward pointer added to `decision-0089` carries this scope, and nothing wid
 - **The unverified half is unchanged and still unverified.** These tests never reach `gh` or the
   network, so the live fetch path — pagination over every open PR, `previous_filename` arriving as the
   fourth field — is exercised only by real runs. Point 1's third row and point 3 both depend on it.
+  This record's own pull request is one such run: `#280` fetched `main`, walked the open list and
+  printed `- decision-0092 (decisions/0092-a-claim-is-a-new-record-path.md) — free.` The id was
+  also checked offline first, by running the same script against `origin/main`'s `decisions/` and
+  the real file rows of the one open PR — a check, not the eyeballing this guard replaced.
