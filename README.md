@@ -17,7 +17,7 @@ things non-negotiable — and surfaces every time something bends — without di
 That is the whole install:
 
 ```
-/plugin marketplace add kodhama/kodhama
+/plugin marketplace add kodhama/stewards
 /plugin install trellis@kodhama
 ```
 
