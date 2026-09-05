@@ -237,7 +237,7 @@ the Go code in [`cli/`](cli/) survives as the release-time payload generator onl
 Deliberately tiny — small enough that a newcomer, human or agent, can read it and know how to make a
 change that will pass.
 
-- **Structural gate** — a four-point admission check (one-way flow, handover points, a human
+- **Structural gate** — an admission check (one-way flow, handover points, a human
   intent locus, checkable artifacts). If a process lacks the shape, Trellis says so *loudly*.
 - **Operating layer** — what Trellis supplies: a gate at every handover, independent
   verification (*the builder does not grade itself*), an auditable archive, bounded context,

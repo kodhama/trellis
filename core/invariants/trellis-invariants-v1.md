@@ -30,8 +30,8 @@ ratified: 2026-06-29
 
 > **What v1 changes, in one breath:** v0 was a flat list. v1 splits it into a small
 > **structural gate** (what a methodology must *have the shape for*), a **configurable
-> operating layer** (what Trellis supplies on top), **two dials** (how strict, who enforces),
-> and **two floors** (the two things never configurable to "off"). The driving evidence:
+> operating layer** (what Trellis supplies on top), **dials** (how strict, who enforces),
+> and **floors** (the things never configurable to "off"). The driving evidence:
 > real frameworks have the *structure* but not the *enforcement* — so enforcement is a dial,
 > and the true floor is **surfacing**, not enforcing.
 
@@ -44,9 +44,9 @@ ratified: 2026-06-29
   Trellis fails loudly — out of contract.
 - **Operating invariants — what Trellis supplies (`trellis-design`).** Guarantees a
   Trellis-assisted project gets *because* it adopted Trellis. Not admission criteria.
-- **The two configuration dials.** Per gate: *how strict* (enforcement strength) and *who
+- **The configuration dials.** Per gate: *how strict* (enforcement strength) and *who
   enforces* (gatekeeper identity). This is what keeps Trellis buyer-neutral (`decision-0004`).
-- **The two floors.** The only things that can never be configured off.
+- **The floors.** The only things that can never be configured off.
 
 **Cross-cutting theme — *drift is allowed, but never silent* (`decision-0020`).** Several invariants
 are one idea seen from different angles: directional-flow + graph-maintenance keep *artifacts* from
@@ -275,9 +275,9 @@ overshoot.)*
 
 ---
 
-## The two configuration dials (`decision-0008`) — *provisional*
+## The configuration dials (`decision-0008`) — *provisional*
 
-Per gate, two settings — the mechanism that lets one invariant structure serve both a
+Per-gate settings — the mechanism that lets one invariant structure serve both a
 speed-first startup and an assurance-first enterprise (`decision-0004`):
 
 - **`dial-enforcement-strength` — enforcement strength:** `expressed` (documented only) →
@@ -317,7 +317,7 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   must already have.
 - Strictness and gatekeeper are **dials with surfaced defaults**, not hard-coded — so the
   same set serves startup and enterprise (`decision-0004`).
-- The two floors are stated as non-configurable, with `floor-intent-gate` the recognized
+- The floors are stated as non-configurable, with `floor-intent-gate` the recognized
   exception to `dial-gatekeeper`.
 - **Every invariant carries ≥1 concrete example** (few-shot), especially abstract ones — the
   iron rule (brief §7) applied to the set itself: *a rule you can't exemplify is probably
@@ -359,9 +359,8 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   v1 itself.
 - **Minimal-first, applied to v1 itself (resolved this round):** the epistemic-integrity
   candidate merged into `inv-independent-judgment` (intent face); the bounded-correction
-  candidate dropped (durable half into `floor-transparency`). **The trim is the argument:**
-  minimal-first was applied to v1's own operating layer and cost it both of those — the round's
-  change history, with the rationale for each change, is `decision-0014`. Entries have been minted
+  candidate dropped (durable half into `floor-transparency`). Operating layer trimmed back
+  **11 → 9** *in that round* — v1-round numbers, not the set today. Entries have been minted
   since (`inv-deliberate-succession`, `decision-0074`; `inv-no-orphan-followups`, `decision-0078`);
   the live set is the entries listed above, and its composition is stated, and guarded, in
   `signature-catalog-v1`'s acceptance criteria.
