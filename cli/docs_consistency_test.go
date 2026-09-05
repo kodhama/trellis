@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"html"
 	"io/fs"
 	"os"
@@ -436,6 +437,79 @@ func TestManualRecipeBranchesAreSeparatePastes(t *testing.T) {
 			if a == b {
 				t.Errorf("the @import and inline branches share fenced block %d — one wholesale paste produces the overlay AND both managed blocks, the S2-plus-S4 conflict decision-0073 Consequence 2 ordered this recipe to stop shipping", a)
 			}
+		}
+	}
+}
+
+// TestMarketplaceAddNamesTheRepoThatServesIt (decision-0028 — a guard per pair).
+// The documented install command, `/plugin marketplace add <owner/repo>`, is
+// copied by hand into six live surfaces: both READMEs, the CLI's usage text,
+// the LP source and twice in the rendered page. TRL-26 found all six naming a
+// repository that does not resolve (`kodhama/kodhama`) while this repo's own
+// `.claude/settings.json` resolved the `kodhama` marketplace to
+// `kodhama/stewards` — the docs contradicted the config, and the config was
+// right. TestInstallTerminalIsConsistentAcrossSourceRenderAndScript compares
+// only the LP source with the page, so the other four could drift again with
+// the suite green (review of #277).
+//
+// The canonical value is the one this repo resolves for itself, read from
+// settings.json — not a literal repeated here, which would be a seventh copy.
+// The surfaces are DISCOVERED by walking the tree for the command, the same
+// lesson docSurfaces records above; the six known ones are a floor, so the
+// command vanishing from one of them fails too. Corpus citations of
+// kodhama-the-repo (`kodhama/kodhama-0007…`, `kodhama/kodhama#35`) never carry
+// the words `marketplace add`, so the match is on the command, not the name.
+func TestMarketplaceAddNamesTheRepoThatServesIt(t *testing.T) {
+	var settings struct {
+		ExtraKnownMarketplaces map[string]struct {
+			Source struct {
+				Repo string `json:"repo"`
+			} `json:"source"`
+		} `json:"extraKnownMarketplaces"`
+	}
+	if err := json.Unmarshal([]byte(readDocSurface(t, "../.claude/settings.json")), &settings); err != nil {
+		t.Fatalf("parsing .claude/settings.json: %v", err)
+	}
+	canonical := settings.ExtraKnownMarketplaces["kodhama"].Source.Repo
+	if canonical == "" {
+		t.Fatal(".claude/settings.json declares no extraKnownMarketplaces.kodhama.source.repo — the canonical marketplace repository this test checks every documented install command against")
+	}
+
+	command := regexp.MustCompile(`marketplace add ([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)`)
+	textual := map[string]bool{".md": true, ".html": true, ".go": true, ".sh": true, ".json": true, ".toml": true, ".txt": true, ".yml": true, ".yaml": true, ".mjs": true}
+	found := map[string]bool{}
+	err := filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if name := d.Name(); name == ".git" || name == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !textual[filepath.Ext(path)] {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel := filepath.ToSlash(strings.TrimPrefix(path, "../"))
+		for _, m := range command.FindAllStringSubmatch(string(b), -1) {
+			found[rel] = true
+			if m[1] != canonical {
+				t.Errorf("%s documents `marketplace add %s`, but this repo resolves the kodhama marketplace to %s (.claude/settings.json) — the six copies of the install command move together (decision-0028)", rel, m[1], canonical)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, surface := range []string{"README.md", "plugins/trellis/README.md", "cli/main.go", "docs/index.html", "docs/lp-content.md"} {
+		if !found[surface] {
+			t.Errorf("%s no longer carries a `marketplace add` command — it is one of the live install surfaces this guard pins; if the command moved, update this list in the same change", surface)
 		}
 	}
 }
