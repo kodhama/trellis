@@ -8,18 +8,27 @@ name: cli-ci
 # retired with the overlay itself, decision-0071),
 # the docs-consistency check, and the staleness-hook contract.
 
-# Paths include the doc surfaces (docs/, README, install.sh, plugins/) so the
-# docs-consistency test (decision-0025) runs when a doc claim changes, not only on
-# code changes. They also include .github/scripts/** and decision-id-guard.yml:
-# cli/decision_id_guard_test.go executes that script and reads that workflow
-# (decision-0089), so editing either without touching cli/ would otherwise skip
-# the only tests that cover them.
+# The paths filter is a coverage contract, not a convenience. build-test is the
+# only job that runs `go test`, so EVERY file the suite reads out of the repo has
+# to be selected here — otherwise a PR touching only that file skips the one guard
+# that pins it, and nothing is ever red. Hence: the doc surfaces (docs/, README,
+# install.sh, plugins/) for the docs-consistency test (decision-0025);
+# .github/scripts/** and decision-id-guard.yml, which cli/decision_id_guard_test.go
+# executes and reads (decision-0089); core/invariants/** and profiles/**, which
+# cli/row_set_guard_test.go reads; .claude/**, which cli/selfapply_test.go and
+# cli/docs_consistency_test.go read; and .grove/**, so that the PR reinstating the
+# retired directory is the one cli/selfapply_test.go fails on (decision-0076).
+#
+# That rule is now checked rather than described: cli/ci_paths_guard_test.go
+# extracts every repo-relative path cli/*_test.go reads and fails naming any this
+# filter does not cover (TRL-50 — decision-0028, a guard per pair). Keep the two
+# lists below identical; both are checked.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
 
 jobs:
   build-test:
