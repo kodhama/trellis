@@ -177,6 +177,24 @@ The forward pointer added to `decision-0089` carries this scope, and nothing wid
   own gate caught in four places. Citing only the `main` numbers would repeat the defect that record
   paid to fix.
 
+- **The independent pass ran, and its one FAIL is not this branch's.** `corpus-reviewer` returned
+  PASS on every check that reaches this change — frontmatter with no `status`, `decision-0092`'s id
+  unique, all seven of its frontmatter references resolving, the required sections, and the
+  clause-level scope of the pointer on `decision-0089` — and it independently confirmed the
+  post-change line cites at `:55-57` and `:80-83`. Its one FAIL is
+  `decisions/0044-cross-repo-depends-on-convention.md:5`'s `kodhama-0004-uniform-lifecycle`, the
+  dangling entry that record discloses about itself and that `decision-0076`, `decision-0088` and
+  `decision-0090` each recorded before this one; it predates this branch by seven weeks and is
+  untouched by it. Repeated here so a clean change is not read as a clean corpus.
+
+- **The review's own tooling was degraded, and that is disclosed rather than papered over.** Its
+  `Grep`/`Glob` failed on every call (`ENOENT … posix_spawn 'rg'`, the known sandbox defect), which
+  silently skips the corpus-wide checks. It enumerated the corpus from the repository index and read
+  all 106 artifacts individually instead, so the sweep was completed by another route rather than
+  truncated. The author separately swept every citation of `decision-0089` outside the two records —
+  four sites, none of which cites point 1 or point 4, which is why `AGENTS.md:51` is the only
+  derivative here.
+
 - **The unverified half is unchanged and still unverified.** These tests never reach `gh` or the
   network, so the live fetch path — pagination over every open PR, `previous_filename` arriving as the
   fourth field — is exercised only by real runs. Point 1's third row and point 3 both depend on it.
