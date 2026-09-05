@@ -492,8 +492,9 @@ if [ "$scope" = "project" ]; then
   # in the render branch below. Regular-and-readable BEFORE the open, as the
   # strictness read below is guarded: a FIFO at that path (review found it)
   # would block the sed forever waiting for a writer, ahead of the non-regular
-  # handling the seed step already has. The hook opens unguarded; that is the
-  # hook's own defect and is not fixed here.
+  # handling the seed step already has. The hook takes the same guard on its
+  # own copy of this read (TRL-43, this change); the parity test pins the
+  # guard lines too, so the two cannot drift apart again.
   governed_head=""
   if [ -f "$git_root/.trellis/rules.toml" ] && [ -r "$git_root/.trellis/rules.toml" ]; then
     governed_head="$(sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
