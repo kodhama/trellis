@@ -76,7 +76,8 @@ ratified: 2026-07-04
 > it instead** — unless the count is of a **past round**, which cannot go stale. That is the one
 > exemption, and it is a single class seen twice: a code comment narrating a measurement already
 > taken, and the `invariants-v1` registry's record of what the v1 round trimmed. A present-tense
-> count of the set as it stands *today* has no exemption anywhere (TRL-47).
+> count of the set as it stands *today* has no **unguarded** home: it is pinned in the list above,
+> or it is deleted (TRL-47).
 >
 > Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
 > rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`

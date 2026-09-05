@@ -242,11 +242,11 @@ change that will pass.
 - **Operating layer** — what Trellis supplies: a gate at every handover, independent
   verification (*the builder does not grade itself*), an auditable archive, bounded context,
   clarify-before-commit.
-- **Two dials** — per gate: *how strict* (`expressed` → `default-on-but-skippable` → `enforced`,
+- **Dials** — per gate: *how strict* (`expressed` → `default-on-but-skippable` → `enforced`,
   the `dial-enforcement-strength` values from `core/invariants/trellis-invariants-v1.md:234`; an
   earlier wording here invented "documented → default-on", which matched no surface) and *who checks*
   (an agent, a human, or nobody). The same core serves a weekend hack and a regulated pipeline.
-- **Two floors** — the only settings that never dial to zero: every consequential choice is
+- **Floors** — the only settings that never dial to zero: every consequential choice is
   **surfaced**, and the **human intent gate never fully opens**.
 
 The full set: [`core/invariants/trellis-invariants-v1.md`](core/invariants/trellis-invariants-v1.md).
