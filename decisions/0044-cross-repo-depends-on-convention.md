@@ -2,7 +2,7 @@
 id: decision-0044
 type: decision
 status: approved  # ratified by PR #133 merge (2026-07-10)
-depends_on: [spec-0001, decision-0037, decision-0042, kodhama-0004-uniform-lifecycle]
+depends_on: [spec-0001, decision-0037, decision-0042, kodhama/kodhama-0004-uniform-lifecycle]
 owner: agent
 date: 2026-07-10
 ---
@@ -40,6 +40,19 @@ date: 2026-07-10
 > the fix — retrofitting it (to `kodhama/kodhama-0004-uniform-lifecycle`) is separate follow-on
 > work, the same class the Consequences section already scopes out for the other known dangling
 > references.
+>
+> **Retrofit landed (2026-09-06, TRL-51).** Line 5 now reads
+> `kodhama/kodhama-0004-uniform-lifecycle`. **The paragraph above is preserved exactly as
+> authored** — read it as the 2026-07-10 state, not as a description of line 5 today. This is the
+> "separate follow-on work" that paragraph scoped, and it is *not* a supersession: nothing in the
+> ruling below changes, and the qualified entry denotes the same referent the bare one did. Its
+> authority is already on this record — the maintainer's own `## Open questions` call (*"Retrofit
+> vs. grandfather — resolved 2026-07-10: retrofit"*) and the frontmatter-only bookkeeping
+> precedent `## Consequences` names (PR #131). `inv-auditable-archive` forbids edits that *lose
+> the reasoning*; this note is here so none is lost. **What it cost to leave:** the corpus's only
+> conformance check carried an unconditional FAIL, so `decision-0076`, `-0088`, `-0090` and
+> `-0092` each had to record the same known edge to keep a clean change from reading as a clean
+> corpus — the no-consumer follow-on `decision-0078` now rules against.
 
 # 0044 — Cross-repo `depends_on` references: a qualified `repo/id` form (proposal)
 
