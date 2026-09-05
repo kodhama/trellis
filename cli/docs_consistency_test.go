@@ -459,6 +459,10 @@ func TestManualRecipeBranchesAreSeparatePastes(t *testing.T) {
 // command vanishing from one of them fails too. Corpus citations of
 // kodhama-the-repo (`kodhama/kodhama-0007…`, `kodhama/kodhama#35`) never carry
 // the words `marketplace add`, so the match is on the command, not the name.
+// `\s+` between the command and the slug, not a literal space: the plugin
+// README wraps one copy at exactly that point, and a literal space left that
+// seventh copy invisible while the file's other two copies satisfied the floor
+// (review of #277, verified by mutating the wrapped copy alone).
 func TestMarketplaceAddNamesTheRepoThatServesIt(t *testing.T) {
 	var settings struct {
 		ExtraKnownMarketplaces map[string]struct {
@@ -475,7 +479,7 @@ func TestMarketplaceAddNamesTheRepoThatServesIt(t *testing.T) {
 		t.Fatal(".claude/settings.json declares no extraKnownMarketplaces.kodhama.source.repo — the canonical marketplace repository this test checks every documented install command against")
 	}
 
-	command := regexp.MustCompile(`marketplace add ([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)`)
+	command := regexp.MustCompile(`marketplace add\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)`)
 	textual := map[string]bool{".md": true, ".html": true, ".go": true, ".sh": true, ".json": true, ".toml": true, ".txt": true, ".yml": true, ".yaml": true, ".mjs": true}
 	found := map[string]bool{}
 	err := filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
