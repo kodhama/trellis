@@ -77,8 +77,26 @@ jobs:
 
           version="$(git diff --name-only "$range" -- 'plugins/trellis/VERSION' || true)"
           if [ -n "$version" ]; then
-            echo "ok — payload changed and plugins/trellis/VERSION was bumped with it"
-            exit 0
+            # Bumped means STRICTLY NEWER, not merely edited. A re-pull is gated on the
+            # version string changing to one a consumer has not cached: a payload shipped
+            # under a reused or older number (0.12.0 -> 0.11.0 while the manifests are
+            # kept in step) passes an edited-at-all check and recreates the split
+            # population this guard exists to prevent — installs that cached that
+            # number never re-pull. TestPluginPackageParity checks shape and parity,
+            # not direction, so direction is checked here, against the base branch.
+            base_version="$(git show "origin/${{ github.base_ref }}:plugins/trellis/VERSION" 2>/dev/null | tr -d '[:space:]' || true)"
+            head_version="$(tr -d '[:space:]' < plugins/trellis/VERSION)"
+            newest="$(printf '%s\n%s\n' "$base_version" "$head_version" | sort -V | tail -n 1)"
+            if [ -n "$head_version" ] && [ "$head_version" != "$base_version" ] && [ "$newest" = "$head_version" ]; then
+              echo "ok — payload changed and plugins/trellis/VERSION was bumped with it (${base_version:-none} -> $head_version)"
+              exit 0
+            fi
+            echo "::error::This PR changes the plugin payload and edits plugins/trellis/VERSION, but ${base_version:-none} -> ${head_version:-empty} is not a bump to a newer version."
+            echo "decision-0028: a consumer re-pulls only when the version string moves to one it has"
+            echo "not cached. A reused or older number ships this payload to fresh installs only."
+            echo ""
+            echo "Fix: set plugins/trellis/VERSION to a version newer than ${base_version:-none} on the base branch."
+            exit 1
           fi
 
           echo "::error::This PR changes the plugin payload but does not bump plugins/trellis/VERSION."
