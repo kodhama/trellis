@@ -17,13 +17,30 @@ name: release-guard
 # matched the catalog, so its SessionStart hook refused to inject and every session there
 # ran with no overlay at all.
 #
-# Keys on `reference/version` — the payload content stamp, which changes exactly when the
-# payload content changes. A payload edit committed WITHOUT regenerating that stamp is a
-# different defect, already caught by the regenerate-and-diff test in cli-ci; the two
-# guards compose and neither substitutes for the other.
+# WHAT COUNTS AS THE PAYLOAD: everything under `plugins/trellis/`. That is not a guess —
+# it is the file set install.sh vends, pinned hash-by-hash in its baked
+# TRELLIS_BUNDLE_MANIFEST and held current by TestInstallScriptBundleManifestIsCurrent,
+# which walks `plugins/trellis/` and fails on any drift in content OR file set. So
+# `hooks/`, `skills/` and `README.md` ship exactly as much as `reference/` does.
+#   This guard deliberately does NOT key on `reference/version`, the payload content
+# stamp, which was the obvious hook and is the wrong one: that stamp hashes `reference/`
+# only, so it does not move for a hook change. The two most recent releases prove the
+# gap — #275 (0.10.0 → 0.11.0) and #268 (0.11.0 → 0.12.0) each changed
+# `hooks/staleness.sh` and each was correctly bumped by hand, and a `reference/version`
+# check would have waved both through. A guard that misses the last two releases is not
+# a guard.
 #
-# Draft PRs are exempt, matching ratify-guard: marking a PR draft is this repo's sanctioned
-# "keep it clearly WIP" escape, and a release bump is reasonably the last commit on a branch.
+# THE EXCEPTIONS are the version bookkeeping files themselves — `VERSION` and the two
+# `plugin.json` manifests that TestPluginPackageParity keeps in step with it. Those ARE
+# the bump, so counting them as payload would make every release trip the guard on
+# itself, and a PR that touched only them would be a bump with nothing to bump for.
+#
+# A payload edit committed WITHOUT regenerating `reference/checksums` and
+# `reference/version` is a different defect, already caught by the regenerate-and-diff
+# test in cli-ci; the two guards compose and neither substitutes for the other.
+#
+# Draft PRs are exempt: marking a PR draft is this repo's sanctioned "keep it clearly
+# WIP" escape, and a release bump is reasonably the last commit on a branch.
 
 on:
   pull_request:
@@ -44,11 +61,19 @@ jobs:
           git fetch origin "${{ github.base_ref }}" --quiet
           range="origin/${{ github.base_ref }}...HEAD"
 
-          payload="$(git diff --name-only "$range" -- 'plugins/trellis/reference/version' || true)"
+          # The shipped bundle, minus the version bookkeeping that IS the bump.
+          payload="$(git diff --name-only "$range" -- \
+            'plugins/trellis/' \
+            ':(exclude)plugins/trellis/VERSION' \
+            ':(exclude)plugins/trellis/.claude-plugin/plugin.json' \
+            ':(exclude)plugins/trellis/.codex-plugin/plugin.json' || true)"
           if [ -z "$payload" ]; then
             echo "ok — this PR does not change the plugin payload"
             exit 0
           fi
+
+          echo "payload files changed by this PR:"
+          echo "$payload" | sed 's/^/  /'
 
           version="$(git diff --name-only "$range" -- 'plugins/trellis/VERSION' || true)"
           if [ -n "$version" ]; then
@@ -61,6 +86,9 @@ jobs:
           echo "Consumers keep their cached copy until the version string changes, so as it"
           echo "stands this payload would reach fresh installs only, and existing installs"
           echo "would keep serving the previous catalog under the same version number."
+          echo ""
+          echo "The payload is every file install.sh vends — all of plugins/trellis/, so"
+          echo "hooks/ and skills/ count as much as reference/ does."
           echo ""
           echo "Fix: bump plugins/trellis/VERSION (TestPluginPackageParity keeps plugin.json"
           echo "and the Codex manifest in step), or mark this PR as draft if it is still WIP."

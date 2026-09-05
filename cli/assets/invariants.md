@@ -2,14 +2,16 @@
 id: signature-catalog-v1
 type: signature-catalog
 status: ratified
-depends_on: [invariants-v1, spec-0002]
+depends_on: [invariants-v1, schema-typed-artifacts]
 owner: gundi
 scope: trellis-product
 ratified: 2026-07-04
 ---
 
 > **Ratified via merge (`decision-0022`).** The agent authored this; the maintainer's **merge of this
-> PR is the ratification** (`floor-intent-gate`) — the `draft → ratified` flip rides the reviewed diff. Coverage is
+> PR is the ratification** (`floor-intent-gate`). *(As of `decision-0082` the merge is the whole
+> mechanic — there is no `draft → ratified` flip; this banner formerly said the flip rode the
+> reviewed diff.)* Coverage is
 > independently checked (AC1); the `signature` / `why` / example / dial calls embody judgment the
 > maintainer accepts by merging.
 >
@@ -28,14 +30,13 @@ ratified: 2026-07-04
 > project is seen to honor it, **≥2 matched `without → with` pairs** — the same use case shown failing
 > then fixed (`violated[i]` and `honored[i]` are one pair, same layer tag; `decision-0027`), spanning
 > different layers (CI / spec / research / code / ops …) — and its **default dials**. Schema +
-> lifecycle: `spec-0002`. Slugs: the
+> lifecycle: `schema-typed-artifacts`. Slugs: the
 > `invariants-v1` registry. **The benefits page derives from the `why` + honored/violated here** — no
-> claim on the page without a rule behind it (`decision-0020`). Consumed by Assess (#23) and tutoring
-> (#27). `trellis-product` scope — one, shipped.
+> claim on the page without a rule behind it (`decision-0020`). `trellis-product` scope — one, shipped.
 
-> **Coverage (spec-0002 §1, AC1).** Covers the **15 assessable invariants** — the structural set, the
-> operating set (incl. **`inv-self-improvement`**, `decision-0018`, and **`inv-deliberate-succession`**,
-> `decision-0074`), the floors. `inv-reference-relationship`
+> **Coverage (AC1).** Covers the **assessable invariants** — the structural set, the
+> operating set (incl. **`inv-self-improvement`**, `decision-0018`, **`inv-deliberate-succession`**,
+> `decision-0074`, and **`inv-no-orphan-followups`**, `decision-0078`), the floors. `inv-reference-relationship`
 > was **collapsed into `floor-transparency` + the adopt/adapt dial** (`decision-0021`) — its "divergence from a framework"
 > case lives in `floor-transparency`'s example below. Excludes the two dials (they are the *axes* entries are set
 > along, not rows).
@@ -50,6 +51,36 @@ ratified: 2026-07-04
 > **copied verbatim** to `cli/assets/invariants.md` + `plugins/trellis/reference/invariants.md` (the
 > bundled reference). Change an example here → regenerate all three. A CI check enforces it
 > (`cli/sync_test.go`) — but this note is here so you see the dependents *before* the check does.
+>
+> **Adding or removing a row costs more than an example edit does — and the sweep is guarded,
+> not listed.** `cli/row_set_guard_test.go` reads the pinned slug set (`assessableSlugs`,
+> `cli/payload_test.go` — the one pin) and fails naming what has not followed: this catalog's own
+> entry list, the `invariants-v1` registry, `profiles/trellis-self.md` (each gene present *and*
+> active), the `docs/invariants.html` cards, this repo's `.trellis/rules.toml`, and the rendered
+> `reference/rules-*.toml` (**without a row the rule ships but is inactive**). Run
+> `go test -count=1 ./...` in `cli/` and follow the failures.
+>
+> **The count itself is guarded where the number is the claim** — the installer's closing line,
+> the staleness hook's announcement, the README's `16/16`, and AC1's class breakdown below — **and
+> in one place where it is not.** `plugins/trellis/README.md` still spells the count out twice;
+> those two sentences are pinned rather than deleted because editing a numeral inside the shipped
+> bundle forces `install.sh`'s baked manifest to be re-hashed, and those manifest lines are owned
+> by open **trellis#262**. The pin is where that deferral is recorded, so it cannot go stale while
+> it waits — delete the two rows when a change that already touches the bundle deletes the
+> numerals.
+>
+> Elsewhere — the root README, `docs/`, the corpus — the numeral was simply deleted ("all sixteen
+> rules" → "all rules"), because a list of count sites kept here was found short twice
+> (`decision-0074`, `decision-0078`), and a twenty-two-row table of them in a test file was the
+> same mistake one layer down (TRL-28). **If you are about to write a row count into prose, delete
+> it instead.** Two classes keep their numbers unguarded on purpose: code comments narrating a past
+> measurement, and the `invariants-v1` registry's own account of how the set was composed.
+>
+> Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
+> rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
+> (**unguarded — trellis#245 is still open**; without it every cached consumer keeps the old rule
+> set, `d4a2c7b`). The Codex hook is not a surface: it derives its slug set from the generated
+> `reference/rules.md` since `decision-0083`.
 
 ## Entries
 
@@ -222,6 +253,42 @@ ratified: 2026-07-04
   - class: `trellis-design`  ·  mechanizable: `false` (the surfacing floor is checkable per SI-1; noticing that a moment is one of succession is not)  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
 
+- **`inv-no-orphan-followups`** *(new, `decision-0078`; neighbor of `inv-self-improvement` — that one
+  turns friction into a fix, this one governs the work you decide **not** to do now)*
+  - what: a deferral is recorded only where a **named consumer** will re-present it — a queue an
+    executor works, a tracker someone triages, a failing or skipped test, a scheduled sweep that is
+    actually switched on. "Someone reading this file later" is not a consumer. Work with no such
+    address is not deferred work: do it now, **drop it on the record**, or escalate it.
+  - directive: When you defer something, put it where a named consumer will bring it back — a queue, a tracker, a failing test, a scheduled sweep. If you cannot name what will surface it again, do not record it: do it now, drop it and say you dropped it, or escalate. Writing it down is not tracking it.
+  - why: **a follow-up you wrote down actually comes back** — agents produce deferrals far faster
+    than humans consume them, and a plausible ledger is worse than none: it converts an unsolved
+    problem into the *feeling* of a tracked one, and it is trusted precisely because it looks like
+    bookkeeping.
+  - signature: each deferral sink names its consumer and the cadence that drains it; a step that
+    **appends** to a sink names the step that **reads** it, and that step is switched on; write-only
+    sinks are detectable — entries far outnumbering resolutions, or a designed consumer never turned
+    on; *"dropped, because X"* is a first-class recorded outcome beside *"deferred to Y"*, so the
+    cheap escape is dropping rather than filing; sinks are pruned, not grown (the prune-bias hinge
+    shared with `inv-self-improvement` / `inv-graph-maintenance`).
+  - honored:
+    - *(process)* a review's deferred findings go to the queue whose executor actually works it, and
+      the ones nobody will work are dropped in the review itself, with the reason recorded.
+    - *(code)* a known-broken case ships as a skipped test naming the defect — every run re-presents
+      it, so it cannot be forgotten.
+    - *(ops)* a workflow step that appends findings to a ledger names the step that drains it, and
+      that step runs on a stated cadence; the write→read pair is guarded like any other.
+  - violated:
+    - *(process)* a review's findings are appended to a file nobody is scheduled to read; the real
+      defects get fixed weeks later only because a fresh review re-derives them.
+    - *(code)* a `TODO: fix before launch` sits in a comment that no test, lint rule or checklist
+      ever surfaces, and ships.
+    - *(ops)* a workflow appends every deferral to a ledger and is told not to check for duplicates;
+      the sweep designed to drain it was never switched on — 61 entries, 3 resolutions, all three
+      written the day someone audited it.
+  - class: `trellis-design`  ·  mechanizable: `false` (that a sink *declares* a consumer is
+    checkable; that anything actually drains it is judgment)  ·  intent_locus: `false`
+  - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
+
 - **`inv-gate-at-handover`**
   - what: apply the verification gate at every handover point; any skip is **surfaced** (`floor-transparency`).
   - directive: Don't skip the review or verification step before handing work on. If you have to skip it, say so out loud — never let it silently not happen.
@@ -273,7 +340,7 @@ ratified: 2026-07-04
   - signature: append-only decision records; retained change history (git); a current-truth doc kept
     separate from its change log; **supersession can be partial** — a superseded-in-part pointer marks
     the outgrown half so the live remainder stays navigable and no reader lands on stale text without
-    a forward link (`spec-0001` §2, `decision-0040`).
+    a forward link (`decision-0040`).
   - honored:
     - *(ADR)* decisions are append-only and link their rationale; superseding writes a *new* record.
     - *(infra)* every prod change carries provenance — git history + a current-truth doc — so "why" is
@@ -387,7 +454,7 @@ ratified: 2026-07-04
 
 ## Acceptance criteria
 
-- Covers all **15 assessable** slugs (the four structural, the nine remaining operating, the two floors — `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`);
+- Covers all **16 assessable** slugs (the four structural, the ten remaining operating, the two floors — `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`);
   the two dials are excluded by design.
 - Every entry carries `what` · **`directive`** · **`why`** · `signature` · **`honored`** · **`violated`** · `class` ·
   `mechanizable` · `default_C1` · `default_C2` (+ `intent_locus` where `true`), and `honored`/`violated`
@@ -410,6 +477,6 @@ ratified: 2026-07-04
 - **`why` audience.** One line serving agents-first *and* humans; revisit if the two registers pull
   apart.
 - **`mechanizable` breadth (an intent-gate judgment call).** This catalog marks `inv-handover-points` and
-  `inv-auditable-archive` `mechanizable: true` — *broader* than `spec-0002` §1's illustrative
+  `inv-auditable-archive` `mechanizable: true` — *broader* than the catalog's own illustrative
   fragment. The call: *presence* of handover points / an append-only archive is structurally
   detectable. Flagged, not silently conformed.

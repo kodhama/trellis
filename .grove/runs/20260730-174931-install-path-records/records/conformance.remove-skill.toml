@@ -1,8 +1,0 @@
-schema = 1
-record_type = "conformance"
-subject = "plugins/trellis/skills/remove/SKILL.md"
-subject_state = "present"
-subject_sha256 = "1b8ca85bee304bc76be88941b714554e67c91f39197a7abf75460c821c369a80"
-verdict = "skipped — maintainer's explicit in-session direction, 2026-07-30. Independent review DID run for this change and every finding was acted on, but OUT OF BAND: grove:conformance-reviewer (FAIL), grove:decision-adversary x2 (NEEDS-REVISION), grove:code-reviewer (2 HIGH), plus the Codex and Claude PR reviewers — 18 findings total, all fixed, all threads resolved on trellis#212. None was posted as a verdict record at the time, so under floor-owed-reviews none counts. This skips the OWED RECORD, not the review, and exists so the skip is not silent (floor-recorded-skips)."
-by = "maintainer (in-session direction); recorded by agent"
-date = "2026-07-30T17:59:03Z"

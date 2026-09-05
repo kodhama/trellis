@@ -39,9 +39,12 @@ Also inspect, without writing:
   inside it need surfacing **by name** before any deletion:
   - **the decline artifact** — a `rules.toml` carrying top-level `governed = false` is the
     project's recorded decline (`decision-0070` D4). State the consequence out loud: on a machine
-    with a user-scope plugin, deleting the recorded decline re-arms the adoption announcement, and
-    one ignored prompt re-governs at 15/15. Deleting it is legitimate — removal is removal — but
-    doing it unnamed is not;
+    with a user-scope plugin, deleting the recorded decline re-arms the adoption announcement, so
+    the project returns to **unadopted** and every future session asks again until someone answers.
+    Answering yes governs it at 16/16. Ignoring the prompt does not:
+    **silence is not an adoption act** (`decision-0077`), so the project stays ungoverned and is
+    asked again next session. Deleting it is legitimate — removal is removal — but doing it
+    unnamed is not;
   - **the consumer's own rows** — `rules.toml` is the consumer's file, and deleting `.trellis/`
     deletes every row they edited. Show them the rows that will go, as part of the consent below;
   - **anything unrecognized** — a file in `.trellis/` this document does not name (not
@@ -233,7 +236,7 @@ If the morph stands, show the user the options (`git reset --hard trellis-pre-mo
 `git revert`, or deleting the unmerged `trellis/morph` branch) and let them run the destructive
 step. If **both markers are absent** — no `.trellis/rollback` and no `trellis-pre-morph` tag,
 reachable here on the user's say-so — say you **cannot locate a rollback point** rather than
-guess (`spec-0004` §2): name what was searched, and leave the reversal to the user's own git
+guess: name what was searched, and leave the reversal to the user's own git
 history.
 
 After any reversal runs, **start over from the preflight (§1)**: the reversal rewrote the

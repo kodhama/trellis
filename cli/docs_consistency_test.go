@@ -31,9 +31,21 @@ import (
 func docSurfaces(t *testing.T) []string {
 	t.Helper()
 	skipDirs := map[string]bool{
-		".git": true, ".github": true, ".grove": true, ".claude": true,
+		// .grove dropped by decision-0076, which deleted the directory.
+		".git": true, ".github": true, ".claude": true,
 		"decisions": true, "specs": true, "research": true, "eval": true,
 		"fixtures": true, "testdata": true,
+		// docs/superpowers/ (committed specs and plans) and .superpowers/
+		// (working SDD state) are exempt on the SAME ground as the three
+		// above, not by inheritance from specs/: a planning record
+		// legitimately names artifacts that later retired — e.g.
+		// /trellis:setup before decision-0072 retired it — and a retirement
+		// must not force an edit to the record of the work that preceded it.
+		// An earlier version of this comment argued succession from specs/
+		// via decision-0079. decision-0085 shows that argument assumed 0079
+		// permitted retention, which as written it did not; the exemption
+		// stands, its stated ground does not.
+		"superpowers": true, ".superpowers": true,
 	}
 	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}
 	var out []string
@@ -125,14 +137,17 @@ func TestDocsClaimOnlyRealCommands(t *testing.T) {
 // allowed form below names why it is allowed, so the exemption list is a record
 // rather than a mute.
 var setupQualifiers = []string{
-	"the retired setup skill", // decision-0072's own name for it
-	"a past setup",            // remove skill: cleaning artifacts it left
-	"past setup",              // same, mid-sentence
-	"setup skill retired",     // README pointer at the decision
-	"the setup skill",         // qualified reference to the artifact
-	"`setup` TUI",             // the retired v0 BINARY, not the skill
-	"setup\n  CLI",            // same, across a line wrap
-	"grove:setup",             // a different product's skill
+	"the retired setup skill",  // decision-0072's own name for it
+	"a past setup",             // remove skill: cleaning artifacts it left
+	"past setup",               // same, mid-sentence
+	"setup skill retired",      // README pointer at the decision
+	"the setup skill",          // qualified reference to the artifact
+	"`setup` TUI",              // the retired v0 BINARY, not the skill
+	"setup\n  CLI",             // same, across a line wrap
+	"environment setup script", // Claude Code cloud's own name for the pre-launch script (TRL-35), not the skill
+	// "grove:setup" was exempted here as "a different product's skill". Dropped by
+	// decision-0076: grove is retired and no doc surface may name /grove:setup as a
+	// live command, so keeping the exemption would let one back in unnoticed.
 }
 
 func TestNoUnqualifiedSetupClaims(t *testing.T) {
@@ -313,7 +328,13 @@ func runnable(cmds []string) []string {
 
 func parseRenderedPanels(t *testing.T, page string) map[string][]string {
 	t.Helper()
-	re := regexp.MustCompile(`(?s)<div class="panel[^"]*" data-panel="([^"]+)">(.*?)</div>\s*(?:<div class="panel|</div>)`)
+	// `[^>]*` after data-panel, not `>`: the panels became real tabpanels in the
+	// TRL-11 a11y pass and now carry role/id/aria-labelledby/tabindex after that
+	// attribute. Pinning the `>` would have made this test fail closed on any
+	// future attribute — which is the loud failure this file wants, but the fix
+	// is to widen the match, not to drop the check. Everything it actually
+	// asserts on (the data-panel key, the <code> bodies) is unchanged.
+	re := regexp.MustCompile(`(?s)<div class="panel[^"]*" data-panel="([^"]+)"[^>]*>(.*?)</div>\s*(?:<div class="panel|</div>)`)
 	ms := re.FindAllStringSubmatch(page, -1)
 	if len(ms) == 0 {
 		t.Fatal("no terminal panels found in docs/index.html — this test's premise has drifted")

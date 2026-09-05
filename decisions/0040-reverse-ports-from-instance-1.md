@@ -3,6 +3,7 @@ id: decision-0040
 type: decision
 status: ratified
 depends_on: [invariants-v1, signature-catalog-v1, spec-0001, decision-0009, decision-0018, decision-0027]
+superseded_in_part_by: [decision-0082]  # decision-0082: point 5's "the marked record keeps `status: ratified`" clause only — supersession is now identified by the forward pointer itself. STANDS: everything else, including partial supersession as a concept, the `superseded_in_part_by` field it introduced, and the other four reverse-ports
 owner: gundi
 ratified: 2026-07-07
 ---

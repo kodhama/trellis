@@ -10,13 +10,16 @@ name: cli-ci
 
 # Paths include the doc surfaces (docs/, README, install.sh, plugins/) so the
 # docs-consistency test (decision-0025) runs when a doc claim changes, not only on
-# code changes.
+# code changes. They also include .github/scripts/** and decision-id-guard.yml:
+# cli/decision_id_guard_test.go executes that script and reads that workflow
+# (decision-0089), so editing either without touching cli/ would otherwise skip
+# the only tests that cover them.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", "install.sh", "plugins/**", "core/catalog/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
 
 jobs:
   build-test:
@@ -27,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # cli/codex_hook_test.go executes the production Codex hook; Phase 1's
-      # explicit local hook prerequisite is Node.js >=20 (spec-0007@v1 R40).
+      # explicit local hook prerequisite is Node.js >=20 (decision-0058).
       - uses: actions/setup-node@v5
         with:
           node-version: "20"
@@ -37,4 +40,13 @@ jobs:
           cache: false  # dependency-free since #120 (x/term retired with the TUI)
       - run: go build ./...
       - run: go vet ./...
-      - run: go test ./...
+      # -count=1 disables Go's test cache. cli/plugin_hook_test.go and
+      # cli/codex_hook_test.go execute the production hooks
+      # (plugins/trellis/hooks/staleness.sh, hooks/codex-context.mjs) as
+      # external files; the cache keys on Go sources and inputs it can see, so
+      # a hook mutation with no .go change replays a stale PASS. Reproduced by
+      # deleting codex-context.mjs's empty-slug-set guard: `ok (cached)`, then
+      # red under -count=1. Redundant on a fresh CI runner (cache: false above,
+      # and nothing to restore) — kept so this line and AGENTS.md's documented
+      # command are the same command, and the local run is safe by default.
+      - run: go test -count=1 ./...

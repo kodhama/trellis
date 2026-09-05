@@ -10,13 +10,10 @@
 > operating method (brief §12). It dogfoods our own invariants from commit one. Friction
 > we hit while following it *is product research* — record it, don't route around it.
 
-> **Which layer is this? (decision `0005`, ratified; reorg underway).** Trellis self-hosts, so
-> two layers must not be conflated: **Trellis-core** (the shippable product — invariants, spine,
-> gates) now lives in **`core/`**; **the methodology used to build Trellis** is the repo root
-> (this file, `decisions/`, `research/`, `specs/`). *This file is Layer B — instance #1, the
-> first methodology Trellis supervises — not Trellis's product agent-instructions.* The `core/`
-> migration is incremental: `invariants/` moved in first; the corpus-reviewer sub-agent's product
-> home (`core/agents/`) waits on the delivery slice (`0012`).
+> **Which layer is this? (`decision-0005`.)** **Trellis-core** — the shippable product —
+> lives in `core/`. **The methodology used to build Trellis** is the repo root: this file,
+> `decisions/` and `research/`. *This file is Layer B — instance #1, the first methodology
+> Trellis supervises — not Trellis's product agent-instructions.*
 
 ## The iron rule (most important design constraint)
 
@@ -29,63 +26,40 @@ rule you can't exemplify is probably vaporware.*
 
 ## Operating method
 
-- **Artifacts.** Every non-code document opens with frontmatter
-  (`id / type / status / depends_on / owner`). Statuses: `draft → gated → approved
-  (→ superseded)` — the family lifecycle (`decision-0042`); artifacts ratified before
-  2026-07-08 read `ratified`, the same state as `approved` under `decision-0037`'s
-  equivalence. **Downstream consumes only gated/approved upstream, never drafts.** Required body
-  sections are **per-type** (not a blanket rule — a strategic decision has no "acceptance
-  criteria"; ratification *is* its acceptance):
-  - `decision` → `## Context` / `## Decision` / `## Consequences`
-  - `spec` / `invariant-set` → `## Acceptance criteria` / `## Open questions`
-  - `research-note` → `## Open questions` (+ sources & confidence tags)
-  - `feedback` → exempt (advisory rubric, never a gate)
-- **`owner: agent` mapping (`decision-0037` point 3).** Where an artifact sets `owner: agent`
-  (`decision-0042`, `spec-0005`), the field carries **authorship**, not the accountable human —
-  that role stays the maintainer (gundi), held via the merge gate (`decision-0022`). Declared
-  here because `decision-0037` permits the mapping only when a methodology declares it for
-  itself.
-- **Decisions.** Significant choices get an **append-only** record in `decisions/`. You
-  *supersede* (with a forward pointer), never edit, a ratified decision. The four strategic
-  forks (brief §9) are records `0001–0004`.
-- **Gates.** Human approval at the **intent** layer (vision, decisions, the invariant
-  set). **Independent verification** at the **execution** layer (a conformance check
-  against the approved upstream before merge — *the builder does not grade itself*).
-  **Ratification is a human intent act (`decision-0022`/`0042`, refined by `decision-0046`):**
-  a human's approval — in conversation, review, or by merging — is the ratification act;
-  flipping `draft → gated → approved` in the PR **records** it. An **in-PR `approved` flip is
-  legitimate when it records a human act**; an agent writing `approved` with no human act is
-  forbidden (`floor-intent-gate`). Merging is one way to perform ratification, not the only
-  one. **No draft is left on `main` past the PR that introduced it** (gate it, or keep the PR
-  clearly WIP) — the `ratify-guard` check still enforces this draft-landing rule.
-- **Work.** One logical change per PR; descriptive, linear history; diffs small enough to
-  review on a phone.
-- **Self-improvement.** Triggers, not vigilance (invariant 8): when friction reveals a
-  missing rule, add it *where it fires*, **prefer retiring to adding**, keep it subordinate
-  to the work. This file is the first trigger home.
-- **Derived resources stay in sync (`decision-0028`).** When you change a *source* — the
-  catalog, a spec, the CLI's command set — update everything that **derives** from it in the
-  same change. A source names its derivatives (so you see them at the edit), and a check
-  guards each pair. If you edit something and can't name what derives from it, that's the
-  question to ask. (This is `inv-graph-maintenance` made salient: the graph, pointed forward.)
-- **A payload change is a release (`decision-0028`, applied to the plugin package).**
-  `plugins/trellis/VERSION` **derives from the payload**: an existing install keeps its
-  cached copy until the version string changes, so a payload edit shipped without a bump
-  reaches *fresh* installs — which have no cache — and reaches no one else. Bump `VERSION`
-  in the **same PR** as any change under `plugins/trellis/reference/`; `release-guard`
-  checks the pair, and `TestPluginPackageParity` keeps `plugin.json` and the Codex manifest
-  in step. *Concretely:* `VERSION` bumped 2026-07-31 (#212), the payload then changed in
-  #227, #231 and #237 before the next bump on 2026-08-23 (#244) — 23 days in which a fresh
-  container reported `v0.4.0` while carrying the 15-rule payload, and a consumer whose
-  `rules.toml` still listed 14 rows got **no overlay at all**, because the hook refuses to
-  inject a row set it cannot match.
-> The invariants this section used to restate — **transparency** (surface everything; fail loudly;
-> never emit plausible-but-unverified output) and **independent judgment** (no sycophancy; the builder
-> doesn't grade itself) — now arrive through Trellis's self-applied overlay (`.trellis/`), not
-> hand-written here. `CLAUDE.md` loads that overlay for Claude; Codex delivery is separate plugin
-> work. This section is the project's *method* for holding the invariants, not a copy of them
-> (`decision-0035`). If a behavior below reads like a bare invariant, it belongs in the overlay,
-> not here.
+The method lives in `decisions/`, **not restated here** — a decision is the current truth, and a
+summary in this file only goes stale against it. Read the record before relying on a rule.
+`decisions/` is append-only: you *supersede* with a forward pointer, never edit.
+
+**There is no `status` field** (`decision-0082`). **Merging to `main` is the acceptance:** an
+artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
+flip, ever. **Supersession is marked by the forward pointer** — `superseded_by`, or
+`superseded_in_part_by` when the remainder is live. *Artifacts predating `decision-0082` keep
+their `status:` lines as history — several carry the maintainer's intent act in a trailing
+comment. Read them as accepted; do not add the field to anything new, and do not strip it from
+anything old.*
+
+**Never tell the maintainer a change is blocked on an artifact's recorded state.** If he has
+asked for a PR, open it. An agent still may not merge on his behalf without his act
+(`floor-intent-gate`) — the gate did not move; only the bookkeeping around it went away.
+
+| Before you… | Read |
+|---|---|
+| write or change an artifact — frontmatter, per-type body sections | `decision-0082` (no `status`; the merge is the acceptance) · `decision-0042` (family lifecycle) · `decision-0037` (`owner: agent` carries *authorship*, not accountability — that stays with the maintainer) |
+| supersede a record | `decision-0082` — the forward pointer *is* the mark; `decision-0040` for the partial form |
+| retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal) · `decision-0074` |
+| change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
+| record a significant choice | append to `decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main` **and** on every open PR; `decision-0089`'s CI guard fails the higher-numbered claimant |
+| plan a build between a decision and the code | the **superpowers** skills (`brainstorming`, `writing-plans`, `executing-plans`) — the spec stage retired in `decision-0079`, and `specs/` with it |
+| record a next step | `decision-0078` — name the consumer that will re-present it, or drop it |
+| pick up or file work | `decision-0075` — see *Where work lives* below |
+
+Beyond the records: **one logical change per PR**; descriptive, linear history; diffs small
+enough to review on a phone. When friction reveals a missing rule, add it *where it fires*,
+**prefer retiring to adding**, and keep it subordinate to the work (`inv-self-improvement`).
+
+The invariants themselves — transparency, independent judgment, the rest — are delivered live by
+the Trellis plugin at session start, not hand-written here (`decision-0035`, `decision-0071`). A
+behavior that reads like a bare invariant belongs in the catalog, not in this file.
 
 ## Naming guardrail (research discipline, applied to ourselves)
 
@@ -94,29 +68,44 @@ synthesis** — never imply pre-existing provenance. For now it is exactly *"Tre
 invariants — our synthesis, v1."* Eponymous framing is a deliberate *later* decision, made
 only once the set's durability is proven across multiple instances.
 
-## Current state
+## Where work lives
 
-- **Intent layer: ratified.** `invariants-v1` is the ratified current-truth set (the
-  structural admission gate · the operating set · the dials · the floors); decisions
-  `0001–0008` are ratified; v0 superseded.
-- **Research done:** Steps 0–2 (`research-0001` target landscape, `research-0002` gate-test
-  of real frameworks); findings folded into v1.
-- **Machinery:** automated PR review live (decision `0007`).
-- **Next:** the **spine** — portable artifact contract + lifecycle (brief §8.1) — the first
-  build, consuming ratified `invariants-v1`. Then find **instance #2** (the N=1 risk).
+**This project is managed in Linear** — Kodhama workspace, team **Trellis** (`TRL-*`). Issues,
+stages, priorities and their history live there; this repository hosts the code, pull requests
+and CI (`decision-0075`).
 
-## Acceptance criteria
+- **Ideas are a document, not issues** — the team's Ideas doc, each entry carrying the trigger
+  that would promote it. An idea filed as an issue is a to-do nobody agreed to.
+- **Resolve the team by id, not by name.** A rename breaks name resolution silently — an
+  unmatched team yields *nothing found* rather than an error.
 
-- A newcomer (human or agent) can read this file and the invariant set and know how to
-  make a change that will pass the gates.
-- Every claim of "done" in this repo traces to a concrete artifact, not a description.
+## Checks and review
 
-## Open questions
-
-- When does a second project (instance #2) get to test these invariants, given we have
-  chosen to validate by dogfooding our own project first (decision `0001`)?
-- What is the smallest enforcement that makes "downstream consumes only ratified" real
-  here — convention, a check, or a gate sub-agent? (Resolve when the spine is built.)
+- **Tests / typecheck:** `cd cli && go test -count=1 ./...` · `cd cli && go build ./... && go vet ./...`
+  (build + vet are Go's typecheck; the `cli-ci` workflow runs the same). **`-count=1` is not
+  optional here:** the hook tests execute `plugins/trellis/hooks/*` as external files, which Go's
+  test cache does not track — edit a hook with no `.go` change and a cached PASS replays over the
+  mutation. No dedicated linter is configured; `gofmt -l cli/` is available locally but is not
+  CI-enforced.
+- **A payload change is a release** (`decision-0028`, applied to the plugin package). Bump
+  `plugins/trellis/VERSION` in the same PR as any change under `plugins/trellis/` — an existing
+  install re-pulls only when the version string moves, so an unbumped payload reaches fresh
+  installs and no one else. `release-guard` fails that pair, keyed on the whole shipped bundle
+  rather than `reference/`: #275 edited `hooks/staleness.sh` and was a release (0.10.0 → 0.11.0)
+  though `reference/version`, which hashes `reference/` only, never moved.
+- **Artifact conformance is agent-applied, not CI-applied** (`decision-0010` — the contract and
+  its conformance check ship as agent instructions with no runtime). Invoke the repo-owned
+  `corpus-reviewer` (`.claude/agents/`) before merging a change to `decisions/`, `research/`
+  or `core/`. It checks the corpus against `core/rubrics/artifact-contract.md`, and is
+  read-only by charter — it reports, never fixes.
+- **Branch names are `<category>/<slug>`** — `decision/0075-linear-tracks-the-work`, `research/…`,
+  `fix/…`. Since the Linear migration, `feature/*` branches also carry the issue key
+  (`feature/trl-22-…`), so **whether a branch is findable by issue number depends on its category**:
+  all three current `feature/*` branches are, no `decision/*` branch is.
+- **Grove is retired** (`decision-0076`). The plugin, its `grove:<role>` subagents and the
+  `/grove:*` commands are gone, and `.grove/` with them. Citations to **grove-the-repo**
+  (`grove/adr-00NN`) are a different thing and remain live and load-bearing — `decision-0045`
+  is superseded in part by `grove/adr-0010`. Do not "clean up" those.
 
 ## Maintaining project instructions
 
@@ -124,22 +113,5 @@ only once the set's durability is proven across multiple instances.
 here, outside managed blocks. `CLAUDE.md` is the Claude adapter, not a shared-rule edit
 surface. Genuinely Claude-only rules belong in `.claude/rules/`.
 
-Grove and Trellis project choices remain in `.grove/` and `.trellis/` configuration files.
-Do not hand-edit managed blocks.
-
-<!-- grove:begin (managed by grove — dials live in .grove/, not this block) -->
-trellis is a **grove consumer** ([grove](https://github.com/kodhama/grove) adr-0026, the
-thin-vendor boundary): work items matching a grove workflow (W1–W6 — e.g. a bug report → the
-bug pipeline, a research ask → divergent research) run as grove runs, sequenced through
-grove's chartered agent roles, loaded from the grove plugin as `grove:<role>` subagents (all
-thirteen — never vendored into `.claude/agents/`). Anything else — conversation, trivial
-asks, out-of-scope questions — proceeds normally. This repo's dials live in `.grove/` (see
-its README). trellis keeps its own `corpus-reviewer` in `.claude/agents/` — a repo-owned role
-that coexists with the plugin's `grove:corpus-reviewer` by namespacing (adr-0026 D5; the
-corpus-reviewer lineage originated in trellis, grove adr-0001). Telemetry (`grove-status`) is
-not installed — wisp is not vendored here, and telemetry is optional by construction. Version
-skew (adr-0026 D4): at role start, if the installed grove plugin's version differs from the
-stamp below, disclose the divergence loudly in your report and continue — the stamp is the
-in-repo ratified record, never a lock; grove never enforces it.
-grove plugin@0.1.0
-<!-- grove:end -->
+Trellis project choices remain in `.trellis/` configuration files. Do not hand-edit
+managed blocks.

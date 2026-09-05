@@ -3,73 +3,82 @@ id: rubric-artifact-contract
 type: rubric
 status: ratified
 ratified: 2026-07-03
-depends_on: [spec-0001, spec-0002]
+depends_on: [invariants-v1, decision-0037, decision-0042, schema-typed-artifacts]
 owner: gundi
 scope: trellis-product
 ---
 
 # Rubric — artifact-contract conformance
 
-> The checkable gate the conformance sub-agent applies to a corpus of artifacts. Derived from
-> `spec-0001` §3 (base contract) and `spec-0002` §4 (the two typed artifacts). Each item is
+> The checkable gate the conformance sub-agent applies to a corpus of artifacts. This rubric is the
+> **self-standing definition** of the artifact contract — it derived from `spec-0001` §3 and
+> `spec-0002` §4 until `decision-0079` retired the spec stage, and every check below was already
+> stated here in full. Each item is
 > **PASS / FAIL** with a *specific* reason (file + field + rule). **No vague failures, no false
 > passes.**
 >
-> **Corpus:** `decisions/`, `specs/`, `research/`, `core/invariants/`, `core/rubrics/`,
+> **Corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`,
 > **`core/catalog/`**, **`core/lexicon.md`**, **`profiles/`**. Exclude `core/fixtures/` unless running
 > the positive control.
 
 ## Checks
 
 1. **Frontmatter present & required fields valid.** Every non-code `.md` artifact opens with
-   YAML frontmatter carrying `id`, `type`, `status`, `depends_on`, `owner` — all present and
-   well-typed (`depends_on` is a list; `status` a string; etc.). *FAIL → name the missing/
-   malformed field.*
-2. **`type` declared; `status` allowed.** `type` is a non-empty string carrying a `scope`
+   YAML frontmatter carrying `id`, `type`, `depends_on`, `owner` — all present and
+   well-typed (`depends_on` is a list; etc.). **`status` is NOT required and NOT expected**
+   (`decision-0082` retired it). *FAIL → name the missing/malformed field.*
+2. **`type` declared.** `type` is a non-empty string carrying a `scope`
    (`core-methodology` / `trellis-product` / `trellis-meta`) and a rubric *(scope/rubric may be
-   declared centrally, not per-file)*; `status` belongs to the methodology's **declared
-   lifecycle** (`spec-0001` §2, `decision-0037`; adopted family-wide by
-   `decision-0042` — for this repo: `{draft, gated, approved, superseded}`,
-   with pre-0042 artifacts reading `ratified` = `approved`). Recognized typed artifacts include `signature-catalog`
-   (`trellis-product`), `expression-profile` (`core-methodology`) — `spec-0002` — and `lexicon`
+   declared centrally, not per-file)*. **No status check** — `decision-0082` retired the field for
+   trellis-self; merging is the acceptance. A legacy `status:` on any artifact predating
+   `decision-0082` is **preserved history and never a violation**; do not flag it, and do not ask for it
+   to be removed. Recognized typed artifacts include `signature-catalog`
+   (`trellis-product`), `expression-profile` (`core-methodology`) — `schema-typed-artifacts` — and `lexicon`
    (`trellis-product`) — `decision-0017`.
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*
 4. **`depends_on` resolves.** Each entry is an existing artifact `id`, a declared external-ref
    form — `brief-§…`, **or** a qualified `<repo>/<id>` cross-repo reference whose `<repo>` is a
    member of the recognized registry (kodhama, trellis, grove, wisp, design-system,
-   homebrew-tap, math-quest) (`spec-0001` §1, `decision-0044`; shape + registry-membership
+   homebrew-tap, math-quest) (`decision-0044`; shape + registry-membership
    only — not verified against the referent's actual home corpus, same treatment as
    `brief-§…`) — **or** a **retired id** in the invariant-set's Identifiers registry (mapping to
-   a successor). A referent may carry a **`@version` pin** (`spec-0001` §1 — shape only;
+   a successor) — **or** a **retired artifact id** in `decision-0079`'s retired-artifacts
+   registry (`spec-0001`–`spec-0008`). That last clause is the same historical-reference
+   exemption the Identifiers registry grants (`decision-0013`): a retirement does not reach back
+   and edit the append-only records that cite it, so the registry — not the file's existence —
+   is what makes those references resolve. A referent may carry a **`@version` pin** (shape only;
    semantics methodology-defined, `grove/adr-0010`); resolve it on **shape + the bare
    `id`/`<repo>/<id>`'s membership only** (v0, no-fetch) — the pin-vs-upstream-current *sync*
    comparison is **not** this check's (it is the operational chain's, grove `adr-0006`). *FAIL → name the dangling reference.*
-5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** No `gated`/`approved` (or legacy
-   `ratified`) artifact `depends_on` a `draft` artifact. A decision's **`changes:`** relation
-   (`spec-0001` §1 — shape) is a **forward-pointer of the `superseded_by` class,
+5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** For
+   trellis-self the merge carries this (`decision-0082`): everything on `main` is settled, so the
+   structural check is that every `depends_on` resolves within the corpus (check 4) — there is no
+   status to compare. *(Where a methodology declares a status lifecycle, the original form applies:
+   no gated/approved artifact `depends_on` a draft one.)* A decision's **`changes:`** relation
+   (shape only) is a **forward-pointer of the `superseded_by` class,
    not a `depends_on`-class edge** — do **not** walk it as a flow edge; a spec both depending on
    its authorizing decision and named in that decision's `changes:` is a benign pair, not a cycle.
    *FAIL → name the edge.*
-6. **Required body sections per type** (`spec-0001` §4, `spec-0002` §4): `spec`/`invariant-set` →
+6. **Required body sections per type** (`schema-typed-artifacts`, `decision-0042`): `spec`/`invariant-set` →
    Acceptance criteria + Open questions; `decision` → Context/Decision/Consequences;
    `research-note` → Open questions (+ sources); `signature-catalog` → Entries + Acceptance
    criteria + Open questions; `expression-profile` → Delivery + Profile + Assessment notes +
    Open questions; `lexicon` → Canonical terms + Open questions; `feedback` → exempt. *FAIL → name the missing section.*
-7. **Supersede integrity.** A `superseded` artifact carries `superseded_by`; **revise-in-place**
-   docs (specs, invariants, research, rubrics) re-point to the successor. A **partially
-   superseded** artifact keeps its pre-supersession status (`approved`, or legacy
-   `ratified`) and carries `superseded_in_part_by`, whose
-   entries resolve like `depends_on` (`spec-0001` §2, `decision-0040`). *Exemption (`inv-auditable-archive`): an
+7. **Supersede integrity.** **Supersession is identified by the forward pointer** (`decision-0082`;
+   formerly by `status: superseded`): an artifact carrying `superseded_by` is superseded, and its
+   entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point
+   to the successor. A **partially superseded** artifact stays current for its remainder and carries
+   `superseded_in_part_by`, whose entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.* *FAIL → name the offender.*
 
-## Checks — the two typed artifacts (`spec-0002` §4)
+## Checks — the two typed artifacts (`schema-typed-artifacts`)
 
 *Apply only when a `signature-catalog` / `expression-profile` is in the corpus.*
 
 8. **Catalog coverage + examples (`decision-0020`).** A `signature-catalog` has an entry for every
-   **assessable** `invariants-v1` slug (structural + operating + floors — all fifteen, **excluding** the two dials; a collapsed
+   **assessable** `invariants-v1` slug (structural + operating + floors — **excluding** the two dials; a collapsed
    slug is covered by its successor). Each entry carries `what` / **`directive`** / **`why`** /
    `signature` / **`honored`** / **`violated`** / `class` / `mechanizable` / `default_C1` / `default_C2`, and
    **`honored`/`violated` are ≥2 matched pairs** — `violated[i]` and `honored[i]` share a use-case tag,
@@ -88,10 +97,10 @@ scope: trellis-product
 ## Check — version cross-check (retired)
 
 12. *(Retired 2026-07-12, `grove/adr-0010` — the version cross-check is methodology semantics,
-    re-homed to the operating model: the grove versioning companion (plugin-carried, `grove plugin@0.1.0`; grove/adr-0026 D7) §"The `changes:` relation and its
-    cross-check" defines it; the operating model's `corpus-reviewer` owns it. Number retained so
+    re-homed to the operating model of the day. That model (grove-the-plugin) retired with
+    `decision-0076`, so the check has no owner here and is not applied. Number retained so
     external references to "rubric check 12" resolve to this pointer rather than shifting; the
-    `spec-0002` typed checks 8–11 above are unaffected.)*
+    typed checks 8–11 above are unaffected.)*
 
 ## Honesty clause (math-quest)
 
@@ -102,7 +111,7 @@ has failed this rubric. Missing/unparseable input → halt loudly (`floor-transp
 
 The conformance sub-agent emits one report: per-check PASS/FAIL, every FAIL naming the exact
 file + field + rule. The check is **trusted only after it rejects the known-bad fixture**
-(`core/fixtures/`, the positive control — `spec-0001` AC2).
+(`core/fixtures/`, the positive control).
 
 ## Acceptance criteria
 

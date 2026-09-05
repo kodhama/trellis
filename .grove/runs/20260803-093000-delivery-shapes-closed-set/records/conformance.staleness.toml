@@ -1,8 +1,0 @@
-schema = 1
-record_type = "conformance"
-subject = "plugins/trellis/hooks/staleness.sh"
-subject_state = "present"
-subject_sha256 = "00d2ec57dbb3fa7f06d13907904c0a1176f37156f8c36d8c4c7584c39ee88075"
-verdict = "PASS — fidelity to decision-0073 D2/AC2/AC3/D4, composed with 0068 D1/D10 and 0070 D3-D6, seventeen checklist items all PASS with quoted evidence. The reviewer ran the mutation itself against the pre-fix hook in a scratch copy: all five positive guards red at bb35d8d^, the four negative pins green. Probe comment carries the deliberate two-file subset, its reason, the S6 non-probing statement and the 0073 pointer, where D1's relevance clause requires it. Both new messages conform to D2's honesty rule (no factual 'twice'; both S4 sub-states conditional with how-to-tell). Branch ordering confirmed: S2 routes to path A before the S4 refusal, pinned by the still-green vendored-project test. Both hand-off judgment calls confirmed conforming, with the reviewer's own added inference that a hook refusal keyed on morph markers would misfire on rolled-back projects — the exact class 0073 ends. One non-blocking wording note (a declining S2 project's disregard note appends the inline may-be-delivering-nothing clause while its overlay does deliver; the 'may' keeps it honest). Bundle manifest entry equals the reviewed digest. Gates run by the reviewer: go test -count=1 ok 12.16s, build+vet ok, bash -n ok. [Reviewer plain sha256 0344723452…]"
-by = "grove:conformance-reviewer (subagent); recorded by dispatcher"
-date = "2026-08-03T14:45:00Z"

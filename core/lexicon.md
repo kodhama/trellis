@@ -41,7 +41,7 @@ ratified: 2026-07-03
 | **invariant** | gene | (a legal-behavior constraint) | — | one rule, by stable slug · `invariants-v1` |
 | **active** (expressed) | gene expression / expressed | enabled event | active | an invariant enforced in a given instance · `signature-catalog-v1`, profiles |
 | **latent** | latent / inert gene | (disabled event) | latent payload | present but not active here · `research-0007` |
-| **expression profile** | expression profile | control map / control policy | the profile | the per-instance readout (which invariants active × strength × gatekeeper × delivery) · `spec-0002` |
+| **expression profile** | expression profile | control map / control policy | the profile | the per-instance readout (which invariants active × strength × gatekeeper × delivery) · `schema-typed-artifacts` |
 | **signature catalog** | genome annotation | — | — | the product-level dictionary of each invariant's "tells" · `signature-catalog-v1` |
 | **enforcement strength** (`dial-enforcement-strength`) | (expression level) | (policy parameter) | activation level | how strictly a gate is enforced: expressed → default-on-but-skippable → enforced · `decision-0008` |
 | **gatekeeper** (`dial-gatekeeper`) | — | modular / decentralized supervisor | — | who applies a gate: independent-agent · human · none · `decision-0008` |

@@ -1,8 +1,0 @@
-schema = 1
-record_type = "spec-adversary"
-subject = "decisions/0068-install-path-delivers-rules-through-claude-rules.md"
-subject_state = "present"
-subject_sha256 = "7a44f3e164e73fbb2eecbf148dbbebb92f42733449dcca9b2eef77e0922c5338"
-verdict = "skipped — maintainer's explicit in-session direction, 2026-07-30. Independent review DID run for this change and every finding was acted on, but OUT OF BAND: grove:conformance-reviewer (FAIL), grove:decision-adversary x2 (NEEDS-REVISION), grove:code-reviewer (2 HIGH), plus the Codex and Claude PR reviewers — 18 findings total, all fixed, all threads resolved on trellis#212. None was posted as a verdict record at the time, so under floor-owed-reviews none counts. This skips the OWED RECORD, not the review, and exists so the skip is not silent (floor-recorded-skips)."
-by = "maintainer (in-session direction); recorded by agent"
-date = "2026-07-30T17:59:03Z"

@@ -32,6 +32,10 @@ func TestRepoDeclaresRulesConfig(t *testing.T) {
 	if !strings.Contains(content, `strictness  = "firm"`) {
 		t.Errorf(".trellis/rules.toml must declare strictness \"firm\" (the a/conductor posture the repo overlay is pinned to), got: %q", content)
 	}
+	// Every pinned row is ACTIVE — the repo holds every invariant firmly. Whether
+	// the row SET matches the pin (both ways — a stale row after a retire failed
+	// nothing here) is TestRowSetDerivativesFollowThePin's job (row_set_guard_test.go);
+	// this loop is about the value, not the membership.
 	for _, slug := range assessableSlugs {
 		rowRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `\s+= \{ active = true \}`)
 		if !rowRe.MatchString(content) {
@@ -55,7 +59,8 @@ func TestRepoOverlayCarriesNoExpressionFile(t *testing.T) {
 	}
 }
 
-// TestSharedProjectInstructionEntrypoints guards spec-0006 AC1–AC6 and AC8:
+// TestSharedProjectInstructionEntrypoints guards what was spec-0006 AC1–AC6 and
+// AC8 (the spec stage retired in decision-0079; this test is now the contract):
 // AGENTS.md is the shared project-instruction authority, CLAUDE.md is the exact
 // Claude adapter plus the existing Trellis import block, and the bounded
 // current-truth surfaces point shared-method references at AGENTS.md.
@@ -99,20 +104,34 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 		"shared-rule edits":   "Edit new shared rules here, outside managed blocks",
 		"Claude adapter":      "`CLAUDE.md` is the Claude adapter, not a shared-rule edit surface",
 		"Claude-only rules":   "Genuinely Claude-only rules belong in `.claude/rules/`",
-		"project choices":     "Grove and Trellis project choices remain in `.grove/` and `.trellis/` configuration files",
+		"project choices":     "Trellis project choices remain in `.trellis/` configuration files",
 		"managed-block edits": "Do not hand-edit managed blocks",
 	} {
 		if !strings.Contains(normalizedAgents, statement) {
 			t.Errorf("AGENTS.md is missing the %s routing statement %q", label, statement)
 		}
 	}
+	// decision-0076 removed the ordering half of this check along with the grove
+	// managed block it ordered against: AGENTS.md now carries no managed block at
+	// all, so "before its managed blocks" has nothing left to compare and
+	// strings.Index would return -1 for the absent marker, inverting the test.
 	maintainingSection := "## Maintaining project instructions"
-	if strings.Count(agents, maintainingSection) != 1 || strings.Index(agents, maintainingSection) > strings.Index(agents, "<!-- grove:begin") {
-		t.Error("AGENTS.md must contain one Maintaining project instructions section before its managed blocks")
+	if strings.Count(agents, maintainingSection) != 1 {
+		t.Error("AGENTS.md must contain exactly one Maintaining project instructions section")
 	}
-	for _, sharedContent := range []string{"# Trellis — operating method", "## Operating method", "<!-- grove:begin", "<!-- grove:end -->"} {
+	for _, sharedContent := range []string{"# Trellis — operating method", "## Operating method"} {
 		if !strings.Contains(agents, sharedContent) {
-			t.Errorf("AGENTS.md is missing moved Layer-B/Grove content %q", sharedContent)
+			t.Errorf("AGENTS.md is missing moved Layer-B content %q", sharedContent)
+		}
+	}
+	// decision-0076: grove is retired. These are asserted ABSENT for the same reason
+	// decision-0071 asserts the Trellis block absent from CLAUDE.md — no /grove:refresh
+	// exists to regenerate the block, so one that reappeared (a stray branch merge, a
+	// revert) would reinstate an operating model nobody chose, routing work to
+	// grove:<role> subagents that cannot load, and would do it against a green suite.
+	for _, retired := range []string{"<!-- grove:begin", "<!-- grove:end -->", "grove plugin@"} {
+		if strings.Contains(agents, retired) {
+			t.Errorf("AGENTS.md carries retired Grove content %q — decision-0076 removed the managed block along with the plugin it routed to", retired)
 		}
 	}
 	// decision-0071: the Codex bootstrap is gone with the overlay it read from.
@@ -161,9 +180,24 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	}{
 		"README.md":                         {wantAGENTS: true, allowClaude: true},
 		"profiles/trellis-self.md":          {wantAGENTS: true},
-		".grove/config.toml":                {wantAGENTS: true},
-		".grove/README.md":                  {wantAGENTS: true},
 		".claude/agents/corpus-reviewer.md": {wantAGENTS: true},
+	}
+	// decision-0076: .grove/config.toml and .grove/README.md left this map because the
+	// directory is gone. Asserted absent rather than merely dropped — a bounded
+	// current-truth surface that returns unnoticed is the drift spec-0006 §3 exists to
+	// catch, and .grove/ returning would bring back dials for a plugin that cannot load.
+	if _, err := os.Stat(filepath.Join("..", ".grove")); !os.IsNotExist(err) {
+		t.Error(".grove/ exists — decision-0076 retired grove and deleted it; its return means configuration for an uninstalled plugin is back in the tree")
+	}
+	// decision-0076: the retirement is undone by one line of committed config.
+	// `.claude/settings.json` enables plugins on clone (f9d0347 committed grove's
+	// entry precisely "so a fresh clone has a fleet"), and the kodhama marketplace
+	// still publishes grove — so leaving the entry would reinstall the plugin, and
+	// restore the grove:<role> subagents, on the next fresh clone. Deleting .grove/
+	// and the AGENTS.md block without this would have retired grove everywhere
+	// except the file that actually installs it.
+	if strings.Contains(readRepoFile(".claude/settings.json"), "grove@kodhama") {
+		t.Error(".claude/settings.json enables grove@kodhama — decision-0076 retired the plugin, and this entry reinstalls it on a fresh clone")
 	}
 	for name, expectation := range boundedReferences {
 		content := readRepoFile(name)

@@ -169,6 +169,42 @@
   - class: `trellis-design`  ·  mechanizable: `false` (the surfacing floor is checkable per SI-1; noticing that a moment is one of succession is not)  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
 
+- **`inv-no-orphan-followups`** *(new, `decision-0078`; neighbor of `inv-self-improvement` — that one
+  turns friction into a fix, this one governs the work you decide **not** to do now)*
+  - what: a deferral is recorded only where a **named consumer** will re-present it — a queue an
+    executor works, a tracker someone triages, a failing or skipped test, a scheduled sweep that is
+    actually switched on. "Someone reading this file later" is not a consumer. Work with no such
+    address is not deferred work: do it now, **drop it on the record**, or escalate it.
+  - directive: When you defer something, put it where a named consumer will bring it back — a queue, a tracker, a failing test, a scheduled sweep. If you cannot name what will surface it again, do not record it: do it now, drop it and say you dropped it, or escalate. Writing it down is not tracking it.
+  - why: **a follow-up you wrote down actually comes back** — agents produce deferrals far faster
+    than humans consume them, and a plausible ledger is worse than none: it converts an unsolved
+    problem into the *feeling* of a tracked one, and it is trusted precisely because it looks like
+    bookkeeping.
+  - signature: each deferral sink names its consumer and the cadence that drains it; a step that
+    **appends** to a sink names the step that **reads** it, and that step is switched on; write-only
+    sinks are detectable — entries far outnumbering resolutions, or a designed consumer never turned
+    on; *"dropped, because X"* is a first-class recorded outcome beside *"deferred to Y"*, so the
+    cheap escape is dropping rather than filing; sinks are pruned, not grown (the prune-bias hinge
+    shared with `inv-self-improvement` / `inv-graph-maintenance`).
+  - honored:
+    - *(process)* a review's deferred findings go to the queue whose executor actually works it, and
+      the ones nobody will work are dropped in the review itself, with the reason recorded.
+    - *(code)* a known-broken case ships as a skipped test naming the defect — every run re-presents
+      it, so it cannot be forgotten.
+    - *(ops)* a workflow step that appends findings to a ledger names the step that drains it, and
+      that step runs on a stated cadence; the write→read pair is guarded like any other.
+  - violated:
+    - *(process)* a review's findings are appended to a file nobody is scheduled to read; the real
+      defects get fixed weeks later only because a fresh review re-derives them.
+    - *(code)* a `TODO: fix before launch` sits in a comment that no test, lint rule or checklist
+      ever surfaces, and ships.
+    - *(ops)* a workflow appends every deferral to a ledger and is told not to check for duplicates;
+      the sweep designed to drain it was never switched on — 61 entries, 3 resolutions, all three
+      written the day someone audited it.
+  - class: `trellis-design`  ·  mechanizable: `false` (that a sink *declares* a consumer is
+    checkable; that anything actually drains it is judgment)  ·  intent_locus: `false`
+  - default_C1: `default-on-but-skippable`  ·  default_C2: `human`
+
 - **`inv-gate-at-handover`**
   - what: apply the verification gate at every handover point; any skip is **surfaced** (`floor-transparency`).
   - directive: Don't skip the review or verification step before handing work on. If you have to skip it, say so out loud — never let it silently not happen.
@@ -220,7 +256,7 @@
   - signature: append-only decision records; retained change history (git); a current-truth doc kept
     separate from its change log; **supersession can be partial** — a superseded-in-part pointer marks
     the outgrown half so the live remainder stays navigable and no reader lands on stale text without
-    a forward link (`spec-0001` §2, `decision-0040`).
+    a forward link (`decision-0040`).
   - honored:
     - *(ADR)* decisions are append-only and link their rationale; superseding writes a *new* record.
     - *(infra)* every prod change carries provenance — git history + a current-truth doc — so "why" is

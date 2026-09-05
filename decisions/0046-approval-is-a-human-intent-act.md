@@ -3,6 +3,7 @@ id: decision-0046
 type: decision
 status: approved  # 2026-07-11 — in-PR flip recording the maintainer's pre-merge intent act; the first decision ratified under its own rule (see Self-check)
 depends_on: [decision-0042, decision-0037, spec-0001, invariants-v1]
+superseded_in_part_by: [decision-0082]  # decision-0082: D1-D4 — the `status: approved` flip that recorded the act, the in-PR flip rules, and the kept draft-landing half of ratify-guard all go with the field. STANDS: D5 (clarify before treating an ambiguous instruction as approval, and do not stall a real one) as general agent behavior, and the principle that the approval act is the human's, not the merge mechanic's
 owner: agent
 date: 2026-07-11
 ---

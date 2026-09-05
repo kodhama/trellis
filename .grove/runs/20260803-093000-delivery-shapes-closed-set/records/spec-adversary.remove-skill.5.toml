@@ -1,8 +1,0 @@
-schema = 1
-record_type = "spec-adversary"
-subject = "plugins/trellis/skills/remove/SKILL.md"
-subject_state = "present"
-subject_sha256 = "c8fde0dbde1a78e2c938dd152d50b76cbef464ba693fb2e747a62181c6be5109"
-verdict = "NEEDS-REVISION, round 5 — ONE load-bearing finding, an F4-introduced regression, with the adversary's convergence call: converges, round 6 is a spot check of one sentence and its needle, not another pass. F1/F2/F3/F5 verified resolved with quoted evidence. N1: the F4 fix traded the round-4 per-TARGET timing anchor ('immediately before writing it') for deletion coverage ('immediately before applying that step') — but 'step' is this document's term of art for the five numbered transaction items, and steps 2 and 3 batch multiple targets, so the numbered-step reading verifies all of a step's targets at the step boundary and reopens the exact window the next sentence names ('would destroy a concurrent user edit and then report clean'). One-clause fix: re-anchor to the target ('immediately before that target's own write or delete'); the current needle pins the ambiguous wording so it must move with the fix. BOTH flagged seams cleared by the reviewer: the three-place category grammar agrees (quantifiers reconcile — section 1's 'every UNTOUCHED item' excludes mid-section-4 completed items that section 4 assigns removed), and the user-assertion entry path cannot fire the stale-tag sentence by construction (that entry is defined by neither marker being present), with two fail-closed residues noted. Five non-blocking notes (N2-N6). No finding outside the changed regions. [Reviewer plain sha256 c1b64c059a52…]"
-by = "grove:spec-adversary (subagent, round 5); recorded by dispatcher"
-date = "2026-08-03T20:30:00Z"

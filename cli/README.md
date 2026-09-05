@@ -5,10 +5,10 @@ renders the complete pre-built M1 bundle — every posture variant of the header
 blocks, the complete rules readout (rows govern at read time, `decision-0053`), the `rules.toml`
 posture seeds (`decision-0051`, as amended), a content-derived version stamp, and a
 `shasum`-compatible checksum manifest — into the vendored payload home,
-`plugins/trellis/reference/` (`kodhama-0007` rule 1: render once, at release; `#117`).
+`plugins/trellis/reference/` (`kodhama-0007` rule 1: render once, at release).
 
 **Generator-only, by decision.** `kodhama-0007` rule 5 retired the end-user binary channel
-(Homebrew/curl) and left the Go code's fate open; `decision-0043` (#120) resolved it: the code
+(Homebrew/curl) and left the Go code's fate open; `decision-0043` resolved it: the code
 survives exactly as this generator plus its CI guards. The interactive `setup` TUI, `status`,
 `remove`, `uninstall`, and the binary's M2 path are gone — their live homes are the Claude Code
 plugin (`/trellis:remove`, the bundled staleness hook) and the manual copy path

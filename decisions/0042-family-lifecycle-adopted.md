@@ -3,7 +3,7 @@ id: decision-0042
 type: decision
 status: approved  # ratified by PR #106 merge (2026-07-08) — first bump under the mechanic 0042 itself establishes
 depends_on: [decision-0022, decision-0037]
-superseded_in_part_by: [decision-0046]  # superseded: the post-merge-bump / no-in-diff-approved rule + ratify-guard's self-approval check. Stands: the merge-is-a-valid-ratification core AND the no-draft-on-main / draft-landing check (ratify-guard slimmed, not removed)
+superseded_in_part_by: [decision-0046, decision-0082]  # decision-0082: D1 (the family enum), D2's remaining flip mechanic and D4's bootstrap — trellis exits the family lifecycle adoption entirely; the enum is still kodhama-0004's for the rest of the family. STANDS: the merge-is-a-valid-ratification core. Earlier marking (decision-0046) # superseded: the post-merge-bump / no-in-diff-approved rule + ratify-guard's self-approval check. Stands: the merge-is-a-valid-ratification core AND the no-draft-on-main / draft-landing check (ratify-guard slimmed, not removed)
 owner: agent
 date: 2026-07-08
 ---

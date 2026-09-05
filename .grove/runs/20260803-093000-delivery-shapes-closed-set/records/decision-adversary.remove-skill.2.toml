@@ -1,8 +1,0 @@
-schema = 1
-record_type = "decision-adversary"
-subject = "plugins/trellis/skills/remove/SKILL.md"
-subject_state = "present"
-subject_sha256 = "3cd34bc1996022e1ef491463511c08c46d7cf766a65bc09c40f7405d42e7ade2"
-verdict = "SOUND, round 2 — fresh report on the 4d923cd revision, scoped to the new text. Ten findings, all held or non-blocking: the consent model lands in unordered design space on the corpus's consent floor, and AC1's own retained-or-deleted wording contemplates the denial branch (F1); the narrowing structurally cannot invert 0068 D11 because rendered-file and block removals are not item-scoped consents (F2, verified against the consent list); ONE literal tension flagged for the gate owner — spec-0004 AC5's '(else left in place)' vs consented empty-file deletion, judged refinement not contradiction (the superseding contract lacks the clause, the necessary-condition direction is strictly narrower, and the corpus blesses surfaced-consented widening), with the one-clause letter-conformance fix named should the maintainer want it (F3); the $HOME clause matches D1 S5's own row (F4); predicate additions narrow safely with a vocabulary note (F5); the fifth report category adds nothing D4 forbids (F6); the morph user-assertion trigger and fresh-preflight re-entry match spec-0004's cannot-locate discipline (F7); unrecognized-file surfacing errs toward extra surfacing (F8); one internal wording note (F9); both new factual claims verified against install.sh source, and the digest tag convention verified by reproducing BOTH prior records' digests from bytes (F10). Ready for the gate. [Reviewer plain sha256 15a8d6d39bc9…]"
-by = "grove:decision-adversary (subagent, round 2); recorded by dispatcher"
-date = "2026-08-03T16:40:00Z"
