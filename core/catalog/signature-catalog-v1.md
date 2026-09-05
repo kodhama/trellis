@@ -73,8 +73,11 @@ ratified: 2026-07-04
 > rules" → "all rules"), because a list of count sites kept here was found short twice
 > (`decision-0074`, `decision-0078`), and a twenty-two-row table of them in a test file was the
 > same mistake one layer down (TRL-28). **If you are about to write a row count into prose, delete
-> it instead.** Two classes keep their numbers unguarded on purpose: code comments narrating a past
-> measurement, and the `invariants-v1` registry's own account of how the set was composed.
+> it instead** — unless the count is of a **past round**, which cannot go stale. That is the one
+> exemption, and it is a single class seen twice: a code comment narrating a measurement already
+> taken, and the `invariants-v1` registry's record of what the v1 round trimmed. A present-tense
+> count of the set as it stands *today* has no **unguarded** home: it is pinned in the list above,
+> or it is deleted (TRL-47).
 >
 > Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
 > rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
@@ -471,7 +474,7 @@ ratified: 2026-07-04
 
 - **Structured signatures.** Signatures are prose; Assess may need them split into *mechanizable tells*
   (checkable) vs *judgment tells* (read-and-decide). Owed to the Assess build (cluster 1).
-- **Structural-invariant default dials.** The four structural invariants are admission properties checked at *ingestion*, not per-gate;
+- **Structural-invariant default dials.** The structural invariants are admission properties checked at *ingestion*, not per-gate;
   expressing their strength as per-gate dials is a slight stretch. Fold in when the ingestion check
   (`decision-0003`) is built.
 - **`why` audience.** One line serving agents-first *and* humans; revisit if the two registers pull

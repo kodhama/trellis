@@ -30,8 +30,8 @@ ratified: 2026-06-29
 
 > **What v1 changes, in one breath:** v0 was a flat list of 9. v1 splits it into a small
 > **structural gate** (what a methodology must *have the shape for*), a **configurable
-> operating layer** (what Trellis supplies on top), **two dials** (how strict, who enforces),
-> and **two floors** (the two things never configurable to "off"). The driving evidence:
+> operating layer** (what Trellis supplies on top), **dials** (how strict, who enforces),
+> and **floors** (the things never configurable to "off"). The driving evidence:
 > real frameworks have the *structure* but not the *enforcement* — so enforcement is a dial,
 > and the true floor is **surfacing**, not enforcing.
 
@@ -44,9 +44,9 @@ ratified: 2026-06-29
   Trellis fails loudly — out of contract.
 - **Operating invariants — what Trellis supplies (`trellis-design`).** Guarantees a
   Trellis-assisted project gets *because* it adopted Trellis. Not admission criteria.
-- **The two configuration dials.** Per gate: *how strict* (enforcement strength) and *who
+- **The configuration dials.** Per gate: *how strict* (enforcement strength) and *who
   enforces* (gatekeeper identity). This is what keeps Trellis buyer-neutral (`decision-0004`).
-- **The two floors.** The only things that can never be configured off.
+- **The floors.** The only things that can never be configured off.
 
 **Cross-cutting theme — *drift is allowed, but never silent* (`decision-0020`).** Several invariants
 are one idea seen from different angles: directional-flow + graph-maintenance keep *artifacts* from
@@ -275,9 +275,9 @@ overshoot.)*
 
 ---
 
-## The two configuration dials (`decision-0008`) — *provisional*
+## The configuration dials (`decision-0008`) — *provisional*
 
-Per gate, two settings — the mechanism that lets one invariant structure serve both a
+Per-gate settings — the mechanism that lets one invariant structure serve both a
 speed-first startup and an assurance-first enterprise (`decision-0004`):
 
 - **`dial-enforcement-strength` — enforcement strength:** `expressed` (documented only) →
@@ -311,13 +311,13 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 
 ## Acceptance criteria
 
-- The **admission gate is small** (4 structural properties) and is the *only* set
-  `decision-0003`'s ingestion check uses.
+- The **admission gate is small** — the structural set, and the *only* set `decision-0003`'s
+  ingestion check uses.
 - Each operating invariant is something Trellis *supplies*, not something the methodology
   must already have.
 - Strictness and gatekeeper are **dials with surfaced defaults**, not hard-coded — so the
   same set serves startup and enterprise (`decision-0004`).
-- The two floors are stated as non-configurable, with `floor-intent-gate` the recognized
+- The floors are stated as non-configurable, with `floor-intent-gate` the recognized
   exception to `dial-gatekeeper`.
 - **Every invariant carries ≥1 concrete example** (few-shot), especially abstract ones — the
   iron rule (brief §7) applied to the set itself: *a rule you can't exemplify is probably
@@ -360,10 +360,10 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
 - **Minimal-first, applied to v1 itself (resolved this round):** the epistemic-integrity
   candidate merged into `inv-independent-judgment` (intent face); the bounded-correction
   candidate dropped (durable half into `floor-transparency`). Operating layer trimmed back
-  **11 → 9** *in that round*; two entries have since been minted (`inv-deliberate-succession`,
-  `decision-0074`; `inv-no-orphan-followups`, `decision-0078`), so the set is now 4 structural +
-  10 operating + dials + floors. *(The trim is the v1 history; the total is current truth and moves
-  with the set — it read 9 until `decision-0078` re-derived it.)*
+  **11 → 9** *in that round* — v1-round numbers, not the set today. Entries have been minted
+  since (`inv-deliberate-succession`, `decision-0074`; `inv-no-orphan-followups`, `decision-0078`);
+  the live set is the entries listed above, and its composition is stated, and guarded, in
+  `signature-catalog-v1`'s acceptance criteria.
 - **Adherence (`decision-0002`):** working stance is two coarse modes — *adopt* (one
   framework) vs *adapt* (synthesize from several); deliberately **not** formalized into the
   invariant model until instance #2 can test it. v1 encodes only the durable part
