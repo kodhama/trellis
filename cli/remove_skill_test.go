@@ -39,6 +39,14 @@ func removeSkillSection(t *testing.T, body, from, to string) string {
 // semantic; every multi-word Contains over skill prose goes through here.
 func normalizeWS(s string) string { return strings.Join(strings.Fields(s), " ") }
 
+// stripEmphasis removes markdown bold markers, so a needle pins what a
+// sentence says rather than which span of it is bold. §1 and §5 state the same
+// stop-report quantifier but emphasize different spans — §1 bolds
+// "**retained**" alone, §5 the whole "**every untouched item retained**" — so
+// no single literal needle matches both windows. Where the bold falls is
+// typography and may move; what the sentence quantifies over may not.
+func stripEmphasis(s string) string { return strings.ReplaceAll(s, "**", "") }
+
 // noOpPredicateWindow returns the no-op predicate clause: from the anchor
 // ("only when there is no" appears in the predicate and nowhere else — same
 // anchor as TestRemoveSkillNoOpPredicateCountsTheRenderedFile) to the next
@@ -481,6 +489,60 @@ func TestRemoveSkillStopCategoryBindings(t *testing.T) {
 		if !strings.Contains(tc.window, tc.needle) {
 			t.Errorf("%s no longer binds its category to its trigger (%s) — no %q in it. The categories are mutually exclusive per trigger; a guard that only checks both words are present passes a swap.",
 				tc.where, tc.binding, tc.needle)
+		}
+	}
+}
+
+// TestRemoveSkillStopReportQuantifierAgrees guards decision-0073 D3
+// (trellis#234, found by the spec-adversary's converging round of run
+// 20260803-093000-delivery-shapes-closed-set, after the defect it guards had
+// just been fixed). SKILL.md states the stop's report quantifier TWICE — in
+// §1's consent model and in §5's every-exit sentence — and the two must agree.
+// Rounds 6 and 7 were spent because they had diverged: §5 mandated "every item
+// retained" even for an artifact this operation may itself have already
+// deleted, since the morph section authorizes a consented
+// `git tag -d trellis-pre-morph` on a stale tag before step 1 and then
+// continues from §2. §1 already carried the right, untouched-scoped
+// quantifier; §5 was aligned to it.
+//
+// §5's side has been pinned since that fix (the needle in
+// TestRemoveSkillVerificationAndReportSemantics). §1's had no needle anywhere
+// in this file, so mutating §1 back to the over-broad form left all fourteen
+// SKILL.md guards green — the same divergence, returning from the other side.
+// The bundle-manifest checksum in install.sh is not the missing guard: it
+// fires on any byte and goes green again the moment a legitimate edit bumps
+// the manifest, which every real prose change does.
+//
+// Both sides are pinned here, and in both directions. Positively: each window
+// must carry the untouched-scoped quantifier, so deleting or weakening either
+// one goes red. Negatively: neither may carry the over-broad form, so stating
+// it a second time BESIDE the correct sentence goes red too — a contradicting
+// addition passes a positive-only needle, which is the failure
+// TestRemoveSkillConsentModelIsDefinedOnce exists for, in the one document
+// that has already diverged from itself here once.
+//
+// The negative needle is quoted from the recorded defect rather than
+// paraphrased: commit 3152aca's own message names "every item retained"
+// verbatim. Whitespace-normalized because §1's quantifier wraps across a line
+// break, the trap that once shipped two needles in this file green against the
+// very bytes they pinned (code-review A).
+func TestRemoveSkillStopReportQuantifierAgrees(t *testing.T) {
+	body := readFileT(t, removeSkillPath)
+
+	const (
+		scoped    = "every untouched item retained"
+		overBroad = "every item retained"
+	)
+
+	for _, w := range []struct{ where, window string }{
+		{"§1", stripEmphasis(normalizeWS(removeSkillSection(t, body, "## 1.", "## 2.")))},
+		{"§5", stripEmphasis(normalizeWS(removeSkillSection(t, body, "## 5.", "## Reversing")))},
+	} {
+		if !strings.Contains(w.window, scoped) {
+			t.Errorf("%s no longer states the stop-report quantifier as %q — the two statements of it must agree, and a stop may not report an artifact this operation already deleted as retained (trellis#234)", w.where, scoped)
+		}
+		if strings.Contains(w.window, overBroad) {
+			t.Errorf("%s carries the over-broad quantifier %q — it mandates reporting an already-deleted artifact (a cleared stale trellis-pre-morph tag) as retained, the divergence rounds 6 and 7 closed (trellis#234)", w.where, overBroad)
 		}
 	}
 }
