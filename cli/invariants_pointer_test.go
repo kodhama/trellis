@@ -365,6 +365,25 @@ func TestCodexDoesNotFallBackOnAnUnusablePluginCopy(t *testing.T) {
 // "the output names the path" would be satisfied by the pointer alone.
 const invariantsReportLead = "no readable "
 
+// invariantsReportClaim is the second phrase the two hosts must share, and
+// invariantsReportFalseClaim is the wording it replaced.
+//
+// The two reports are NOT identical sentences and must not be — Claude says
+// "the rules above" where Codex says "the context just injected", because the
+// report sits in different places. What they may not differ on is the CLAIM
+// they make about the file. #295 changed "names a file that cannot be read" to
+// "yields nothing to read" on the Claude side, because the first is false for
+// exactly one of the four classifications: an empty file reads fine, it just
+// yields nothing. It left Codex alone on the stated ground that "Claude is the
+// only host that fires on `empty`" — a premise TRL-72 makes false, so Codex
+// shipped `(it is empty), so … names a file that cannot be read` until #296.
+//
+// Pinned here because nothing else can see it: the pair guard compares the lead
+// phrase and the classification, and both stayed correct while the sentence
+// between them contradicted itself.
+const invariantsReportClaim = "yields nothing to read"
+const invariantsReportFalseClaim = "cannot be read"
+
 // invariantsFault is one way the plugin's `reference/invariants.md` can be
 // broken, paired with the classification BOTH hosts must hand the reader for
 // it.
@@ -406,17 +425,33 @@ func (f invariantsFault) classification() string {
 // cannot quietly stop being covered by one of the two guards below, and so a
 // classification added to payload_read has exactly one place to be added here.
 //
-// The blank-lines case is not a duplicate of the zero-byte one. payload_read
-// reaches "empty" through `$(cat "$1")`, and command substitution strips
-// TRAILING NEWLINES, so a file holding nothing but newlines is empty on the
-// Claude side. A Codex mirror written as `readFileSync(…).length === 0` — the
-// obvious one — passes the zero-byte case and diverges here, which is exactly
-// the silent host disagreement TRL-72 closed. A file holding a single SPACE is
-// deliberately not in this table: command substitution does not strip it, so
-// that file is healthy on both hosts.
+// The table carries three cases that are not duplicates of the zero-byte one,
+// and each exists to kill a different way of writing the emptiness test wrong.
+// payload_read reaches "empty" through `$(cat "$1")`, and `$( )` discards
+// exactly two byte values: TRAILING NEWLINES and NUL. So:
+//
+//   - newlines only, and NUL only, are EMPTY on the Claude side. A Codex mirror
+//     written `readFileSync(…).length === 0` — the obvious one — agrees on the
+//     zero-byte file and diverges on both.
+//   - a single SPACE is HEALTHY on both hosts, and it is in this table as a
+//     control for the opposite mistake: a scan that widened to whitespace
+//     (`… && chunk[i] !== 0x20`) matches payload_read on every broken shape and
+//     diverges only here. An earlier version of this comment argued the space
+//     case out of the table BECAUSE both hosts call it healthy, which is
+//     backwards — that is precisely what makes it the discriminating control.
+//     Review of #296 killed a whitespace-widening mutant that survived without
+//     it.
+//
+// The MIXED NUL shapes ("a\x00b", "\x00a") stay out, and that exclusion is not
+// the same mistake: they agree on every shell measured, but POSIX leaves NUL
+// handling in `$( )` unspecified, so pinning them would assert a portability
+// property nobody has checked rather than discriminate between implementations.
 func invariantsFaults() []invariantsFault {
 	return []invariantsFault{{
 		name: "a complete payload",
+	}, {
+		name:    "a copy holding a single space is healthy on both hosts",
+		breakIt: func(t *testing.T, target string) { writeFileT(t, target, " ") },
 	}, {
 		name:    "an absent copy is reported as missing",
 		breakIt: func(t *testing.T, target string) { removeFileT(t, target) },
@@ -526,6 +561,14 @@ func assertInvariantsReport(t *testing.T, host, report, target string, fault inv
 	}
 	if !strings.Contains(report, fault.why) {
 		t.Errorf("%s flattened the classification; the reader is told the file is unusable without being told which remedy applies\nwant: %q\ngot: %q", host, fault.why, report)
+	}
+	// The claim the sentence makes about the file, which both hosts share even
+	// though the sentences around it differ.
+	if !strings.Contains(report, invariantsReportClaim) {
+		t.Errorf("%s does not say what is actually true of all four classifications\nwant: %q\ngot: %q", host, invariantsReportClaim, report)
+	}
+	if strings.Contains(report, invariantsReportFalseClaim) {
+		t.Errorf("%s says the file %q while classifying it %q — false for an empty file, which reads fine and yields nothing (#295 corrected this on the other host)\ngot: %q", host, invariantsReportFalseClaim, fault.why, report)
 	}
 	for _, why := range invariantsClassifications() {
 		if why == fault.classification() || !strings.Contains(report, why) {
