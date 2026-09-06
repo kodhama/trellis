@@ -26,23 +26,39 @@ test data) unless explicitly asked to run the positive control against it. `core
 corpus artifact, and two in-corpus artifacts `depends_on` the id it declares.
 
 Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-typed-artifacts`), `lexicon`
-(`decision-0017`, sections: Canonical terms + Open questions).
+(`decision-0017`). Their required sections are check 6's, stated there once and pinned there.
 
 ## The checks
 
-1. Frontmatter present; `id` / `type` / `depends_on` / `owner` present and
+1. Frontmatter present on every **non-code `.md` artifact**; `id` / `type` / `depends_on` /
+   `owner` present and
    well-typed (`depends_on` a list, etc.). **`status` is not required** (`decision-0082`).
-2. `type` is declared and carries a `scope` + rubric (may be declared centrally). **There is no
+2. `type` is declared and carries a `scope` (`core-methodology` / `trellis-product` /
+   `trellis-meta`) + rubric (may be declared centrally). **There is no
    status check** — `decision-0082` retired the field for this repo; merging to `main` is the
    acceptance, as `AGENTS.md` (the shared project-instruction authority, `decision-0057`) states
    under `## Operating method`. A `status:` line on any artifact predating `decision-0082` is
    **preserved history**: never flag it, never treat its value as a lifecycle claim, and never ask
    for its removal (many carry the maintainer's intent act in a trailing comment).
 3. `id` unique across the corpus.
-4. Every `depends_on` resolves to an existing artifact `id`, a declared external-ref prefix
-   (v0 allowlist: `brief-§…`), **or** a **retired id** in the invariant-set's Identifiers
-   registry (mapping to a successor), **or** a **retired artifact id** in `decision-0079`'s
-   retired-artifacts registry (`spec-0001`–`spec-0008`). Flag dangling references. `informed_by` entries
+4. Every `depends_on` resolves to one of these forms:
+
+   - an existing artifact `id` in this corpus
+   - a declared external-ref form — `brief-§…`
+   - a qualified `<repo>/<id>` cross-repo reference whose `<repo>` is a member of the recognized
+     registry (kodhama, trellis, grove, wisp, design-system, homebrew-tap, math-quest)
+     (`decision-0044`; shape + registry-membership only — not verified against the referent's
+     actual home corpus, same treatment as `brief-§…`)
+   - a **retired id** in the invariant-set's Identifiers registry, mapping to a successor
+   - a **retired artifact id** in `decision-0079`'s retired-artifacts registry
+     (`spec-0001`–`spec-0008`)
+
+   A referent in any of these forms may carry a **`@version` pin**: resolve it on **shape + the
+   bare `id`/`<repo>/<id>`'s membership only** (v0, no-fetch) — strip the pin, then resolve. The
+   semantics are methodology-defined (`grove/adr-0010`), and the pin-vs-upstream-current *sync*
+   comparison is **not** this check's — it is the operational chain's (grove `adr-0006`). Three
+   live `depends_on` entries carry one, so a reviewer that cannot strip a pin fails valid
+   artifacts. Flag dangling references. `informed_by` entries
    resolve the same way (edge taxonomy: **`decision-0047` is the trellis-side rule and is
    sufficient here**; the fuller taxonomy is grove's relations charter,
    `https://github.com/kodhama/grove/blob/main/charters/relations.md` — read it from the repo, not
@@ -54,15 +70,31 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
    on `main` is settled, so there is no status to compare. What remains structural: every
    `depends_on` resolves **within the corpus** (check 4), so nothing merged points at something
    that is not there. `informed_by` is **non-flow** (`decision-0047`; fuller taxonomy in grove's
-   relations charter, linked in check 4). The honesty judgment survives the status retirement: a
+   relations charter, linked in check 4). A decision's **`changes:`** relation (shape only) is a
+   **forward-pointer of the `superseded_by` class, not a `depends_on`-class edge** — do **not**
+   walk it as a flow edge; an artifact both depending on its authorizing decision and named in
+   that decision's `changes:` is a benign pair, not a cycle. The
+   honesty judgment survives the status retirement: a
    genuine **coupling relabeled as `informed_by`** — a source the artifact's correctness is
-   contingent on — is non-conformant (`decision-0047`); flag it for the `conformance-reviewer`
-   rather than passing it silently.
-6. Required body sections per type (`decision-0042`): `decision` → Context/Decision/
-   Consequences; `spec`/`invariant-set` → Acceptance criteria/Open questions; `research-note`
-   → Open questions; `rubric` → Acceptance criteria/Open questions; `schema` → exempt (its
-   conformance checks are 8–11 below, not per-file sections); `feedback` → exempt. **This list is a
-   summary and is not closed** — the rubric's own enumeration is, and governs; derive from it (above).
+   contingent on — is non-conformant (`decision-0047`). Flag it rather than passing it silently.
+6. Required body sections per type (`decision-0042`):
+
+   - `decision` → Context + Decision + Consequences
+   - `expression-profile` → Delivery + Profile + Assessment notes + Open questions
+   - `feedback` → exempt
+   - `invariant-set` → Acceptance criteria + Open questions
+   - `lexicon` → Canonical terms + Open questions
+   - `research-note` → Open questions
+   - `rubric` → Acceptance criteria + Open questions
+   - `schema` → exempt
+   - `signature-catalog` → Entries + Acceptance criteria + Open questions
+   - `spec` → Acceptance criteria + Open questions
+
+   `schema` is exempt because its conformance checks are 8–11 below, not per-file sections.
+   **This list is closed and is the rubric's own** — the two are pinned to each other by
+   `cli/artifact_contract_guard_test.go` (`decision-0028`), so a type missing here
+   is a bug in the pair, not a judgment call at review time. A `research-note` gates
+   `## Open questions` only; its sources and confidence tags are conventional, not gated.
 7. Supersede integrity: **supersession is identified by the forward pointer** (`decision-0082`;
    formerly by `status: superseded`) — an artifact carrying `superseded_by` is superseded and its
    entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point

@@ -15,7 +15,9 @@ name: cli-ci
 # install.sh, plugins/) for the docs-consistency test (decision-0025);
 # .github/scripts/** and decision-id-guard.yml, which cli/decision_id_guard_test.go
 # executes and reads (decision-0089); core/invariants/** and profiles/**, which
-# cli/row_set_guard_test.go reads; .claude/**, which cli/selfapply_test.go and
+# cli/row_set_guard_test.go reads; core/rubrics/**, which
+# cli/artifact_contract_guard_test.go reads against .claude/agents/corpus-reviewer.md
+# (TRL-60); .claude/**, which cli/selfapply_test.go and
 # cli/docs_consistency_test.go read; and .grove/**, so that the PR reinstating the
 # retired directory is the one cli/selfapply_test.go fails on (decision-0076).
 #
@@ -25,10 +27,10 @@ name: cli-ci
 # lists below identical; both are checked.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/rubrics/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
+    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/rubrics/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
 
 jobs:
   build-test:
