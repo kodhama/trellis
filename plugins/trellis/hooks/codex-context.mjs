@@ -38,6 +38,14 @@ const VENDORED_PAYLOAD = {
   rules: ".trellis/internal/rules.md",
   version: ".trellis/internal/version",
 };
+// The invariants pointer as the posture prose SHIPS it -- a placeholder each
+// delivery channel resolves for the mode it is running, never an address in
+// itself. Backticks included: the substitution below replaces the whole
+// delivered span, code fence and all, so the model is never handed a half-
+// rewritten path. Byte-identical to the token staleness.sh matches (its awk
+// `tok`) and to install.sh's own sed pattern; the three are pinned to each
+// other through the pointer they deliver, not through this literal.
+const INVARIANTS_TOKEN = "`.trellis/internal/invariants.md`";
 
 function emit(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
@@ -926,7 +934,10 @@ for (const key of ["prose", "rules", "version"]) {
   payload[key] = result.value;
 }
 
-const trellis = payload.prose;
+// `let`, uniquely among the three: the invariants repoint below rewrites it
+// in place on the plugin-native branch (TRL-52). The rules body and the
+// version stamp are delivered exactly as read and stay `const`.
+let trellis = payload.prose;
 const rules = payload.rules;
 const version = payload.version;
 
@@ -955,6 +966,44 @@ if (!/^payload@[0-9a-f]{12}\n?$/u.test(version)) {
 if (trellis.split("@rules.md").length - 1 !== 1) {
   fail(sources.prose, "invalid-placeholder-count");
   process.exit(0);
+}
+// TRL-52. decision-0065:106-111 defines the plugin-native delivery as the
+// resolved @rules.md import PLUS one more edit: "the one edit repoints the
+// invariants pointer at the plugin's own copy, which is where the file is in
+// this mode and which therefore cannot go stale." That rule is scoped to a
+// SHAPE -- rules.toml and no .trellis/internal/ -- not to a host, and this
+// hook delivers that shape on Codex. It performed the import edit above and
+// not this one, so every plugin-native Codex session was handed
+// `.trellis/internal/invariants.md`: a directory this mode is DEFINED by not
+// having. staleness.sh:1373-1398 makes the same substitution for Claude, at
+// the same target; TestBothHostsRepointTheInvariantsPointerIdentically runs
+// both hooks on one project and pins them to each other, because the two
+// implementations share no line to diff (awk there, JS here) and only the
+// address they hand the model can be compared.
+//
+// Gated on the prose's ACTUAL origin rather than on `vendored`, so a third
+// source added to `sources` cannot inherit this edit by default. The gate is
+// load-bearing in the vendored direction, not incidental: a vendored overlay
+// really does carry .trellis/internal/invariants.md -- the retired setup skill
+// copied it in beside trellis.md and rules.md, and decision-0051 specifies it
+// as part of the trellis-authoritative half -- and
+// README.md:27 rules that where such an overlay exists "the plugin's
+// reference/ files stay installation sources rather than runtime
+// substitutes". Repointing there would override a real, authoritative file
+// with the plugin's possibly-newer copy, which is that substitution exactly.
+// So the token survives on the vendored branch, which is also what Claude
+// does there by never injecting into a vendored project at all.
+//
+// split/join, not replace(): a bare string replace() substitutes only the
+// FIRST occurrence, and `$&`-style patterns in the replacement are
+// interpreted. Neither can bite today (the prose carries one pointer and the
+// path holds no `$`), but the pointer is payload and the plugin root is a
+// user path -- the same two assumptions staleness.sh's own escaping comment
+// records having been wrong about.
+if (sources.root === pluginRoot) {
+  trellis = trellis
+    .split(INVARIANTS_TOKEN)
+    .join(`\`${path.join(pluginRoot, "reference", "invariants.md")}\``);
 }
 // The rules payload's own well-formedness (the sentinel gate) must be checked
 // BEFORE it is trusted enough to derive a slug set from it — moved ahead of
