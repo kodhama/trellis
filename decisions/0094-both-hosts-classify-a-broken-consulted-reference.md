@@ -108,32 +108,60 @@ fixed.** `decision-0093`'s Consequences record `existingFile`'s flattening as de
    overlay's *unusable* copy should be substituted for is a different ruling, and nobody has made
    it.
 
-**What is not decided here:** the vendored branch where **both** copies are unusable is still a
-silently dead pointer. That is `TRL-71`, untouched — a report there would fire on ~28 fixtures and
-perturb the byte-budget tests, which is a change with its own argument to make.
+**What is not decided here, and where each piece lives.** Two shapes stay silent, and neither is a
+deferral this record creates — both are pre-existing behaviour it leaves exactly as it found it.
+
+- The vendored branch where **both** copies are unusable is still a silently dead pointer. That is
+  `TRL-71`, untouched: a report there would fire on ~28 fixtures and perturb the byte-budget
+  tests, which is a change with its own argument to make.
+- The vendored branch where the **overlay's own** copy is present but unusable — zero-byte,
+  newline-only, NUL-filled or mode-0000 — keeps the token, names its own empty file, and says
+  nothing. D5 is why this record does not widen the presence check on its own authority, and the
+  behaviour is **bit-for-bit what it was before this change**, since that half keeps
+  `existingFile`. `TRL-73` carries it, so the shape has a consumer rather than living in this
+  paragraph (`decision-0078`).
 
 ## Consequences
 
 - Both hosts now name the same fault in the same words. `codex-context.mjs` gains `payloadDefect`,
   which mirrors `payload_read`'s four answers, and its warning reads
   `no readable <path> (it is empty)` where it used to say nothing at all.
-- **Emptiness means what the other host means by it.** `payload_read` reaches *empty* through
-  `$(cat …)` and `[ -z … ]`, and command substitution strips **trailing newlines** — so a file of
-  nothing but newlines is empty, and a file holding one space is not. The obvious JS mirror,
-  `readFileSync(…).length === 0`, agrees on the zero-byte file and diverges on the newline-only
-  one; the guard carries that case for exactly this reason.
-- **The report still costs the injected context nothing on Codex.** Measured across all six
-  states — healthy plus five faults — `additionalContext` is **7971 bytes each time**, against the
-  9500-byte bound: the warning rides `systemMessage`, outside it. That is the one way a report
-  about a *consulted* file could fail a session closed (rule 1), and the pair guard now pins it
-  structurally by requiring the broken delivery to be byte-identical to the healthy one, rather
-  than waiting for a payload large enough to notice.
+- **Emptiness means what the other host means by it, and that is two properties of `$( )`, not
+  one.** `payload_read` reaches *empty* through `$(cat …)` and `[ -z … ]`, and command
+  substitution strips **trailing newlines** *and* **NUL bytes** — the second because a shell
+  variable holds a C string. So the file is empty over there exactly when every byte is a newline
+  or a NUL. Measured on bash (the sibling hook's shebang), `sh` and `dash`: an all-NUL file is
+  empty on all three; zsh alone disagrees and runs neither hook. The obvious JS mirror,
+  `readFileSync(…).length === 0`, agrees on the zero-byte file and diverges on **both** the
+  newline-only and the NUL-filled one — the latter the classic post-crash zero-fill. The guard
+  carries both cases. The **mixed** shapes (`a\0b`, `\0a`) are deliberately left unpinned: they
+  agree on every shell measured, but POSIX leaves NUL handling in `$( )` unspecified, and pinning
+  them would assert a portability property nobody has checked.
+- **The report costs the injected context nothing on Codex.** The warning rides `systemMessage`,
+  outside the `MAX_CONTEXT_BYTES` bound on `context` — which is the one way a report about a
+  *consulted* file could fail a session closed (rule 1). The pair guard pins that structurally:
+  on each fixture the broken delivery must be **byte-identical to the healthy delivery on that
+  same fixture**, which fails the moment the warning moves into the context. *No absolute byte
+  count is claimed, deliberately.* The injected context embeds the plugin root's absolute path, so
+  its size tracks the length of that path — on one local fixture every state measured 7971 bytes,
+  and under the suite's own `t.TempDir()` roots the same states measure 8025–8027, differing by
+  exactly the path length. A cross-state constant would have been the same class of error as this
+  series' earlier 32573-characters-quoted-as-bytes.
 - **`TRL-71`'s population widens slightly, and this is stated rather than discovered later.** With
   the plugin copy now checked for usability, a vendored overlay lacking `invariants.md` beside a
   plugin copy that is *unusable* no longer takes the fallback, so it joins the both-missing case
   as a silent dead pointer. Each such session previously got a pointer to a file that yields
   nothing; it now keeps the overlay's own address, which on that branch is not a lie — the project
-  really does have an overlay. Neither is good, which is what `TRL-71` is for.
+  really does have an overlay. Neither is good, which is what `TRL-71` is for. Measured, the
+  vendored state table moves in **exactly two cells** — overlay absent × plugin copy
+  {zero-byte, mode-0000} — and every overlay-present row is untouched.
+- **D4 has its own guard, because the existing vendored fixture cannot see it.**
+  `TestCodexRepointsWhenAVendoredOverlayLacksInvariants` builds a *healthy* plugin root, so the
+  second half of the fallback condition is satisfied in every case it runs and is never exercised;
+  reverting D4's one call to `existingFile` survives that test and the rest of the suite.
+  `TestCodexDoesNotFallBackOnAnUnusablePluginCopy` is the fixture that kills it, driven by the same
+  fault table. Recorded because the repo has paid for this shape before: `TRL-52` shipped a broken
+  pointer on a branch no fixture reached.
 - `existingFile` keeps one caller and its contract stays true for that caller. The predicate is
   not deleted, and `existingDirectory` is untouched.
 - A payload change, so a release: `VERSION` 0.19.0 → 0.20.0, both `plugin.json` manifests, and
@@ -150,8 +178,12 @@ perturb the byte-budget tests, which is a change with its own argument to make.
   the answer the gateway already computed. *Classify only at the report and leave the vendored
   eligibility check on `existingFile`* is smaller still, and leaves a call site whose stated
   purpose in `decision-0093`:2 is defeated by the same two shapes this record exists to close.
-- **Grounded in an artifact?** The ruling is a predicate plus a pair guard driven by a shared
-  fault table, not prose about a rule. Every row of the Context table is a test case.
+- **Grounded in an artifact?** The ruling is a predicate plus two guards driven by one shared
+  fault table, not prose about a rule. Every row of the Context table is a case in
+  `TestBothHostsReportAMissingInvariantsTarget`, run against **both** hosts. D4 is the row that
+  table cannot reach, and review caught it ungrounded: reverting D4 alone survived the whole
+  suite, because the only fixture on that arm builds a healthy plugin root.
+  `TestCodexDoesNotFallBackOnAnUnusablePluginCopy` was added for it and kills that mutant.
 - **Reversible?** Two call sites and one function. Restoring `existingFile` at both restores
   today's behaviour exactly.
 - **Intent gate.** Authored by an agent; the merge is the maintainer's act.

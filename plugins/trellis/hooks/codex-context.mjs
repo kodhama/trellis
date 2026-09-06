@@ -126,13 +126,29 @@ const DEFECT_EMPTY = "is empty";
 // same discipline is kept anyway because there is no reason to read an
 // arbitrarily large file to learn whether it is empty.
 //
-// EMPTY MEANS WHAT THE OTHER HOST MEANS BY IT. payload_read reaches "empty"
-// through `payload_text="$(cat "$1")"` followed by `[ -z "$payload_text" ]`,
-// and command substitution strips TRAILING NEWLINES -- so a file of nothing but
-// newlines is empty there, while a file holding one space is not. Writing
-// `readFileSync(...).length === 0` here would agree on the zero-byte file and
-// diverge on the newline-only one, which is the same silent host disagreement
-// this function exists to end.
+// EMPTY MEANS WHAT THE OTHER HOST MEANS BY IT, and that is TWO properties of
+// command substitution rather than one. payload_read reaches "empty" through
+// `payload_text="$(cat "$1")"` followed by `[ -z "$payload_text" ]`, and `$( )`
+// strips both TRAILING NEWLINES and NUL BYTES -- the second because a shell
+// variable holds a C string, which cannot carry a NUL at all. So the file is
+// empty over there exactly when every byte is a newline or a NUL, which is what
+// the scan below tests. A file holding one SPACE is not empty on either host.
+//
+// Both halves were measured on the shell the sibling hook actually runs
+// (`#!/usr/bin/env bash`), and on sh and dash for the Linux CI runner: an
+// all-NUL file is EMPTY on all three. zsh alone disagrees, and does not run
+// either hook. Writing `readFileSync(...).length === 0` here would agree on the
+// zero-byte file and diverge on both the newline-only and the NUL-filled one --
+// the latter being the classic post-crash zero-fill, exactly the kind of
+// half-written payload this report exists to name.
+//
+// What is deliberately NOT claimed: the MIXED cases. `a\0b` and `\0a` are
+// non-empty on bash, sh and dash alike and agree with the scan below, but POSIX
+// leaves NUL handling in `$( )` unspecified, so a shell that TRUNCATED at the
+// first NUL rather than dropping it would call `\0a` empty and diverge. No such
+// shell is in play; the guard pins the all-NUL case, which every shell measured
+// agrees on, and leaves the mixed ones unpinned rather than asserting a
+// portability property nobody has checked.
 function payloadDefect(value) {
   if (typeof value !== "string" || !path.isAbsolute(value)) {
     return DEFECT_MISSING;
@@ -167,7 +183,10 @@ function payloadDefect(value) {
       }
       if (read === 0) return DEFECT_EMPTY;
       for (let i = 0; i < read; i += 1) {
-        if (chunk[i] !== 0x0a) return "";
+        // 0x0a and 0x00 are the two byte values `$( )` discards, so a byte
+        // outside that pair is one the other host would still be holding when
+        // it asks `[ -z ... ]`.
+        if (chunk[i] !== 0x0a && chunk[i] !== 0x00) return "";
       }
     }
   } finally {
@@ -1120,9 +1139,9 @@ const repointedInvariants = `\`${pluginInvariants}\``;
 // check is fallback ELIGIBILITY: that project has its own authoritative
 // location for this file, so the plugin's copy may stand in for it only when
 // the plugin's copy is really there (decision-0093). This arm has no competing
-// location to
-// substitute FOR -- the repointed path is the only address there is -- so the
-// same check here would not validate the target, it would abandon it. Leaving
+// location to substitute FOR -- the repointed path is the only address there
+// is -- so the same check here would not validate the target, it would abandon
+// it. Leaving
 // the raw token ships `.trellis/internal/invariants.md` to the one mode
 // DEFINED by not having that directory: both pointers are dead when the copy
 // is missing, and only that one ALSO tells the model the project has an
@@ -1450,9 +1469,19 @@ const warnings = [];
 // to reconcile two vocabularies for one fault -- which remedy applies is the
 // whole reason payload_read classifies at all ("missing and unreadable are told
 // apart because their remedies differ", staleness.sh:162).
+//
+// "YIELDS NOTHING TO READ", not "cannot be read", and that sentence had to move
+// together with the classification rather than after it. #295 corrected the
+// identical wording on the Claude side because it is false for exactly one of
+// the four classifications -- an empty file reads fine, it just yields
+// nothing -- and it left this host alone on the stated ground that "Claude is
+// the only host that fires on `empty`". This change is what makes that premise
+// false. Keeping the old wording would have shipped `(it is empty), so ... names
+// a file that cannot be read`: a sentence contradicting its own parenthetical,
+// and a fresh host divergence opened by the change that exists to close one.
 if (pluginInvariantsDefect !== "") {
   warnings.push(
-    `Trellis warning: this plugin payload has no readable ${pluginInvariants} (it ${pluginInvariantsDefect}), so the invariants pointer in the context just injected names a file that cannot be read. ` +
+    `Trellis warning: this plugin payload has no readable ${pluginInvariants} (it ${pluginInvariantsDefect}), so the invariants pointer in the context just injected names a file that yields nothing to read. ` +
       "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
       "Reinstalling or updating the Trellis plugin is the likely fix.",
   );

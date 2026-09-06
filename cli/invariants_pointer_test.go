@@ -301,6 +301,62 @@ func TestCodexRepointsWhenAVendoredOverlayLacksInvariants(t *testing.T) {
 	}
 }
 
+// TestCodexDoesNotFallBackOnAnUnusablePluginCopy is the other half of the test
+// above, and it exists because that one cannot see this: it builds a HEALTHY
+// plugin root, so the second half of the fallback condition is satisfied in
+// every case it runs and is never actually exercised.
+//
+// decision-0093:2 makes both halves of that condition load-bearing and states
+// what the second one is for: it "stops the fallback replacing one dead pointer
+// with another". A bare stat does not deliver that — statSync needs no read
+// permission, so a zero-byte or mode-0000 plugin copy satisfied existingFile,
+// the fallback fired, and a vendored project's pointer was moved off its own
+// authoritative address onto a file that yields nothing to read. That is the
+// substitution the condition exists to prevent, performed by the check meant to
+// prevent it. decision-0094:4 rules that this half asks payloadDefect instead.
+//
+// Reverting that one call to existingFile is a one-line mutant that the rest of
+// the suite does not kill, which is what this test is for. The repo has paid
+// for the shape before: TRL-52 shipped a broken pointer on a branch no fixture
+// reached.
+//
+// The token SURVIVING is the assertion, and on this branch that is the right
+// outcome rather than a lesser evil: a vendored project really does have a
+// `.trellis/internal/`, so naming it is not the lie it would be on the
+// plugin-native arm. Both addresses are dead here — that residue is TRL-71's,
+// not this test's.
+func TestCodexDoesNotFallBackOnAnUnusablePluginCopy(t *testing.T) {
+	for _, tc := range invariantsFaults() {
+		// The healthy row is the control for the test above, not for this one:
+		// with a good plugin copy the fallback SHOULD fire. Skipping it here
+		// keeps this test a statement about unusable copies only.
+		if tc.why == "" {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+			overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
+			if _, err := os.Stat(overlayCopy); err == nil {
+				t.Fatal("fixture drift: writeValidCodexOverlay now writes invariants.md, so the fallback arm is no longer reached")
+			}
+			tc.breakIt(t, filepath.Join(pluginRoot, "reference", "invariants.md"))
+
+			context := codexContextFor(t, pluginRoot, project)
+
+			// Delivery is untouched: only the pointer was ever in question
+			// (decision-0093:1).
+			if !strings.Contains(context, rulesLoadedSentinel) {
+				t.Fatalf("the overlay's rules must still be delivered whole:\n%s", context)
+			}
+			if got := pointerIn(t, context); got != ".trellis/internal/invariants.md" {
+				t.Errorf("the fallback fired onto a plugin copy that %s — decision-0093:2's second half exists to stop exactly this substitution\nwant the overlay's own address to survive: .trellis/internal/invariants.md\ngot:  %s", tc.why, got)
+			}
+		})
+	}
+}
+
 // invariantsReportLead is the phrase BOTH hosts must produce when the plugin
 // payload has no readable invariants copy, immediately followed by the absolute
 // path. Pinning a shared PHRASE rather than a shared path is what makes the
@@ -372,6 +428,19 @@ func invariantsFaults() []invariantsFault {
 	}, {
 		name:    "a copy holding nothing but newlines is reported as empty",
 		breakIt: func(t *testing.T, target string) { writeFileT(t, target, "\n\n\n") },
+		why:     "is empty",
+	}, {
+		// The post-crash zero-fill. `$( )` discards NUL bytes as well as
+		// trailing newlines — a shell variable holds a C string and cannot
+		// carry a NUL — so this file is empty on the Claude side too. Measured
+		// EMPTY on bash (the sibling hook's shebang), sh and dash; only zsh,
+		// which does not run either hook, disagrees. The MIXED shapes ("a\x00b")
+		// are deliberately not pinned: they agree on every shell measured, but
+		// POSIX leaves NUL handling in `$( )` unspecified and a truncating
+		// shell would diverge, so pinning them would assert portability nobody
+		// has measured.
+		name:    "a copy holding nothing but NUL bytes is reported as empty",
+		breakIt: func(t *testing.T, target string) { writeFileT(t, target, "\x00\x00\x00") },
 		why:     "is empty",
 	}, {
 		name: "an unreadable copy is reported as a permission fault, not as missing",
