@@ -31,9 +31,30 @@ import (
 // append-only, so a live-command check there would be permanently red.
 func docSurfaces(t *testing.T) []string {
 	t.Helper()
+	out, err := docSurfacesIn(repoRoot)
+	if err != nil {
+		t.Fatalf("walking the repo for doc surfaces: %v", err)
+	}
+	if len(out) < 20 {
+		t.Fatalf("doc-surface discovery found only %d files (%v) — the walk is broken, "+
+			"and a guard that checks nothing passes silently", len(out), out)
+	}
+	return out
+}
+
+// docSurfacesIn is docSurfaces's walk with its root passed in rather than fixed
+// at the repository, so TestGuardWalksDoNotReadOtherCheckouts can aim it at a
+// fixture. The bug that test pins cannot be reproduced against the real tree
+// from a worktree, which is where an agent stands (TRL-59).
+func docSurfacesIn(root string) ([]string, error) {
+	// EDITORIAL skips: "this file is not a doc surface whose claims must be
+	// live." They answer *this* walk's question, which is not the question
+	// marketplaceCommands asks, so the two walks do not share them — see
+	// structuralSkip for the ones they do.
 	skipDirs := map[string]bool{
 		// .grove dropped by decision-0076, which deleted the directory.
-		".git": true, ".github": true, ".claude": true,
+		// .git moved to structuralSkip (TRL-59): it was never an editorial call.
+		".github": true, ".claude": true,
 		"decisions": true, "specs": true, "research": true, "eval": true,
 		"fixtures": true, "testdata": true,
 		// docs/superpowers/ (committed specs and plans) and .superpowers/
@@ -50,12 +71,12 @@ func docSurfaces(t *testing.T) []string {
 	}
 	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}
 	var out []string
-	err := filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if skipDirs[d.Name()] {
+			if structuralSkip(root, path) || skipDirs[d.Name()] {
 				return fs.SkipDir
 			}
 			return nil
@@ -65,14 +86,52 @@ func docSurfaces(t *testing.T) []string {
 		}
 		return nil
 	})
-	if err != nil {
-		t.Fatalf("walking the repo for doc surfaces: %v", err)
+	return out, err
+}
+
+// structuralSkip reports whether a walk rooted at root must not descend into the
+// directory at path. STRUCTURAL, as against the editorial skips above: it asks
+// "is what is in here part of this checkout at all?", and that is the same
+// question for every walk in this file, so both of them ask it here. Two walks
+// disagreeing about it was the TRL-59 defect; two walks legitimately disagreeing
+// about EDITORIAL scope is not, which is why only this half is shared.
+//
+// The nested-checkout rule is TRL-59 itself, and it is wider than the bug
+// reported: skipping the literal string ".claude" would have fixed the finding
+// and left a plain clone parked anywhere in the tree just as readable.
+func structuralSkip(root, path string) bool {
+	name := filepath.Base(path)
+	return name == ".git" || name == "node_modules" || isSeparateCheckout(root, path)
+}
+
+// isSeparateCheckout reports whether dir holds a checkout of its own rather than
+// more of the tree the walk started in. The test is the presence of a `.git`
+// entry, not its kind: a worktree's is a FILE (`gitdir: …`) and a clone's is a
+// DIRECTORY, and a rule that knew only one of them would miss the other.
+//
+// It is not exhaustive and does not try to be. A BARE repository carries no
+// `.git` entry at all — and is conventionally named `foo.git`, which the name
+// test above does not match — and neither does a checkout whose git directory
+// was relocated with GIT_DIR. Neither shape has appeared in this tree, and
+// neither holds the checked-out documentation these walks are looking for.
+//
+// An Lstat error that is not "no such file" — EACCES, EIO — is read as absence,
+// so the walk descends. That is the safe direction here, and it was checked
+// rather than assumed: a directory that is readable but not searchable fails the
+// Lstat AND then fails the read of the content it did not skip, ending the walk
+// LOUDLY (`walk error: open …/README.md: permission denied`). Resolving the
+// other way — skipping whatever cannot be stat'd — would leave the guard quietly
+// checking less and still passing, the one outcome this file refuses everywhere.
+//
+// The walk's own root is exempt, because it carries a `.git` entry too — without
+// that exemption the very first callback skips the entire repository and every
+// guard in this file passes while reading nothing.
+func isSeparateCheckout(root, dir string) bool {
+	if filepath.Clean(dir) == filepath.Clean(root) {
+		return false
 	}
-	if len(out) < 20 {
-		t.Fatalf("doc-surface discovery found only %d files (%v) — the walk is broken, "+
-			"and a guard that checks nothing passes silently", len(out), out)
-	}
-	return out
+	_, err := os.Lstat(filepath.Join(dir, ".git"))
+	return err == nil
 }
 
 // proseAfterTrellis are lowercase words that legitimately follow "trellis" in prose
@@ -479,16 +538,38 @@ func TestMarketplaceAddNamesTheRepoThatServesIt(t *testing.T) {
 		t.Fatal(".claude/settings.json declares no extraKnownMarketplaces.kodhama.source.repo — the canonical marketplace repository this test checks every documented install command against")
 	}
 
+	found, err := marketplaceCommands(repoRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range keysOf(found) {
+		for _, slug := range found[rel] {
+			if slug != canonical {
+				t.Errorf("%s documents `marketplace add %s`, but this repo resolves the kodhama marketplace to %s (.claude/settings.json) — the six copies of the install command move together (decision-0028)", rel, slug, canonical)
+			}
+		}
+	}
+	for _, surface := range []string{"README.md", "plugins/trellis/README.md", "cli/main.go", "docs/index.html", "docs/lp-content.md"} {
+		if len(found[surface]) == 0 {
+			t.Errorf("%s no longer carries a `marketplace add` command — it is one of the live install surfaces this guard pins; if the command moved, update this list in the same change", surface)
+		}
+	}
+}
+
+// marketplaceCommands returns every marketplace slug the tree under root
+// documents, keyed by path relative to root. Rooted where it is told, and
+// separated from the assertions above, for the reason docSurfacesIn is.
+func marketplaceCommands(root string) (map[string][]string, error) {
 	command := regexp.MustCompile(`marketplace add\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)`)
 	textual := map[string]bool{".md": true, ".html": true, ".go": true, ".sh": true, ".json": true, ".toml": true, ".txt": true, ".yml": true, ".yaml": true, ".mjs": true}
-	found := map[string]bool{}
-	err := filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
+	found := map[string][]string{}
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			if name := d.Name(); name == ".git" || name == "node_modules" {
-				return filepath.SkipDir
+			if structuralSkip(root, path) {
+				return fs.SkipDir
 			}
 			return nil
 		}
@@ -499,21 +580,122 @@ func TestMarketplaceAddNamesTheRepoThatServesIt(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		rel := filepath.ToSlash(strings.TrimPrefix(path, "../"))
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		key := filepath.ToSlash(rel)
 		for _, m := range command.FindAllStringSubmatch(string(b), -1) {
-			found[rel] = true
-			if m[1] != canonical {
-				t.Errorf("%s documents `marketplace add %s`, but this repo resolves the kodhama marketplace to %s (.claude/settings.json) — the six copies of the install command move together (decision-0028)", rel, m[1], canonical)
-			}
+			found[key] = append(found[key], m[1])
 		}
 		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, surface := range []string{"README.md", "plugins/trellis/README.md", "cli/main.go", "docs/index.html", "docs/lp-content.md"} {
-		if !found[surface] {
-			t.Errorf("%s no longer carries a `marketplace add` command — it is one of the live install surfaces this guard pins; if the command moved, update this list in the same change", surface)
+	return found, err
+}
+
+// TestGuardWalksDoNotReadOtherCheckouts is the regression test for TRL-59.
+//
+// Both walks in this file start at the repository root and read whatever they
+// find, and this repo's own parallel-work pattern puts full checkouts of OTHER
+// branches inside the tree — `git worktree` under .claude/worktrees/. Those
+// copies are stale by construction, being other branches, so a walk that reads
+// one reports a neighbouring branch's content as this branch's defect.
+//
+// The fixture is built rather than borrowed, because the real tree cannot
+// demonstrate this from anywhere the suite normally runs: CI checks out a fresh
+// tree with no worktrees, and an agent working IN a worktree cannot see its
+// siblings. Both are green while the main checkout is red — which is exactly how
+// 36 findings, every one a .claude/worktrees/… path and not one from the real
+// tree, survived CI and three agent sessions in a day.
+//
+// What the fixture pins, beyond "skip .claude":
+//
+//   - a worktree's .git is a FILE and a clone's is a DIRECTORY, so the rule is
+//     the entry's existence, not its kind;
+//   - a checkout can sit anywhere, not only under .claude/, so learning that one
+//     string is not the fix;
+//   - the root carries a .git entry too, so the rule must exempt it or the first
+//     callback skips the repository and every guard passes checking nothing;
+//   - the two walks keep DIFFERENT editorial scopes — decisions/ is in
+//     marketplaceCommands's and out of docSurfacesIn's — so the tempting repair,
+//     giving walker B walker A's whole skip set, is a coverage loss and fails
+//     here. That scope is PRESERVED, not newly chosen, and it sits in tension
+//     with the reason docSurfaces gives for excluding the same corpus: records
+//     are append-only, so a live-command check over them can go permanently red.
+//     It cannot today — no governance record matches the command WITH a slug,
+//     decisions/0069's `/plugin marketplace add` being a bare mention — and if a
+//     marketplace rename ever makes one match, the answer is to exempt it then,
+//     deliberately, rather than to narrow the walk now on a guess.
+func TestGuardWalksDoNotReadOtherCheckouts(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
 		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Assembled from fragments so this file carries no literal install command.
+	// marketplaceCommands reads .go files under cli/, so a written-out one is a
+	// finding against this test — caught by running the guard over a tree that
+	// contained this file. Every other mention of the command in this file is
+	// already broken the same way, by punctuation rather than by intent
+	// (`marketplace add\s+`, "marketplace add %s"), which is why the self-match
+	// had never come up. surface_matrix_guard_test.go answers its own version of
+	// this by assembling from fragments too, and states the reason to prefer
+	// that over an exclusion list: an exclusion list gives the next real drift
+	// somewhere to hide.
+	const cmd = "/plugin marketplace " + "add "
+	const own = cmd + "kodhama/stewards\n"
+	const otherBranch = cmd + "kodhama/kodhama\n"
+
+	// The fixture root is a checkout itself, exactly as the repository root is.
+	write(".git/HEAD", "ref: refs/heads/main\n")
+
+	// This checkout's own source — the only thing either walk may read.
+	write("README.md", own)
+	// In marketplaceCommands's scope and outside docSurfacesIn's.
+	write("decisions/a-record.md", own)
+
+	// A worktree: .git is a FILE.
+	write(".claude/worktrees/agent-x/.git", "gitdir: /elsewhere/.git/worktrees/agent-x\n")
+	write(".claude/worktrees/agent-x/README.md", otherBranch)
+
+	// A clone: .git is a DIRECTORY, and it is nowhere near .claude/.
+	write("vendor/old-clone/.git/HEAD", "ref: refs/heads/other\n")
+	write("vendor/old-clone/README.md", otherBranch)
+	write("vendor/old-clone/docs/nested.md", otherBranch)
+
+	// A vendored dependency: not this project's source either.
+	write("node_modules/pkg/README.md", otherBranch)
+
+	cmds, err := marketplaceCommands(root)
+	if err != nil {
+		t.Fatalf("scanning the fixture for install commands: %v", err)
+	}
+	if got, want := strings.Join(keysOf(cmds), ", "), "README.md, decisions/a-record.md"; got != want {
+		t.Errorf("marketplaceCommands read [%s]\nwant                        [%s]\n"+
+			"an extra file is another checkout's content, which is a neighbouring branch's business and not this branch's defect (TRL-59); "+
+			"a missing one means the walk stopped reading its own tree, and a guard that reads nothing passes silently", got, want)
+	}
+
+	surfaces, err := docSurfacesIn(root)
+	if err != nil {
+		t.Fatalf("walking the fixture for doc surfaces: %v", err)
+	}
+	var rels []string
+	for _, p := range surfaces {
+		rel, err := filepath.Rel(root, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rels = append(rels, filepath.ToSlash(rel))
+	}
+	sort.Strings(rels)
+	if got, want := strings.Join(rels, ", "), "README.md"; got != want {
+		t.Errorf("docSurfacesIn read [%s]\nwant               [%s]\nsame rule, same reason (TRL-59)", got, want)
 	}
 }
