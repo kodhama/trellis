@@ -1497,23 +1497,28 @@ fi
 # APPENDED AFTER THE BUDGET CHECK, not inside the payload block, and that
 # ordering is the whole point rather than a tidiness choice. Measured on the
 # version that assembled it inside, counting UTF-8 BYTES throughout, which is
-# what the wc -c below counts and the only measure this claim can honestly
+# what the wc -c above counts and the only measure this claim can honestly
 # quote: a project whose rules.toml put the assembled payload at 32673 bytes
 # of the 32768-byte budget was fully governed, and DELETING
 # reference/invariants.md -- changing nothing else -- added the report and
 # took it to 33149, turning the session into a TRELLIS_RULES_NOT_LOADED
-# refusal with no rules and no rows. (The report costs 484 bytes at a
-# 70-character plugin root and grows with the path it names; the 33149 figure
-# is that run, whose wording was 8 bytes shorter than todays.) An earlier
+# refusal with no rules and no rows. That is exactly the trade decision-0093
+# rule 1 forbids: a dead pointer swapped for no governance at all, over a file
+# that is consulted on demand. Codex is not exposed to it -- its budget bounds
+# `context` alone (codex-context.mjs:1194) and the same warning rides
+# systemMessage outside it -- so this ordering also stops the two hosts
+# disagreeing about the one property the pair guard exists to protect.
+#
+# On those figures, since two rounds of review went at them. The report costs
+# 484 bytes at a 70-character plugin root and grows with the path it names;
+# 33149 is that run, whose wording was 8 bytes shorter than todays. An earlier
 # version of this comment quoted 32573 for the healthy side, which was the
-# CHARACTER count of the delivered context rather than its byte count -- the
-# em dashes in the payload are three bytes each, so the two measures differ by
-# 100 here and review could not reproduce the pair. That is exactly the trade decision-0093 rule 1 forbids: a dead
-# pointer swapped for no governance at all, over a file that is consulted on
-# demand. Codex is not exposed to it -- its budget bounds `context` alone
-# (codex-context.mjs:1194) and the same warning rides systemMessage outside it
-# -- so this ordering also stops the two hosts disagreeing about the one
-# property the pair guard exists to protect.
+# CHARACTER count of the delivered context rather than its byte count, and
+# review could not reproduce the pair. The two measures differ by 100 on that
+# payload. Attributing all 100 to em dashes was the SECOND wrong version of
+# this sentence: measured, 30 em dashes carry 60 of it, the 17 ballot Xs in
+# the live-rows readout carry 34, and two arrows and two middle dots carry the
+# last 6. Multi-byte characters generally, not one of them.
 #
 # Two consequences, both wanted. The refusal above now counts only what it
 # blames, instead of charging the diagnostic bytes to rules.toml. And an

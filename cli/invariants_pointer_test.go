@@ -617,7 +617,17 @@ func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	}
 	// Aim just under the budget, then correct — integer division and the row
 	// reconciler's own wording make one pass approximate.
+	//
+	// The band below is an AIMING AID, not the property: the decisive assertion
+	// is that the broken context exceeds the budget, and it fails loudly on its
+	// own terms if the aim lands short. The one thing the aim must not do is
+	// panic before saying anything, which a negative count in strings.Repeat
+	// would — reachable if the shipped payload ever grows past the budget on
+	// its own.
 	lines := (limit - 300 - at0) / perLine
+	if lines <= 0 {
+		t.Fatalf("the payload is already %d bytes against a %d-byte budget, so there is no room to pad a fixture toward the band — this test can no longer be aimed and is not silently passing instead", at0, limit)
+	}
 	healthy := measure(lines)
 	for i := 0; i < 8 && (healthy > limit || healthy < limit-700); i++ {
 		lines += (limit - 300 - healthy) / perLine
