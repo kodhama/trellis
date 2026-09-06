@@ -400,3 +400,93 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 		})
 	}
 }
+
+// TestCodexReportsAPluginPayloadMissingItsInvariantsCopy is TRL-69, and it is
+// the fourth payload file's fault behaviour — the one
+// TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead above has no case
+// for, because `invariants.md` is not read by this hook at all. It is POINTED
+// AT: the plugin-native arm rewrites the shipped token
+// `.trellis/internal/invariants.md` to the plugin's own copy (TRL-52,
+// decision-0065:106-111), and until this test existed nothing observed what
+// happens when that copy is not there.
+//
+// Why the fix is not the symmetric guard. The vendored arm next door checks
+// `existingFile(pluginInvariants)` before substituting, and the obvious reading
+// of the asymmetry is that the plugin-native arm should too. It must not. Those
+// two `existingFile` calls would be asking different questions: the vendored
+// one is a FALLBACK-ELIGIBILITY test — the overlay has its own authoritative
+// location, so the plugin's copy may stand in for it only when it exists
+// (decision-0093) — while on this branch there is no competing location to
+// substitute for. Guarding here would leave the raw token, and the raw token on
+// this branch names `.trellis/internal/invariants.md` in the mode DEFINED by
+// not having that directory. That is strictly worse than an absolute path into
+// the plugin: both are dead, but only one of them also tells the model the
+// project has a vendored overlay it does not have. So the pointer still moves —
+// asserted below in BOTH cases — and what changes is that a payload which
+// cannot make it resolve is reported.
+//
+// Reported, not failed. `invariants.md` is CONSULTED, read on demand when a
+// rule seems ambiguous, never injected; decision-0093:1 rules that failing a
+// session closed over such a file would trade a dead pointer for no governance
+// at all. So the context is still delivered — asserted in both cases — and the
+// broken install rides out on the systemMessage channel the floor-row warning
+// already established.
+//
+// Both directions in one table, deliberately. The healthy case is what stops
+// the warning becoming unconditional noise, and it is the case a mutation
+// inverting the predicate fails; the broken case is the defect. A test with
+// only the second passes for an implementation that warns on every session.
+func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// removeInvariants makes the plugin payload the broken one: three valid
+		// delivered files and no fourth, consulted one.
+		removeInvariants bool
+		warns            bool
+	}{{
+		name:             "a complete plugin payload warns about nothing",
+		removeInvariants: false,
+		warns:            false,
+	}, {
+		name:             "a plugin payload with no invariants.md is reported, and the rules still land",
+		removeInvariants: true,
+		warns:            true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := writePluginNativeProject(t, "a")
+			pointer := filepath.Join(pluginRoot, "reference", "invariants.md")
+			if tc.removeInvariants {
+				removeFileT(t, pointer)
+			}
+
+			raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+			if got.HookSpecificOutput == nil {
+				t.Fatalf("a consulted reference is not a delivered payload (decision-0093:1): the rules must still be injected: %s", raw)
+			}
+			context := got.HookSpecificOutput.AdditionalContext
+
+			// The pointer moves either way. This is the assertion that makes the
+			// symmetric guard fail here rather than pass quietly.
+			if strings.Contains(context, invariantsToken) {
+				t.Errorf("the raw token survived; this mode has no .trellis/internal/ for it to name, so a missing plugin copy must not degrade the pointer back to it:\n%s", context)
+			}
+			if got := pointerIn(t, context); got != pointer {
+				t.Errorf("the pointer names the wrong file\nwant: %s\ngot:  %s", pointer, got)
+			}
+
+			if !tc.warns {
+				if got.SystemMessage != "" {
+					t.Errorf("a plugin payload with every file present must warn about nothing: %q", got.SystemMessage)
+				}
+				return
+			}
+			// Naming the absolute path is the point of the message: it is what
+			// tells the operator WHICH install is broken, and it is the only part
+			// of the wording worth pinning.
+			if !strings.Contains(got.SystemMessage, pointer) {
+				t.Errorf("a plugin payload missing its invariants copy must be reported, naming the file that is not there\ngot: %q", got.SystemMessage)
+			}
+		})
+	}
+}

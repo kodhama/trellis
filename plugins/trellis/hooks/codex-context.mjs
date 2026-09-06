@@ -1015,8 +1015,36 @@ if (trellis.split("@rules.md").length - 1 !== 1) {
 // records having been wrong about.
 const pluginInvariants = path.join(pluginRoot, "reference", "invariants.md");
 const repointedInvariants = `\`${pluginInvariants}\``;
+// TRL-69. The two arms below ask DIFFERENT questions, which is why only one of
+// them calls existingFile, and why making them textually symmetric would be a
+// regression rather than a tidy-up. The vendored arm's check is fallback
+// ELIGIBILITY: that project has its own authoritative location for this file,
+// so the plugin's copy may stand in for it only when the plugin's copy is
+// really there (decision-0093). This arm has no competing location to
+// substitute FOR -- the repointed path is the only address there is -- so the
+// same check here would not validate the target, it would abandon it. Leaving
+// the raw token ships `.trellis/internal/invariants.md` to the one mode
+// DEFINED by not having that directory: both pointers are dead when the copy
+// is missing, and only that one ALSO tells the model the project has an
+// overlay it does not have. So the pointer moves either way.
+//
+// What a missing copy earns instead is a REPORT, carried at the end of this
+// file on the systemMessage channel the floor-row warning already uses. Not a
+// fail(): invariants.md is consulted on demand, never injected, and
+// decision-0093:1 rules that failing a session closed over such a file trades
+// a dead pointer for no governance at all. The context still delivers whole.
+//
+// Scoped to this branch deliberately. Here the plugin's reference/ IS the
+// delivery source this run just read three payload files from, so a missing
+// fourth is this delivery's own defect and it names the install to repair. On
+// the vendored branch it is not the source: a plugin root with no reference/
+// at all is a legitimate shape there -- most of the suite's own vendored
+// fixtures are exactly that (writeCodexPluginRoot), and
+// TestCodexHookValidStartupAndLiveRows pins them silent.
+let pluginInvariantsMissing = false;
 if (sources.root === pluginRoot) {
   trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
+  pluginInvariantsMissing = !existingFile(pluginInvariants);
 } else if (
   !existingFile(path.join(projectRoot, ".trellis", "internal", "invariants.md")) &&
   existingFile(pluginInvariants)
@@ -1279,6 +1307,22 @@ const response = {
     additionalContext: context,
   },
 };
+// One systemMessage, so the warnings that can fire on a SUCCESSFUL delivery
+// collect here rather than each assigning the field — the second writer would
+// silently drop the first, and these two are independent conditions that can
+// hold at once. Joined with a space: with one warning the string is
+// byte-identical to what that warning shipped alone.
+const warnings = [];
+// TRL-69, decided at the repoint above. The pointer was rewritten to a file
+// that is not there, which makes this a half-installed plugin payload; say so
+// rather than let the model meet it as an unexplained missing read.
+if (pluginInvariantsMissing) {
+  warnings.push(
+    `Trellis warning: this plugin payload has no ${pluginInvariants}, so the invariants pointer in the rules just injected names a file that is not there. ` +
+      "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
+      "Reinstalling or updating the Trellis plugin is the likely fix.",
+  );
+}
 // Floors are the `floor-` half of the same derived slug set, not a second
 // hardcoded pair — the prefix is the product's own classification (matched the
 // same way everywhere else this file and staleness.sh distinguish inv- from
@@ -1287,8 +1331,12 @@ const falseFloors = slugs
   .filter((slug) => slug.startsWith("floor-") && rows.get(slug) === false)
   .sort();
 if (falseFloors.length > 0) {
-  response.systemMessage =
+  warnings.push(
     "Trellis warning: floor rows set active = false are overridden-by-floor and remain active: " +
-    `${falseFloors.join(", ")}.`;
+      `${falseFloors.join(", ")}.`,
+  );
+}
+if (warnings.length > 0) {
+  response.systemMessage = warnings.join(" ");
 }
 emit(response);
