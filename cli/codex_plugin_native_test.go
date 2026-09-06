@@ -5,14 +5,17 @@ package main
 // holding `.trellis/internal/` is VENDORED and the overlay is the source;
 // a project without one is PLUGIN-NATIVE and the plugin's own `reference/` is.
 //
-// Measured on 1984862 by instrumenting the branch and running the whole
-// package: the suite executed this hook 99 times and took the plugin-native
-// branch in 5 of them (5%), spread over 5 tests that each reach it once —
-// three invariants-pointer tests (TRL-52/#283, all posture a) plus one
-// incidental control in TestCodexHookHonoursGovernedFalse and one posture
-// sub-test in TestCodexReconcilesInsteadOfFailingClosed. Every other fixture in
-// the suite writes an overlay, so it runs the vendored branch whatever plugin
-// root it is handed — most pair writeCodexPluginRoot, which writes only
+// Measured on 1984862 by instrumenting the hook and running the whole package:
+// it was invoked 110 times, of which 99 got as far as this branch decision —
+// the other 11 exit earlier, on a bad stdin/event/cwd, on no project root, or
+// on `governed = false`, all of which are settled before `vendored` is
+// computed. Of those 99, the plugin-native branch was taken 5 times (5%),
+// spread over 5 tests that each reach it once: three invariants-pointer tests
+// (TRL-52/#283, all posture a) plus one incidental control in
+// TestCodexHookHonoursGovernedFalse and one posture sub-test in
+// TestCodexReconcilesInsteadOfFailingClosed. Every other fixture that reaches
+// the branch writes an overlay, so it goes vendored whatever plugin root it is
+// handed — most pair writeCodexPluginRoot, which writes only
 // `.codex-plugin/plugin.json` and no `reference/` at all, and two vendored
 // invariants tests pair writeDualHostPluginRoot, whose `reference/` is real but
 // goes unread because the overlay outranks it. That is how TRL-52 shipped: the
@@ -108,9 +111,12 @@ func writePluginNativeProject(t *testing.T, posture string) string {
 // the pointer, and TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead
 // below proves the three payload paths are STAT'd — neither proves the bytes at
 // those paths are the bytes the model receives. Nor does the nearest thing on
-// the vendored branch: TestCodexHookValidStartupAndLiveRows asserts that the
-// plugin's path never APPEARS in a vendored project's context, which is a check
-// on a leaked path literal rather than on where the delivered bytes came from.
+// the vendored branch: TestCodexHookValidStartupAndLiveRows asserts that one
+// hardcoded relative literal, "../plugins/trellis/reference", never appears in a
+// vendored project's context — a check on a leaked path string rather than on
+// where the delivered bytes came from, and one its own fixture could not fail
+// anyway, since that fixture's plugin root is a t.TempDir() whose path bears no
+// resemblance to the literal.
 // So no test on either branch pinned delivery to origin, and this one does it
 // where the branch decides the origin. The gap is not hypothetical — this hook
 // already rewrites one payload value between reading it and delivering it (the
@@ -245,7 +251,16 @@ func TestCodexVendoredDeliveryIgnoresTheProjectsPosture(t *testing.T) {
 	// prose. Without that disagreement the fixture could not tell the two
 	// branches apart.
 	writeValidCodexOverlay(t, project)
-	writeFileT(t, filepath.Join(project, ".trellis", "rules.toml"), payloadFiles()["rules-b.toml"])
+	config := filepath.Join(project, ".trellis", "rules.toml")
+	// Asserted rather than assumed, in the idiom
+	// TestCodexRepointsWhenAVendoredOverlayLacksInvariants already uses. If the
+	// helper ever seeded rules-b.toml itself, the overwrite below would be a
+	// no-op, the project and the overlay would agree, and this test would go on
+	// passing while proving nothing — the overlay's prose is firm either way.
+	if readFileT(t, config) == payloadFiles()["rules-b.toml"] {
+		t.Fatal("fixture drift: writeValidCodexOverlay now seeds rules-b.toml, so this fixture no longer makes the project's posture and the overlay's prose disagree")
+	}
+	writeFileT(t, config, payloadFiles()["rules-b.toml"])
 
 	context := codexContextFor(t, pluginRoot, project)
 	if !strings.Contains(context, firmProseMarker) {
@@ -271,7 +286,9 @@ func TestCodexVendoredDeliveryIgnoresTheProjectsPosture(t *testing.T) {
 // One case per REACHABLE `fail(sources.*)` call site rather than a re-run of
 // that test's table: each site is a separate place the wrong path can be
 // written, and the classes themselves are not branch-sensitive. The hook has
-// seven such sites. Five are reachable and each has a case here: the payload
+// seven sites whose label comes from `sources` — six match a grep for
+// `fail(sources.`, and the seventh is the read loop at :944, which reaches it
+// through `sources[key]`. Five are reachable and each has a case here: the payload
 // read loop (:944, exercised once per role, since the label it reports is
 // `sources[key]` and the role is what varies), :980
 // invalid-placeholder-count, :970 invalid-version, :1060 invalid-rules and
