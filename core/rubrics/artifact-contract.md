@@ -25,7 +25,13 @@ scope: trellis-product
 > checks read.
 >
 > **Derived resource (`decision-0028` clause 1):** `.claude/agents/corpus-reviewer.md`, the charter
-> that applies this rubric. Move it in the same change.
+> that applies this rubric. Move it in the same change. `cli/artifact_contract_guard_test.go` is
+> the clause-2 guard: it pins this pair's three enumerations — check 4's accepted forms, check 6's
+> per-type sections, and the corpus paragraph above. It finds each one by **matching literal text
+> from this file** — a check's opening words, and the bold Corpus label — so rewording one of
+> those fails the guard until the test is updated with the new wording. It pins the rows of those
+> three lists and **not the prose**, which has carried a normative rule here before: reconcile
+> that by hand.
 
 ## Checks
 
@@ -42,38 +48,70 @@ scope: trellis-product
    (`trellis-product`), `expression-profile` (`core-methodology`) — `schema-typed-artifacts` — and `lexicon`
    (`trellis-product`) — `decision-0017`.
 3. **`id` unique** across the corpus. *FAIL → name the colliding files.*
-4. **`depends_on` resolves.** Each entry is an existing artifact `id`, a declared external-ref
-   form — `brief-§…`, **or** a qualified `<repo>/<id>` cross-repo reference whose `<repo>` is a
-   member of the recognized registry (kodhama, trellis, grove, wisp, design-system,
-   homebrew-tap, math-quest) (`decision-0044`; shape + registry-membership
-   only — not verified against the referent's actual home corpus, same treatment as
-   `brief-§…`) — **or** a **retired id** in the invariant-set's Identifiers registry (mapping to
-   a successor) — **or** a **retired artifact id** in `decision-0079`'s retired-artifacts
-   registry (`spec-0001`–`spec-0008`). That last clause is the same historical-reference
+4. **`depends_on` resolves.** Each entry is one of these forms:
+
+   - an existing artifact `id` in this corpus
+   - a declared external-ref form — `brief-§…`
+   - a qualified `<repo>/<id>` cross-repo reference whose `<repo>` is a member of the recognized
+     registry (kodhama, trellis, grove, wisp, design-system, homebrew-tap, math-quest)
+     (`decision-0044`; shape + registry-membership only — not verified against the referent's
+     actual home corpus, same treatment as `brief-§…`)
+   - a **retired id** in the invariant-set's Identifiers registry, mapping to a successor
+   - a **retired artifact id** in `decision-0079`'s retired-artifacts registry
+     (`spec-0001`–`spec-0008`)
+
+   The **retired artifact id** form is the same historical-reference
    exemption the Identifiers registry grants (`decision-0013`): a retirement does not reach back
    and edit the append-only records that cite it, so the registry — not the file's existence —
    is what makes those references resolve. A referent may carry a **`@version` pin** (shape only;
    semantics methodology-defined, `grove/adr-0010`); resolve it on **shape + the bare
    `id`/`<repo>/<id>`'s membership only** (v0, no-fetch) — the pin-vs-upstream-current *sync*
-   comparison is **not** this check's (it is the operational chain's, grove `adr-0006`). *FAIL → name the dangling reference.*
+   comparison is **not** this check's (it is the operational chain's, grove `adr-0006`).
+   **`informed_by` entries resolve by the same forms.** That edge carries provenance, not
+   dependency (`decision-0047`, which states the principle; the field name and the fuller
+   taxonomy are grove's relations charter) — but **first**, before stripping and resolving, a
+   `@version` pin on an `informed_by` entry is a **category error**: `informed_by` is non-drift,
+   so a pin has nothing to compare against and would otherwise be swallowed silently by the
+   strip-and-resolve step. *FAIL → name the dangling reference.*
 5. **Directional flow (load-bearing — `inv-directional-flow`/`inv-graph-maintenance`).** For
    trellis-self the merge carries this (`decision-0082`): everything on `main` is settled, so the
    structural check is that every `depends_on` resolves within the corpus (check 4) — there is no
    status to compare. *(Where a methodology declares a status lifecycle, the original form applies:
    no gated/approved artifact `depends_on` a draft one.)* A decision's **`changes:`** relation
    (shape only) is a **forward-pointer of the `superseded_by` class,
-   not a `depends_on`-class edge** — do **not** walk it as a flow edge; a spec both depending on
+   not a `depends_on`-class edge** — do **not** walk it as a flow edge; an artifact both depending on
    its authorizing decision and named in that decision's `changes:` is a benign pair, not a cycle.
-   *FAIL → name the edge.*
-6. **Required body sections per type** (`schema-typed-artifacts`, `decision-0042`): `spec`/`invariant-set` →
-   Acceptance criteria + Open questions; `decision` → Context/Decision/Consequences;
-   `research-note` → Open questions (+ sources); `signature-catalog` → Entries + Acceptance
-   criteria + Open questions; `expression-profile` → Delivery + Profile + Assessment notes +
-   Open questions; `lexicon` → Canonical terms + Open questions; `rubric` → Acceptance criteria +
-   Open questions; `schema` → exempt (its conformance checks are 8–11 here, not per-file sections);
-   `feedback` → exempt. **The enumeration is closed** — it names every type the corpus holds, so a
-   type it omits is a gap to fix here, not a judgment call at review time. *FAIL → name the missing
-   section.*
+   The honesty judgment survives the status retirement: a genuine **coupling relabeled as
+   `informed_by`** — a source the artifact's correctness is contingent on — is non-conformant
+   (`decision-0047`). Flag it rather than passing it silently. *FAIL → name the edge.*
+6. **Required body sections per type** (`schema-typed-artifacts`, `decision-0042`). **The
+   enumeration is closed** — it names every type the corpus holds, so a type it omits is a gap to
+   fix here, not a judgment call at review time:
+
+   - `decision` → Context + Decision + Consequences
+   - `expression-profile` → Delivery + Profile + Assessment notes + Open questions
+   - `feedback` → exempt
+   - `invariant-set` → Acceptance criteria + Open questions
+   - `lexicon` → Canonical terms + Open questions
+   - `research-note` → Open questions
+   - `rubric` → Acceptance criteria + Open questions
+   - `schema` → exempt
+   - `signature-catalog` → Entries + Acceptance criteria + Open questions
+   - `spec` → Acceptance criteria + Open questions
+
+   `schema` is exempt because its conformance checks are 8–11 here, not per-file sections.
+   *FAIL → name the missing section.*
+
+   *A `research-note` conventionally also carries its sources and confidence tags
+   (`verified`/`inferred`/`speculated`). Those are habits of a good note, **not** gated sections:
+   the `research-note` row gates `## Open questions` and nothing else. This is the original reading restored,
+   not a relaxation — `spec-0001` §4, which this check derived from, wrote the requirement as
+   literal section names (`` `## Open questions` ``) and the rest as bare prose in a parenthetical,
+   "(+ sources & confidence tags)", alongside a sibling parenthetical on the `decision` row that
+   is plainly explanatory. Confidence tags are inline annotations and were never a section, so the
+   parenthetical could not have been enumerating sections. It reached this rubric compressed to
+   "(+ sources)", which read like half a requirement, and five of the eleven notes on `main` have
+   never carried a `## Sources` section (`TRL-60`).*
 7. **Supersede integrity.** **Supersession is identified by the forward pointer** (`decision-0082`;
    formerly by `status: superseded`): an artifact carrying `superseded_by` is superseded, and its
    entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point
