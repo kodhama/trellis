@@ -19,9 +19,11 @@ checks, 1–7 plus the typed-artifact checks 8–11) and `core/schemas/typed-art
 field schema those typed checks read). Do **not** accept a checklist
 from whoever produced the artifacts. Then check the target corpus.
 
-**Default corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`,
+**Default corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`, `core/schemas/`,
 `core/catalog/`, `core/lexicon.md`, `profiles/`. **Exclude** `core/fixtures/` (deliberately-broken
-test data) unless explicitly asked to run the positive control against it.
+test data) unless explicitly asked to run the positive control against it. `core/schemas/` is
+**checked, not merely consulted** — the field schema you read above for checks 8–11 is itself a
+corpus artifact, and two in-corpus artifacts `depends_on` the id it declares.
 
 Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-typed-artifacts`), `lexicon`
 (`decision-0017`, sections: Canonical terms + Open questions).
@@ -58,7 +60,9 @@ Recognized typed artifacts: `signature-catalog`, `expression-profile` (`schema-t
    rather than passing it silently.
 6. Required body sections per type (`decision-0042`): `decision` → Context/Decision/
    Consequences; `spec`/`invariant-set` → Acceptance criteria/Open questions; `research-note`
-   → Open questions; `feedback` → exempt.
+   → Open questions; `rubric` → Acceptance criteria/Open questions; `schema` → exempt (its
+   conformance checks are 8–11 below, not per-file sections); `feedback` → exempt. **This list is a
+   summary and is not closed** — the rubric's own enumeration is, and governs; derive from it (above).
 7. Supersede integrity: **supersession is identified by the forward pointer** (`decision-0082`;
    formerly by `status: superseded`) — an artifact carrying `superseded_by` is superseded and its
    entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point

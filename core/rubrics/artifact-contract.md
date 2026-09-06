@@ -17,9 +17,15 @@ scope: trellis-product
 > **PASS / FAIL** with a *specific* reason (file + field + rule). **No vague failures, no false
 > passes.**
 >
-> **Corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`,
+> **Corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`, **`core/schemas/`**,
 > **`core/catalog/`**, **`core/lexicon.md`**, **`profiles/`**. Exclude `core/fixtures/` unless running
-> the positive control.
+> the positive control. `core/schemas/` is **checked, not merely consulted**: `decision-0079` re-homed
+> the typed-artifact schema there, and this rubric `depends_on` the id it declares
+> (`schema-typed-artifacts`, read by checks 2, 6 and 8–11) — a gate may not exempt an input its own
+> checks read.
+>
+> **Derived resource (`decision-0028` clause 1):** `.claude/agents/corpus-reviewer.md`, the charter
+> that applies this rubric. Move it in the same change.
 
 ## Checks
 
@@ -63,7 +69,11 @@ scope: trellis-product
    Acceptance criteria + Open questions; `decision` → Context/Decision/Consequences;
    `research-note` → Open questions (+ sources); `signature-catalog` → Entries + Acceptance
    criteria + Open questions; `expression-profile` → Delivery + Profile + Assessment notes +
-   Open questions; `lexicon` → Canonical terms + Open questions; `feedback` → exempt. *FAIL → name the missing section.*
+   Open questions; `lexicon` → Canonical terms + Open questions; `rubric` → Acceptance criteria +
+   Open questions; `schema` → exempt (its conformance checks are 8–11 here, not per-file sections);
+   `feedback` → exempt. **The enumeration is closed** — it names every type the corpus holds, so a
+   type it omits is a gap to fix here, not a judgment call at review time. *FAIL → name the missing
+   section.*
 7. **Supersede integrity.** **Supersession is identified by the forward pointer** (`decision-0082`;
    formerly by `status: superseded`): an artifact carrying `superseded_by` is superseded, and its
    entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point
