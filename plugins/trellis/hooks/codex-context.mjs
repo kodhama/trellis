@@ -68,6 +68,19 @@ function existingDirectory(value) {
   }
 }
 
+// The file-shaped sibling. Same contract deliberately: absolute paths only, and
+// any stat failure -- missing, unreadable, a dangling symlink -- reads as
+// absent. A predicate that distinguished them would invite a caller to branch
+// on the difference, and no caller here can act on one.
+function existingFile(value) {
+  if (typeof value !== "string" || !path.isAbsolute(value)) return false;
+  try {
+    return fs.statSync(value).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function validPluginRoot(root) {
   if (!existingDirectory(root)) return false;
   try {
@@ -1000,10 +1013,35 @@ if (trellis.split("@rules.md").length - 1 !== 1) {
 // path holds no `$`), but the pointer is payload and the plugin root is a
 // user path -- the same two assumptions staleness.sh's own escaping comment
 // records having been wrong about.
+const pluginInvariants = path.join(pluginRoot, "reference", "invariants.md");
+const repointedInvariants = `\`${pluginInvariants}\``;
 if (sources.root === pluginRoot) {
-  trellis = trellis
-    .split(INVARIANTS_TOKEN)
-    .join(`\`${path.join(pluginRoot, "reference", "invariants.md")}\``);
+  trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
+} else if (
+  !existingFile(path.join(projectRoot, ".trellis", "internal", "invariants.md")) &&
+  existingFile(pluginInvariants)
+) {
+  // TRL-58: the vendored overlay that has no invariants.md. The paragraph above
+  // argues the token must SURVIVE on the vendored branch, and it holds wherever
+  // the file is there -- but the overlay's writer was the retired setup skill:
+  // model-executed instructions rather than a script, so an overlay whose
+  // session skipped the `cp` is a shape nothing rules out. There the surviving
+  // token is TRL-52's defect verbatim: a last line telling the model to read a
+  // file that is not there.
+  //
+  // This is not the silent fall-through :907-912 forbids, on two counts. That
+  // rule governs the three DELIVERED files, whose absence makes the injected
+  // chain itself wrong; invariants.md is CONSULTED -- read on demand when a rule
+  // seems ambiguous, never injected -- so a session that meets no ambiguous rule
+  // never opens it, and failing the session closed over it would trade a dead
+  // pointer for no governance at all. And nothing switches mode: prose, rules and
+  // version still come from `sources`, which is untouched. Only the pointer moves.
+  //
+  // README.md:27 is not in tension either. "Installation sources rather than
+  // runtime substitutes" presupposes something to substitute FOR; this arm runs
+  // only when there is not. The plugin's copy is checked for existence too, so
+  // the fallback cannot replace one dead pointer with another.
+  trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
 }
 // The rules payload's own well-formedness (the sentinel gate) must be checked
 // BEFORE it is trusted enough to derive a slug set from it — moved ahead of
