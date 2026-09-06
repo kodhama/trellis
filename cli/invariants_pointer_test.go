@@ -495,3 +495,140 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 		})
 	}
 }
+
+// TestTheMissingInvariantsReportNeverCostsTheSessionItsRules is the guard for
+// the ORDERING of the report against the 32768-byte injection budget, which is
+// the one thing about this report that can fail a session closed.
+//
+// Found in review of the first version of this change, which assembled the
+// report INSIDE the `payload="$( … )"` block, before the budget check. On a
+// project whose rules.toml put the payload 32573 bytes into the budget, the
+// session was fully governed — and deleting `reference/invariants.md`, changing
+// nothing else, pushed it to 33149 and turned the whole thing into a
+// TRELLIS_RULES_NOT_LOADED refusal with no rules and no rows. A consulted
+// reference is not a delivered payload (decision-0093:1): trading a dead
+// pointer for no governance at all is exactly what that rule forbids, and the
+// hook's own comments claimed it could not happen.
+//
+// It is also the property the two hosts must agree on. codex-context.mjs bounds
+// `context` alone (:1194) and pushes the same warning onto systemMessage
+// afterwards (:1333), so Codex can never lose its context to this warning.
+//
+// The fixture CALIBRATES rather than hardcoding a padding size: it measures the
+// payload at two padding sizes, derives the per-line cost, and solves for a
+// rules.toml that lands the healthy payload just inside the budget. A hardcoded
+// count would drift out of the dangerous band the first time the shipped
+// payload changed size, and this test would then pass while proving nothing —
+// which is why the band itself is asserted.
+func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
+	// staleness.sh's own `limit`. Duplicated deliberately: if the hook's budget
+	// moves and this does not, the band assertion below fails loudly rather
+	// than letting the fixture drift out of the band in silence.
+	const limit = 32768
+	const padLine = "# padding, so this fixture sits exactly where the budget bites\n"
+
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := writeConfigOnlyProject(t)
+	toml := filepath.Join(project, ".trellis", "rules.toml")
+	base := readFileT(t, toml)
+
+	measure := func(lines int) int {
+		writeFileT(t, toml, base+strings.Repeat(padLine, lines))
+		return len(claudeContextFor(t, pluginRoot, project))
+	}
+
+	at0, at64 := measure(0), measure(64)
+	perLine := (at64 - at0) / 64
+	if perLine <= 0 {
+		t.Fatalf("calibration failed: 64 padding lines moved the payload by %d bytes, so the fixture cannot be aimed", at64-at0)
+	}
+	// Aim just under the budget, then correct — integer division and the row
+	// reconciler's own wording make one pass approximate.
+	lines := (limit - 300 - at0) / perLine
+	healthy := measure(lines)
+	for i := 0; i < 8 && (healthy > limit || healthy < limit-700); i++ {
+		lines += (limit - 300 - healthy) / perLine
+		healthy = measure(lines)
+	}
+	if healthy > limit || healthy < limit-700 {
+		t.Fatalf("could not aim the fixture into the band: %d bytes against a %d-byte budget, after %d padding lines — a fixture outside the band proves nothing", healthy, limit, lines)
+	}
+	if !strings.Contains(claudeContextFor(t, pluginRoot, project), rulesLoadedSentinel) {
+		t.Fatalf("the calibrated fixture is not governed even with a healthy payload; the assertion below would prove nothing")
+	}
+
+	// The whole change: this file going missing must cost the session nothing
+	// but the pointer it names.
+	target := filepath.Join(pluginRoot, "reference", "invariants.md")
+	removeFileT(t, target)
+	broken := claudeContextFor(t, pluginRoot, project)
+
+	if strings.Contains(broken, "TRELLIS_RULES_NOT_LOADED") {
+		t.Fatalf("deleting a CONSULTED reference refused the session — a dead pointer traded for no governance at all (decision-0093:1), and the budget is the only thing that changed:\n%s", broken)
+	}
+	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, "floor-intent-gate") {
+		t.Errorf("the rules and rows must survive a missing consulted reference:\n%s", broken)
+	}
+	if !strings.Contains(broken, invariantsReportLead+target) {
+		t.Errorf("the report was dropped rather than delivered outside the budget:\n%s", broken)
+	}
+	if len(broken) <= healthy {
+		t.Errorf("the report did not add to the delivered context (healthy %d bytes, broken %d) — the fixture is not exercising the ordering it exists to pin", healthy, len(broken))
+	}
+}
+
+// writeDefaultsShapeProject is the OTHER arm of path B: decision-0070's
+// shipped-defaults shape, with no `.trellis/rules.toml` at all and the plugin
+// vendored inside the repository — which is the adoption act that makes the
+// shipped rows apply (decision-0070 D6, staleness.sh's own `rows_are_default`).
+// It reaches the same delivery block, and therefore the same repoint and the
+// same report, through a different door.
+func writeDefaultsShapeProject(t *testing.T) (pluginRoot, project string) {
+	t.Helper()
+	project = t.TempDir()
+	pluginRoot = filepath.Join(project, ".claude", "skills", "trellis")
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range payloadFiles() {
+		writeFileT(t, filepath.Join(pluginRoot, "reference", name), body)
+	}
+	return pluginRoot, project
+}
+
+// TestTheMissingInvariantsReportFiresOnTheDefaultsShapeToo covers the arm the
+// two tests above do not reach. Both build their project with
+// writeConfigOnlyProject, so both enter path B through `.trellis/rules.toml`;
+// a project with none of it, governed by the rows the plugin ships, enters the
+// same block by a different route.
+//
+// Worth its own case because this repo has already paid for the assumption that
+// one door covers the other: TRL-52 shipped a broken pointer on the Codex
+// plugin-native branch precisely because no fixture reached that branch, which
+// codex_plugin_native_test.go's header records at length. The report is a
+// property of the delivery block, not of the door, and this asserts that rather
+// than assuming it.
+func TestTheMissingInvariantsReportFiresOnTheDefaultsShapeToo(t *testing.T) {
+	pluginRoot, project := writeDefaultsShapeProject(t)
+	target := filepath.Join(pluginRoot, "reference", "invariants.md")
+
+	healthy := claudeContextFor(t, pluginRoot, project)
+	if !strings.Contains(healthy, rulesLoadedSentinel) || !deliveredRow(healthy, "floor-intent-gate") {
+		t.Fatalf("fixture drift: this shape no longer delivers the shipped defaults, so the assertions below would prove nothing:\n%s", healthy)
+	}
+	if strings.Contains(healthy, invariantsReportLead+target) {
+		t.Errorf("a complete payload was reported as broken on the defaults shape:\n%s", healthy)
+	}
+
+	removeFileT(t, target)
+	broken := claudeContextFor(t, pluginRoot, project)
+	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, "floor-intent-gate") {
+		t.Errorf("the shipped defaults must still govern a project whose plugin lacks its invariants copy:\n%s", broken)
+	}
+	if got := pointerIn(t, broken); got != target {
+		t.Errorf("the pointer names the wrong invariants file on the defaults shape\nwant: %s\ngot:  %s", target, got)
+	}
+	if !strings.Contains(broken, invariantsReportLead+target) {
+		t.Errorf("the defaults shape reaches the same delivery block and must report the same broken payload:\n%s", broken)
+	}
+}

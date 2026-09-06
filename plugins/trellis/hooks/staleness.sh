@@ -1468,21 +1468,6 @@ payload="$(
   else
     printf '\nDelivered by the Trellis plugin. Its own version stamp could not be read (%s %s), so this readout cannot name which payload build it came from; the rules and rows above are complete and govern this session. No overlay is vendored in this project.\n' "$ref" "$stamp_defect"
   fi
-  # TRL-70, and the sibling of the provenance arm directly above: delivery is
-  # unaffected -- the rules and the rows are complete and the session IS
-  # governed -- so a CONSULTED reference that cannot be read degrades this one
-  # line and nothing else, the same way an unreadable version stamp degrades
-  # the line above it.
-  #
-  # Said here rather than on a channel of its own because emit writes exactly
-  # one key. Every TRELLIS_ marker this hook can print is a path that injects
-  # NOTHING, so borrowing that vocabulary for a complete, governing delivery
-  # would blur the one signal a consumer can rely on. The Codex hook has a
-  # systemMessage field beside its context and uses it; this one does not, and
-  # the two reports are pinned on their SUBSTANCE rather than their channel.
-  if [ -n "$inv_defect" ]; then
-    printf '\nThis plugin payload has no readable %s (it %s), so the invariants pointer in the rules above names a file that cannot be read. The rules and rows above are complete and govern this session; that reference is consulted on demand, so only a rule that turns out ambiguous needs it. Reinstalling or updating the plugin (`claude plugin update trellis@kodhama`) is the likely fix.\n' "$inv" "$inv_defect"
-  fi
 )"
 
 # A bounded payload, like the Codex hook's MAX_CONTEXT_BYTES. Without this a
@@ -1494,6 +1479,40 @@ size=$(printf '%s' "$payload" | wc -c | tr -d '[:space:]')
 if [ "$size" -gt "$limit" ]; then
   emit "TRELLIS_RULES_NOT_LOADED — the assembled Trellis rules are ${size} bytes, over the ${limit}-byte injection budget, so nothing was injected. This usually means .trellis/rules.toml has grown far beyond a row list. Tell the user before doing substantive work."
   exit 0
+fi
+
+# TRL-70, and the sibling of the provenance arm at the end of the payload
+# block: delivery is unaffected -- the rules and the rows are complete and the
+# session IS governed -- so a CONSULTED reference that cannot be read degrades
+# this one line and nothing else, the same way an unreadable version stamp
+# degrades the line above it.
+#
+# Said in the payload rather than on a channel of its own because emit writes
+# exactly one key. Every TRELLIS_ marker this hook can print is a path that
+# injects NOTHING, so borrowing that vocabulary for a complete, governing
+# delivery would blur the one signal a consumer can rely on. The Codex hook has
+# a systemMessage field beside its context and uses it; this one does not, and
+# the two reports are pinned on their SUBSTANCE rather than their channel.
+#
+# APPENDED AFTER THE BUDGET CHECK, not inside the payload block, and that
+# ordering is the whole point rather than a tidiness choice. Measured on the
+# version that assembled it inside: a project whose rules.toml put the payload
+# 32573 bytes into the 32768-byte budget was fully governed, and DELETING
+# reference/invariants.md -- changing nothing else -- pushed it to 33149 and
+# turned the session into a TRELLIS_RULES_NOT_LOADED refusal with no rules and
+# no rows. That is exactly the trade decision-0093 rule 1 forbids: a dead
+# pointer swapped for no governance at all, over a file that is consulted on
+# demand. Codex is not exposed to it -- its budget bounds `context` alone
+# (codex-context.mjs:1194) and the same warning rides systemMessage outside it
+# -- so this ordering also stops the two hosts disagreeing about the one
+# property the pair guard exists to protect.
+#
+# Two consequences, both wanted. The refusal above now counts only what it
+# blames, instead of charging the diagnostic bytes to rules.toml. And an
+# over-budget session drops the report: it has already been told loudly that
+# NOTHING was injected, which is the larger problem and names its own remedy.
+if [ -n "$inv_defect" ]; then
+  payload="$payload$(printf '\n\nThis plugin payload has no readable %s (it %s), so the invariants pointer in the rules above names a file that yields nothing to read. The rules and rows above are complete and govern this session; that reference is consulted on demand, so only a rule that turns out ambiguous needs it. Reinstalling or updating the plugin (`claude plugin update trellis@kodhama`) is the likely fix.' "$inv" "$inv_defect")"
 fi
 
 emit "$payload"

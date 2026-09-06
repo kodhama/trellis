@@ -4360,7 +4360,7 @@ func TestNoPayloadReadBypassesTheGateway(t *testing.T) {
 	// the posture header. Every payload path staleness.sh reads today is listed;
 	// a scan that stops seeing one of them fails here rather than passing
 	// quietly on a smaller set.
-	for _, want := range []string{"header", "preset", "ref", "rules", "toml"} {
+	for _, want := range []string{"header", "inv", "preset", "ref", "rules", "toml"} {
 		if !seen[want] {
 			t.Errorf("the payload-path scan no longer sees $%s — it found %v, and a guard that stops seeing a payload read passes on nothing", want, names)
 		}
