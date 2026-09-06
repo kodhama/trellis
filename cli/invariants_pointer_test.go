@@ -39,6 +39,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -296,5 +298,448 @@ func TestCodexRepointsWhenAVendoredOverlayLacksInvariants(t *testing.T) {
 	overlayRules := readFileT(t, filepath.Join(project, ".trellis", "internal", "rules.md"))
 	if first := strings.SplitN(strings.TrimSpace(overlayRules), "\n", 2)[0]; first != "" && !strings.Contains(context, first) {
 		t.Errorf("the injected rules no longer come from the overlay — the fallback switched delivery mode, not just the pointer\nwant a line from: %s", first)
+	}
+}
+
+// invariantsReportLead is the phrase BOTH hosts must produce when the plugin
+// payload has no readable invariants copy, immediately followed by the absolute
+// path. Pinning a shared PHRASE rather than a shared path is what makes the
+// assertion non-vacuous on the Claude side: staleness.sh delivers its report
+// inside the very context that already carries the repointed pointer, so
+// "the output names the path" would be satisfied by the pointer alone.
+const invariantsReportLead = "no readable "
+
+// TestBothHostsReportAMissingInvariantsTarget is TRL-70, and it is the half of
+// decision-0028's guard-per-pair that
+// TestBothHostsRepointTheInvariantsPointerIdentically does not cover. That test
+// pins the ADDRESS the two hosts hand the model, on a healthy fixture. It
+// cannot see a divergence in what they SAY about a broken one — which is
+// exactly how they diverged: #294 taught codex-context.mjs to report a missing
+// `reference/invariants.md` while staleness.sh went on repointing at it in
+// silence, with the address guard green.
+//
+// The two hosts use DIFFERENT CHANNELS, deliberately, and this test records
+// that rather than forcing them together:
+//
+//   - codex-context.mjs reports on `systemMessage`, a field that rides
+//     alongside a successful delivery, which is where its floor-row warning
+//     already goes.
+//
+//   - staleness.sh has no such field. `emit` writes one key,
+//     hookSpecificOutput.additionalContext, and every TRELLIS_ marker it can
+//     print is emitted INSTEAD of a payload — a marker means this hook injected
+//     nothing. So its report goes inside the delivered context, beside the
+//     provenance line that already degrades there when the version stamp cannot
+//     be read (TRL-34).
+//
+//     An earlier version of this comment said a marker is "a refusal, not a
+//     note", and review measured that false: TRELLIS_STALENESS_UNKNOWN
+//     (staleness.sh:523 and :663) is a note on a session that IS governed —
+//     "Nothing is wrong with this project and no rules are missing". The
+//     injects-nothing half is true of every marker and carries the argument on
+//     its own; the refusal half did not, and overstating it here would have
+//     made the design read stronger than what was measured.
+//
+// What must match is the SUBSTANCE, and that is what is asserted below: on a
+// payload with no invariants copy both hosts name the unreadable absolute path
+// in a report, both still deliver a governing context, and both still repoint
+// the pointer at that same path; on a complete payload neither says anything.
+//
+// KNOWN DIVERGENCE, in the trigger rather than the report. The two hosts ask
+// their own filesystem primitive: codex-context.mjs uses existingFile, a bare
+// `statSync().isFile()`, while staleness.sh must go through payload_read —
+// TestNoPayloadReadBypassesTheGateway requires it of every payload path this
+// hook names, and payload_read OPENS the file. So a zero-byte or mode-0000
+// copy is reported by Claude and passed over in silence by Codex. Claude is
+// the stricter side and that is the right direction for a broken lead; the
+// cases below pin only the shapes both hosts agree on, so this test does not
+// bless the gap. TestStalenessNamesWhyTheInvariantsTargetCannotBeRead pins the
+// Claude side of it, and TRL-72 owns closing the Codex side — a divergence
+// recorded in a comment with nothing to re-present it is a next step that goes
+// nowhere (decision-0078).
+func TestBothHostsReportAMissingInvariantsTarget(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// removeInvariants makes the payload the broken one: everything the
+		// two hooks DELIVER is intact, and the fourth, consulted file is gone.
+		removeInvariants bool
+	}{{
+		name: "a complete plugin payload gives both hosts nothing to report",
+	}, {
+		name:             "a plugin payload with no invariants copy is reported by both hosts",
+		removeInvariants: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := writeConfigOnlyProject(t)
+			target := filepath.Join(pluginRoot, "reference", "invariants.md")
+			if tc.removeInvariants {
+				removeFileT(t, target)
+			}
+
+			claude := claudeContextFor(t, pluginRoot, project)
+			raw, codex := runCodexHook(t, pluginRoot, startupInput(t, project))
+			if codex.HookSpecificOutput == nil {
+				t.Fatalf("a consulted reference is not a delivered payload (decision-0093:1): Codex must still inject the rules: %s", raw)
+			}
+
+			for _, host := range []struct {
+				name string
+				// context is what the model was handed.
+				context string
+				// report is the channel that host says a broken install on.
+				// For staleness.sh it IS the context, because emit() is the
+				// only channel it has.
+				report string
+			}{
+				{name: "staleness.sh (Claude)", context: claude, report: claude},
+				{name: "codex-context.mjs (Codex)", context: codex.HookSpecificOutput.AdditionalContext, report: codex.SystemMessage},
+			} {
+				// Delivery survives either way, on both hosts: invariants.md is
+				// consulted on demand and never injected, and decision-0093:1
+				// rules that failing a session closed over such a file trades a
+				// dead pointer for no governance at all.
+				if !strings.Contains(host.context, rulesLoadedSentinel) || !deliveredRow(host.context, "floor-intent-gate") {
+					t.Errorf("%s did not deliver a complete governed context; a missing consulted reference must not cost the session its rules (decision-0093:1):\n%s", host.name, host.context)
+				}
+				// The pointer moves either way. This is the assertion the
+				// symmetric guard fails: leaving the raw token would ship
+				// `.trellis/internal/` to the one mode defined by not having it.
+				if strings.Contains(host.context, invariantsToken) {
+					t.Errorf("%s shipped the unresolved placeholder; a missing target must not degrade the pointer back to a directory this mode cannot have:\n%s", host.name, host.context)
+				}
+				if got := pointerIn(t, host.context); got != target {
+					t.Errorf("%s names the wrong invariants file\nwant: %s\ngot:  %s", host.name, target, got)
+				}
+
+				said := strings.Contains(host.report, invariantsReportLead+target)
+				if tc.removeInvariants && !said {
+					t.Errorf("%s repointed at a file that is not there and said nothing about it — the address guard is green and the hosts disagree on the diagnosis (TRL-70)\nwant a report naming: %s%s\ngot: %q", host.name, invariantsReportLead, target, host.report)
+				}
+				if !tc.removeInvariants && said {
+					t.Errorf("%s reports a broken payload on a complete one — a report that always fires says nothing\ngot: %q", host.name, host.report)
+				}
+			}
+		})
+	}
+}
+
+// TestStalenessNamesWhyTheInvariantsTargetCannotBeRead is the Claude half of
+// TRL-70, and it pins the thing the pair guard above deliberately does not:
+// staleness.sh reaches its answer through payload_read, which CLASSIFIES —
+// missing, unreadable, empty — where codex-context.mjs stats and gets a
+// boolean. That classification is the whole reason the gateway exists
+// ("missing and unreadable are told apart because their remedies differ"), so
+// it must reach the reader rather than being flattened into "not there".
+//
+// The report must never turn a permissions fault into a claim that the file is
+// gone: `$payload_why` is quoted into it verbatim, and each case below asserts
+// its own phrase AND THE ABSENCE OF THE OTHER THREE.
+//
+// The absence half is not belt-and-braces, it is the whole assertion. An
+// earlier version of this test checked only that the expected phrase was
+// present, and review killed it with a one-line mutant: a report that names
+// every classification at once —
+//
+//	inv_defect="is missing, is empty, is not a readable file, or exists but
+//	            could not be read -- this report does not know which"
+//
+// passed every case here and the whole package, while doing exactly the
+// flattening the paragraph above says this test exists to prevent. Presence
+// alone cannot distinguish "told the reader which" from "told the reader all
+// four"; only exclusion can.
+func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
+	// Every classification payload_read can hand this report, verbatim from the
+	// gateway. Listed in one place so a case cannot quietly stop excluding one:
+	// a new classification added to payload_read and not to this slice leaves
+	// the mutant above passing again for that phrase.
+	allWhy := []string{
+		"is missing",
+		"is empty",
+		"is not a readable file",
+		"exists but could not be read",
+	}
+	for _, tc := range []struct {
+		name string
+		// breakIt applies exactly one fault to the plugin's invariants copy.
+		// nil is the discrimination control: a healthy payload reports nothing.
+		breakIt func(t *testing.T, target string)
+		// why is the payload_read classification the reader must be given.
+		why string
+	}{{
+		name: "a complete payload reports nothing",
+	}, {
+		name:    "an absent copy is reported as missing",
+		breakIt: func(t *testing.T, target string) { removeFileT(t, target) },
+		why:     "is missing",
+	}, {
+		name:    "an empty copy is reported as empty, not as missing",
+		breakIt: func(t *testing.T, target string) { writeFileT(t, target, "") },
+		why:     "is empty",
+	}, {
+		name: "an unreadable copy is reported as a permission fault, not as missing",
+		breakIt: func(t *testing.T, target string) {
+			if os.Geteuid() == 0 {
+				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+			}
+			if err := os.Chmod(target, 0o000); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+			if _, err := os.ReadFile(target); err == nil {
+				t.Skipf("premise: %s is still readable at mode 0000", target)
+			}
+		},
+		why: "exists but could not be read",
+	}, {
+		name: "a directory at the path is reported as not a readable file",
+		breakIt: func(t *testing.T, target string) {
+			removeFileT(t, target)
+			if err := os.Mkdir(target, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		},
+		why: "is not a readable file",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := writeConfigOnlyProject(t)
+			target := filepath.Join(pluginRoot, "reference", "invariants.md")
+			if tc.breakIt != nil {
+				tc.breakIt(t, target)
+			}
+
+			context := claudeContextFor(t, pluginRoot, project)
+			if !strings.Contains(context, rulesLoadedSentinel) || !deliveredRow(context, "floor-intent-gate") {
+				t.Fatalf("the rules must still be delivered whole; only the consulted reference is broken (decision-0093:1):\n%s", context)
+			}
+			if got := pointerIn(t, context); got != target {
+				t.Errorf("the pointer names the wrong invariants file\nwant: %s\ngot:  %s", target, got)
+			}
+
+			if tc.why == "" {
+				if strings.Contains(context, invariantsReportLead+target) {
+					t.Errorf("a complete payload was reported as broken — the over-correction is as bad for a reader as the silence:\n%s", context)
+				}
+				// None of the classifications may appear either. This is also
+				// the premise the exclusions below rest on: if a phrase turned
+				// up in the shipped prose, excluding it would be meaningless.
+				for _, why := range allWhy {
+					if strings.Contains(context, why) {
+						t.Errorf("a healthy delivery already carries %q, so excluding it below would prove nothing:\n%s", why, context)
+					}
+				}
+				return
+			}
+			if !strings.Contains(context, invariantsReportLead+target) {
+				t.Errorf("the report must name the absolute path, which is what tells the operator WHICH install to repair:\n%s", context)
+			}
+			if !strings.Contains(context, tc.why) {
+				t.Errorf("the report flattened payload_read's classification; the reader is told the file is unusable without being told which remedy applies\nwant: %q\n%s", tc.why, context)
+			}
+			for _, why := range allWhy {
+				if why == tc.why || !strings.Contains(context, why) {
+					continue
+				}
+				t.Errorf("the report names %q as well as %q — a report that lists every classification has told the reader nothing about which remedy applies, and presence alone cannot catch that:\n%s", why, tc.why, context)
+			}
+			// The report is APPENDED, and its own words depend on that: it says
+			// "the invariants pointer in the rules above" and "The rules and
+			// rows above are complete". Review pointed out that a prepending
+			// implementation passed every assertion here while making both
+			// sentences false, and that a double-append passed too. Position
+			// and count are cheap to state and were being left to luck.
+			if strings.Index(context, invariantsReportLead+target) < strings.Index(context, rulesLoadedSentinel) {
+				t.Errorf("the report leads the context instead of following the rules it refers to as being above it:\n%s", context)
+			}
+			if n := strings.Count(context, invariantsReportLead+target); n != 1 {
+				t.Errorf("the report appears %d times; one broken file earns one report", n)
+			}
+		})
+	}
+}
+
+// TestTheMissingInvariantsReportNeverCostsTheSessionItsRules is the guard for
+// the ORDERING of the report against the 32768-byte injection budget, which is
+// the one thing about this report that can fail a session closed.
+//
+// Found in review of the first version of this change, which assembled the
+// report INSIDE the `payload="$( … )"` block, before the budget check. On a
+// project whose rules.toml put the payload 32573 bytes into the budget, the
+// session was fully governed — and deleting `reference/invariants.md`, changing
+// nothing else, pushed it to 33149 and turned the whole thing into a
+// TRELLIS_RULES_NOT_LOADED refusal with no rules and no rows. A consulted
+// reference is not a delivered payload (decision-0093:1): trading a dead
+// pointer for no governance at all is exactly what that rule forbids, and the
+// hook's own comments claimed it could not happen.
+//
+// It is also the property the two hosts must agree on. codex-context.mjs bounds
+// `context` alone (:1194) and pushes the same warning onto systemMessage
+// afterwards (:1333), so Codex can never lose its context to this warning.
+//
+// The fixture CALIBRATES rather than hardcoding a padding size: it measures the
+// payload at two padding sizes, derives the per-line cost, and solves for a
+// rules.toml that lands the healthy payload just inside the budget. A hardcoded
+// count would drift out of the dangerous band the first time the shipped
+// payload changed size, and this test would then pass while proving nothing —
+// which is why the band itself is asserted.
+func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
+	// staleness.sh's own budget, READ OUT OF THE HOOK rather than duplicated.
+	//
+	// An earlier version hardcoded 32768 and argued that a budget moving
+	// underneath it would fail loudly. Review measured that true in one
+	// direction only. Raised to 65536 — the likelier direction as context
+	// windows grow — the calibration went on aiming at the stale constant, the
+	// broken payload landed comfortably inside the hook's real budget, nothing
+	// refused, and every assertion below passed; with the reviewed in-budget
+	// ordering restored at the same time, the whole four-test set went green
+	// and the regression this test exists for went undetected. A test that
+	// measures against a number the code no longer uses is not pinned to the
+	// code. Parsed the way TestNoPayloadReadBypassesTheGateway parses this same
+	// file, and fatal if the declaration cannot be found.
+	limit := stalenessInjectionBudget(t)
+	const padLine = "# padding, so this fixture sits exactly where the budget bites\n"
+
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := writeConfigOnlyProject(t)
+	toml := filepath.Join(project, ".trellis", "rules.toml")
+	base := readFileT(t, toml)
+
+	measure := func(lines int) int {
+		writeFileT(t, toml, base+strings.Repeat(padLine, lines))
+		return len(claudeContextFor(t, pluginRoot, project))
+	}
+
+	at0, at64 := measure(0), measure(64)
+	perLine := (at64 - at0) / 64
+	if perLine <= 0 {
+		t.Fatalf("calibration failed: 64 padding lines moved the payload by %d bytes, so the fixture cannot be aimed", at64-at0)
+	}
+	// Aim just under the budget, then correct — integer division and the row
+	// reconciler's own wording make one pass approximate.
+	//
+	// The band below is an AIMING AID, not the property: the decisive assertion
+	// is that the broken context exceeds the budget, and it fails loudly on its
+	// own terms if the aim lands short. The one thing the aim must not do is
+	// panic before saying anything, which a negative count in strings.Repeat
+	// would — reachable if the shipped payload ever grows past the budget on
+	// its own.
+	lines := (limit - 300 - at0) / perLine
+	if lines <= 0 {
+		t.Fatalf("the payload is already %d bytes against a %d-byte budget, so there is no room to pad a fixture toward the band — this test can no longer be aimed and is not silently passing instead", at0, limit)
+	}
+	healthy := measure(lines)
+	for i := 0; i < 8 && (healthy > limit || healthy < limit-700); i++ {
+		lines += (limit - 300 - healthy) / perLine
+		healthy = measure(lines)
+	}
+	if healthy > limit || healthy < limit-700 {
+		t.Fatalf("could not aim the fixture into the band: %d bytes against a %d-byte budget, after %d padding lines — a fixture outside the band proves nothing", healthy, limit, lines)
+	}
+	if !strings.Contains(claudeContextFor(t, pluginRoot, project), rulesLoadedSentinel) {
+		t.Fatalf("the calibrated fixture is not governed even with a healthy payload; the assertion below would prove nothing")
+	}
+
+	// The whole change: this file going missing must cost the session nothing
+	// but the pointer it names.
+	target := filepath.Join(pluginRoot, "reference", "invariants.md")
+	removeFileT(t, target)
+	broken := claudeContextFor(t, pluginRoot, project)
+
+	if strings.Contains(broken, "TRELLIS_RULES_NOT_LOADED") {
+		t.Fatalf("deleting a CONSULTED reference refused the session — a dead pointer traded for no governance at all (decision-0093:1), and the budget is the only thing that changed:\n%s", broken)
+	}
+	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, "floor-intent-gate") {
+		t.Errorf("the rules and rows must survive a missing consulted reference:\n%s", broken)
+	}
+	if !strings.Contains(broken, invariantsReportLead+target) {
+		t.Errorf("the report was dropped rather than delivered outside the budget:\n%s", broken)
+	}
+	// THE assertion, and the one the earlier version was missing. `len` on a Go
+	// string is bytes, the same measure `wc -c` gives the hook. A delivered
+	// context LARGER than the budget can only mean the report was appended
+	// after the check: had it been assembled inside, the hook would have
+	// refused instead of delivering this. Without it the test asserted only
+	// that the context grew, which is true of an appended report anywhere,
+	// under any budget.
+	if len(broken) <= limit {
+		t.Fatalf("the fixture never crossed the budget: healthy %d bytes plus the report is %d, still inside the %d-byte budget — an implementation that assembled the report INSIDE the budget would pass this test unchanged, so it proves nothing as it stands", healthy, len(broken), limit)
+	}
+}
+
+// stalenessInjectionBudget reads the injection budget out of staleness.sh, so a
+// test calibrating a fixture against it cannot drift onto a number the hook has
+// stopped using. Fatal rather than defaulted: a fixture aimed at a guessed
+// budget is exactly the silent pass this exists to prevent.
+func stalenessInjectionBudget(t *testing.T) int {
+	t.Helper()
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`(?m)^limit=([0-9]+)$`).FindStringSubmatch(readFileT(t, hook))
+	if m == nil {
+		t.Fatal("staleness.sh no longer declares `limit=<n>` at column 0, so the budget this fixture aims at cannot be read from the code it is meant to pin")
+	}
+	limit, err := strconv.Atoi(m[1])
+	if err != nil || limit <= 0 {
+		t.Fatalf("staleness.sh declares an unusable injection budget %q: %v", m[1], err)
+	}
+	return limit
+}
+
+// writeDefaultsShapeProject is the OTHER arm of path B: decision-0070's
+// shipped-defaults shape, with no `.trellis/rules.toml` at all and the plugin
+// vendored inside the repository — which is the adoption act that makes the
+// shipped rows apply (decision-0070 D6, staleness.sh's own `rows_are_default`).
+// It reaches the same delivery block, and therefore the same repoint and the
+// same report, through a different door.
+func writeDefaultsShapeProject(t *testing.T) (pluginRoot, project string) {
+	t.Helper()
+	project = t.TempDir()
+	pluginRoot = filepath.Join(project, ".claude", "skills", "trellis")
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range payloadFiles() {
+		writeFileT(t, filepath.Join(pluginRoot, "reference", name), body)
+	}
+	return pluginRoot, project
+}
+
+// TestTheMissingInvariantsReportFiresOnTheDefaultsShapeToo covers the arm the
+// two tests above do not reach. Both build their project with
+// writeConfigOnlyProject, so both enter path B through `.trellis/rules.toml`;
+// a project with none of it, governed by the rows the plugin ships, enters the
+// same block by a different route.
+//
+// Worth its own case because this repo has already paid for the assumption that
+// one door covers the other: TRL-52 shipped a broken pointer on the Codex
+// plugin-native branch precisely because no fixture reached that branch, which
+// codex_plugin_native_test.go's header records at length. The report is a
+// property of the delivery block, not of the door, and this asserts that rather
+// than assuming it.
+func TestTheMissingInvariantsReportFiresOnTheDefaultsShapeToo(t *testing.T) {
+	pluginRoot, project := writeDefaultsShapeProject(t)
+	target := filepath.Join(pluginRoot, "reference", "invariants.md")
+
+	healthy := claudeContextFor(t, pluginRoot, project)
+	if !strings.Contains(healthy, rulesLoadedSentinel) || !deliveredRow(healthy, "floor-intent-gate") {
+		t.Fatalf("fixture drift: this shape no longer delivers the shipped defaults, so the assertions below would prove nothing:\n%s", healthy)
+	}
+	if strings.Contains(healthy, invariantsReportLead+target) {
+		t.Errorf("a complete payload was reported as broken on the defaults shape:\n%s", healthy)
+	}
+
+	removeFileT(t, target)
+	broken := claudeContextFor(t, pluginRoot, project)
+	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, "floor-intent-gate") {
+		t.Errorf("the shipped defaults must still govern a project whose plugin lacks its invariants copy:\n%s", broken)
+	}
+	if got := pointerIn(t, broken); got != target {
+		t.Errorf("the pointer names the wrong invariants file on the defaults shape\nwant: %s\ngot:  %s", target, got)
+	}
+	if !strings.Contains(broken, invariantsReportLead+target) {
+		t.Errorf("the defaults shape reaches the same delivery block and must report the same broken payload:\n%s", broken)
 	}
 }

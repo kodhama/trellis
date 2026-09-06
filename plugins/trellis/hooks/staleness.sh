@@ -25,7 +25,10 @@
 #      the import channel delivers — posture header, rules, live rows — so the
 #      tested wording stays the shipped wording (decision-0053). The one edit is
 #      repointing the invariants path at the plugin, which is where the file
-#      actually is in this mode, and which therefore cannot go stale.
+#      actually is in this mode, and which therefore cannot go stale. It can
+#      still be ABSENT from a half-installed payload, and the pointer moves
+#      anyway: what a missing target earns is a report at the end of the
+#      injected payload, not a refusal (TRL-70, decision-0093 rule 1).
 #
 #   C. Curl install (.claude/rules/trellis.md present) — the install path
 #      rendered that file and Claude Code loads it at launch on its own, so this
@@ -1370,9 +1373,39 @@ fi
 # None of that is load-bearing any more. Substituting by index invokes no
 # replacement semantics at all, so there is nothing to escape and neither
 # metacharacter has anything to do -- on any awk, without needing to know which.
+#
+# TRL-70. The substitution below hands the model an ADDRESS; until this read
+# existed nothing asked whether anything is at it, so a plugin payload with no
+# invariants.md shipped a dead pointer in silence. codex-context.mjs closed the
+# same gap on its own branch (TRL-69, #294) and the two hosts then disagreed
+# about a broken install with the address guard green.
+#
+# The pointer still moves whatever this read finds, for #294's reason: leaving
+# the raw token ships `.trellis/internal/invariants.md` to the one mode DEFINED
+# by not having that directory, which is a strictly worse dead pointer. And the
+# session is not failed closed over it -- invariants.md is CONSULTED on demand,
+# never injected, and decision-0093 rule 1 rules that failing a session over
+# such a file trades a dead pointer for no governance at all. What the defect
+# earns is the report at the end of the payload block below.
+#
+# Through payload_read rather than a bare `-f`, which is not a stylistic
+# choice: TestNoPayloadReadBypassesTheGateway requires it of every payload path
+# this file names, and the gateway is worth more than the rule here, because it
+# CLASSIFIES. codex-context.mjs asks existingFile, a bare stat, and cannot tell
+# a missing copy from an unreadable or an empty one; the remedies differ, so
+# the reader is told which. This makes the Claude host the stricter of the two
+# on the same broken install -- deliberate, and recorded in
+# TestBothHostsReportAMissingInvariantsTarget rather than left to be found.
+#
+# Reads LAST of path B on purpose. payload_read assigns $payload_text and
+# $payload_why, and every earlier caller has already copied what it needed out
+# of them ($header_prose, $stamp_defect, $current).
+inv="$plugin/reference/invariants.md"
+inv_defect=""
+payload_read "$inv" || inv_defect="$payload_why"
 rules_prose="$(
   printf '%s\n' "$header_prose" |
-  TRELLIS_RULES="$rules" TRELLIS_INV="$plugin/reference/invariants.md" awk '
+  TRELLIS_RULES="$rules" TRELLIS_INV="$inv" awk '
     BEGIN {
       rules = ENVIRON["TRELLIS_RULES"]
       inv = ENVIRON["TRELLIS_INV"]
@@ -1446,6 +1479,53 @@ size=$(printf '%s' "$payload" | wc -c | tr -d '[:space:]')
 if [ "$size" -gt "$limit" ]; then
   emit "TRELLIS_RULES_NOT_LOADED — the assembled Trellis rules are ${size} bytes, over the ${limit}-byte injection budget, so nothing was injected. This usually means .trellis/rules.toml has grown far beyond a row list. Tell the user before doing substantive work."
   exit 0
+fi
+
+# TRL-70, and the sibling of the provenance arm at the end of the payload
+# block: delivery is unaffected -- the rules and the rows are complete and the
+# session IS governed -- so a CONSULTED reference that cannot be read degrades
+# this one line and nothing else, the same way an unreadable version stamp
+# degrades the line above it.
+#
+# Said in the payload rather than on a channel of its own because emit writes
+# exactly one key. Every TRELLIS_ marker this hook can print is a path that
+# injects NOTHING, so borrowing that vocabulary for a complete, governing
+# delivery would blur the one signal a consumer can rely on. The Codex hook has
+# a systemMessage field beside its context and uses it; this one does not, and
+# the two reports are pinned on their SUBSTANCE rather than their channel.
+#
+# APPENDED AFTER THE BUDGET CHECK, not inside the payload block, and that
+# ordering is the whole point rather than a tidiness choice. Measured on the
+# version that assembled it inside, counting UTF-8 BYTES throughout, which is
+# what the wc -c above counts and the only measure this claim can honestly
+# quote: a project whose rules.toml put the assembled payload at 32673 bytes
+# of the 32768-byte budget was fully governed, and DELETING
+# reference/invariants.md -- changing nothing else -- added the report and
+# took it to 33149, turning the session into a TRELLIS_RULES_NOT_LOADED
+# refusal with no rules and no rows. That is exactly the trade decision-0093
+# rule 1 forbids: a dead pointer swapped for no governance at all, over a file
+# that is consulted on demand. Codex is not exposed to it -- its budget bounds
+# `context` alone (codex-context.mjs:1194) and the same warning rides
+# systemMessage outside it -- so this ordering also stops the two hosts
+# disagreeing about the one property the pair guard exists to protect.
+#
+# On those figures, since two rounds of review went at them. The report costs
+# 484 bytes at a 70-character plugin root and grows with the path it names;
+# 33149 is that run, whose wording was 8 bytes shorter than todays. An earlier
+# version of this comment quoted 32573 for the healthy side, which was the
+# CHARACTER count of the delivered context rather than its byte count, and
+# review could not reproduce the pair. The two measures differ by 100 on that
+# payload. Attributing all 100 to em dashes was the SECOND wrong version of
+# this sentence: measured, 30 em dashes carry 60 of it, the 17 ballot Xs in
+# the live-rows readout carry 34, and two arrows and two middle dots carry the
+# last 6. Multi-byte characters generally, not one of them.
+#
+# Two consequences, both wanted. The refusal above now counts only what it
+# blames, instead of charging the diagnostic bytes to rules.toml. And an
+# over-budget session drops the report: it has already been told loudly that
+# NOTHING was injected, which is the larger problem and names its own remedy.
+if [ -n "$inv_defect" ]; then
+  payload="$payload$(printf '\n\nThis plugin payload has no readable %s (it %s), so the invariants pointer in the rules above names a file that yields nothing to read. The rules and rows above are complete and govern this session; that reference is consulted on demand, so only a rule that turns out ambiguous needs it. Reinstalling or updating the plugin (`claude plugin update trellis@kodhama`) is the likely fix.' "$inv" "$inv_defect")"
 fi
 
 emit "$payload"

@@ -4357,10 +4357,21 @@ func TestNoPayloadReadBypassesTheGateway(t *testing.T) {
 	// Named, not counted. A count says nothing about WHICH variables were found,
 	// and the previous version's floor passed while missing $header because an
 	// unrelated variable filled the slot its own failure message attributed to
-	// the posture header. Every payload path staleness.sh reads today is listed;
-	// a scan that stops seeing one of them fails here rather than passing
-	// quietly on a smaller set.
-	for _, want := range []string{"header", "preset", "ref", "rules", "toml"} {
+	// the posture header. Every $plugin/-rooted payload path staleness.sh reads
+	// today is listed; a scan that stops seeing one of them fails here rather
+	// than passing quietly on a smaller set.
+	//
+	// $plugin/-ROOTED is the scope of both this floor and the scan above, and
+	// saying "every payload path" overstated it. The gateway's own definition
+	// (staleness.sh:120-121) counts a vendored copy inside the consuming
+	// repository as payload too, and two such reads — payload_read
+	// "$internal/$f" and payload_read "$legacy" — are invisible here because
+	// neither variable is assigned from $plugin/. They go through the gateway
+	// today; what is unguarded is a FUTURE one that does not, and rule 2 below
+	// has the same blind spot for the same reason. Widening this list is not
+	// the fix (adding `internal` fails the guard immediately); widening both
+	// patterns to the overlay root would be, and is not attempted here.
+	for _, want := range []string{"header", "inv", "preset", "ref", "rules", "toml"} {
 		if !seen[want] {
 			t.Errorf("the payload-path scan no longer sees $%s — it found %v, and a guard that stops seeing a payload read passes on nothing", want, names)
 		}
