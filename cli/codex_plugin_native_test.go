@@ -11,10 +11,12 @@ package main
 // three invariants-pointer tests (TRL-52/#283, all posture a) plus one
 // incidental control in TestCodexHookHonoursGovernedFalse and one posture
 // sub-test in TestCodexReconcilesInsteadOfFailingClosed. Every other fixture in
-// the suite pairs writeCodexPluginRoot (which writes only
-// `.codex-plugin/plugin.json`, never `reference/`) with an overlay, so it runs
-// the vendored branch. That is how TRL-52 shipped: the tests were not weak on
-// the plugin-native path, they never reached it.
+// the suite writes an overlay, so it runs the vendored branch whatever plugin
+// root it is handed — most pair writeCodexPluginRoot, which writes only
+// `.codex-plugin/plugin.json` and no `reference/` at all, and two vendored
+// invariants tests pair writeDualHostPluginRoot, whose `reference/` is real but
+// goes unread because the overlay outranks it. That is how TRL-52 shipped: the
+// tests were not weak on the plugin-native path, they never reached it.
 //
 // What this file adds is the half of that branch the pointer tests do not
 // touch — which FILE the branch reads, and which file it NAMES when that file
@@ -105,11 +107,13 @@ func writePluginNativeProject(t *testing.T, posture string) string {
 // On ORIGIN: the three invariants-pointer tests run this branch but assert only
 // the pointer, and TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead
 // below proves the three payload paths are STAT'd — neither proves the bytes at
-// those paths are the bytes the model receives. The vendored branch has that
-// assertion and this one did not: TestCodexHookValidStartupAndLiveRows pins that
-// a vendored project must NOT source rule content from the plugin payload;
-// nothing stated the converse. The gap is not hypothetical — this hook already
-// rewrites one payload value between reading it and delivering it (the
+// those paths are the bytes the model receives. Nor does the nearest thing on
+// the vendored branch: TestCodexHookValidStartupAndLiveRows asserts that the
+// plugin's path never APPEARS in a vendored project's context, which is a check
+// on a leaked path literal rather than on where the delivered bytes came from.
+// So no test on either branch pinned delivery to origin, and this one does it
+// where the branch decides the origin. The gap is not hypothetical — this hook
+// already rewrites one payload value between reading it and delivering it (the
 // invariants repoint rewrites `trellis` in place), so "read the file, deliver
 // something else" is a shape the file's own structure invites.
 //
@@ -169,6 +173,54 @@ func TestCodexPluginNativeServesAFirmProjectThePluginRootsOwnPayload(t *testing.
 			t.Errorf("the plugin-native branch validated the plugin root's payload but delivered something else — %q is missing from the injected context:\n%s", want, context)
 		}
 	}
+
+	// The rules body, WHOLE and verbatim. A single marker only proves the file
+	// was touched: a defect that read reference/rules.md and delivered it with
+	// any other line rewritten keeps the marker and passes the loop above. The
+	// hook splices this payload in one piece and unmodified
+	// (`trellis.replace("@rules.md", rules)`), so the whole body is a legitimate
+	// thing to demand, and demanding it is what makes this ORIGIN rather than
+	// evidence of contact.
+	if !strings.Contains(context, markedRules) {
+		t.Errorf("the delivered rules body is not reference/rules.md's bytes — the hook validated one thing and delivered another:\n%s", context)
+	}
+}
+
+// TestCodexFirmPostureIsSelectedFromEitherTomlStringForm pins the OTHER half of
+// the posture regex on the only branch that consumes posture.
+//
+// codex-context.mjs:916 matches `strictness = "firm"` or `strictness = 'firm'`,
+// and its own comment records why both are there: "matching only the basic form
+// served a firm project the adaptive posture without saying so." That is a
+// shipped defect with a recorded fix — and the fix was unpinned in effect.
+// codex_hook_test.go's strict-schema test does feed the literal form, but on a
+// VENDORED fixture, where posture is computed and then discarded, and it asserts
+// only that the hook does not fail. Nothing observed which prose the literal
+// form selected, so deleting `|'firm'` from the regex left the whole suite
+// green while every literal-quoted firm project silently got adaptive prose.
+//
+// Separate from the test above rather than a case inside it: that one builds a
+// marked plugin root to prove ORIGIN, and none of that machinery is needed to
+// ask which of two files a quoting form selects.
+func TestCodexFirmPostureIsSelectedFromEitherTomlStringForm(t *testing.T) {
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := writePluginNativeProject(t, "a")
+
+	rules := filepath.Join(project, ".trellis", "rules.toml")
+	basic := readFileT(t, rules)
+	literal := strings.Replace(basic, `strictness  = "firm"`, `strictness  = 'firm'`, 1)
+	if literal == basic {
+		t.Fatal("fixture drift: rules-a.toml no longer carries a basic-string strictness to convert")
+	}
+	writeFileT(t, rules, literal)
+
+	context := codexContextFor(t, pluginRoot, project)
+	if !strings.Contains(context, firmProseMarker) {
+		t.Errorf("a firm project declared with a TOML literal string must still select reference/trellis-a.md:\n%s", context)
+	}
+	if strings.Contains(context, adaptiveProseMarker) {
+		t.Errorf("the literal-quoted firm posture fell through to adaptive — the regex's `'firm'` arm is not doing anything:\n%s", context)
+	}
 }
 
 // TestCodexVendoredDeliveryIgnoresTheProjectsPosture is the other half of the
@@ -218,10 +270,20 @@ func TestCodexVendoredDeliveryIgnoresTheProjectsPosture(t *testing.T) {
 //
 // One case per REACHABLE `fail(sources.*)` call site rather than a re-run of
 // that test's table: each site is a separate place the wrong path can be
-// written, and the classes themselves are not branch-sensitive. The vendored
-// half of the vocabulary is deliberately not repeated here; it is pinned
-// literally next door, and asserting it twice would state one property in two
-// places that could then drift apart.
+// written, and the classes themselves are not branch-sensitive. The hook has
+// seven such sites. Five are reachable and each has a case here: the payload
+// read loop (:944, exercised once per role, since the label it reports is
+// `sources[key]` and the role is what varies), :980
+// invalid-placeholder-count, :970 invalid-version, :1060 invalid-rules and
+// :1093 no-slugs-in-payload. The other two — :962 and :966, both
+// `empty-prose` — are the second lock on a door readRequired already shut,
+// as the hook's own comment above them says; a zero-byte file is refused at
+// the read and reported from :944, so those two cannot be reached to be
+// asserted. The `empty-prose` CLASS is still covered, via the read loop.
+//
+// The vendored half of the vocabulary is deliberately not repeated here; it is
+// pinned literally next door, and asserting it twice would state one property in
+// two places that could then drift apart.
 //
 // Each case gets its own throwaway plugin root, because breaking a payload file
 // to see how the hook names it is not something to do to a shared fixture.
@@ -275,6 +337,24 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 		},
 		label: "reference/version",
 		class: "invalid-version",
+	}, {
+		// The seventh site, and the one furthest from the read: a rules payload
+		// that is well-formed enough to pass the sentinel gate but carries no
+		// backticked rule tags, so the derived slug set comes back empty. It is
+		// the last `fail(sources.*)` in the file (codex-context.mjs:1093) and the
+		// easiest to leave hardcoded, because everything around it reports the
+		// PROJECT's rules.toml rather than the payload.
+		// TestCodexRejectsAnEmptyDerivedSlugSet pins this class on the vendored
+		// branch with the overlay path written out literally, so it cannot see
+		// this label move.
+		name:    "a rules payload with no rule tags names reference/rules.md",
+		posture: "a",
+		breakIt: func(t *testing.T, ref func(string) string) {
+			writeFileT(t, ref("rules.md"),
+				"Prose with no backticked rule tags, so no slug is derived.\n\n"+rulesLoadedSentinel+"\n")
+		},
+		label: "reference/rules.md",
+		class: "no-slugs-in-payload",
 	}, {
 		// The label is templated on the posture, so an adaptive project's broken
 		// prose must name trellis-b.md. Without this case a label frozen at
