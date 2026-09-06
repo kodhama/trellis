@@ -2,6 +2,7 @@
 id: decision-0094
 type: decision
 depends_on: [decision-0093, decision-0087]  # coupling, not provenance (decision-0047). decision-0093: this record corrects one Consequences bullet of it and leans on its rule 1 and rule 2 for everything it does NOT change -- if 0093 said something else there would be nothing here to correct and no ground for keeping the pointer alive over a broken target. decision-0087: the gateway is the whole reason "relax the Claude host" is not available as an option -- if payload_read were optional on the invariants read, the cheaper symmetry would be reachable and this record would decide the other way
+changes: [decision-0093]  # the closing sentence of its Consequences bullet on existingFile, and that clause only; see decision-0093's own superseded_in_part_by for the scope. Declared because the six most recent records that partially supersede a predecessor pair `changes:` on the successor with `superseded_in_part_by` on the predecessor (0079/0011, 0082/0080, 0085/0079, 0087/0043, 0089/0078, 0092/0089); decision-0045:143-144 makes it permissive ("may declare"), so this is convention rather than requirement
 informed_by: [decision-0028, decision-0040, decision-0065, decision-0082]
 owner: agent
 date: 2026-09-06

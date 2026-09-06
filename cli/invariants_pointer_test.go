@@ -36,6 +36,7 @@ package main
 // is the address they hand the model.
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -113,11 +114,37 @@ func claudeContextFor(t *testing.T, pluginRoot, project string) string {
 	cmd := exec.Command(hook)
 	cmd.Dir = project
 	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+project, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("staleness.sh exited non-zero (%v): %s", err, out)
+	// THE TWO STREAMS ARE READ SEPARATELY, and that is a correctness fix rather
+	// than tidying. This used to be CombinedOutput, which conflates them — and
+	// the hook's contract is exactly one JSON object on STDOUT, so anything the
+	// shell says on stderr was being spliced into the payload under test.
+	//
+	// Measured, on the NUL fixture: bash >= 4.4 prints
+	//
+	//   staleness.sh: line 192: warning: command substitution: ignored null
+	//   byte in input
+	//
+	// which is bash reporting its OWN discarding of NULs — the very behaviour
+	// payload_read relies on to call that file empty. It goes to stderr, the
+	// hook's JSON is untouched on stdout, and both hosts still classify the
+	// file correctly. macOS ships bash 3.2, which is silent, so this reproduced
+	// only on the Linux CI runner: a genuine platform split that CombinedOutput
+	// turned into "output is not valid JSON" and would have misattributed to
+	// the hook.
+	//
+	// stderr is not asserted on, only reported: a shell warning is not this
+	// suite's to police, but a reader debugging a stdout failure wants to see
+	// it.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("staleness.sh exited non-zero (%v)\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
 	}
-	return nudgeContext(t, strings.TrimSpace(string(out)))
+	if stderr.Len() > 0 {
+		t.Logf("staleness.sh wrote to stderr (not a failure; stdout carries the contract):\n%s", stderr.String())
+	}
+	return nudgeContext(t, strings.TrimSpace(stdout.String()))
 }
 
 // pointerIn extracts the backticked path the delivered prose tells the model to
@@ -474,6 +501,16 @@ func invariantsFaults() []invariantsFault {
 		// POSIX leaves NUL handling in `$( )` unspecified and a truncating
 		// shell would diverge, so pinning them would assert portability nobody
 		// has measured.
+		//
+		// THIS ROW IS ALSO THE ONE THAT SPLITS BY PLATFORM, which is why
+		// claudeContextFor reads stdout and stderr separately. bash >= 4.4
+		// announces its own NUL-discarding on stderr ("warning: command
+		// substitution: ignored null byte in input"); macOS ships bash 3.2 and
+		// says nothing. The classification is identical either way — this is
+		// the shell narrating the behaviour payload_read depends on — but the
+		// helper used to conflate the streams, so the warning landed in front
+		// of the JSON and the row failed on Linux CI alone, blaming the hook
+		// for output it never wrote to stdout.
 		name:    "a copy holding nothing but NUL bytes is reported as empty",
 		breakIt: func(t *testing.T, target string) { writeFileT(t, target, "\x00\x00\x00") },
 		why:     "is empty",
