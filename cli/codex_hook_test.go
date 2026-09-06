@@ -877,6 +877,94 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 			t.Errorf("block-codex.md embeds forbidden rule/row/posture content %q", forbidden)
 		}
 	}
+	// TRL-31: the bootstrap must teach RECONCILIATION, not the retired
+	// all-or-nothing activation predicate. Both hooks now reconcile a slug-set
+	// mismatch — missing slugs govern as active, unknown and duplicate rows are
+	// quarantined rather than dropped (decision-0083 section 1's resolution
+	// table; decision-0084 section 1 brings Codex to parity, where parseRulesToml
+	// became a classifier that returns null ONLY for a genuine syntax fault). The
+	// bootstrap is the fallback the agent follows when no hook ran, so prose that
+	// still refuses a mismatched file tells that agent to refuse what the hook
+	// beside it would repair — the defect decision-0083:460-469 named and
+	// decision-0084:344-366 deferred here.
+	//
+	// Pinned as WORDING, not behaviour, deliberately: this artifact has no
+	// runtime, so its only enforceable contract is the bytes it ships
+	// (decision-0053 — the tested wording is the shipped wording). The forbidden
+	// half matters as much as the required half: without it the retired predicate
+	// can come back one careless regeneration later, which is exactly how it
+	// survived two decision records.
+	// Every phrase here is a semantic the fallback agent gets wrong without it,
+	// each verified against codex-context.mjs rather than against the records:
+	//
+	//   "governs as active"            :579 appends a missing slug as an active row
+	//   "first occurrence ... is kept"  :559 quarantines only `seen` repeats, so the
+	//                                   first value governs; without this an agent can
+	//                                   quarantine BOTH copies and re-add the slug as
+	//                                   missing, flipping a deliberate disable to active
+	//   "correctly shaped row naming a slug not in that list"
+	//                                   :363-366 makes SHAPE fatal and an unknown SLUG
+	//                                   merely quarantined — `inv-bogus = {...}` is
+	//                                   reconciled, `bogus-rule = {...}` is not. Reading
+	//                                   that boundary either way reproduces TRL-31 itself
+	//   "A single top-level `governed = false` ... not a row set", and its
+	//   "no rule applies including the two floor rules"
+	//                                   :894-897 exits(0) silently on the one-line
+	//                                   opt-out, emitting NOTHING — which hands the file
+	//                                   to this bootstrap. Reconciling it would synthesize
+	//                                   sixteen active rows and govern a project that
+	//                                   declined Trellis. The retired predicate refused
+	//                                   that file by accident (no strictness => not
+	//                                   "complete"); reconciliation removes the accident,
+	//                                   so the exception has to be stated. Pinned as the
+	//                                   WHOLE clause, not the short "is an opt-out": the
+	//                                   qualifier "single top-level" and the floors half
+	//                                   are each load-bearing and were each droppable
+	//                                   while a shorter pin stayed green
+	//   "a row not of the form `inv-…` ..."
+	//                                   the shape half of :363-366, pinned beside the
+	//                                   slug half above so neither can drift alone
+	//   "never by editing the file"     the hooks' write mandate (:697) is NOT carried
+	//                                   here: this block is scanned by neither
+	//                                   TestEveryDestructiveInstructionIsGated nor
+	//                                   TestEveryDeletionInstructionIsGated (both read
+	//                                   only the two hook files), so a write instruction
+	//                                   landing here would be ungated
+	for _, required := range []string{
+		"reconciled, never refused",
+		"governs as active",
+		"the first occurrence of a repeated slug is kept",
+		"a correctly shaped row naming a slug not in that list",
+		"commented out with the date and the reason, its value kept verbatim, never deleted",
+		"never by editing the file",
+		"A single top-level `governed = false` is an opt-out, not a row set",
+		"no rule applies including the two floor rules",
+		"lowercase letters and hyphens only",
+		"followed by `= { active = <boolean> }`",
+		"absent, read it as `adaptive`",
+		"before the `[rules]` header, a key other than `seeded_from`, `strictness` or `governed`",
+		"a `governed` that is not a boolean",
+		"Only a genuine syntax fault makes the file invalid",
+		"A reconciled row set is not a failure to load",
+		"tell the user what you reconciled, row by row",
+	} {
+		if !strings.Contains(block, required) {
+			t.Errorf("block-codex.md missing reconciliation phrase %q — it must describe decision-0083/0084 reconciliation, not refusal", required)
+		}
+	}
+	// Scoped to the ROW-SET predicate on purpose. A bare "occurs exactly once"
+	// would also fire on correct future wording about the terminal sentinel,
+	// which item 1 legitimately describes as single-occurrence.
+	for _, retired := range []string{
+		"Activation TOML is complete only when",
+		"slug below occurs exactly once",
+		"no unknown or duplicate slug",
+		"complete activation predicate",
+	} {
+		if strings.Contains(block, retired) {
+			t.Errorf("block-codex.md carries the retired all-or-nothing activation wording %q — decision-0083/0084 replaced refusal with reconciliation", retired)
+		}
+	}
 	slugs := append([]string(nil), assessableSlugs...)
 	sort.Strings(slugs)
 	for _, slug := range slugs {
