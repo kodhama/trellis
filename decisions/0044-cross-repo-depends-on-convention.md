@@ -2,7 +2,7 @@
 id: decision-0044
 type: decision
 status: approved  # ratified by PR #133 merge (2026-07-10)
-depends_on: [spec-0001, decision-0037, decision-0042, kodhama-0004-uniform-lifecycle]
+depends_on: [spec-0001, decision-0037, decision-0042, kodhama/kodhama-0004-uniform-lifecycle]
 owner: agent
 date: 2026-07-10
 ---
@@ -40,6 +40,34 @@ date: 2026-07-10
 > the fix — retrofitting it (to `kodhama/kodhama-0004-uniform-lifecycle`) is separate follow-on
 > work, the same class the Consequences section already scopes out for the other known dangling
 > references.
+>
+> **Retrofit landed (2026-09-06, TRL-51).** Line 5 now reads
+> `kodhama/kodhama-0004-uniform-lifecycle`. **The paragraph above is preserved exactly as
+> authored** — read it as the 2026-07-10 state, not as a description of line 5 today. This is the
+> "separate follow-on work" that paragraph scoped, and it is *not* a supersession: nothing in the
+> ruling below changes, and the qualified entry denotes the same referent the bare one did. Its
+> authority is the maintainer's own `## Open questions` call — *"Retrofit vs. grandfather —
+> resolved 2026-07-10: retrofit"* — which also forecloses the alternative of teaching the rubric
+> to accept the bare form, that being the grandfathering he rejected. `inv-auditable-archive`
+> forbids edits that *lose the reasoning*; this note is here so none is lost, and
+> `decision-0015`'s rename ruling is the ratified ground: *"Append-only guarantees that a record's
+> decisions are not re-made; it has never guaranteed its bytes are immutable under a global
+> rename."* A citation re-spelled into its own ratified form is that case.
+>
+> **Disclosed, because the precedent is thinner than `## Consequences` implies.** This is the
+> **first** time a `depends_on` value has been changed on an already-merged record in this repo.
+> PR #131, which that section names, moved only `superseded_by`/`superseded_in_part_by`; the one
+> corpus-wide `depends_on` migration (`decision-0047`) explicitly **exempted** frozen `decisions/`
+> — though that was a provenance *reclassification* into `informed_by`, a change of what the edge
+> means, where this changes only how the same edge is spelled. The prevailing shape for a merged
+> record is *"a dated note, 0 deletions"* (PR #272 on `decision-0089`); this change carries
+> **exactly one deletion**, and does not meet it. That deletion is the retrofit itself — the
+> citation on line 5 — and every other line here is an append. It is done anyway because a note alone
+> cannot discharge the ruling: rubric check 4 reads frontmatter, not prose, so nothing short of
+> line 5 clears the FAIL. **What leaving it cost:** the corpus's only conformance check carried an
+> unconditional FAIL, so `decision-0076`, `-0088`, `-0090` and `-0092` each had to re-record the
+> same known edge to keep a clean change from reading as a clean corpus — the no-consumer
+> follow-on `decision-0078` now rules against.
 
 # 0044 — Cross-repo `depends_on` references: a qualified `repo/id` form (proposal)
 
