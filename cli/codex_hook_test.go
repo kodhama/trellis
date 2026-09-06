@@ -1107,7 +1107,13 @@ func TestCodexBootstrapBoundaryIsMachineOwned(t *testing.T) {
 		t.Errorf("block-codex.md names %s %d times; it belongs to assessment item 1 alone — the file-level test must keep validating an overlay vendored before this release (TRL-10)", proseCompleteMarker, n)
 	}
 
-	// (b) The unquoted half.
+	// (b) The unquoted half. Scoped to the WHOLE BLOCK on purpose, not to item 1
+	// like (a) and the reverse loop: a prose landmark that migrates out of item 1
+	// into the fallback table or the four-inputs paragraph is the same defect at
+	// a different address, and matching `item` would let it walk there. The cost
+	// of the wider net is a misleading message if a future item 2 ever wants one
+	// of these three phrases for TOML shape rather than for the boundary — strict,
+	// never loose, which is the right way round for this one.
 	for _, prose := range []string{"fixed footer", "first nonblank line", "ambiguity/fallback sentence"} {
 		if strings.Contains(block, prose) {
 			t.Errorf("block-codex.md still identifies the delivery boundary by the prose landmark %q — a reworded payload then fails a correct delivery, or passes a wrong one (TRL-10, mirroring #212)", prose)

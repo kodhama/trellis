@@ -346,9 +346,12 @@ Missing native-hook delivery is not itself an error: attempt the applicable fall
 // line changes nothing there.
 //
 // "LAST line" scopes to THIS FILE, and deliberately is not a terminality
-// requirement on anything downstream — in .claude/rules/trellis.md four lines of
-// install.sh footer follow it, and in the Codex injection the rows, the mandate
-// and the stamp do (codex-context.mjs buildContext). What the position buys is
+// requirement on anything downstream — in .claude/rules/trellis.md the whole of
+// install.sh's own rendered footer follows it (the <!-- trellis:rendered-footer -->
+// marker, the four-line posture-vs-rows paragraph, the activation heading, the
+// @../../.trellis/rules.toml import and the trellis:rendered-from stamp:
+// install.sh:976-988), and in the Codex injection the rows, the mandate and the
+// stamp do (codex-context.mjs buildContext). What the position buys is
 // that the marker cannot precede the tail, so it cannot be reached by a delivery
 // that stopped early. Do not turn it into "the marker is the last line of the
 // context": that is false in both delivered artifacts and would fail every one.
