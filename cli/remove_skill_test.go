@@ -546,3 +546,92 @@ func TestRemoveSkillStopReportQuantifierAgrees(t *testing.T) {
 		}
 	}
 }
+
+// TestRemoveSkillStopExceptingClauseAgrees guards decision-0073 D3 round-5
+// finding F2 (TRL-56). SKILL.md states the stop-report quantifier's EXCEPTING
+// construction TWICE — in §1's consent model and in §5's every-exit sentence —
+// and the two must agree, for the same reason their quantifier must
+// (TestRemoveSkillStopReportQuantifierAgrees): the stopping artifact is
+// EXCEPTED from the retained set, never coordinated into it. Coordinate it in
+// ("including the stopping artifact itself") and one artifact is both retained
+// AND ambiguous/verification-failed — two mandatory categories in an exclusive
+// grammar, which is the F1/F2/F3 convergent blocker round 5 closed.
+//
+// Round 5 fixed §1 and pinned §1. Commit 3152aca's message records it: "Section
+// 1 now EXCEPTS the stopping artifact from the retained quantifier with the
+// same save-construction as section 5 (F2)". The needle landed in
+// TestRemoveSkillConsentModelIsDefinedOnce, scoped to the preflight window
+// alone. §5 — which already carried the construction, and is the side round 5
+// aligned §1 TO — got no needle anywhere in this file. Mutating §5's clause to
+// the coordinating form left all fifteen SKILL.md semantic guards green, this
+// file's quantifier guard included; the only red was install.sh's
+// bundle-manifest sha256, which fires on any byte and goes green again the
+// moment a legitimate edit bumps the manifest, as every real prose change does.
+//
+// That is TRL-15's asymmetry recurring one clause over, mirrored: in both cases
+// the needle went on the window round 5 EDITED, and the window that was already
+// correct was left bare. There the edited window was §5; here it is §1.
+//
+// Both sides are pinned, and in both directions. Positively: each window must
+// carry the excepting construction, so replacing or deleting either one goes
+// red. Negatively: neither may carry the coordinating form, so stating it a
+// second time BESIDE the correct clause goes red too — a contradicting addition
+// passes a positive-only needle, the failure
+// TestRemoveSkillConsentModelIsDefinedOnce exists for.
+//
+// Neither needle carries the trailing "itself" the two live clauses happen to
+// use. The positive one is then the literal ConsentModelIsDefinedOnce already
+// pins, so the two guards cannot disagree about §1, and dropping "itself" as a
+// copy-edit stays green in both rather than red in one. The negative one still
+// contains TRL-56's recorded form verbatim as a prefix — a superset, not a
+// paraphrase — so it also catches that form minus its last word.
+//
+// Provenance is weaker here than the quantifier guard's, and worth stating
+// exactly. That needle was quoted from the defect's own commit message; this
+// one cannot be. 3152aca records the property F2 restored, not a defective
+// string, and 3152aca~1 has no occurrence of "stopping artifact" at all — §1's
+// F2 defect was an OMISSION, not a coordination, so no coordinating form ever
+// existed on main. The negative needle is therefore a synthesized drift form,
+// recorded and mutation-proved in TRL-56. A future reader should not go looking
+// in history for a string that was never there.
+//
+// Limit, inherited from the quantifier guard and accepted for the same reason:
+// the negative needle is one literal, so a coordination that swaps the
+// preposition ("and the stopping artifact", "the stopping artifact included")
+// escapes it. Widening to "every mention of the stopping artifact must be
+// preceded by save" would catch those, and is green today — the phrase occurs
+// exactly twice, both inside the pinned clause — but it forbids prose from ever
+// mentioning the artifact outside the carve-out, and §5 legitimately reports on
+// it. That trades a narrow false negative for false alarms on true sentences.
+// The residual false alarm accepted instead is narrower: a future sentence
+// coordinating the artifact into some OTHER set ("every category, including the
+// stopping artifact's"). In this file a false negative has twice cost a review
+// round and a Linear issue, while a false alarm costs one read of an explicit
+// message — so the wider needle is the right side to err on. The positive
+// needle, which catches every REPLACEMENT of the construction, is the primary
+// guard either way.
+//
+// Emphasis is stripped and whitespace normalized for the same reasons the
+// quantifier guard does it: where the bold falls is typography and may move,
+// and a needle that spans a line break is the trap that once shipped two
+// needles in this file green against the very bytes they pinned.
+func TestRemoveSkillStopExceptingClauseAgrees(t *testing.T) {
+	body := readFileT(t, removeSkillPath)
+
+	const (
+		excepting    = "save the stopping artifact"
+		coordinating = "including the stopping artifact"
+	)
+
+	for _, w := range []struct{ where, window string }{
+		{"§1", stripEmphasis(normalizeWS(removeSkillSection(t, body, "## 1.", "## 2.")))},
+		{"§5", stripEmphasis(normalizeWS(removeSkillSection(t, body, "## 5.", "## Reversing")))},
+	} {
+		if !strings.Contains(w.window, excepting) {
+			t.Errorf("%s no longer EXCEPTS the stopping artifact from the retained quantifier with %q — the two statements of the carve-out must agree, and without the excepting construction the stopping artifact is reported retained as well as ambiguous/verification-failed (decision-0073 D3, round-5 F2)", w.where, excepting)
+		}
+		if strings.Contains(w.window, coordinating) {
+			t.Errorf("%s coordinates the stopping artifact INTO the retained quantifier with %q instead of excepting it — that gives one artifact two mandatory categories in an exclusive grammar, the round-5 F2 defect (decision-0073 D3)", w.where, coordinating)
+		}
+	}
+}
