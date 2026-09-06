@@ -92,7 +92,9 @@ func docSurfacesIn(root string) ([]string, error) {
 // structuralSkip reports whether a walk rooted at root must not descend into the
 // directory at path. STRUCTURAL, as against the editorial skips above: it asks
 // "is what is in here part of this checkout at all?", and that is the same
-// question for every walk in this file, so both of them ask it here. Two walks
+// question for every guard walk in this package, so they all ask it here — the
+// two in this file, and TestNoSurfaceMatrixFile's in surface_matrix_guard_test.go
+// (TRL-63), whose own comment argues why decision-0066 AC6 permits it. Two walks
 // disagreeing about it was the TRL-59 defect; two walks legitimately disagreeing
 // about EDITORIAL scope is not, which is why only this half is shared.
 //
