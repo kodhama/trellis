@@ -322,11 +322,21 @@ const invariantsReportLead = "no readable "
 //   - codex-context.mjs reports on `systemMessage`, a field that rides
 //     alongside a successful delivery, which is where its floor-row warning
 //     already goes.
+//
 //   - staleness.sh has no such field. `emit` writes one key,
 //     hookSpecificOutput.additionalContext, and every TRELLIS_ marker it can
-//     print is a path that injects NOTHING — a refusal, not a note. So its
-//     report goes inside the delivered context, beside the provenance line that
-//     already degrades there when the version stamp cannot be read (TRL-34).
+//     print is emitted INSTEAD of a payload — a marker means this hook injected
+//     nothing. So its report goes inside the delivered context, beside the
+//     provenance line that already degrades there when the version stamp cannot
+//     be read (TRL-34).
+//
+//     An earlier version of this comment said a marker is "a refusal, not a
+//     note", and review measured that false: TRELLIS_STALENESS_UNKNOWN
+//     (staleness.sh:523 and :663) is a note on a session that IS governed —
+//     "Nothing is wrong with this project and no rules are missing". The
+//     injects-nothing half is true of every marker and carries the argument on
+//     its own; the refusal half did not, and overstating it here would have
+//     made the design read stronger than what was measured.
 //
 // What must match is the SUBSTANCE, and that is what is asserted below: on a
 // payload with no invariants copy both hosts name the unreadable absolute path
@@ -342,7 +352,9 @@ const invariantsReportLead = "no readable "
 // the stricter side and that is the right direction for a broken lead; the
 // cases below pin only the shapes both hosts agree on, so this test does not
 // bless the gap. TestStalenessNamesWhyTheInvariantsTargetCannotBeRead pins the
-// Claude side of it.
+// Claude side of it, and TRL-72 owns closing the Codex side — a divergence
+// recorded in a comment with nothing to re-present it is a next step that goes
+// nowhere (decision-0078).
 func TestBothHostsReportAMissingInvariantsTarget(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -420,8 +432,31 @@ func TestBothHostsReportAMissingInvariantsTarget(t *testing.T) {
 //
 // The report must never turn a permissions fault into a claim that the file is
 // gone: `$payload_why` is quoted into it verbatim, and each case below asserts
-// its own phrase rather than a shared one.
+// its own phrase AND THE ABSENCE OF THE OTHER THREE.
+//
+// The absence half is not belt-and-braces, it is the whole assertion. An
+// earlier version of this test checked only that the expected phrase was
+// present, and review killed it with a one-line mutant: a report that names
+// every classification at once —
+//
+//	inv_defect="is missing, is empty, is not a readable file, or exists but
+//	            could not be read -- this report does not know which"
+//
+// passed every case here and the whole package, while doing exactly the
+// flattening the paragraph above says this test exists to prevent. Presence
+// alone cannot distinguish "told the reader which" from "told the reader all
+// four"; only exclusion can.
 func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
+	// Every classification payload_read can hand this report, verbatim from the
+	// gateway. Listed in one place so a case cannot quietly stop excluding one:
+	// a new classification added to payload_read and not to this slice leaves
+	// the mutant above passing again for that phrase.
+	allWhy := []string{
+		"is missing",
+		"is empty",
+		"is not a readable file",
+		"exists but could not be read",
+	}
 	for _, tc := range []struct {
 		name string
 		// breakIt applies exactly one fault to the plugin's invariants copy.
@@ -484,6 +519,14 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 				if strings.Contains(context, invariantsReportLead+target) {
 					t.Errorf("a complete payload was reported as broken — the over-correction is as bad for a reader as the silence:\n%s", context)
 				}
+				// None of the classifications may appear either. This is also
+				// the premise the exclusions below rest on: if a phrase turned
+				// up in the shipped prose, excluding it would be meaningless.
+				for _, why := range allWhy {
+					if strings.Contains(context, why) {
+						t.Errorf("a healthy delivery already carries %q, so excluding it below would prove nothing:\n%s", why, context)
+					}
+				}
 				return
 			}
 			if !strings.Contains(context, invariantsReportLead+target) {
@@ -491,6 +534,12 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 			}
 			if !strings.Contains(context, tc.why) {
 				t.Errorf("the report flattened payload_read's classification; the reader is told the file is unusable without being told which remedy applies\nwant: %q\n%s", tc.why, context)
+			}
+			for _, why := range allWhy {
+				if why == tc.why || !strings.Contains(context, why) {
+					continue
+				}
+				t.Errorf("the report names %q as well as %q — a report that lists every classification has told the reader nothing about which remedy applies, and presence alone cannot catch that:\n%s", why, tc.why, context)
 			}
 		})
 	}
