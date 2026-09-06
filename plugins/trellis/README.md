@@ -24,10 +24,16 @@ announcement leaves the project ungoverned and returns next session (`decision-0
 no announcement branch — see the Codex note below. No `CLAUDE.md` block, no `AGENTS.md` receipt,
 no vendored overlay.
 
-**Where a vendored `.trellis/internal/` still exists it remains authoritative**, on both hosts:
-the hooks detect it, read from it, and inject nothing, so the rules arrive exactly once. For those
+**Where a vendored `.trellis/internal/` still exists it remains authoritative** — though the two
+hosts deliver it differently, and saying they behave alike was wrong. **On Claude** the hook detects
+the overlay and injects nothing, so the rules arrive exactly once through the static chain. **On
+Codex** the hook reads the overlay and injects what it finds — from the overlay's own copy, never
+the plugin's. For those
 projects the plugin's `reference/` files stay installation sources rather than runtime substitutes, which
-is what the previous contract said of every project.
+is what the previous contract said of every project. One narrow exception, and it moves a pointer
+rather than a payload: an overlay carrying no `invariants.md` has that *consulted* pointer
+repointed at the plugin's copy, because the alternative is naming a file that is not there
+(`decision-0093`).
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
 see below. Trellis requires no

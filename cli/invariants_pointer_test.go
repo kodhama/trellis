@@ -243,3 +243,64 @@ func TestNoDeliveryChannelShipsTheUnresolvedPointer(t *testing.T) {
 		t.Error("install.sh no longer rewrites the pointer to the copy it vendors; the channel named above has gone unpinned")
 	}
 }
+
+// TestCodexRepointsWhenAVendoredOverlayLacksInvariants is TRL-58, and it is
+// the third shape — the one the pair above does not cover between them.
+//
+// TestCodexLeavesAVendoredInvariantsPointerAlone writes invariants.md into the
+// overlay before asserting, and says so: "a fixture without it would be
+// arguing for a pointer into thin air." That fixture is the argument for
+// leaving the token alone, and it is sound — WHERE THE FILE IS THERE. The
+// overlay writer was the retired setup skill, and a skill is
+// model-executed instructions rather than a script, so an overlay whose
+// session skipped the `cp` is a real shape nothing rules out. Reached through
+// writeValidCodexOverlay unmodified, which writes the three VENDORED_PAYLOAD
+// files and no fourth.
+//
+// The delivery source does not move: prose, rules and version still come from
+// the overlay, and this test asserts that below. Only the CONSULTED reference
+// falls back, and only when the overlay has none — which is why the hook's own
+// doctrine at codex-context.mjs:907-912 ("a missing one is a broken overlay
+// that must fail loudly rather than silently falling through") does not reach
+// it. That rule governs the three DELIVERED files, whose absence would make
+// the injected chain wrong; invariants.md is read on demand, when a rule seems
+// ambiguous, and a session that never hits an ambiguous rule never opens it.
+// Failing a whole session closed over an on-demand reference trades a dead
+// pointer for no governance at all.
+//
+// README.md:27's "installation sources rather than runtime substitutes" is
+// likewise not in tension: nothing is being substituted FOR. There is no
+// authoritative local copy to override, which is the whole premise of the
+// sentence.
+func TestCodexRepointsWhenAVendoredOverlayLacksInvariants(t *testing.T) {
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	// Deliberately no invariants.md — the incomplete overlay. Asserted rather
+	// than assumed, so this test cannot quietly become a duplicate of the
+	// vendored test above if the helper ever starts writing a fourth file.
+	if _, err := os.Stat(filepath.Join(project, ".trellis", "internal", "invariants.md")); err == nil {
+		t.Fatal("fixture drift: writeValidCodexOverlay now writes invariants.md, so this test no longer covers the incomplete overlay")
+	}
+
+	context := codexContextFor(t, pluginRoot, project)
+
+	if strings.Contains(context, invariantsToken) {
+		t.Errorf("the overlay has no invariants.md, so the shipped token names nothing — TRL-52's defect surviving on the vendored arm:\n%s", context)
+	}
+	want := filepath.Join(pluginRoot, "reference", "invariants.md")
+	if got := pointerIn(t, context); got != want {
+		t.Errorf("the fallback pointer is wrong\nwant: %s\ngot:  %s", want, got)
+	}
+	if _, err := os.Stat(want); err != nil {
+		t.Errorf("the pointer names a file that is not there — the defect moved rather than closed: %v", err)
+	}
+
+	// The delivery source must NOT have moved. If the rules body came from the
+	// plugin rather than the overlay, this stopped being a pointer fallback and
+	// became the silent mode switch :907-912 forbids.
+	overlayRules := readFileT(t, filepath.Join(project, ".trellis", "internal", "rules.md"))
+	if first := strings.SplitN(strings.TrimSpace(overlayRules), "\n", 2)[0]; first != "" && !strings.Contains(context, first) {
+		t.Errorf("the injected rules no longer come from the overlay — the fallback switched delivery mode, not just the pointer\nwant a line from: %s", first)
+	}
+}
