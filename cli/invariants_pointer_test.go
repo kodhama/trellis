@@ -39,6 +39,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -541,6 +543,18 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 				}
 				t.Errorf("the report names %q as well as %q — a report that lists every classification has told the reader nothing about which remedy applies, and presence alone cannot catch that:\n%s", why, tc.why, context)
 			}
+			// The report is APPENDED, and its own words depend on that: it says
+			// "the invariants pointer in the rules above" and "The rules and
+			// rows above are complete". Review pointed out that a prepending
+			// implementation passed every assertion here while making both
+			// sentences false, and that a double-append passed too. Position
+			// and count are cheap to state and were being left to luck.
+			if strings.Index(context, invariantsReportLead+target) < strings.Index(context, rulesLoadedSentinel) {
+				t.Errorf("the report leads the context instead of following the rules it refers to as being above it:\n%s", context)
+			}
+			if n := strings.Count(context, invariantsReportLead+target); n != 1 {
+				t.Errorf("the report appears %d times; one broken file earns one report", n)
+			}
 		})
 	}
 }
@@ -570,10 +584,20 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 // payload changed size, and this test would then pass while proving nothing —
 // which is why the band itself is asserted.
 func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
-	// staleness.sh's own `limit`. Duplicated deliberately: if the hook's budget
-	// moves and this does not, the band assertion below fails loudly rather
-	// than letting the fixture drift out of the band in silence.
-	const limit = 32768
+	// staleness.sh's own budget, READ OUT OF THE HOOK rather than duplicated.
+	//
+	// An earlier version hardcoded 32768 and argued that a budget moving
+	// underneath it would fail loudly. Review measured that true in one
+	// direction only. Raised to 65536 — the likelier direction as context
+	// windows grow — the calibration went on aiming at the stale constant, the
+	// broken payload landed comfortably inside the hook's real budget, nothing
+	// refused, and every assertion below passed; with the reviewed in-budget
+	// ordering restored at the same time, the whole four-test set went green
+	// and the regression this test exists for went undetected. A test that
+	// measures against a number the code no longer uses is not pinned to the
+	// code. Parsed the way TestNoPayloadReadBypassesTheGateway parses this same
+	// file, and fatal if the declaration cannot be found.
+	limit := stalenessInjectionBudget(t)
 	const padLine = "# padding, so this fixture sits exactly where the budget bites\n"
 
 	pluginRoot := writeDualHostPluginRoot(t)
@@ -621,9 +645,37 @@ func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	if !strings.Contains(broken, invariantsReportLead+target) {
 		t.Errorf("the report was dropped rather than delivered outside the budget:\n%s", broken)
 	}
-	if len(broken) <= healthy {
-		t.Errorf("the report did not add to the delivered context (healthy %d bytes, broken %d) — the fixture is not exercising the ordering it exists to pin", healthy, len(broken))
+	// THE assertion, and the one the earlier version was missing. `len` on a Go
+	// string is bytes, the same measure `wc -c` gives the hook. A delivered
+	// context LARGER than the budget can only mean the report was appended
+	// after the check: had it been assembled inside, the hook would have
+	// refused instead of delivering this. Without it the test asserted only
+	// that the context grew, which is true of an appended report anywhere,
+	// under any budget.
+	if len(broken) <= limit {
+		t.Fatalf("the fixture never crossed the budget: healthy %d bytes plus the report is %d, still inside the %d-byte budget — an implementation that assembled the report INSIDE the budget would pass this test unchanged, so it proves nothing as it stands", healthy, len(broken), limit)
 	}
+}
+
+// stalenessInjectionBudget reads the injection budget out of staleness.sh, so a
+// test calibrating a fixture against it cannot drift onto a number the hook has
+// stopped using. Fatal rather than defaulted: a fixture aimed at a guessed
+// budget is exactly the silent pass this exists to prevent.
+func stalenessInjectionBudget(t *testing.T) int {
+	t.Helper()
+	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`(?m)^limit=([0-9]+)$`).FindStringSubmatch(readFileT(t, hook))
+	if m == nil {
+		t.Fatal("staleness.sh no longer declares `limit=<n>` at column 0, so the budget this fixture aims at cannot be read from the code it is meant to pin")
+	}
+	limit, err := strconv.Atoi(m[1])
+	if err != nil || limit <= 0 {
+		t.Fatalf("staleness.sh declares an unusable injection budget %q: %v", m[1], err)
+	}
+	return limit
 }
 
 // writeDefaultsShapeProject is the OTHER arm of path B: decision-0070's

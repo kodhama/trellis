@@ -1496,11 +1496,19 @@ fi
 #
 # APPENDED AFTER THE BUDGET CHECK, not inside the payload block, and that
 # ordering is the whole point rather than a tidiness choice. Measured on the
-# version that assembled it inside: a project whose rules.toml put the payload
-# 32573 bytes into the 32768-byte budget was fully governed, and DELETING
-# reference/invariants.md -- changing nothing else -- pushed it to 33149 and
-# turned the session into a TRELLIS_RULES_NOT_LOADED refusal with no rules and
-# no rows. That is exactly the trade decision-0093 rule 1 forbids: a dead
+# version that assembled it inside, counting UTF-8 BYTES throughout, which is
+# what the wc -c below counts and the only measure this claim can honestly
+# quote: a project whose rules.toml put the assembled payload at 32673 bytes
+# of the 32768-byte budget was fully governed, and DELETING
+# reference/invariants.md -- changing nothing else -- added the report and
+# took it to 33149, turning the session into a TRELLIS_RULES_NOT_LOADED
+# refusal with no rules and no rows. (The report costs 484 bytes at a
+# 70-character plugin root and grows with the path it names; the 33149 figure
+# is that run, whose wording was 8 bytes shorter than todays.) An earlier
+# version of this comment quoted 32573 for the healthy side, which was the
+# CHARACTER count of the delivered context rather than its byte count -- the
+# em dashes in the payload are three bytes each, so the two measures differ by
+# 100 here and review could not reproduce the pair. That is exactly the trade decision-0093 rule 1 forbids: a dead
 # pointer swapped for no governance at all, over a file that is consulted on
 # demand. Codex is not exposed to it -- its budget bounds `context` alone
 # (codex-context.mjs:1194) and the same warning rides systemMessage outside it
