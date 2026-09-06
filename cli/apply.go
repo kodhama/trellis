@@ -234,8 +234,36 @@ func renderClaudeBlock() string {
 // renderCodexBootstrap is the small AGENTS.md receipt/fallback installed by the
 // Codex host branch (spec-0007@v1 R11-R16). It deliberately contains no rule
 // prose, activation values, generated readout, or posture-specific content.
-// The slug inventory is names-only and exists solely to validate that loaded
-// activation TOML is complete.
+// The slug inventory is names-only: it is the canonical set the agent reconciles
+// a loaded rules.toml AGAINST, not a completeness predicate the file must satisfy.
+// That distinction is the whole of TRL-31. Until then this prose required every
+// canonical slug exactly once and told the agent to say "Trellis was not loaded"
+// otherwise — while both hooks had already stopped refusing a mismatched slug set
+// and started reconciling it (decision-0083 for Claude, decision-0084 for Codex).
+// On the fallback path, where no hook runs, the agent IS the reconciler, so it was
+// being told to refuse a file the hook beside it would repair. What still fails
+// closed is unchanged and deliberately narrow: absent or unreadable inputs, and a
+// genuine syntax fault (decision-0084 section 1 — parseRulesToml returns null only
+// for those). The bootstrap reconciles for the session and reports; it does NOT
+// carry the hooks' write-the-file mandate, which stays with the hosts that emit it.
+//
+// The `governed = false` exception is load-bearing and is NOT decoration: on the
+// one-line opt-out codex-context.mjs exits 0 emitting nothing, which is precisely
+// when this bootstrap takes over. The retired predicate refused that file only by
+// accident — an opt-out carries no strictness, so it was never "complete" — and
+// reconciliation removes the accident, since an absent row set is reconcilable by
+// definition. Without the exception stated here, describing reconciliation would
+// have converted a silent opt-out into sixteen synthesized active rows.
+//
+// One clause deliberately states the RATIFIED contract over current hook
+// behaviour, and is called out rather than quietly reconciled to it: "a repeated
+// top-level key" is fatal per decision-0084 section 1's table, but a repeated
+// `governed` is not fatal in either hook today — codex-context.mjs:322-328 skips
+// a boolean `governed` before the duplicate check at :333-338, and staleness.sh
+// opts out only at `-eq 1` (:403), so TWO `governed = false` lines govern on both
+// hosts instead of opting out or failing. That is a hook defect against the
+// record, filed rather than encoded here; a fallback that refuses the file is
+// also the fail-safe direction for one somebody was plainly trying to opt out of.
 func renderCodexBootstrap() string {
 	return codexBootstrapBegin + `
 # Trellis delivery receipt and fallback
@@ -245,7 +273,7 @@ Trellis rules are authoritative only in the installed project files listed below
 Before substantive work, assess two independently loaded components:
 
 1. Generated prose is complete only when the exact terminal sentinel ` + "`" + trellisRulesLoadedSentinel + "`" + ` is followed, after only its generated newline, by the fixed footer whose first nonblank line is ` + "`---`" + ` and whose next text is the ambiguity/fallback sentence. A sentinel alone, a diagnostic marker, this bootstrap's mention of the sentinel, or bare slug-name presence is not completion.
-2. Activation TOML is complete only when it parses, strictness is exactly ` + "`firm`" + ` or ` + "`adaptive`" + `, every canonical slug below occurs exactly once, no unknown or duplicate slug occurs, and any disabled floor row is understood as overridden-by-floor:
+2. Activation TOML is valid when it parses and ` + "`strictness`" + `, if present, is exactly ` + "`firm`" + ` or ` + "`adaptive`" + ` — absent, read it as ` + "`adaptive`" + `. A single top-level ` + "`governed = false`" + ` is an opt-out, not a row set: nothing is reconciled, no rule applies including the two floor rules, and you say so rather than govern. Otherwise a row set that does not match the canonical list below is **reconciled, never refused** — for this session, in what you load, never by editing the file: a canonical slug carrying no row of its own governs as active, the first occurrence of a repeated slug is kept, and a correctly shaped row naming a slug not in that list, or a later duplicate of one in it, is set aside — commented out with the date and the reason, its value kept verbatim, never deleted. A disabled floor row is understood as overridden-by-floor. Only a genuine syntax fault makes the file invalid: a row not of the form ` + "`inv-<name>`" + ` or ` + "`floor-<name>`" + `, ` + "`<name>`" + ` lowercase letters and hyphens only, followed by ` + "`= { active = <boolean> }`" + `; before the ` + "`[rules]`" + ` header, a key other than ` + "`seeded_from`" + `, ` + "`strictness`" + ` or ` + "`governed`" + `, or one of those repeated; a duplicate or foreign section; a ` + "`seeded_from`" + ` or ` + "`strictness`" + ` whose value is not a quoted string, or a ` + "`strictness`" + ` that is present but is neither value; or a ` + "`governed`" + ` that is not a boolean.
 
 ` + "`" + strings.Join(catalogSlugOrder(), "`, `") + "`" + `
 
@@ -256,9 +284,9 @@ Use this single-copy fallback table:
 - If valid activation TOML is present but the boundary is absent, read only the three ` + "`.trellis/internal/`" + ` files.
 - If neither component is present, read and validate all four installed inputs.
 
-The four inputs are ` + "`.trellis/internal/trellis.md`" + `, ` + "`.trellis/internal/rules.md`" + `, ` + "`.trellis/internal/version`" + `, and ` + "`.trellis/rules.toml`" + `. The generated prose files must be readable and nonempty; trellis.md must contain exactly one exact ` + "`@rules.md`" + ` expansion point; rules.md must carry the one terminal sentinel; version, after at most one terminal newline is trimmed, must match ` + "`^payload@[0-9a-f]{12}$`" + `; and rules.toml must satisfy the complete activation predicate above. The installed files, never plugin-side reference files, are the rule authority.
+The four inputs are ` + "`.trellis/internal/trellis.md`" + `, ` + "`.trellis/internal/rules.md`" + `, ` + "`.trellis/internal/version`" + `, and ` + "`.trellis/rules.toml`" + `. The generated prose files must be readable and nonempty; trellis.md must contain exactly one exact ` + "`@rules.md`" + ` expansion point; rules.md must carry the one terminal sentinel; version, after at most one terminal newline is trimmed, must match ` + "`^payload@[0-9a-f]{12}$`" + `; and rules.toml must be valid by the test above. The installed files, never plugin-side reference files, are the rule authority.
 
-Missing native-hook delivery is not itself an error: attempt the applicable fallback branch. If the required installed components remain absent, unreadable, or invalid, tell the user exactly **“Trellis was not loaded”** and do not claim governed execution.
+Missing native-hook delivery is not itself an error: attempt the applicable fallback branch. A reconciled row set is not a failure to load — govern by the reconciled set, and tell the user what you reconciled, row by row, before substantive work. If the required installed components remain absent, unreadable, or invalid, tell the user exactly **“Trellis was not loaded”** and do not claim governed execution.
 ` + codexBootstrapEnd
 }
 
