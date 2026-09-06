@@ -1028,6 +1028,12 @@ const repointedInvariants = `\`${pluginInvariants}\``;
 // is missing, and only that one ALSO tells the model the project has an
 // overlay it does not have. So the pointer moves either way.
 //
+// Dropping the sentence was rejected on a different ground. The token sits
+// mid-sentence in shipped prose, so removing "the sentence" means guessing
+// sentence boundaries in a payload this hook is otherwise forbidden to
+// rewrite -- and it would leave the model with no idea the invariants exist
+// at all. A dead pointer is a broken lead; no pointer is a governance loss.
+//
 // What a missing copy earns instead is a REPORT, carried at the end of this
 // file on the systemMessage channel the floor-row warning already uses. Not a
 // fail(): invariants.md is consulted on demand, never injected, and
@@ -1314,11 +1320,19 @@ const response = {
 // byte-identical to what that warning shipped alone.
 const warnings = [];
 // TRL-69, decided at the repoint above. The pointer was rewritten to a file
-// that is not there, which makes this a half-installed plugin payload; say so
-// rather than let the model meet it as an unexplained missing read.
+// that cannot be read, which makes this a half-installed plugin payload. Said
+// on the channel fail() and the floor warning already use, rather than left
+// for whoever opens the pointer to meet as an unexplained missing read.
+//
+// "no readable", not "no": existingFile reads EVERY stat failure as absent --
+// unreadable, a directory, a dangling symlink -- under a contract
+// decision-0093 records as deliberate ("no caller here can act on the
+// difference between missing and unreadable"). This is the first caller to
+// report that result to a person, so it must not turn a permissions fault
+// into a claim that the file is gone.
 if (pluginInvariantsMissing) {
   warnings.push(
-    `Trellis warning: this plugin payload has no ${pluginInvariants}, so the invariants pointer in the rules just injected names a file that is not there. ` +
+    `Trellis warning: this plugin payload has no readable ${pluginInvariants}, so the invariants pointer in the context just injected names a file that cannot be read. ` +
       "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
       "Reinstalling or updating the Trellis plugin is the likely fix.",
   );

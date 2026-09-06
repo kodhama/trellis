@@ -401,56 +401,58 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 	}
 }
 
-// TestCodexReportsAPluginPayloadMissingItsInvariantsCopy is TRL-69, and it is
-// the fourth payload file's fault behaviour — the one
+// TestCodexReportsAPluginPayloadMissingItsInvariantsCopy is TRL-69: the fourth
+// payload file's fault behaviour, which
 // TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead above has no case
-// for, because `invariants.md` is not read by this hook at all. It is POINTED
-// AT: the plugin-native arm rewrites the shipped token
-// `.trellis/internal/invariants.md` to the plugin's own copy (TRL-52,
-// decision-0065:106-111), and until this test existed nothing observed what
-// happens when that copy is not there.
+// for because `invariants.md` is not READ by this hook at all. It is pointed
+// at — the plugin-native arm rewrites the shipped token to the plugin's own
+// copy (TRL-52, decision-0065:106-111) — and until this test existed nothing
+// observed what happens when that copy is not there.
 //
-// Why the fix is not the symmetric guard. The vendored arm next door checks
-// `existingFile(pluginInvariants)` before substituting, and the obvious reading
-// of the asymmetry is that the plugin-native arm should too. It must not. Those
-// two `existingFile` calls would be asking different questions: the vendored
-// one is a FALLBACK-ELIGIBILITY test — the overlay has its own authoritative
-// location, so the plugin's copy may stand in for it only when it exists
-// (decision-0093) — while on this branch there is no competing location to
-// substitute for. Guarding here would leave the raw token, and the raw token on
-// this branch names `.trellis/internal/invariants.md` in the mode DEFINED by
-// not having that directory. That is strictly worse than an absolute path into
-// the plugin: both are dead, but only one of them also tells the model the
-// project has a vendored overlay it does not have. So the pointer still moves —
-// asserted below in BOTH cases — and what changes is that a payload which
-// cannot make it resolve is reported.
+// The argument for reporting rather than guarding is at the repoint itself
+// (codex-context.mjs, the TRL-69 comment) and is not restated here; what
+// belongs here is what the cases pin. Three of them, and each pins something
+// the other two cannot:
 //
-// Reported, not failed. `invariants.md` is CONSULTED, read on demand when a
-// rule seems ambiguous, never injected; decision-0093:1 rules that failing a
-// session closed over such a file would trade a dead pointer for no governance
-// at all. So the context is still delivered — asserted in both cases — and the
-// broken install rides out on the systemMessage channel the floor-row warning
-// already established.
+//   - The pointer MOVES even when its target is missing. This is the assertion
+//     that fails the symmetric guard — the obvious fix, and the wrong one,
+//     because the raw token names `.trellis/internal/` in the mode defined by
+//     not having it. Asserted in every case, so no case can drift off it.
+//   - A COMPLETE payload warns about nothing. Without it, "warn on a missing
+//     copy" reads as "warn always" and an unconditional message passes.
+//   - Both warnings at once JOIN rather than clobber. The assembly collects
+//     into an array precisely because two independent conditions can hold
+//     together, and nothing else in the package makes them: the floor-row test
+//     is vendored, where this warning cannot fire, and the two cases above
+//     carry no false floor row. An implementation that went back to assigning
+//     response.systemMessage directly would drop one message and pass the
+//     whole suite.
 //
-// Both directions in one table, deliberately. The healthy case is what stops
-// the warning becoming unconditional noise, and it is the case a mutation
-// inverting the predicate fails; the broken case is the defect. A test with
-// only the second passes for an implementation that warns on every session.
+// Delivery survives all three: the context is asserted non-nil in every case,
+// because invariants.md is consulted on demand and decision-0093:1 rules that
+// failing a session closed over such a file trades a dead pointer for no
+// governance at all.
 func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
+	// The floor warning as codex-context.mjs composes it, matched from its own
+	// start so the separator assertion below can anchor on it.
+	const floorWarning = "Trellis warning: floor rows set active = false are overridden-by-floor and remain active: floor-intent-gate."
 	for _, tc := range []struct {
 		name string
 		// removeInvariants makes the plugin payload the broken one: three valid
 		// delivered files and no fourth, consulted one.
 		removeInvariants bool
-		warns            bool
+		// falseFloor sets floor-intent-gate active = false in the PROJECT's
+		// rules.toml, the other condition that warns on a successful delivery.
+		falseFloor bool
 	}{{
-		name:             "a complete plugin payload warns about nothing",
-		removeInvariants: false,
-		warns:            false,
+		name: "a complete plugin payload warns about nothing",
 	}, {
 		name:             "a plugin payload with no invariants.md is reported, and the rules still land",
 		removeInvariants: true,
-		warns:            true,
+	}, {
+		name:             "both warnings fire at once and neither is dropped",
+		removeInvariants: true,
+		falseFloor:       true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			pluginRoot := writeDualHostPluginRoot(t)
@@ -458,6 +460,15 @@ func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
 			pointer := filepath.Join(pluginRoot, "reference", "invariants.md")
 			if tc.removeInvariants {
 				removeFileT(t, pointer)
+			}
+			if tc.falseFloor {
+				config := filepath.Join(project, ".trellis", "rules.toml")
+				rows := readFileT(t, config)
+				disabled := setRuleActive(t, rows, "floor-intent-gate", false)
+				if disabled == rows {
+					t.Fatal("fixture drift: setting floor-intent-gate inactive changed nothing, so the floor warning would not fire")
+				}
+				writeFileT(t, config, disabled)
 			}
 
 			raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
@@ -475,7 +486,7 @@ func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
 				t.Errorf("the pointer names the wrong file\nwant: %s\ngot:  %s", pointer, got)
 			}
 
-			if !tc.warns {
+			if !tc.removeInvariants {
 				if got.SystemMessage != "" {
 					t.Errorf("a plugin payload with every file present must warn about nothing: %q", got.SystemMessage)
 				}
@@ -483,9 +494,21 @@ func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
 			}
 			// Naming the absolute path is the point of the message: it is what
 			// tells the operator WHICH install is broken, and it is the only part
-			// of the wording worth pinning.
+			// of that wording worth pinning.
 			if !strings.Contains(got.SystemMessage, pointer) {
 				t.Errorf("a plugin payload missing its invariants copy must be reported, naming the file that is not there\ngot: %q", got.SystemMessage)
+			}
+			if !tc.falseFloor {
+				return
+			}
+			if !strings.Contains(got.SystemMessage, floorWarning) {
+				t.Errorf("the floor warning was dropped: a second writer to systemMessage overwrote the first instead of joining\ngot: %q", got.SystemMessage)
+			}
+			// Order and separator, not merely co-presence: the payload warning
+			// reports a broken install and leads, and the join is one space after
+			// the preceding sentence's full stop.
+			if !strings.Contains(got.SystemMessage, ". "+floorWarning) {
+				t.Errorf("the two warnings are not joined by a single space after the payload warning\ngot: %q", got.SystemMessage)
 			}
 		})
 	}
