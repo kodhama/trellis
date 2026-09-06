@@ -309,14 +309,172 @@ func TestCodexRepointsWhenAVendoredOverlayLacksInvariants(t *testing.T) {
 // "the output names the path" would be satisfied by the pointer alone.
 const invariantsReportLead = "no readable "
 
-// TestBothHostsReportAMissingInvariantsTarget is TRL-70, and it is the half of
-// decision-0028's guard-per-pair that
+// invariantsFault is one way the plugin's `reference/invariants.md` can be
+// broken, paired with the classification BOTH hosts must hand the reader for
+// it.
+//
+// TRL-72 made this table shared. Until then codex-context.mjs asked
+// existingFile — a bare `statSync().isFile()`, which succeeds on a zero-byte
+// file and on one at mode 0000, because stat needs no read permission — so two
+// of the four shapes below were reported by Claude and passed over by Codex in
+// silence, with the pair guard green. The two hosts now ask the same question
+// and answer it in the same words, and one table drives both guards.
+type invariantsFault struct {
+	name string
+	// breakIt applies exactly one fault to the plugin's invariants copy. nil is
+	// the discrimination control: a healthy payload reports nothing.
+	breakIt func(t *testing.T, target string)
+	// why is the phrase the report must carry, VERBATIM. It is staleness.sh's
+	// $payload_why, and codex-context.mjs mirrors those four strings byte for
+	// byte. The shared vocabulary is what makes "both hosts said the same
+	// thing" a check rather than a hope — decision-0028's guard-per-pair,
+	// applied to a string table that now lives in two files in two languages
+	// and can only be pinned behaviourally. Empty means the payload is healthy
+	// and neither host may say anything.
+	why string
+}
+
+// classification is `why` without the remedy hint that follows the em dash.
+//
+// Derived rather than stored, so the two halves cannot drift. Exclusion is
+// asserted on this STEM and not on the full phrase: a report that flattened the
+// four cases into a bare "is not a readable file" with no tail would satisfy an
+// exclusion keyed on the full phrase while telling the reader nothing about
+// which remedy applies, which is the failure both guards below exist to catch.
+func (f invariantsFault) classification() string {
+	return strings.SplitN(f.why, " — ", 2)[0]
+}
+
+// invariantsFaults is every shape payload_read classifies, applied to the
+// plugin's own copy of the consulted reference. Listed in ONE place so a case
+// cannot quietly stop being covered by one of the two guards below, and so a
+// classification added to payload_read has exactly one place to be added here.
+//
+// The blank-lines case is not a duplicate of the zero-byte one. payload_read
+// reaches "empty" through `$(cat "$1")`, and command substitution strips
+// TRAILING NEWLINES, so a file holding nothing but newlines is empty on the
+// Claude side. A Codex mirror written as `readFileSync(…).length === 0` — the
+// obvious one — passes the zero-byte case and diverges here, which is exactly
+// the silent host disagreement TRL-72 closed. A file holding a single SPACE is
+// deliberately not in this table: command substitution does not strip it, so
+// that file is healthy on both hosts.
+func invariantsFaults() []invariantsFault {
+	return []invariantsFault{{
+		name: "a complete payload",
+	}, {
+		name:    "an absent copy is reported as missing",
+		breakIt: func(t *testing.T, target string) { removeFileT(t, target) },
+		why:     "is missing",
+	}, {
+		name:    "a zero-byte copy is reported as empty, not as missing",
+		breakIt: func(t *testing.T, target string) { writeFileT(t, target, "") },
+		why:     "is empty",
+	}, {
+		name:    "a copy holding nothing but newlines is reported as empty",
+		breakIt: func(t *testing.T, target string) { writeFileT(t, target, "\n\n\n") },
+		why:     "is empty",
+	}, {
+		name: "an unreadable copy is reported as a permission fault, not as missing",
+		breakIt: func(t *testing.T, target string) {
+			if os.Geteuid() == 0 {
+				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+			}
+			if err := os.Chmod(target, 0o000); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+			if _, err := os.ReadFile(target); err == nil {
+				t.Skipf("premise: %s is still readable at mode 0000", target)
+			}
+		},
+		why: "exists but could not be read — a permission mode, a stale ACL, or a symlink whose target is gone",
+	}, {
+		name: "a directory at the path is reported as not a readable file",
+		breakIt: func(t *testing.T, target string) {
+			removeFileT(t, target)
+			if err := os.Mkdir(target, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		},
+		why: "is not a readable file — a directory or a device sits at that path",
+	}}
+}
+
+// invariantsClassifications is every classification the table can produce,
+// deduplicated (the two empty shapes share one). Derived from the table rather
+// than listed again, so a classification added to payload_read and to the table
+// is excluded everywhere at once — and one added to payload_read and NOT to the
+// table narrows the exclusions visibly, in the table, instead of in a second
+// slice nobody thinks to update.
+func invariantsClassifications() []string {
+	seen := map[string]bool{}
+	var all []string
+	for _, f := range invariantsFaults() {
+		if f.why == "" || seen[f.classification()] {
+			continue
+		}
+		seen[f.classification()] = true
+		all = append(all, f.classification())
+	}
+	return all
+}
+
+// assertInvariantsReport is the shared body of the two guards below: given what
+// one host SAID about one fault, it checks the host said the right thing and
+// only that thing.
+//
+// The absence half is not belt-and-braces, it is the whole assertion. An
+// earlier version of the Claude guard checked only that the expected phrase was
+// present, and review killed it with a one-line mutant: a report that names
+// every classification at once —
+//
+//	inv_defect="is missing, is empty, is not a readable file, or exists but
+//	            could not be read -- this report does not know which"
+//
+// passed every case and the whole package, while doing exactly the flattening
+// these guards exist to prevent. Presence alone cannot distinguish "told the
+// reader which" from "told the reader all four"; only exclusion can.
+func assertInvariantsReport(t *testing.T, host, report, target string, fault invariantsFault) {
+	t.Helper()
+	said := strings.Contains(report, invariantsReportLead+target)
+	if fault.why == "" {
+		if said {
+			t.Errorf("%s reports a broken payload on a complete one — the over-correction is as bad for a reader as the silence\ngot: %q", host, report)
+		}
+		// None of the classifications may appear either. This is also the
+		// premise every exclusion below rests on: if a phrase turned up in a
+		// healthy delivery, excluding it there would prove nothing.
+		for _, why := range invariantsClassifications() {
+			if strings.Contains(report, why) {
+				t.Errorf("%s already carries %q on a healthy payload, so excluding it elsewhere would prove nothing\ngot: %q", host, why, report)
+			}
+		}
+		return
+	}
+	if !said {
+		t.Errorf("%s repointed at a file it cannot read and said nothing about it — the address guard is green and the hosts disagree on the diagnosis (TRL-70, TRL-72)\nwant a report naming: %s%s\ngot: %q", host, invariantsReportLead, target, report)
+		return
+	}
+	if !strings.Contains(report, fault.why) {
+		t.Errorf("%s flattened the classification; the reader is told the file is unusable without being told which remedy applies\nwant: %q\ngot: %q", host, fault.why, report)
+	}
+	for _, why := range invariantsClassifications() {
+		if why == fault.classification() || !strings.Contains(report, why) {
+			continue
+		}
+		t.Errorf("%s names %q as well as %q — a report that lists every classification has told the reader nothing about which remedy applies, and presence alone cannot catch that\ngot: %q", host, why, fault.classification(), report)
+	}
+}
+
+// TestBothHostsReportAMissingInvariantsTarget is TRL-70 and TRL-72, and it is
+// the half of decision-0028's guard-per-pair that
 // TestBothHostsRepointTheInvariantsPointerIdentically does not cover. That test
 // pins the ADDRESS the two hosts hand the model, on a healthy fixture. It
 // cannot see a divergence in what they SAY about a broken one — which is
-// exactly how they diverged: #294 taught codex-context.mjs to report a missing
-// `reference/invariants.md` while staleness.sh went on repointing at it in
-// silence, with the address guard green.
+// exactly how they diverged twice: #294 taught codex-context.mjs to report a
+// missing `reference/invariants.md` while staleness.sh went on repointing at it
+// in silence, and #295 then made Claude the stricter host on the two shapes a
+// bare stat cannot see. Both times the address guard was green.
 //
 // The two hosts use DIFFERENT CHANNELS, deliberately, and this test records
 // that rather than forcing them together:
@@ -340,47 +498,52 @@ const invariantsReportLead = "no readable "
 //     its own; the refusal half did not, and overstating it here would have
 //     made the design read stronger than what was measured.
 //
-// What must match is the SUBSTANCE, and that is what is asserted below: on a
-// payload with no invariants copy both hosts name the unreadable absolute path
-// in a report, both still deliver a governing context, and both still repoint
-// the pointer at that same path; on a complete payload neither says anything.
+// What must match is the SUBSTANCE, and that is what is asserted: on every
+// shape payload_read classifies, both hosts name the unreadable absolute path,
+// give it the SAME classification verbatim and no other, still deliver a
+// governing context, and still repoint the pointer at that same path; on a
+// complete payload neither says anything.
 //
-// KNOWN DIVERGENCE, in the trigger rather than the report. The two hosts ask
-// their own filesystem primitive: codex-context.mjs uses existingFile, a bare
-// `statSync().isFile()`, while staleness.sh must go through payload_read —
-// TestNoPayloadReadBypassesTheGateway requires it of every payload path this
-// hook names, and payload_read OPENS the file. So a zero-byte or mode-0000
-// copy is reported by Claude and passed over in silence by Codex. Claude is
-// the stricter side and that is the right direction for a broken lead; the
-// cases below pin only the shapes both hosts agree on, so this test does not
-// bless the gap. TestStalenessNamesWhyTheInvariantsTargetCannotBeRead pins the
-// Claude side of it, and TRL-72 owns closing the Codex side — a divergence
-// recorded in a comment with nothing to re-present it is a next step that goes
-// nowhere (decision-0078).
+// TRL-72 removed the divergence this test used to record in a comment rather
+// than pin. The classification cases are no longer the Claude host's alone: the
+// table drives both hosts, so a host that stats where the other reads fails
+// here, at the shape it cannot see.
 func TestBothHostsReportAMissingInvariantsTarget(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		// removeInvariants makes the payload the broken one: everything the
-		// two hooks DELIVER is intact, and the fourth, consulted file is gone.
-		removeInvariants bool
-	}{{
-		name: "a complete plugin payload gives both hosts nothing to report",
-	}, {
-		name:             "a plugin payload with no invariants copy is reported by both hosts",
-		removeInvariants: true,
-	}} {
+	for _, tc := range invariantsFaults() {
 		t.Run(tc.name, func(t *testing.T) {
 			pluginRoot := writeDualHostPluginRoot(t)
 			project := writeConfigOnlyProject(t)
 			target := filepath.Join(pluginRoot, "reference", "invariants.md")
-			if tc.removeInvariants {
-				removeFileT(t, target)
+
+			// The Codex baseline, taken on THIS plugin root before the fault is
+			// applied, so the two contexts are comparable byte for byte. A
+			// second fixture would differ in its temp path alone.
+			_, healthy := runCodexHook(t, pluginRoot, startupInput(t, project))
+			if healthy.HookSpecificOutput == nil {
+				t.Fatalf("the healthy fixture delivers nothing, so the comparison below would measure one absence against another")
+			}
+
+			if tc.breakIt != nil {
+				tc.breakIt(t, target)
 			}
 
 			claude := claudeContextFor(t, pluginRoot, project)
 			raw, codex := runCodexHook(t, pluginRoot, startupInput(t, project))
 			if codex.HookSpecificOutput == nil {
 				t.Fatalf("a consulted reference is not a delivered payload (decision-0093:1): Codex must still inject the rules: %s", raw)
+			}
+			// The Codex report costs the injected context NOTHING: it rides
+			// systemMessage, outside the MAX_CONTEXT_BYTES bound on `context`.
+			// That is the property TestTheMissingInvariantsReportNeverCosts-
+			// TheSessionItsRules pins on the Claude side by ordering the report
+			// after the budget check, and it is the one way a report about a
+			// CONSULTED file could fail a session closed (decision-0093:1). On
+			// Codex it holds structurally, so the way to keep it is to pin the
+			// structure: moving this warning into the context breaks the
+			// equality below rather than waiting for a payload large enough to
+			// notice.
+			if got, want := codex.HookSpecificOutput.AdditionalContext, healthy.HookSpecificOutput.AdditionalContext; got != want {
+				t.Errorf("the Codex report changed the injected context; a report about a consulted file must not spend the context budget (decision-0093:1)\nwant %d bytes identical to the healthy delivery, got %d", len(want), len(got))
 			}
 
 			for _, host := range []struct {
@@ -395,112 +558,40 @@ func TestBothHostsReportAMissingInvariantsTarget(t *testing.T) {
 				{name: "staleness.sh (Claude)", context: claude, report: claude},
 				{name: "codex-context.mjs (Codex)", context: codex.HookSpecificOutput.AdditionalContext, report: codex.SystemMessage},
 			} {
-				// Delivery survives either way, on both hosts: invariants.md is
-				// consulted on demand and never injected, and decision-0093:1
-				// rules that failing a session closed over such a file trades a
-				// dead pointer for no governance at all.
+				// Delivery survives every fault, on both hosts: invariants.md
+				// is consulted on demand and never injected, and
+				// decision-0093:1 rules that failing a session closed over such
+				// a file trades a dead pointer for no governance at all.
 				if !strings.Contains(host.context, rulesLoadedSentinel) || !deliveredRow(host.context, "floor-intent-gate") {
-					t.Errorf("%s did not deliver a complete governed context; a missing consulted reference must not cost the session its rules (decision-0093:1):\n%s", host.name, host.context)
+					t.Errorf("%s did not deliver a complete governed context; a broken consulted reference must not cost the session its rules (decision-0093:1):\n%s", host.name, host.context)
 				}
 				// The pointer moves either way. This is the assertion the
 				// symmetric guard fails: leaving the raw token would ship
 				// `.trellis/internal/` to the one mode defined by not having it.
 				if strings.Contains(host.context, invariantsToken) {
-					t.Errorf("%s shipped the unresolved placeholder; a missing target must not degrade the pointer back to a directory this mode cannot have:\n%s", host.name, host.context)
+					t.Errorf("%s shipped the unresolved placeholder; a broken target must not degrade the pointer back to a directory this mode cannot have:\n%s", host.name, host.context)
 				}
 				if got := pointerIn(t, host.context); got != target {
 					t.Errorf("%s names the wrong invariants file\nwant: %s\ngot:  %s", host.name, target, got)
 				}
-
-				said := strings.Contains(host.report, invariantsReportLead+target)
-				if tc.removeInvariants && !said {
-					t.Errorf("%s repointed at a file that is not there and said nothing about it — the address guard is green and the hosts disagree on the diagnosis (TRL-70)\nwant a report naming: %s%s\ngot: %q", host.name, invariantsReportLead, target, host.report)
-				}
-				if !tc.removeInvariants && said {
-					t.Errorf("%s reports a broken payload on a complete one — a report that always fires says nothing\ngot: %q", host.name, host.report)
-				}
+				assertInvariantsReport(t, host.name, host.report, target, tc)
 			}
 		})
 	}
 }
 
-// TestStalenessNamesWhyTheInvariantsTargetCannotBeRead is the Claude half of
-// TRL-70, and it pins the thing the pair guard above deliberately does not:
-// staleness.sh reaches its answer through payload_read, which CLASSIFIES —
-// missing, unreadable, empty — where codex-context.mjs stats and gets a
-// boolean. That classification is the whole reason the gateway exists
-// ("missing and unreadable are told apart because their remedies differ"), so
-// it must reach the reader rather than being flattened into "not there".
+// TestStalenessNamesWhyTheInvariantsTargetCannotBeRead is the Claude-side
+// statement of the same table, and it pins the two things the pair guard cannot
+// see: WHERE the report sits in the delivered context, and how many times it
+// appears. Those exist only on this host, because staleness.sh has no channel
+// beside its payload and appends the report to the context itself.
 //
-// The report must never turn a permissions fault into a claim that the file is
-// gone: `$payload_why` is quoted into it verbatim, and each case below asserts
-// its own phrase AND THE ABSENCE OF THE OTHER THREE.
-//
-// The absence half is not belt-and-braces, it is the whole assertion. An
-// earlier version of this test checked only that the expected phrase was
-// present, and review killed it with a one-line mutant: a report that names
-// every classification at once —
-//
-//	inv_defect="is missing, is empty, is not a readable file, or exists but
-//	            could not be read -- this report does not know which"
-//
-// passed every case here and the whole package, while doing exactly the
-// flattening the paragraph above says this test exists to prevent. Presence
-// alone cannot distinguish "told the reader which" from "told the reader all
-// four"; only exclusion can.
+// The classification assertions are shared with the pair guard on purpose
+// rather than duplicated by accident: this test states what the Claude host
+// must say, the pair guard states that both hosts say the same thing, and the
+// two fail with different messages when one host alone regresses.
 func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
-	// Every classification payload_read can hand this report, verbatim from the
-	// gateway. Listed in one place so a case cannot quietly stop excluding one:
-	// a new classification added to payload_read and not to this slice leaves
-	// the mutant above passing again for that phrase.
-	allWhy := []string{
-		"is missing",
-		"is empty",
-		"is not a readable file",
-		"exists but could not be read",
-	}
-	for _, tc := range []struct {
-		name string
-		// breakIt applies exactly one fault to the plugin's invariants copy.
-		// nil is the discrimination control: a healthy payload reports nothing.
-		breakIt func(t *testing.T, target string)
-		// why is the payload_read classification the reader must be given.
-		why string
-	}{{
-		name: "a complete payload reports nothing",
-	}, {
-		name:    "an absent copy is reported as missing",
-		breakIt: func(t *testing.T, target string) { removeFileT(t, target) },
-		why:     "is missing",
-	}, {
-		name:    "an empty copy is reported as empty, not as missing",
-		breakIt: func(t *testing.T, target string) { writeFileT(t, target, "") },
-		why:     "is empty",
-	}, {
-		name: "an unreadable copy is reported as a permission fault, not as missing",
-		breakIt: func(t *testing.T, target string) {
-			if os.Geteuid() == 0 {
-				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
-			}
-			if err := os.Chmod(target, 0o000); err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
-			if _, err := os.ReadFile(target); err == nil {
-				t.Skipf("premise: %s is still readable at mode 0000", target)
-			}
-		},
-		why: "exists but could not be read",
-	}, {
-		name: "a directory at the path is reported as not a readable file",
-		breakIt: func(t *testing.T, target string) {
-			removeFileT(t, target)
-			if err := os.Mkdir(target, 0o755); err != nil {
-				t.Fatal(err)
-			}
-		},
-		why: "is not a readable file",
-	}} {
+	for _, tc := range invariantsFaults() {
 		t.Run(tc.name, func(t *testing.T) {
 			pluginRoot := writeDualHostPluginRoot(t)
 			project := writeConfigOnlyProject(t)
@@ -516,32 +607,13 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 			if got := pointerIn(t, context); got != target {
 				t.Errorf("the pointer names the wrong invariants file\nwant: %s\ngot:  %s", target, got)
 			}
-
-			if tc.why == "" {
-				if strings.Contains(context, invariantsReportLead+target) {
-					t.Errorf("a complete payload was reported as broken — the over-correction is as bad for a reader as the silence:\n%s", context)
-				}
-				// None of the classifications may appear either. This is also
-				// the premise the exclusions below rest on: if a phrase turned
-				// up in the shipped prose, excluding it would be meaningless.
-				for _, why := range allWhy {
-					if strings.Contains(context, why) {
-						t.Errorf("a healthy delivery already carries %q, so excluding it below would prove nothing:\n%s", why, context)
-					}
-				}
+			assertInvariantsReport(t, "staleness.sh", context, target, tc)
+			if tc.why == "" || !strings.Contains(context, invariantsReportLead+target) {
+				// Position and count both index on this phrase, and
+				// strings.Index returns -1 when it is absent — which would make
+				// the position assertion pass on a report that is not there at
+				// all. assertInvariantsReport has already said so.
 				return
-			}
-			if !strings.Contains(context, invariantsReportLead+target) {
-				t.Errorf("the report must name the absolute path, which is what tells the operator WHICH install to repair:\n%s", context)
-			}
-			if !strings.Contains(context, tc.why) {
-				t.Errorf("the report flattened payload_read's classification; the reader is told the file is unusable without being told which remedy applies\nwant: %q\n%s", tc.why, context)
-			}
-			for _, why := range allWhy {
-				if why == tc.why || !strings.Contains(context, why) {
-					continue
-				}
-				t.Errorf("the report names %q as well as %q — a report that lists every classification has told the reader nothing about which remedy applies, and presence alone cannot catch that:\n%s", why, tc.why, context)
 			}
 			// The report is APPENDED, and its own words depend on that: it says
 			// "the invariants pointer in the rules above" and "The rules and

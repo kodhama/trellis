@@ -3,6 +3,7 @@ id: decision-0093
 type: decision
 depends_on: [decision-0065, decision-0051]
 informed_by: [decision-0028, decision-0053, decision-0071, decision-0072, decision-0082]
+superseded_in_part_by: [decision-0094]  # 2026-09-06 decision-0094 — ONE clause, the closing sentence of the Consequences bullet on existingFile: "No caller here can act on the difference between missing and unreadable." Overtaken by #294 in the same week it was written, which added the first caller that DOES act on it — it reports the result to a person, and which fault it is decides which remedy that person needs. The rest of the bullet stands as a description of existingFile, which keeps that contract for its one remaining caller (the overlay-presence half of D2's condition). THE RULING IS UNTOUCHED: D1's consulted-vs-delivered distinction is what 0094 obeys, and D2's fallback condition is applied rather than amended — 0094 reads "the plugin's copy exists" as the usability test D2 itself says it is ("stops the fallback replacing one dead pointer with another"), which a bare stat does not deliver on a zero-byte or mode-0000 copy.
 owner: agent
 date: 2026-09-06
 ---

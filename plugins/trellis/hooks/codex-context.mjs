@@ -68,16 +68,115 @@ function existingDirectory(value) {
   }
 }
 
-// The file-shaped sibling. Same contract deliberately: absolute paths only, and
-// any stat failure -- missing, unreadable, a dangling symlink -- reads as
-// absent. A predicate that distinguished them would invite a caller to branch
-// on the difference, and no caller here can act on one.
+// The file-shaped sibling, and a PRESENCE test: absolute paths only, and any
+// stat failure -- missing, unreadable, a dangling symlink -- reads as absent.
+//
+// TRL-72 narrowed what this may be asked. decision-0093 recorded the flattening
+// as deliberate on the ground that "no caller here can act on the difference
+// between missing and unreadable", and that stopped being true the moment #294
+// added a caller that REPORTS the answer to a person: which fault it is decides
+// which remedy the operator needs. Both callers that ask whether the invariants
+// pointer resolves to something USABLE now go through payloadDefect below.
+//
+// What is left here is the one question presence actually answers: does this
+// project have its own authoritative copy of the file. A zero-byte file at the
+// authoritative path is still the project's own file, and not the plugin's to
+// substitute for (README.md:27, decision-0093:3) -- so widening THAT arm would
+// be a different ruling from the one this change makes, not the same one
+// applied consistently.
 function existingFile(value) {
   if (typeof value !== "string" || !path.isAbsolute(value)) return false;
   try {
     return fs.statSync(value).isFile();
   } catch {
     return false;
+  }
+}
+
+// The four classifications staleness.sh's payload_read hands its own report,
+// mirrored here BYTE FOR BYTE. Two hosts, two languages, one vocabulary: an
+// operator who moves between them must not have to work out that "is empty" and
+// some Codex-only paraphrase are the same finding, and the pair guard
+// (TestBothHostsReportAMissingInvariantsTarget) can only compare reports that
+// are stated in the same words. Change one of these and change the other.
+const DEFECT_MISSING = "is missing";
+const DEFECT_NOT_A_FILE =
+  "is not a readable file — a directory or a device sits at that path";
+const DEFECT_UNREADABLE =
+  "exists but could not be read — a permission mode, a stale ACL, or a symlink whose target is gone";
+const DEFECT_EMPTY = "is empty";
+
+// payloadDefect answers "does this path yield something to read", and says
+// WHICH way it does not. "" means it does. It is this hook's half of
+// staleness.sh's payload_read gateway (decision-0087), reaching the same four
+// answers on the same shapes -- deliberately, because the two hosts report the
+// same broken install to the same person.
+//
+// existingFile cannot answer this and TRL-72 is the measurement of that:
+// statSync needs no read permission, so it succeeds on a zero-byte copy and on
+// one at mode 0000, and those are the two shapes Codex passed over in silence
+// while Claude named them.
+//
+// READS, BUT NEVER HOLDS THE FILE. The bytes are scanned a chunk at a time and
+// the scan stops at the first byte that is not a newline, so a healthy
+// invariants.md costs one 4 KB read and nothing is retained.
+// TestCodexHookBoundsAuthoritativeFileReads forbids pulling an AUTHORITATIVE
+// file wholly into memory before its byte bound is enforced; this file is
+// consulted rather than delivered, so it has no such bound to enforce, and the
+// same discipline is kept anyway because there is no reason to read an
+// arbitrarily large file to learn whether it is empty.
+//
+// EMPTY MEANS WHAT THE OTHER HOST MEANS BY IT. payload_read reaches "empty"
+// through `payload_text="$(cat "$1")"` followed by `[ -z "$payload_text" ]`,
+// and command substitution strips TRAILING NEWLINES -- so a file of nothing but
+// newlines is empty there, while a file holding one space is not. Writing
+// `readFileSync(...).length === 0` here would agree on the zero-byte file and
+// diverge on the newline-only one, which is the same silent host disagreement
+// this function exists to end.
+function payloadDefect(value) {
+  if (typeof value !== "string" || !path.isAbsolute(value)) {
+    return DEFECT_MISSING;
+  }
+  let stat;
+  try {
+    stat = fs.statSync(value);
+  } catch {
+    // Every stat failure, exactly as existingFile reads them and as `[ ! -e ]`
+    // does on the other host: statSync follows symlinks, so a link whose target
+    // is gone is missing here and missing there.
+    return DEFECT_MISSING;
+  }
+  if (!stat.isFile()) return DEFECT_NOT_A_FILE;
+  let fd;
+  try {
+    fd = fs.openSync(value, "r");
+  } catch {
+    return DEFECT_UNREADABLE;
+  }
+  try {
+    const chunk = Buffer.alloc(4096);
+    for (;;) {
+      let read;
+      try {
+        read = fs.readSync(fd, chunk, 0, chunk.length, null);
+      } catch {
+        // A file can open and still fail to read -- a stale network mount, a
+        // device that refuses. `cat` fails the same way, and payload_read reads
+        // that as unreadable rather than empty.
+        return DEFECT_UNREADABLE;
+      }
+      if (read === 0) return DEFECT_EMPTY;
+      for (let i = 0; i < read; i += 1) {
+        if (chunk[i] !== 0x0a) return "";
+      }
+    }
+  } finally {
+    try {
+      fs.closeSync(fd);
+    } catch {
+      // The answer is already decided; a descriptor that will not close cannot
+      // change it, and this hook must never throw on the way to its one write.
+    }
   }
 }
 
@@ -1015,12 +1114,13 @@ if (trellis.split("@rules.md").length - 1 !== 1) {
 // records having been wrong about.
 const pluginInvariants = path.join(pluginRoot, "reference", "invariants.md");
 const repointedInvariants = `\`${pluginInvariants}\``;
-// TRL-69. The two arms below ask DIFFERENT questions, which is why only one of
-// them calls existingFile, and why making them textually symmetric would be a
-// regression rather than a tidy-up. The vendored arm's check is fallback
-// ELIGIBILITY: that project has its own authoritative location for this file,
-// so the plugin's copy may stand in for it only when the plugin's copy is
-// really there (decision-0093). This arm has no competing location to
+// TRL-69. The two arms below ask DIFFERENT questions, which is why the same
+// answer is put to different use in each, and why making them textually
+// symmetric would be a regression rather than a tidy-up. The vendored arm's
+// check is fallback ELIGIBILITY: that project has its own authoritative
+// location for this file, so the plugin's copy may stand in for it only when
+// the plugin's copy is really there (decision-0093). This arm has no competing
+// location to
 // substitute FOR -- the repointed path is the only address there is -- so the
 // same check here would not validate the target, it would abandon it. Leaving
 // the raw token ships `.trellis/internal/invariants.md` to the one mode
@@ -1047,13 +1147,28 @@ const repointedInvariants = `\`${pluginInvariants}\``;
 // at all is a legitimate shape there -- most of the suite's own vendored
 // fixtures are exactly that (writeCodexPluginRoot), and
 // TestCodexHookValidStartupAndLiveRows pins them silent.
-let pluginInvariantsMissing = false;
+//
+// TRL-72. Both arms ask payloadDefect rather than existingFile, and the second
+// is not a drive-by: decision-0093:2 states the plugin-copy half of the
+// vendored condition as the thing that "stops the fallback replacing one dead
+// pointer with another", and a bare stat does not deliver that. Measured, a
+// zero-byte or mode-0000 plugin copy satisfied existingFile, the fallback
+// fired, and a vendored project's pointer was moved off its own authoritative
+// address onto a file that yields nothing -- the exact substitution that half
+// of the condition exists to prevent. Asking whether the copy is USABLE is what
+// 0093:2 already says it wants, not a widening of it.
+//
+// Where the two arms still part is what they do with the answer. Here a defect
+// is REPORTED and the pointer moves anyway, because there is no second address
+// to fall back to. There a defect is disqualifying, because there is: the
+// overlay's own path, which stays named.
+let pluginInvariantsDefect = "";
 if (sources.root === pluginRoot) {
   trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
-  pluginInvariantsMissing = !existingFile(pluginInvariants);
+  pluginInvariantsDefect = payloadDefect(pluginInvariants);
 } else if (
   !existingFile(path.join(projectRoot, ".trellis", "internal", "invariants.md")) &&
-  existingFile(pluginInvariants)
+  payloadDefect(pluginInvariants) === ""
 ) {
   // TRL-58: the vendored overlay that has no invariants.md. The paragraph above
   // argues the token must SURVIVE on the vendored branch, and it holds wherever
@@ -1324,15 +1439,20 @@ const warnings = [];
 // on the channel fail() and the floor warning already use, rather than left
 // for whoever opens the pointer to meet as an unexplained missing read.
 //
-// "no readable", not "no": existingFile reads EVERY stat failure as absent --
-// unreadable, a directory, a dangling symlink -- under a contract
-// decision-0093 records as deliberate ("no caller here can act on the
-// difference between missing and unreadable"). This is the first caller to
-// report that result to a person, so it must not turn a permissions fault
-// into a claim that the file is gone.
-if (pluginInvariantsMissing) {
+// "no readable", not "no": this must never turn a permissions fault into a
+// claim that the file is gone. #294 wrote it that way because existingFile
+// could not tell the two apart and the lead sentence had to survive either;
+// TRL-72 gave the reader the rest, so the lead now carries a classification
+// behind it rather than covering for the absence of one.
+//
+// `(it ${defect})`, in staleness.sh's own words and punctuation. The two hosts
+// report the same broken install, and an operator who reads both must not have
+// to reconcile two vocabularies for one fault -- which remedy applies is the
+// whole reason payload_read classifies at all ("missing and unreadable are told
+// apart because their remedies differ", staleness.sh:162).
+if (pluginInvariantsDefect !== "") {
   warnings.push(
-    `Trellis warning: this plugin payload has no readable ${pluginInvariants}, so the invariants pointer in the context just injected names a file that cannot be read. ` +
+    `Trellis warning: this plugin payload has no readable ${pluginInvariants} (it ${pluginInvariantsDefect}), so the invariants pointer in the context just injected names a file that cannot be read. ` +
       "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
       "Reinstalling or updating the Trellis plugin is the likely fix.",
   );
