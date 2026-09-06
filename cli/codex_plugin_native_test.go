@@ -1,7 +1,7 @@
 package main
 
 // TRL-55. codex-context.mjs resolves its payload down one of two branches, and
-// a single directory test decides which (codex-context.mjs:912): a project
+// a single directory test decides which (codex-context.mjs:1030): a project
 // holding `.trellis/internal/` is VENDORED and the overlay is the source;
 // a project without one is PLUGIN-NATIVE and the plugin's own `reference/` is.
 //
@@ -195,7 +195,7 @@ func TestCodexPluginNativeServesAFirmProjectThePluginRootsOwnPayload(t *testing.
 // TestCodexFirmPostureIsSelectedFromEitherTomlStringForm pins the OTHER half of
 // the posture regex on the only branch that consumes posture.
 //
-// codex-context.mjs:916 matches `strictness = "firm"` or `strictness = 'firm'`,
+// codex-context.mjs:1034 matches `strictness = "firm"` or `strictness = 'firm'`,
 // and its own comment records why both are there: "matching only the basic form
 // served a firm project the adaptive posture without saying so." That is a
 // shipped defect with a recorded fix — and the fix was unpinned in effect.

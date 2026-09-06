@@ -1505,7 +1505,7 @@ fi
 # refusal with no rules and no rows. That is exactly the trade decision-0093
 # rule 1 forbids: a dead pointer swapped for no governance at all, over a file
 # that is consulted on demand. Codex is not exposed to it -- its budget bounds
-# `context` alone (codex-context.mjs:1194) and the same warning rides
+# `context` alone (codex-context.mjs:1328) and the same warning rides
 # systemMessage outside it -- so this ordering also stops the two hosts
 # disagreeing about the one property the pair guard exists to protect.
 #

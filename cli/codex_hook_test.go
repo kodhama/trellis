@@ -191,18 +191,46 @@ func TestCodexHookRegistrationIsStartupOnlyAndHostIsolated(t *testing.T) {
 // guards spec-0007@v1 R7, R8, R36, S6, S19
 func TestCodexHookBoundsAuthoritativeFileReads(t *testing.T) {
 	source := readFileT(t, "../plugins/trellis/hooks/codex-context.mjs")
+	// SCOPED TO readRequired's OWN BODY, not to the whole file. TRL-72 added a
+	// second fs.readSync — payloadDefect's chunked scan of the CONSULTED
+	// invariants copy — and a bare Contains over the file was then satisfiable
+	// by that one alone, so this stopped proving the AUTHORITATIVE reader is
+	// still bounded. Found by review of #296; the mutant is deleting
+	// readRequired's readSync loop while payloadDefect keeps the file passing.
+	body := functionBody(t, source, "function readRequired(")
 	for _, required := range []string{
 		"fs.readSync",
 		"MAX_CONTEXT_BYTES + 1",
 		"stat.size > MAX_CONTEXT_BYTES",
 	} {
-		if !strings.Contains(source, required) {
-			t.Errorf("Codex hook bounded-read implementation missing %q", required)
+		if !strings.Contains(body, required) {
+			t.Errorf("readRequired's bounded-read implementation is missing %q", required)
 		}
 	}
 	if strings.Contains(source, "fs.readFileSync(absolute") {
 		t.Error("Codex hook must not read an authoritative file wholly before enforcing its byte bound")
 	}
+}
+
+// functionBody returns the source of the function opening with `decl`, from its
+// declaration to the first closing brace at column 0. That brace convention is
+// how every top-level function in codex-context.mjs ends, and it is the same
+// scan TestNoPayloadReadBypassesTheGateway uses on staleness.sh's payload_read.
+//
+// Fatal rather than empty when the declaration or its terminator is missing: a
+// scan that silently returns "" would make every assertion built on it fail for
+// the wrong reason, or — worse, if the assertions were negative — pass.
+func functionBody(t *testing.T, source, decl string) string {
+	t.Helper()
+	start := strings.Index(source, decl)
+	if start < 0 {
+		t.Fatalf("%q not found — the scan is broken, and a guard that reads nothing proves nothing", decl)
+	}
+	end := strings.Index(source[start:], "\n}\n")
+	if end < 0 {
+		t.Fatalf("%q has no closing brace at column 0 — the scan is broken", decl)
+	}
+	return source[start : start+end]
 }
 
 // guards spec-0007@v1 R1, R2, R7, R10, R31, R34-R36, S1, S2, S19
