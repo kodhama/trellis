@@ -75,23 +75,17 @@ func writeDualHostPluginRoot(t *testing.T) string {
 }
 
 // writeConfigOnlyProject is the decision-0065 shape: rules.toml and no
-// .trellis/internal/. The .git directory is here because codex-context.mjs
-// bounds its overlay search at the nearest git boundary; staleness.sh does not
-// need it and does not mind it.
+// .trellis/internal/. The .git directory writePluginNativeProject supplies is
+// needed because codex-context.mjs bounds its overlay search at the nearest git
+// boundary; staleness.sh does not need it and does not mind it.
+//
+// The firm posture is this helper's own choice, not a property of the shape —
+// TRL-55 lifted the body into writePluginNativeProject so a test can pick the
+// other one. Every caller here wants a posture it does not care about, so they
+// keep asking for the shape and letting it default.
 func writeConfigOnlyProject(t *testing.T) string {
 	t.Helper()
-	project := t.TempDir()
-	if err := os.Mkdir(filepath.Join(project, ".git"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	toml := filepath.Join(project, ".trellis", "rules.toml")
-	if err := os.MkdirAll(filepath.Dir(toml), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(toml, []byte(payloadFiles()["rules-a.toml"]), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return project
+	return writePluginNativeProject(t, "a")
 }
 
 // codexContextFor runs codex-context.mjs and returns the injected context. It
