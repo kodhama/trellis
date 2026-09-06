@@ -33,7 +33,11 @@ projects the plugin's `reference/` files stay installation sources rather than r
 is what the previous contract said of every project. One narrow exception, and it moves a pointer
 rather than a payload: an overlay carrying no `invariants.md` has that *consulted* pointer
 repointed at the plugin's copy, because the alternative is naming a file that is not there
-(`decision-0093`).
+(`decision-0093`). That substitution needs the plugin's copy to be **usable**, not merely present
+(`decision-0094`) — otherwise it would trade one dead pointer for another. Where it is not usable
+the pointer stays at the overlay's own address, and the session is told which file is unusable and
+how, and why no copy could stand in, on a channel that costs the injected context nothing
+(`decision-0095`).
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
 see below. Trellis requires no

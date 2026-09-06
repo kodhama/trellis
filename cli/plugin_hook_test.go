@@ -3526,7 +3526,7 @@ func TestReconciledRowsParseForCodexToo(t *testing.T) {
 			}
 
 			raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
-			if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+			if got.HookSpecificOutput == nil || warningsBesideVendoredInvariants(t, got.SystemMessage) != "" {
 				t.Fatalf("the reconciled rows must parse for Codex too — a file Claude governs normally from must not read invalid-rules (0 rules) under Codex: %s", raw)
 			}
 		})
