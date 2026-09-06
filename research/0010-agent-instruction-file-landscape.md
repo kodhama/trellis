@@ -10,19 +10,20 @@ ratified: 2026-07-05
 
 # 0010 — Agent-instruction file landscape (which files M1 can target)
 
-> *Amended in place 2026-09-06 (`decision-0047`; the 2026-07-13 consumer audit that amended
-> seven sibling research notes and `invariants-v1` did not reach this one).
-> **WHAT:** `decision-0029` moved out of `depends_on` into `informed_by`. It **commissioned**
-> this survey — its own "follow-up (B): M1 detects instruction files and lets you pick the
-> target" — and is named below as the consumer of the findings; but what it *ruled* is the
-> setup CLI's mode-first ordering of harness detection, and no row of the table and no
-> conclusion here would be different or wrong had that ruling gone the other way. Provenance,
-> not coupling. It is deliberately **not** re-pointed to `decision-0043`: that record retires
+> *Amended in place 2026-09-06 (`decision-0047`; consumer-audit marking-class — the 2026-07-13
+> pass that amended seven sibling research notes and `invariants-v1` did not reach this one).
+> WHAT: `decision-0029` moved out of frontmatter `depends_on` into a new `informed_by` list —
+> it commissioned this survey (its own "follow-up (B): M1 detects instruction files and lets
+> you pick the target") and is named below as the consumer of the findings, but what it ruled
+> is the setup CLI's mode-first ordering of harness detection, and no row of the table and no
+> conclusion here would be different or wrong had that ruling gone the other way; provenance,
+> not coupling. Deliberately not re-pointed to `decision-0043`: that record retires
 > `decision-0029`'s subject matter rather than carrying it, and a provenance edge records what
 > informed this note in July 2026, so it cannot name a record written five days later.
 > `invariants-v1` added to `depends_on` as the coupling this note carried undeclared — the
 > inline-over-`@import` recommendation rests on D1 (`floor-transparency`), which is what makes
-> a silently unresolved import a violation. **POINTER:** `decision-0047`; TRL-57.*
+> a silently unresolved import a violation. No `version` counter on this artifact to bump.
+> POINTER: `decision-0047` Consequence 4; TRL-57.*
 
 Which file each agentic coding tool auto-loads as its project instructions, so the M1 overlay
 (`decision-0029`) knows what to target. The load-bearing distinction is **single instruction file**
