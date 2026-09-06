@@ -297,8 +297,8 @@ func renderClaudeBlock() string {
 // One clause deliberately states the RATIFIED contract over current hook
 // behaviour, and is called out rather than quietly reconciled to it: "a repeated
 // top-level key" is fatal per decision-0084 section 1's table, but a repeated
-// `governed` is not fatal in either hook today — codex-context.mjs:322-328 skips
-// a boolean `governed` before the duplicate check at :333-338, and staleness.sh
+// `governed` is not fatal in either hook today — codex-context.mjs:440-446 skips
+// a boolean `governed` before the duplicate check at :451-456, and staleness.sh
 // opts out only at `-eq 1` (:403), so TWO `governed = false` lines govern on both
 // hosts instead of opting out or failing. That is a hook defect against the
 // record, filed rather than encoded here; a fallback that refuses the file is

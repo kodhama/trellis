@@ -1197,7 +1197,7 @@ if (sources.root === pluginRoot) {
   // token is TRL-52's defect verbatim: a last line telling the model to read a
   // file that is not there.
   //
-  // This is not the silent fall-through :907-912 forbids, on two counts. That
+  // This is not the silent fall-through :1025-1030 forbids, on two counts. That
   // rule governs the three DELIVERED files, whose absence makes the injected
   // chain itself wrong; invariants.md is CONSULTED -- read on demand when a rule
   // seems ambiguous, never injected -- so a session that meets no ambiguous rule

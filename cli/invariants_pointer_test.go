@@ -283,7 +283,7 @@ func TestNoDeliveryChannelShipsTheUnresolvedPointer(t *testing.T) {
 // The delivery source does not move: prose, rules and version still come from
 // the overlay, and this test asserts that below. Only the CONSULTED reference
 // falls back, and only when the overlay has none — which is why the hook's own
-// doctrine at codex-context.mjs:907-912 ("a missing one is a broken overlay
+// doctrine at codex-context.mjs:1025-1030 ("a missing one is a broken overlay
 // that must fail loudly rather than silently falling through") does not reach
 // it. That rule governs the three DELIVERED files, whose absence would make
 // the injected chain wrong; invariants.md is read on demand, when a rule seems
@@ -321,7 +321,7 @@ func TestCodexRepointsWhenAVendoredOverlayLacksInvariants(t *testing.T) {
 
 	// The delivery source must NOT have moved. If the rules body came from the
 	// plugin rather than the overlay, this stopped being a pointer fallback and
-	// became the silent mode switch :907-912 forbids.
+	// became the silent mode switch :1025-1030 forbids.
 	overlayRules := readFileT(t, filepath.Join(project, ".trellis", "internal", "rules.md"))
 	if first := strings.SplitN(strings.TrimSpace(overlayRules), "\n", 2)[0]; first != "" && !strings.Contains(context, first) {
 		t.Errorf("the injected rules no longer come from the overlay — the fallback switched delivery mode, not just the pointer\nwant a line from: %s", first)
@@ -795,8 +795,8 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 // hook's own comments claimed it could not happen.
 //
 // It is also the property the two hosts must agree on. codex-context.mjs bounds
-// `context` alone (:1194) and pushes the same warning onto systemMessage
-// afterwards (:1333), so Codex can never lose its context to this warning.
+// `context` alone (:1328) and pushes the same warning onto systemMessage
+// afterwards (:1482), so Codex can never lose its context to this warning.
 //
 // The fixture CALIBRATES rather than hardcoding a padding size: it measures the
 // payload at two padding sizes, derives the per-line cost, and solves for a

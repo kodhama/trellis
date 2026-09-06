@@ -2,7 +2,7 @@
 id: decision-0094
 type: decision
 depends_on: [decision-0093, decision-0087]  # coupling, not provenance (decision-0047). decision-0093: this record corrects one Consequences bullet of it and leans on its rule 1 and rule 2 for everything it does NOT change -- if 0093 said something else there would be nothing here to correct and no ground for keeping the pointer alive over a broken target. decision-0087: the gateway is the whole reason "relax the Claude host" is not available as an option -- if payload_read were optional on the invariants read, the cheaper symmetry would be reachable and this record would decide the other way
-changes: [decision-0093]  # the closing sentence of its Consequences bullet on existingFile, and that clause only; see decision-0093's own superseded_in_part_by for the scope. Declared because the six most recent records that partially supersede a predecessor pair `changes:` on the successor with `superseded_in_part_by` on the predecessor (0079/0011, 0082/0080, 0085/0079, 0087/0043, 0089/0078, 0092/0089); decision-0045:143-144 makes it permissive ("may declare"), so this is convention rather than requirement
+changes: [decision-0093]  # TWO of its Consequences clauses and no part of its ruling — the closing sentence of the existingFile bullet, and the first bullet's "handed a pointer that resolves"; decision-0093's own superseded_in_part_by carries the full scope. Declared as convention, not requirement: decision-0045:143-144 is permissive ("MAY declare which artifact(s) it changes"). On the precedent, measured over every record on main: of the eleven most recent successors that partially supersede a predecessor, SEVEN declare `changes:` naming it (0085/0079, 0087/0043, 0088/0068, 0089/0078, 0090/0088, 0091/0068, 0092/0089) and FOUR do not (0083, 0084, 0086, and 0093 itself). An earlier version of this comment cited 0079/0011 and 0082/0080 as examples: both are FULL supersessions — 0011 and 0080 carry `superseded_by` — so neither exemplifies the pattern, and 0082's own `changes:` names 0080 rather than any of its five partial predecessors. Review caught that much; re-measuring caught the rest (0091 declares and was missing from the list, 0083 and 0093 do not and were missing from the exceptions)
 informed_by: [decision-0028, decision-0040, decision-0065, decision-0082]
 owner: agent
 date: 2026-09-06
@@ -154,8 +154,13 @@ deferral this record creates — both are pre-existing behaviour it leaves exact
   as a silent dead pointer. Each such session previously got a pointer to a file that yields
   nothing; it now keeps the overlay's own address, which on that branch is not a lie — the project
   really does have an overlay. Neither is good, which is what `TRL-71` is for. Measured, the
-  vendored state table moves in **exactly two cells** — overlay absent × plugin copy
-  {zero-byte, mode-0000} — and every overlay-present row is untouched.
+  vendored state table moves in **exactly four cells** — overlay absent × plugin copy
+  {zero-byte, newline-only, NUL-filled, mode-0000} — and every overlay-present row is untouched,
+  as is `absent × missing` and `absent × a single space`. *An earlier draft of this bullet said
+  **two**, counting only the two shapes the probe behind it happened to build; the other two
+  unusable shapes are named in the Consequences bullet directly above and in `TRL-73`, so the
+  record contradicted itself. Corrected in review, and the count is now the one
+  `TestCodexDoesNotFallBackOnAnUnusablePluginCopy` fails on when D4 is reverted: four subtests.*
 - **D4 has its own guard, because the existing vendored fixture cannot see it.**
   `TestCodexRepointsWhenAVendoredOverlayLacksInvariants` builds a *healthy* plugin root, so the
   second half of the fallback condition is satisfied in every case it runs and is never exercised;
