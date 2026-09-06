@@ -25,7 +25,10 @@
 #      the import channel delivers — posture header, rules, live rows — so the
 #      tested wording stays the shipped wording (decision-0053). The one edit is
 #      repointing the invariants path at the plugin, which is where the file
-#      actually is in this mode, and which therefore cannot go stale.
+#      actually is in this mode, and which therefore cannot go stale. It can
+#      still be ABSENT from a half-installed payload, and the pointer moves
+#      anyway: what a missing target earns is a report at the end of the
+#      injected payload, not a refusal (TRL-70, decision-0093 rule 1).
 #
 #   C. Curl install (.claude/rules/trellis.md present) — the install path
 #      rendered that file and Claude Code loads it at launch on its own, so this
@@ -1370,9 +1373,39 @@ fi
 # None of that is load-bearing any more. Substituting by index invokes no
 # replacement semantics at all, so there is nothing to escape and neither
 # metacharacter has anything to do -- on any awk, without needing to know which.
+#
+# TRL-70. The substitution below hands the model an ADDRESS; until this read
+# existed nothing asked whether anything is at it, so a plugin payload with no
+# invariants.md shipped a dead pointer in silence. codex-context.mjs closed the
+# same gap on its own branch (TRL-69, #294) and the two hosts then disagreed
+# about a broken install with the address guard green.
+#
+# The pointer still moves whatever this read finds, for #294's reason: leaving
+# the raw token ships `.trellis/internal/invariants.md` to the one mode DEFINED
+# by not having that directory, which is a strictly worse dead pointer. And the
+# session is not failed closed over it -- invariants.md is CONSULTED on demand,
+# never injected, and decision-0093 rule 1 rules that failing a session over
+# such a file trades a dead pointer for no governance at all. What the defect
+# earns is the report at the end of the payload block below.
+#
+# Through payload_read rather than a bare `-f`, which is not a stylistic
+# choice: TestNoPayloadReadBypassesTheGateway requires it of every payload path
+# this file names, and the gateway is worth more than the rule here, because it
+# CLASSIFIES. codex-context.mjs asks existingFile, a bare stat, and cannot tell
+# a missing copy from an unreadable or an empty one; the remedies differ, so
+# the reader is told which. This makes the Claude host the stricter of the two
+# on the same broken install -- deliberate, and recorded in
+# TestBothHostsReportAMissingInvariantsTarget rather than left to be found.
+#
+# Reads LAST of path B on purpose. payload_read assigns $payload_text and
+# $payload_why, and every earlier caller has already copied what it needed out
+# of them ($header_prose, $stamp_defect, $current).
+inv="$plugin/reference/invariants.md"
+inv_defect=""
+payload_read "$inv" || inv_defect="$payload_why"
 rules_prose="$(
   printf '%s\n' "$header_prose" |
-  TRELLIS_RULES="$rules" TRELLIS_INV="$plugin/reference/invariants.md" awk '
+  TRELLIS_RULES="$rules" TRELLIS_INV="$inv" awk '
     BEGIN {
       rules = ENVIRON["TRELLIS_RULES"]
       inv = ENVIRON["TRELLIS_INV"]
@@ -1434,6 +1467,21 @@ payload="$(
     printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
   else
     printf '\nDelivered by the Trellis plugin. Its own version stamp could not be read (%s %s), so this readout cannot name which payload build it came from; the rules and rows above are complete and govern this session. No overlay is vendored in this project.\n' "$ref" "$stamp_defect"
+  fi
+  # TRL-70, and the sibling of the provenance arm directly above: delivery is
+  # unaffected -- the rules and the rows are complete and the session IS
+  # governed -- so a CONSULTED reference that cannot be read degrades this one
+  # line and nothing else, the same way an unreadable version stamp degrades
+  # the line above it.
+  #
+  # Said here rather than on a channel of its own because emit writes exactly
+  # one key. Every TRELLIS_ marker this hook can print is a path that injects
+  # NOTHING, so borrowing that vocabulary for a complete, governing delivery
+  # would blur the one signal a consumer can rely on. The Codex hook has a
+  # systemMessage field beside its context and uses it; this one does not, and
+  # the two reports are pinned on their SUBSTANCE rather than their channel.
+  if [ -n "$inv_defect" ]; then
+    printf '\nThis plugin payload has no readable %s (it %s), so the invariants pointer in the rules above names a file that cannot be read. The rules and rows above are complete and govern this session; that reference is consulted on demand, so only a rule that turns out ambiguous needs it. Reinstalling or updating the plugin (`claude plugin update trellis@kodhama`) is the likely fix.\n' "$inv" "$inv_defect"
   fi
 )"
 
