@@ -7,3 +7,4 @@ You are working in a project that follows **Trellis** — a small, load-bearing 
 @rules.md
 ---
 If a rule seems ambiguous, or in tension with this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before deviating.
+<!-- trellis:prose-complete -->

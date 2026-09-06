@@ -28,6 +28,11 @@ import (
 
 const rulesLoadedSentinel = "<!-- trellis:rules-loaded -->"
 
+// The generated header's own terminator (TRL-10), spelled out here rather than
+// imported from apply.go: a test that reads the production const cannot catch
+// the production const changing.
+const proseCompleteMarker = "<!-- trellis:prose-complete -->"
+
 type codexHookResult struct {
 	HookSpecificOutput *struct {
 		HookEventName     string `json:"hookEventName"`
@@ -224,8 +229,19 @@ func TestCodexHookValidStartupAndLiveRows(t *testing.T) {
 			t.Errorf("assembled context must contain %q once, got %d", unique, n)
 		}
 	}
+	// TRL-10: the boundary the Codex agent is told to look for is two markers in
+	// order, so that is what the injected context must expose. This used to
+	// assert the sentinel was followed by `---` and the invariants sentence —
+	// the prose landmarks block-codex.md keyed on, asserted from the same side
+	// of the contract, which is why neither could catch the other drifting.
+	if i := strings.Index(context, rulesLoadedSentinel); i < 0 ||
+		!strings.Contains(context[i:], "\n"+proseCompleteMarker+"\n") {
+		t.Errorf("assembled context must expose the sentinel-plus-end-marker boundary, in that order:\n%s", context)
+	}
+	// The footer prose still ships between them (decision-0053), but as prose
+	// nothing keys on rather than as the boundary itself.
 	if !strings.Contains(context, rulesLoadedSentinel+"\n\n---\n"+invariantsTrigger) {
-		t.Error("assembled context must expose exactly the generated sentinel-plus-fixed-footer boundary")
+		t.Error("assembled context lost the generated post-import footer")
 	}
 	if strings.Contains(context, "../plugins/trellis/reference") {
 		t.Error("assembled context must not source rule content from the plugin payload")
@@ -988,6 +1004,136 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 	}
 }
 
+// TRL-10. The bootstrap's delivery boundary must be expressed in markers the
+// GENERATOR writes, never in payload prose.
+//
+// This is the same defect #212 fixed on the Claude side, still live here. There,
+// the hook decided whether `.claude/rules/trellis.md` had been rendered by
+// matching the invariants sentence, the posture note and the activation heading —
+// all payload text an editor may legitimately reword. One reword flipped the
+// predicate, every freshly installed project got a permanent false "not governed"
+// warning, and the whole suite stayed green. install.sh:962-967 says so in a
+// comment and prints `<!-- trellis:rendered-begin -->` / `<!-- trellis:rendered-footer -->`
+// instead; staleness.sh:621-623 matches those as whole lines.
+//
+// block-codex.md carried the old shape: generated prose counted as delivered only
+// when the sentinel was followed by "the fixed footer whose first nonblank line is
+// `---` and whose next text is the ambiguity/fallback sentence" — two landmarks in
+// renderHeader's tail, which decision-0053 pins as SHIPPED wording but never
+// promises to freeze. The reader (a Codex agent following this block) and the
+// writer (renderHeader) shared no contract. So renderHeader now terminates the
+// header with `<!-- trellis:prose-complete -->` and the block keys on that.
+//
+// Three parts, because the defect has three faces and a pin on one alone lets the
+// other two come back:
+//
+//	(a) every literal item 1 tells the agent to match is writer-owned;
+//	(b) no UNBACKTICKED prose landmark either — item 1's worst dependency ("the
+//	    ambiguity/fallback sentence") named prose without quoting it, so (a)
+//	    alone would have scored the old wording as one violation, not two;
+//	(c) the property (a) and (b) exist to buy, exercised against the real
+//	    payload: reword the footer prose and every landmark still holds.
+//
+// The writer's half is pinned here too. A reader keyed on a marker no writer
+// emits is the same blackout with the blame reversed.
+func TestCodexBootstrapBoundaryIsMachineOwned(t *testing.T) {
+	files := payloadFiles()
+	block := files["block-codex.md"]
+	item := codexAssessmentItemOne(t, block)
+
+	// (a) Whitelist, not blacklist. A blacklist of known-bad landmarks passes
+	// every landmark nobody thought of, which is how prose validation survives.
+	writerOwned := map[string]string{
+		rulesLoadedSentinel: "the terminal line of generated rules.md",
+		proseCompleteMarker: "the terminal line of the generated header",
+	}
+	landmarks := backtickedLiterals(item)
+	if len(landmarks) == 0 {
+		t.Fatalf("premise: assessment item 1 quotes no landmark at all, so this test proves nothing:\n%s", item)
+	}
+	for _, landmark := range landmarks {
+		if _, ok := writerOwned[landmark]; !ok {
+			t.Errorf("assessment item 1 keys the completeness boundary on %q, which no generator writes as a marker — payload prose may be reworded and the predicate moves with it (TRL-10)", landmark)
+		}
+	}
+
+	// (b) The unquoted half.
+	for _, prose := range []string{"fixed footer", "first nonblank line", "ambiguity/fallback sentence"} {
+		if strings.Contains(block, prose) {
+			t.Errorf("block-codex.md still identifies the delivery boundary by the prose landmark %q — a reworded payload then fails a correct delivery, or passes a wrong one (TRL-10, mirroring #212)", prose)
+		}
+	}
+
+	// (c) The generated prose a Codex agent actually receives: the header with
+	// its sibling expanded, exactly what codex-context.mjs injects
+	// (`trellis.replace("@rules.md", rules)`).
+	delivered := strings.Replace(files["trellis-a.md"], "@rules.md", files["rules.md"], 1)
+	if delivered == files["trellis-a.md"] {
+		t.Fatal("premise: the header carries no @rules.md expansion point, so nothing was delivered")
+	}
+	// A legitimate editorial reword of the footer: same meaning, same pointer,
+	// same delivery. Both landmarks the retired predicate named are in here —
+	// the sentence, and the horizontal rule above it (`---` occurs exactly once
+	// in the header and never in rules.md, so this genuinely removes it).
+	reworded := strings.Replace(delivered, invariantsTrigger,
+		"If a rule is unclear, or pulls against this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before you deviate.", 1)
+	reworded = strings.Replace(reworded, "\n---\n", "\n***\n", 1)
+	if reworded == delivered {
+		t.Fatal("premise: the reword changed nothing, so the case would pass vacuously")
+	}
+	for _, landmark := range landmarks {
+		if !strings.Contains(delivered, landmark) {
+			t.Errorf("assessment item 1 tells the agent to match %q, which the delivered prose does not contain at all", landmark)
+		}
+		if !strings.Contains(reworded, landmark) {
+			t.Errorf("rewording the footer prose removed %q, a landmark item 1 keys on — delivery is unchanged, so the agent would report a correctly delivered payload as \"Trellis was not loaded\" (TRL-10)", landmark)
+		}
+	}
+
+	// The writer's half.
+	for _, name := range []string{"trellis-a.md", "trellis-b.md"} {
+		if !strings.HasSuffix(files[name], "\n"+proseCompleteMarker+"\n") {
+			t.Errorf("%s must END with %s — the marker proves the header's tail arrived, which it cannot do from the middle: %q", name, proseCompleteMarker, files[name])
+		}
+		if n := strings.Count(files[name], proseCompleteMarker); n != 1 {
+			t.Errorf("%s must carry %s exactly once, got %d — a second copy makes the boundary ambiguous", name, proseCompleteMarker, n)
+		}
+	}
+	// rules.md has its own terminator; two end markers in one delivered prose
+	// would let a truncation between them pass.
+	if strings.Contains(files["rules.md"], proseCompleteMarker) {
+		t.Errorf("rules.md must not carry %s — it ends at the sentinel, and the header ends after it", proseCompleteMarker)
+	}
+}
+
+// codexAssessmentItemOne returns block-codex.md's numbered assessment item 1 —
+// the sentence that defines when generated prose counts as delivered complete.
+// Extracted from the shipped block rather than restated here, so the test reads
+// the same bytes the Codex agent does (decision-0053: this artifact has no
+// runtime, so its bytes are its only contract).
+func codexAssessmentItemOne(t *testing.T, block string) string {
+	t.Helper()
+	start := strings.Index(block, "\n1. ")
+	end := strings.Index(block, "\n2. ")
+	if start < 0 || end <= start {
+		t.Fatalf("block-codex.md no longer carries a numbered assessment item 1 followed by item 2; this test cannot locate the completeness predicate:\n%s", block)
+	}
+	return block[start+1 : end]
+}
+
+var backtickedLiteralRe = regexp.MustCompile("`([^`]+)`")
+
+// backtickedLiterals returns every backtick-quoted literal in s, in order. In
+// block-codex.md a backticked string is an EXACT string the agent is told to
+// match, so this is the set of landmarks a predicate depends on.
+func backtickedLiterals(s string) []string {
+	var out []string
+	for _, m := range backtickedLiteralRe.FindAllStringSubmatch(s, -1) {
+		out = append(out, m[1])
+	}
+	return out
+}
+
 // Guards what survives of spec-0007@v1's host-boundary contract after
 // decision-0065. It no longer guards R17-R30/R38-R40/S10-S18/S21 — those
 // covered setup's two-host vendoring contract, which the product removed. The
@@ -1615,7 +1761,11 @@ func codexReconciledRowsFromContext(t *testing.T, context string) string {
 	// opens with a fixed stem matched here; TestCodexBudgetsTheAnnouncementAlongsideTheBody
 	// compares the extracted block against the stripped file to prove the stem is
 	// recognised.
-	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(invariantsTrigger) +
+	// Anchored on the generated header's end marker, not on the invariants
+	// sentence it used to match (TRL-10). The sentence is payload prose: a
+	// reword would have left this helper unable to find the row block at all,
+	// failing every test that calls it for a reason none of them is about.
+	m := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(proseCompleteMarker) +
 		`\n\n(.*?)(?:\n\n## Rule activation was reconciled this session` +
 		`|\n\nRule activation was reconciled this session: ` +
 		`|\n\n## Provenance comments were left out of the rows above` +

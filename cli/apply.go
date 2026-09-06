@@ -115,6 +115,21 @@ const (
 	// trellisRulesLoadedSentinel is the stable, posture-independent receipt at
 	// the exact terminal line of generated rules.md (spec-0007@v1 R35).
 	trellisRulesLoadedSentinel = "<!-- trellis:rules-loaded -->"
+
+	// trellisProseCompleteMarker is the same kind of receipt one level up: the
+	// exact terminal line of the generated HEADER, so the sentinel above (which
+	// only ends the imported rules.md) and this one together bound the whole
+	// generated prose. TRL-10 added it because block-codex.md had no such
+	// marker and keyed its completeness predicate on the tail's PROSE instead —
+	// "the fixed footer whose first nonblank line is `---` and whose next text is
+	// the ambiguity/fallback sentence". That is the defect #212 fixed on the
+	// Claude side: install.sh:962-967 had matched the invariants sentence, the
+	// posture note and the activation heading, one legitimate reword flipped the
+	// predicate, and every fresh install got a permanent false "not governed"
+	// warning with the suite green throughout. A marker the writer owns cannot
+	// drift out from under its reader; payload prose can, and decision-0053 pins
+	// the shipped wording without promising to freeze it.
+	trellisProseCompleteMarker = "<!-- trellis:prose-complete -->"
 )
 
 // strengthLine turns the profile's C1 lean into a plain-language instruction the host
@@ -255,6 +270,17 @@ func renderClaudeBlock() string {
 // definition. Without the exception stated here, describing reconciliation would
 // have converted a silent opt-out into sixteen synthesized active rows.
 //
+// Assessment item 1 names two markers and no prose (TRL-10). It deliberately
+// does NOT add the end marker to the four-inputs paragraph below, which
+// validates the FILES rather than what is already in context: an overlay
+// vendored before this release carries no end marker, and requiring one there
+// would turn a stale-but-correct install into "Trellis was not loaded". As it
+// stands such an install simply fails the in-context boundary and re-reads the
+// files it would have read anyway — a redundant read, never a blackout. The
+// file-level checks were already structural (an exact `@rules.md` expansion
+// point, the one terminal sentinel, a `^payload@[0-9a-f]{12}$` stamp), so
+// item 1 was the only prose-keyed predicate left in the block.
+//
 // One clause deliberately states the RATIFIED contract over current hook
 // behaviour, and is called out rather than quietly reconciled to it: "a repeated
 // top-level key" is fatal per decision-0084 section 1's table, but a repeated
@@ -272,14 +298,14 @@ Trellis rules are authoritative only in the installed project files listed below
 
 Before substantive work, assess two independently loaded components:
 
-1. Generated prose is complete only when the exact terminal sentinel ` + "`" + trellisRulesLoadedSentinel + "`" + ` is followed, after only its generated newline, by the fixed footer whose first nonblank line is ` + "`---`" + ` and whose next text is the ambiguity/fallback sentence. A sentinel alone, a diagnostic marker, this bootstrap's mention of the sentinel, or bare slug-name presence is not completion.
+1. Generated prose is complete only when the exact terminal sentinel ` + "`" + trellisRulesLoadedSentinel + "`" + ` is followed, later in the same generated prose, by the exact end marker ` + "`" + trellisProseCompleteMarker + "`" + ` — both written by the generator, in that order, each matched as a whole line and as nothing else. The prose between and around them is free to be reworded and is no part of this test. A sentinel alone, an end marker alone, a diagnostic marker, this bootstrap's mention of either marker, or bare slug-name presence is not completion.
 2. Activation TOML is valid when it parses and ` + "`strictness`" + `, if present, is exactly ` + "`firm`" + ` or ` + "`adaptive`" + ` — absent, read it as ` + "`adaptive`" + `. A single top-level ` + "`governed = false`" + ` is an opt-out, not a row set: nothing is reconciled, no rule applies including the two floor rules, and you say so rather than govern. Otherwise a row set that does not match the canonical list below is **reconciled, never refused** — for this session, in what you load, never by editing the file: a canonical slug carrying no row of its own governs as active, the first occurrence of a repeated slug is kept, and a correctly shaped row naming a slug not in that list, or a later duplicate of one in it, is set aside — commented out with the date and the reason, its value kept verbatim, never deleted. A disabled floor row is understood as overridden-by-floor. Only a genuine syntax fault makes the file invalid: a row not of the form ` + "`inv-<name>`" + ` or ` + "`floor-<name>`" + `, ` + "`<name>`" + ` lowercase letters and hyphens only, followed by ` + "`= { active = <boolean> }`" + `; before the ` + "`[rules]`" + ` header, a key other than ` + "`seeded_from`" + `, ` + "`strictness`" + ` or ` + "`governed`" + `, or one of those repeated; a duplicate or foreign section; a ` + "`seeded_from`" + ` or ` + "`strictness`" + ` whose value is not a quoted string, or a ` + "`strictness`" + ` that is present but is neither value; or a ` + "`governed`" + ` that is not a boolean.
 
 ` + "`" + strings.Join(catalogSlugOrder(), "`, `") + "`" + `
 
 Use this single-copy fallback table:
 
-- If both the sentinel-plus-fixed-footer boundary and valid activation TOML are already present from a previously verified generated overlay, use the loaded context and read no Trellis file again.
+- If both the sentinel-plus-end-marker boundary and valid activation TOML are already present from a previously verified generated overlay, use the loaded context and read no Trellis file again.
 - If the boundary is present but activation TOML is absent or invalid, read only ` + "`.trellis/rules.toml`" + `.
 - If valid activation TOML is present but the boundary is absent, read only the three ` + "`.trellis/internal/`" + ` files.
 - If neither component is present, read and validate all four installed inputs.
@@ -295,10 +321,21 @@ Missing native-hook delivery is not itself an error: attempt the applicable fall
 // in its sibling rules.md — the assembled readout — and points at the invariant
 // reference. It imports only the sibling (paths resolve relative to the importing
 // file; decision-0051 rule 1).
+//
+// The last line is trellisProseCompleteMarker, and it is the LAST line on
+// purpose: a marker in the middle proves only that delivery started. Placed
+// after the tail it proves the tail arrived too, which is the half the retired
+// prose predicate was reaching for when it described what followed the
+// sentinel. install.sh renders this file into .claude/rules/trellis.md by
+// splitting it at @rules.md, so the marker also lands in the Claude-side
+// rendered file, above that script's own <!-- trellis:rendered-footer -->.
+// staleness.sh's stage machine ignores lines it does not match, so the extra
+// line changes nothing there.
 func renderHeader(p Profile) string {
 	return governanceHeader(p) + "\n" +
 		"@rules.md\n" +
-		"---\n" + invariantsTrigger + "\n"
+		"---\n" + invariantsTrigger + "\n" +
+		trellisProseCompleteMarker + "\n"
 }
 
 // catalogSlugOrder parses the bundled catalog for the assessable slugs in document
