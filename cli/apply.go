@@ -123,12 +123,25 @@ const (
 	// marker and keyed its completeness predicate on the tail's PROSE instead —
 	// "the fixed footer whose first nonblank line is `---` and whose next text is
 	// the ambiguity/fallback sentence". That is the defect #212 fixed on the
-	// Claude side: install.sh:962-967 had matched the invariants sentence, the
-	// posture note and the activation heading, one legitimate reword flipped the
-	// predicate, and every fresh install got a permanent false "not governed"
-	// warning with the suite green throughout. A marker the writer owns cannot
-	// drift out from under its reader; payload prose can, and decision-0053 pins
-	// the shipped wording without promising to freeze it.
+	// Claude side, where the STALENESS HOOK had matched the invariants sentence,
+	// the posture note and the activation heading; one legitimate reword flipped
+	// the predicate, and every fresh install got a permanent false "not governed"
+	// warning with the suite green throughout. install.sh:962-967 is where that
+	// history is recorded — the script PRINTS the markers, it never matched the
+	// prose itself. A marker the writer owns cannot drift out from under its
+	// reader; payload prose can.
+	//
+	// decision-0053's "tested wording is the shipped wording" does not reach
+	// these bytes, and the reason is stronger than "a marker is not prose": the
+	// experiment assembled its tested context from the INLINE-channel files
+	// (annotation-vs-absence/run.sh:116-126) and only copied trellis-a.md to
+	// disk (:101), so renderHeader's tail was never in it. Nothing validated
+	// moves here anyway — the marker is appended after every sentence, none
+	// reworded. See TestCodexBootstrapBoundaryIsMachineOwned for the full
+	// citation. decision-0058's "a small, stable loaded-context sentinel" is
+	// singular but bounds RULE authority ("the stamp is not a second
+	// authority"); this is a second delivery receipt, not a second authority
+	// over what governs.
 	trellisProseCompleteMarker = "<!-- trellis:prose-complete -->"
 )
 
@@ -331,6 +344,14 @@ Missing native-hook delivery is not itself an error: attempt the applicable fall
 // rendered file, above that script's own <!-- trellis:rendered-footer -->.
 // staleness.sh's stage machine ignores lines it does not match, so the extra
 // line changes nothing there.
+//
+// "LAST line" scopes to THIS FILE, and deliberately is not a terminality
+// requirement on anything downstream — in .claude/rules/trellis.md four lines of
+// install.sh footer follow it, and in the Codex injection the rows, the mandate
+// and the stamp do (codex-context.mjs buildContext). What the position buys is
+// that the marker cannot precede the tail, so it cannot be reached by a delivery
+// that stopped early. Do not turn it into "the marker is the last line of the
+// context": that is false in both delivered artifacts and would fail every one.
 func renderHeader(p Profile) string {
 	return governanceHeader(p) + "\n" +
 		"@rules.md\n" +

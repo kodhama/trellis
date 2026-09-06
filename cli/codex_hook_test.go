@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -1019,20 +1020,43 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 // block-codex.md carried the old shape: generated prose counted as delivered only
 // when the sentinel was followed by "the fixed footer whose first nonblank line is
 // `---` and whose next text is the ambiguity/fallback sentence" — two landmarks in
-// renderHeader's tail, which decision-0053 pins as SHIPPED wording but never
-// promises to freeze. The reader (a Codex agent following this block) and the
+// renderHeader's tail. The reader (a Codex agent following this block) and the
 // writer (renderHeader) shared no contract. So renderHeader now terminates the
 // header with `<!-- trellis:prose-complete -->` and the block keys on that.
+//
+// On decision-0053, stated precisely rather than conceded loosely: its "tested
+// wording is the shipped wording" bullet is a CONTEXT bullet (0053:51; ## Context
+// opens at :28, ## Decision at :57) and it names three validated artifacts — "a
+// specific authority header, a rows-inlined-below-the-rules layout for the inline
+// channel, and live-rows seed comments (`header_arm_toml`)". renderHeader's tail
+// is not among them, and could not be: the experiment put trellis-a.md ON DISK
+// (eval/experiments/annotation-vs-absence/run.sh:101) while assembling the tested
+// context from block-inline-a-head.md + the readout + rows + header_arm_tail
+// (run.sh:116-126), so these bytes were never in it. The divergence proves it —
+// 0053's tail transform landed on block-inline-tail.md, which today carries a
+// live-rows clause invariantsTrigger does not. The pin does not reach this file;
+// no validated byte moves here, and the marker lands after even the untested tail.
 //
 // Three parts, because the defect has three faces and a pin on one alone lets the
 // other two come back:
 //
-//	(a) every literal item 1 tells the agent to match is writer-owned;
+//	(a) every literal item 1 tells the agent to match is writer-owned, AND both
+//	    markers are still named — one marker alone proves only that delivery
+//	    started, since the sentinel ends the imported rules.md and so sits
+//	    mid-document once expanded;
 //	(b) no UNBACKTICKED prose landmark either — item 1's worst dependency ("the
 //	    ambiguity/fallback sentence") named prose without quoting it, so (a)
-//	    alone would have scored the old wording as one violation, not two;
+//	    alone would have scored the old wording as one violation, not two. Note
+//	    honestly that (b) is a BLACKLIST, against (a)'s whitelist: unbackticked
+//	    prose cannot be enumerated, so (b) catches the three landmarks the old
+//	    predicate used and cannot catch one nobody has written yet;
 //	(c) the property (a) and (b) exist to buy, exercised against the real
-//	    payload: reword the footer prose and every landmark still holds.
+//	    delivered payload rather than against the block in isolation. With (a)
+//	    holding, the landmark set is the two markers and the footer reword
+//	    cannot touch them — so (c) passes by construction TODAY and is a
+//	    regression net, not the primary guard: it goes red if the delivery stops
+//	    carrying a landmark at all (rules.md losing its sentinel, the header
+//	    losing its marker, @rules.md ceasing to expand).
 //
 // The writer's half is pinned here too. A reader keyed on a marker no writer
 // emits is the same blackout with the blame reversed.
@@ -1057,6 +1081,32 @@ func TestCodexBootstrapBoundaryIsMachineOwned(t *testing.T) {
 		}
 	}
 
+	// The OTHER direction, and it is not redundant. The loop above proves every
+	// landmark item 1 names is writer-owned; it says nothing about item 1 naming
+	// FEWER. An item 1 rewritten to the sentinel alone quotes none but writer-owned
+	// literals, so it passes that loop, passes the prose check below (it names no
+	// prose), and passes the reword case (the sentinel survives any reword) — the
+	// whole guard green over the predicate this block itself calls insufficient:
+	// "A sentinel alone, an end marker alone, ... is not completion". The sentinel
+	// ends the imported rules.md and so sits MID-document once expanded; alone it
+	// proves only that delivery started, which is the half TRL-10 exists to close.
+	for want, role := range writerOwned {
+		if !slices.Contains(landmarks, want) {
+			t.Errorf("assessment item 1 no longer names %s (%s) — with one marker the predicate proves only that delivery started, not that the tail arrived (TRL-10)", want, role)
+		}
+	}
+
+	// Named in item 1 and NOWHERE else, which pins the deliberate asymmetry at
+	// renderCodexBootstrap: the four-inputs paragraph validates the FILES and is
+	// left alone on purpose. An overlay vendored before this release carries no
+	// end marker, so requiring one there would turn a stale-but-correct install
+	// into a false "Trellis was not loaded" — the very failure this fixes. That
+	// carve-out lives only in a comment today; a later "tighten it up" would
+	// silently orphan every old overlay, and this is what goes red when it does.
+	if n := strings.Count(block, proseCompleteMarker); n != 1 {
+		t.Errorf("block-codex.md names %s %d times; it belongs to assessment item 1 alone — the file-level test must keep validating an overlay vendored before this release (TRL-10)", proseCompleteMarker, n)
+	}
+
 	// (b) The unquoted half.
 	for _, prose := range []string{"fixed footer", "first nonblank line", "ambiguity/fallback sentence"} {
 		if strings.Contains(block, prose) {
@@ -1075,6 +1125,9 @@ func TestCodexBootstrapBoundaryIsMachineOwned(t *testing.T) {
 	// same delivery. Both landmarks the retired predicate named are in here —
 	// the sentence, and the horizontal rule above it (`---` occurs exactly once
 	// in the header and never in rules.md, so this genuinely removes it).
+	if n := strings.Count(delivered, "\n---\n"); n != 1 {
+		t.Fatalf("premise: the reword below assumes the header's `---` is the ONLY one in the delivered prose, so that replacing the first occurrence removes the landmark it names; got %d. A `---` reaching rules.md would send the replacement to the wrong line and this case would stop exercising the reword it claims to", n)
+	}
 	reworded := strings.Replace(delivered, invariantsTrigger,
 		"If a rule is unclear, or pulls against this project's own instructions, read its entry in `.trellis/internal/invariants.md` — the description and with/without examples — before you deviate.", 1)
 	reworded = strings.Replace(reworded, "\n---\n", "\n***\n", 1)
