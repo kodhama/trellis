@@ -20,7 +20,7 @@ date: 2026-09-07
 > session, which authored none of `#284`, `#294`, `#295`, `#296` or `#297`" — was removed in review
 > as unverifiable: `#297`'s commit carries the same `Claude-Session` trailer this one does, so the
 > assertion is contradicted by the only record that could check it. `decision-0095` makes the same
-> claim with the same contradiction; that is its to correct, and it is filed rather than fixed
+> claim with the same contradiction; that is its to correct, and `TRL-79` carries it rather than this record fixing it
 > here. What can honestly be said is the sentence above — what this record re-derived and what it
 > re-measured — which is the property the claim was reaching for anyway.*
 
