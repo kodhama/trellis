@@ -20,7 +20,7 @@ date: 2026-09-07
 > session, which authored none of `#284`, `#294`, `#295`, `#296` or `#297`" — was removed in review
 > as unverifiable: `#297`'s commit carries the same `Claude-Session` trailer this one does, so the
 > assertion is contradicted by the only record that could check it. `decision-0095` makes the same
-> claim with the same contradiction; that is its to correct, and `TRL-79` carries it rather than this record fixing it
+> claim with the same contradiction; that is `decision-0095`'s own to correct, and `TRL-79` carries it rather than this record fixing it
 > here. What can honestly be said is the sentence above — what this record re-derived and what it
 > re-measured — which is the property the claim was reaching for anyway.*
 
@@ -214,8 +214,11 @@ that path honest, not permanent.
 *"Claude never delivers an invariants pointer into a vendored project and has nothing to report
 about"*, inheriting the claim from `decision-0095`:6. Measured, the **hook** does not; the
 **delivery** does. `reference/block-claude.md` imports `@.trellis/internal/trellis.md`, and
-`reference/trellis-a.md` — the file a vendored overlay copies to that path — carries the invariants
-pointer exactly once, the only payload file that does. So a Claude session in a vendored project
+`reference/trellis-a.md` **and** `reference/trellis-b.md` — the two posture renders, either of which
+a vendored overlay copies to that path — each carry the invariants pointer exactly once, on a line
+the two files share. *An earlier draft called `trellis-a.md` the only payload file that does;
+review measured that false, and the correction strengthens the point: the pointer reaches a
+vendored Claude session under **either** posture.* So a Claude session in a vendored project
 *is* handed the pointer, through the static import chain, while `staleness.sh` reads only
 `version`, `trellis.md` and `rules.md` on that branch and exits.
 
@@ -253,10 +256,17 @@ reason is now the true one.
   claim — that `TRL-73`'s four shapes satisfy `existingFile` and never reach `decision-0095`'s arm
   — remains true, because (1) leaves that check where it was. Only the test **name** D3 cites has
   moved, and D5 above states what it moved to.
-- **`decision-0094`:5 is answered rather than superseded.** It reserved a question and declined to
-  decide it *"on its own authority"*; a reservation that is later answered is not a claim that
-  became false, so no clause of it is marked. Its D5 predicted the outcome for the eligibility
-  half and this record agrees with it.
+- **`decision-0094`:5 is answered, and its closing clause is marked.** The two are not the same
+  act. The *reservation* — "this is a different ruling" — is answered rather than falsified, and a
+  reservation answered is not a claim that became false. But D5 **closes** with *"and nobody has
+  made it"*, and D1 above makes it, so that sentence is a claim and it is now false: a reader of
+  `decision-0094` alone would otherwise carry away that the substitution question is still open.
+  `decision-0094` carries `decision-0096` in `superseded_in_part_by` for that clause alongside its
+  *"What is not decided here"* bullet. *An earlier draft of this record said no clause of
+  `decision-0094`:5 was marked while the mark on `decision-0094` itself said one was — the third
+  blanket-certification-beside-a-named-exception the corpus check caught in this change, and the
+  reason the `changes:` count is four rather than three.* D5's substantive prediction for the
+  eligibility half stands and this record agrees with it.
 - **The report is `decision-0095`'s sentence in its first half and deliberately not in its second.**
   The pair is behaviourally pinned rather than textually: `assertOverlayOwnCopyReport` requires the
   shared lead, the fixture's own classification, the shared claim and the absence of the wording
@@ -264,9 +274,13 @@ reason is now the true one.
   and that no reinstall be offered. **No byte constant is claimed for the report**, deliberately:
   it embeds the overlay's absolute path, so its size tracks that path's length and a figure
   measured under `t.TempDir()` is a property of the fixture rather than of the report — the error
-  `decision-0095`:5 refused to make and `decision-0094`:148-151 recorded paying for. Measured on
-  one fixture it ran 667–759 bytes across the classifications; what is claimed is only that
-  **none of it reaches `context`**.
+  `decision-0095`:5 refused to make and `decision-0094`:148-151 recorded paying for. What **is** reproducible is its
+  shape: the report is exactly **519 bytes + the overlay path + the classification**, and the
+  classification contributes either 8 bytes (`is empty`) or 98 (the unreadable phrase). *An earlier
+  draft quoted "667–759 bytes across the classifications", which review showed is arithmetically
+  impossible for any single fixture — the classification span is exactly 90 bytes, so a 92-byte
+  range had silently mixed in two different temp-path lengths. The formula above reproduces all
+  four measurements.* What is claimed is only that **none of it reaches `context`**.
 - **The overlay's copy is now read on every vendored session, where before it was only stat'd.**
   `payloadDefect` scans a chunk at a time and stops at the first byte that is not a newline, so a
   healthy `invariants.md` costs one 4 KB read and nothing is retained — the same discipline the
@@ -283,7 +297,11 @@ reason is now the true one.
   make the plugin's copy eligible and the withheld reinstall would be a real remedy. So the report
   fires only on `is empty` and `exists but could not be read`. *Review found this; an earlier draft
   called both directions correct after checking only the lead sentence.* Nothing can render the
-  empty `(it )` that `decision-0095` fixed on the other arm.
+  empty `(it )` that `decision-0095` fixed on the other arm. **This half is deliberately unpinned,
+  and that is inherent rather than an omission**: the states it excludes are reachable only by
+  mutating the filesystem between two `statSync` calls on one path, so no fixture can build one and
+  relaxing the condition to `!== ""` survives the suite. Recorded because a guard that cannot exist
+  is worth naming rather than leaving for a reader to find missing.
 - **The report will not claim a pointer the delivery never carried.** It asserts as fact that *"the
   invariants pointer in the context just injected names a file that yields nothing to read"*, and
   on this branch the prose is the **project's own** `trellis.md`, which nothing validates beyond
@@ -308,8 +326,10 @@ reason is now the true one.
   left to be rediscovered.
 - A payload change, so a release: `VERSION` 0.21.0 → 0.22.0, both `plugin.json` manifests, and
   `install.sh`'s baked `TRELLIS_BUNDLE_MANIFEST` (`decision-0028`), regenerated from the actual
-  files. Only the four files this change touches moved in the manifest; `reference/checksums` and
-  `reference/version` hash `reference/` alone and did not.
+  files. **Five** files moved in the manifest — `VERSION`, both `plugin.json`s,
+  `hooks/codex-context.mjs`, and `README.md`, which the review round added as the derivative
+  `decision-0028` requires and an earlier version of this bullet failed to count.
+  `reference/checksums` and `reference/version` hash `reference/` alone and did not move.
 - `decision-0053` is not engaged: the shipped *prose* is unchanged. What changed is what one
   channel says **about** a file it points at.
 

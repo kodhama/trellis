@@ -422,7 +422,14 @@ func assertOverlayOwnCopyReport(t *testing.T, pluginRoot, project, overlayCopy s
 	// the only place decision-0096:1's ruling reaches a person. The sibling arm
 	// sets the precedent for exactly this hazard (both of its remedy clauses are
 	// pinned, "because review found the second one droppable in silence").
-	const wantWhyNoSubstitute = "A vendored overlay is authoritative, so the plugin's own copy does not stand in for it"
+	// THE WHOLE SENTENCE, not its opening clause. Review planted the mutant that
+	// proves the difference: swapping the tail for "when that copy is also broken"
+	// asserts the OPPOSITE of decision-0096:2 — it makes the plugin's copy sound
+	// merely unavailable rather than ineligible — and it survived a prefix-only
+	// assertion, because it keeps the lead, the classification, "yields nothing to
+	// read", the remedy, names no pluginRoot and offers no reinstall. The tail is
+	// where the ruling actually lives.
+	const wantWhyNoSubstitute = "A vendored overlay is authoritative, so the plugin's own copy does not stand in for it whatever state that copy is in"
 	if !strings.Contains(got.SystemMessage, wantWhyNoSubstitute) {
 		t.Errorf("the report does not say why no substitute is offered, so a reader meeting the sibling report's reinstall advice has no way to tell why it is absent here (decision-0096:1)\nwant: %q\ngot: %q", wantWhyNoSubstitute, got.SystemMessage)
 	}
@@ -864,12 +871,18 @@ const vendoredInvariantsReportLead = "Trellis warning: this project's vendored o
 // earlier version of this comment called all five silence proxies; review
 // measured that false.
 //
-// That count is the PRE-REWRITE one and is kept as the measurement it was:
-// decision-0096's guard now runs each shape twice, against a healthy plugin copy
-// and a missing one, so the same instrumentation returns EIGHT on this tree. The
-// figure that matters is unchanged either way — every firing is inside that
-// guard, and no fixture reached by this helper is in decision-0096's cell at
-// all, since writeValidCodexOverlay writes no invariants.md.
+// THE 58 DOES NOT REPRODUCE, and is flagged rather than re-endorsed. Measured on
+// this branch and on main alike, by logging every hook stdout the suite drives:
+// 155 invocations on main and 161 here, of which THIS report fires 65 on both.
+// The count is pre-existing (it predates this branch and is quoted in TRL-75's
+// own title), so it is left as the historical figure it is and corrected here
+// rather than silently carried forward. What the number was used to argue is
+// unaffected: whatever the exact count, every one of those invocations is in
+// this cell by construction and the narrowing below is still the cheaper option.
+//
+// decision-0096's guard changes that count by ZERO — its ten new invocations all
+// carry an overlay invariants.md and so never reach this arm at all, which is the
+// same fact stated two paragraphs down.
 //
 // Narrowing those five is deliberately preferred over healing
 // writeCodexPluginRoot. Giving that helper a reference/invariants.md would move
@@ -895,8 +908,11 @@ const vendoredInvariantsReportLead = "Trellis warning: this project's vendored o
 // trailing "is the likely fix.", so the strip below removes either. The two can
 // never both fire — they sit on mutually exclusive arms — and no fixture
 // reached by this helper is in decision-0096's cell at all, since
-// writeValidCodexOverlay writes no invariants.md. Measured: wiring that report
-// up fired it on 4 hook invocations suite-wide, all four inside its own guard.
+// writeValidCodexOverlay writes no invariants.md. Measured: wiring that report up
+// fired it on 4 hook invocations suite-wide against the PRE-REWRITE fixture, and
+// on 8 against the merged one, because decision-0096's guard runs each shape
+// twice — against a healthy plugin copy and a missing one. Every firing is inside
+// that guard on either count.
 func warningsBesideVendoredInvariants(t *testing.T, msg string) string {
 	t.Helper()
 	if !strings.HasPrefix(msg, vendoredInvariantsReportLead) {
