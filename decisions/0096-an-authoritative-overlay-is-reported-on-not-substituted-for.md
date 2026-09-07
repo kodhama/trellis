@@ -94,8 +94,11 @@ less the healthy shape's two silent runs) and **1** in
 `TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf`. An earlier version of this
 caption said **8** and "no other fixture reaches it", and both were falsified **by the very commit
 that wrote them**, which added the second guard without re-measuring. That is the third figure in
-this record review has had to correct, which is worth recording as a pattern rather than a
-one-off.*
+this record review has had to correct — after the inherited **58** and the **32**-byte token —
+which is worth recording as a pattern rather than as three one-offs. *Counting them is itself
+error-prone: this record has corrected six figures in all, and an adjacent paragraph calls the 58
+"a third figure" on a different reckoning. What is not in doubt is the pattern — a figure quoted
+in this record has needed correcting in every review round that looked for one.*
 
 *A third figure is not this change's and does not reproduce either. The **58** in the contrast
 column is `decision-0095`'s, inherited rather than re-measured, and instrumenting the suite returns
@@ -395,8 +398,12 @@ reason is now the true one.
   D1: it would silently change which invariants govern a project that vendored its own.
 - **Grounded in an artifact?** The ruling is one `else if`-chain arm, one `warnings.push`, and a
   guard driven by the shape table that already existed. Every figure in Context is re-runnable
-  against **the tree it names** — the pre-change one — and Context says which two do not survive
-  the change, because review measured 8 firings where the table records 4. The byte figures in D6
+  against **the tree it names**, and Context says for each figure which tree that is: the table is
+  the pre-change measurement a cost weighed before choosing has to be, and the captions beneath it
+  carry the merged-tree numbers — **9** firings against the table's 4, and 65 sibling firings on
+  both trees. *An earlier version of this line said 8 and called every figure pre-change; the 8 was
+  stale before the sentence was written and the gloss was false for the merged-tree figures.* The
+  byte figures in D6
   are from a fixture, not an estimate, and no constant is claimed for the report itself. Reverting the arm
   fails `TestCodexReportsTheOverlaysOwnDeadInvariantsWithoutSubstituting` on its four unusable
   shapes and leaves the healthy one green — the red this change was written against.
