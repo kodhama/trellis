@@ -1288,7 +1288,9 @@ if (sources.root === pluginRoot) {
   // AUTHORITATIVE LOCATION FOR THIS FILE, AND IT IS OCCUPIED. Substitution
   // presupposes something to substitute FOR (decision-0093:3); here there is.
   // Repointing would move a vendored project off the address it chose onto one
-  // the plugin controls -- the runtime substitution README.md:27 forbids -- and
+  // the plugin controls -- the runtime substitution README.md:32 forbids (:27
+  // carries the authoritativeness claim; :32 the prohibition, and the three
+  // older citations in this file conflate them) -- and
   // would do it INVISIBLY, where the dead pointer it replaces is at least
   // visible to whoever opens it. So `existingFile` above stays a presence test
   // and this arm moves nothing.
@@ -1392,8 +1394,10 @@ if (sources.root === pluginRoot) {
   // String.replace interprets `$&`, `` $` `` and `$'` in the REPLACEMENT --
   // which `rules` is. A `$`-pattern adjacent to the token could therefore make
   // the assembled text and this test disagree in either direction. That hazard
-  // is pre-existing and untouched here, and it is the same one :1127-1132
-  // records the repoint using split/join to avoid; the assembly was never given
+  // is pre-existing and untouched here, and it is the same one the split/join
+  // comment above this file's repoint records avoiding (cited without a line
+  // span: an earlier version said :1127-1132 and the rationale runs one line
+  // later at both ends); the assembly was never given
   // the same treatment. Filed rather than fixed in this change, which is about
   // a report rather than about how the payload is joined.
   // TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf pins the

@@ -58,8 +58,11 @@ The vendored state table, before this record:
 **Two readings are defensible and the tension is real.** `decision-0094`:5 reserved the question
 in terms that lean toward silence — *"a zero-byte file at the authoritative path is still the
 project's own file"* — and `plugins/trellis/README.md`:27 holds that where a vendored
-`.trellis/internal/` exists **it remains authoritative**, with *"the plugin's `reference/` files
-stay installation sources rather than runtime **substitutes**"*. On that reading, remarking on the
+`.trellis/internal/` exists **it remains authoritative** (`README.md`:27), with *"the plugin's
+`reference/` files stay installation sources rather than runtime **substitutes**"* — which is
+`README.md`:32, not :27. *The whole chain cites :27 for both halves; measured, :27 carries the
+authoritativeness claim and :32 the substitution prohibition. `decision-0093` and `decision-0094`
+carry the same conflation and are theirs to correct; the copies this change ships are right.* On that reading, remarking on the
 overlay's copy is commentary on the project's own content rather than on a broken install.
 
 **Measured on this tree before choosing.** Wiring a bare report onto the arm and running
@@ -102,7 +105,13 @@ in this record has needed correcting in every review round that looked for one.*
 
 *A third figure is not this change's and does not reproduce either. The **58** in the contrast
 column is `decision-0095`'s, inherited rather than re-measured, and instrumenting the suite returns
-**65** — on `main` and on this branch alike, out of 155 and 161 hook invocations respectively. The
+**65** — on `main` and on this branch alike, out of **155 and 162** `runCodexHook` calls
+respectively. *The method has to be named, because two readings of "invocation" differ here and an
+earlier draft mixed them inside one sentence: counting `runCodexHook` calls gives 155/162, while
+counting those returning a non-empty stdout gives 154/161. The 161 was that second reading, left
+behind when the commit that moved this figure corrected `cli/invariants_pointer_test.go` and not
+the record — so the record pointed the reader at the file that disagreed with it. Both now read
+155/162, on the call-count method.* The
 number is left in the table as the quoted historical figure it is, flagged here and in
 `cli/invariants_pointer_test.go`, and **not** silently re-endorsed: an earlier draft of this caption
 corrected two figures and walked past the third, in a record whose Self-check claims every figure is
@@ -121,7 +130,7 @@ to the second no, and `decision-0095` already drew the line between them.**
    project has its own authoritative location for this file, and it is occupied.** Substitution
    presupposes something to substitute *for* (`decision-0093`:3); here there is. Repointing would
    move a vendored project off the address it chose onto one the plugin controls — the runtime
-   substitution `README.md`:27 forbids — and it would do so **invisibly**, where the dead pointer
+   substitution `README.md`:32 forbids — and it would do so **invisibly**, where the dead pointer
    it replaces is at least visible to whoever opens it. `existingFile` stays a presence test, at
    the same call site, unchanged. The question is now answered for the four shapes `TRL-73` names
    rather than reserved indefinitely — **and for those four only**, which review forced this record
