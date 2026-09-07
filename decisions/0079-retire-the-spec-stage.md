@@ -119,7 +119,7 @@ stand.
   > two deleted sections (seven acceptance criteria, six questions); **six of them were already
   > covered elsewhere and seven were not**, and none was disposed of by any of `decision-0078`'s
   > three outcomes. Dropping without saying so is the silent fourth that rule exists to forbid.
-  > The sibling claim two bullets up — *"Trellis-core loses no shipped rule"* — **survives**,
+  > The sibling claim *"Trellis-core loses no shipped rule"* — its own bullet above — **survives**,
   > narrowly: every dropped item was a criterion or a question, never a rule the conformance check
   > enforces.
   >

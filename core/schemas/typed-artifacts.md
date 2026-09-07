@@ -36,7 +36,9 @@ date: 2026-08-29
 > text rather than quoted from it. The dropped `AC3` inline marker is restored, so §1 and §2 again
 > cite their criteria alike. Citations to `spec-0001`/`spec-0002` themselves are left alone:
 > `decision-0079`'s retired-artifacts registry is what resolves those, and that record chose not to
-> edit citing artifacts. **The retired display codes `D2` and `B4` are left as migrated**, against
+> edit citing artifacts. **The retired display codes `D2` and `B4` are left unswept** — including
+> the `D2` in AC5's title below, which this change re-introduces by recovering `spec-0002`'s
+> wording, and which is therefore an addition rather than a non-action. That is against
 > `decision-0038`'s instruction to *"migrate opportunistically as each file is next edited"* — on
 > that record's own stated rationale, *"no sweep ceremony over revise-in-place files nothing else
 > touches"*: sweeping every one of them is a second logical change, and sweeping a single code
