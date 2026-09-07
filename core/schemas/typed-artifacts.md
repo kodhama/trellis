@@ -25,12 +25,19 @@ date: 2026-08-29
 > but `spec-0002` also carried `## 5. Worked fragments`, seven acceptance criteria and six open
 > questions, and those three blocks were carried nowhere — deleted with the spec. Verified by
 > diffing `c75eace^:specs/0002-expression-profile-and-signature-catalog.md` against this file.
-> Seven of the thirteen items were already covered elsewhere and are recorded below as pointers
-> rather than restored; the other six are stated here, because this file is where they bind. SCOPE:
-> additive, plus three cross-references the migration left pointing at sections that do not exist
-> here (`§4.5` and `§4` → their rubric checks; `this spec` → `this schema`) and one retired display
-> code (`B4` → `inv-auditable-archive`, `decision-0038`). **No field rule changed.** POINTER:
-> `decision-0079` Consequences, dated note.*
+> **Six of the thirteen items were already covered elsewhere** and are recorded below as pointers
+> rather than restored; the other **seven** are stated here, because this file is where they bind.
+> SCOPE: additive, plus four repairs to prose the migration left inaccurate — three references
+> pointing at sections that **do not exist in this file**, where a reader is stranded rather than
+> redirected (`§4.5` and `§4` → their rubric checks; `this spec` → `this schema`), and §2's
+> parenthetical *"(a spec-forces-revision the decision explicitly permits)"* → *"(the one revision
+> `decision-0016` explicitly permits)"*, which is the wording `decision-0016` itself uses. The
+> dropped `AC3` inline marker is restored, so §1 and §2 again cite their criteria alike. Citations
+> to `spec-0001`/`spec-0002` themselves are left alone: `decision-0079`'s retired-artifacts registry
+> is what resolves those, and that record chose not to edit citing artifacts. Retired display codes
+> (`D2`, `B4`) are likewise left as migrated — they resolve through the legacy code map in
+> `invariants-v1`, and sweeping one of seven is worse than sweeping none. **No field rule changed.**
+> POINTER: `decision-0079` Consequences, dated note.*
 
 ## 1. The signature-catalog schema (`trellis-product`, one, shipped)
 
@@ -102,7 +109,7 @@ Frontmatter: `id: profile-<instance>` (e.g. `profile-rpi-team`), `type: expressi
 | `confidence` | ✓ if `honored-implicitly` | `verified` \| `inferred` \| `speculated` — Assess's certainty the project already honors it |
 | `evidence` | ✓ if `honored-implicitly` | pointer to the concrete project tell that matched the catalog `signature` (path/quote) |
 
-**Assert-and-verify, never silently "honored" (`research-0009`).** An `active: true` +
+**Assert-and-verify, never silently "honored" (AC3, `research-0009`).** An `active: true` +
 `basis: honored-implicitly` entry with **no `confidence` + `evidence`** is a conformance failure.
 Assess is loud-failure-biased: it may claim a gene is honored only by pointing at the tell — the
 iron rule applied to detection.
@@ -118,8 +125,8 @@ iron rule applied to detection.
   §5). **Producer ≠ ratifier ≠ verifier** (`inv-independent-judgment`): Assess produces, the human
   ratifies, the conformance check verifies, Apply consumes — four distinct roles.
 - **Re-assessment** supersedes a prior profile (append forward pointer if the instance treats
-  profiles as history; revise-in-place if it keeps one current-truth profile — the instance's
-  `inv-auditable-archive` call, not fixed here).
+  profiles as history; revise-in-place if it keeps one current-truth profile — the instance's B4
+  call, not fixed here).
 
 ## Worked instances (the iron rule — the schema exemplified, not just described)
 
@@ -134,16 +141,20 @@ fragment.
   and the `honored-implicitly` + `confidence` + `evidence` path §2 requires. Rubric checks 9–11
   grade it.
 
-**The one fill with no live instance is `payload_depth: expressed-only`** — `trellis-self` is
-`+mechanism`. That gap is why AC6 below is a criterion to be met rather than a property already
-demonstrated.
+**Both instances are the same fill, and it is the heavy one.** `trellis-self` is `supervisor` /
+`+mechanism` / `M2-morph`, so `advisor`, `expressed-only`, `+latent` and `M1-overlay` are **all**
+undemonstrated — and the dropped §5b fragment exercised three of them at once. That gap is why AC6
+below is a criterion to be met rather than a property already shown, and it is the honest cost of
+preferring checked instances to fragments: the fragments covered a corner the instances do not
+reach.
 
 ## Acceptance criteria
 
 `spec-0002` carried seven. Five are enforced elsewhere and are listed here as pointers; **AC6 and
 AC7 grade the schema itself** rather than an artifact written against it, so no rubric check could
 carry them and they are stated here. **The numbering is `spec-0002`'s and is deliberately kept** —
-`profiles/trellis-self.md` cites `AC7` by that name.
+`profiles/trellis-self.md` cites `AC7` by that name, and §1's `(AC1)` and §2's `(AC3)` resolve into
+this table.
 
 | | Where it is enforced |
 |---|---|
@@ -153,7 +164,7 @@ carry them and they are stated here. **The numbering is `spec-0002`'s and is del
 | **AC4** — no profile sets `C2: none` on an intent-locus gate | rubric check 11 |
 | **AC5** — D2 ratification is real | §3 above states both clauses; rubric check 5's lifecycle proviso carries the structural half. `decision-0082` retired `status` for trellis-self and **left this product-layer lifecycle standing** |
 
-- **AC6 — a partial application needs no bespoke artifact.** The behavioral subset is expressible
+- **AC6 — Trellis-lite needs no bespoke artifact.** The behavioral subset is expressible
   purely as a profile — `payload_depth: expressed-only` with every pipeline gene `active: false` —
   so a lighter Trellis is a *fill* of this schema, not a new artifact type. **A proposal to mint a
   standalone "lite" rule-list fails this criterion**, and is the check to run when one is proposed.
@@ -165,11 +176,19 @@ carry them and they are stated here. **The numbering is `spec-0002`'s and is del
 
 ## Open questions
 
-**The consumer is this file.** It is the mandatory input to authoring a catalog or a profile and to
-amending the schema, which is what `profiles/trellis-self.md` means by *"every artifact's
-`## Open questions` rides a consumer that must read it."* Each item below is a constraint on the
-next amendment of this schema — **none is a debt owed to an unbuilt component**, which is the shape
-that same row names as the repo's live orphan.
+**The consumer is whoever next authors a catalog or a profile, or amends this schema** — reading
+this file is not optional for them, which is the difference between an address and a shelf. The
+catalog is blunt that *"someone reading this file later" is not a consumer*
+(`inv-no-orphan-followups`), and that is the right test; it is met here by the reader being
+*required*, not by the file being *available*. `profiles/trellis-self.md` states the same thing
+positively — *"every artifact's `## Open questions` rides a consumer that must read it"* — and
+`decision-0078`, the record that minted the invariant, drafted exactly this shape as an **honored**
+example before dropping it *"for readout budget"*, not for being wrong.
+
+Each item below is therefore a constraint on the next amendment of this schema. **None is a debt
+owed to an unbuilt component** — that is the shape the same profile row names as the repo's one
+live orphan, and adding more of them would make the reference instance worse at the invariant this
+section reasons under.
 
 - **Axis-B granularity vs. `decision-0016`.** §2 makes Axis A/B **instance-level**, against that
   decision's per-invariant wording — sharpened deliberately, and **flagged rather than silently
@@ -185,12 +204,20 @@ that same row names as the repo's live orphan.
 - **Profile history model.** §3 leaves append-only-superseding versus revise-in-place to the
   instance. A cross-instance diff may force one convention; if it does, §3 stops being the
   instance's call.
+- **An `approved` state, below `ratified`.** §3 stops at `draft → ratified`. A ratified profile that
+  Apply has *composed* was `spec-0002`'s candidate first user of an execution-layer `approved`.
+  **This is dominated by, but not the same as, `decision-0082`'s open question** *"Should
+  `spec-0002`'s profile lifecycle follow?"*: retiring the lifecycle would moot this one, but
+  resolving that question as *keep* brings it straight back — so it is recorded here rather than
+  left to return homeless.
 - **The `C1` / `C2` field names.** `decision-0038` deferred renaming `default_C1` / `default_C2` to
-  `default_strength` / `default_gatekeeper` *"when `spec-0002` is next opened"*. This file is that
-  referent, so the deferral is recorded against a file that exists rather than a deleted one.
+  `default_strength` / `default_gatekeeper` *"when `spec-0002` is next opened"*. **That trigger has
+  fired — this file is the opening — and the rename is deliberately not done here**, because
+  `decision-0038` scopes it as a *"rubric/agent/catalog/profile cascade"*, which is its own change.
+  Re-triggered, not silently re-parked: **the next change that already touches the catalog, the
+  profile and the rubric together** should carry it.
 
-*Two of `spec-0002`'s six are deliberately not repeated here, because repeating them would fork a
-live entry (`decision-0028`): the structure of detection heuristics is
-`core/catalog/signature-catalog-v1.md`'s own open question ("Structured signatures"), and the
-`approved` state is `decision-0082`'s ("Should `spec-0002`'s profile lifecycle follow?"), which
-that record explicitly left standing as a separate product call.*
+*One of `spec-0002`'s six is deliberately not repeated here, because repeating it would fork a live
+entry (`decision-0028`): the structure of detection heuristics is
+`core/catalog/signature-catalog-v1.md`'s own open question ("Structured signatures"), which
+`profiles/trellis-self.md` already counts against this repo as a live orphan.*
