@@ -10,13 +10,21 @@ ratified: 2026-07-04
 
 # Expression profile — Trellis-self (the self-hosting instance)
 
-> **Snapshot, 2026-07-04 — read as dated.** This is the assessment as it stood that day, kept
-> unedited. Two later changes are *not* reflected in the rows below: `decision-0079` retired the
-> spec stage and deleted `specs/` (so the `inv-directional-flow` evidence "`research/ →
-> decisions/ → specs/` staging" names a stage that is gone, and the `spec-0001`/`spec-0002`
-> citations point at retired records preserved in git history), and `decision-0076` retired
-> grove (so the `independent-agent` gatekeeper column names roles no longer installed here). The
-> assessment is not re-run; it is marked.
+> **Assessment dated 2026-07-04 — read the verdicts as of that date.** The verdicts are not re-run
+> here; the *pointers* are repaired in place when what they name is retired, each repair naming the
+> decision that retired it. Two retirements reach these rows. `decision-0079` retired the spec stage
+> and deleted `specs/` — the `inv-directional-flow` evidence was re-staged in that same change, and
+> the `spec-0001`/`spec-0002` citations resolve through that record's retired-artifacts registry.
+> `decision-0076` retired grove, and with it the `conformance-reviewer` this profile cited in four
+> places; all four are repaired here — one in Delivery, three in the rows — and the `independent-agent` gatekeeper column — which named
+> grove's roles — is filled today by the repo-owned `corpus-reviewer` and `decision-0007`'s PR-review
+> workflow.
+>
+> *An earlier form of this note said the assessment was "kept unedited". It was not, and had not been
+> when that was written: `git log -- profiles/trellis-self.md` shows rows rewritten and two added
+> (`inv-deliberate-succession`, `inv-no-orphan-followups`) after 2026-07-04. Withdrawn rather than
+> quietly deleted — a snapshot that claims to be frozen while it is edited is the same defect this
+> change repairs.*
 
 > **Ratified via merge (`decision-0022`).** This is an **assessment** the agent produced; the
 > maintainer's **merge of this PR is the ratification** (`floor-intent-gate`) — the producer proposes, the merge accepts.
@@ -33,7 +41,8 @@ ratified: 2026-07-04
 ## Delivery
 
 - **delivery_relationship:** `supervisor` — the checks run *live* on this repo (CI review
-  `decision-0007`; the `conformance-reviewer` sub-agent), not as an external consult.
+  `decision-0007`; the repo-owned `corpus-reviewer` sub-agent, `.claude/agents/`), not as an
+  external consult.
 - **payload_depth:** `+mechanism` — the instance carries the full regulatory apparatus (it *is* the
   apparatus) and self-regulates (`decision-0009` improvement loop).
 - **application_model:** `M2-morph` — the **degenerate self-hosting case**: the host's own
@@ -53,10 +62,10 @@ ratified: 2026-07-04
 | `inv-intent-locus` | true | enforced | human | honored-implicitly | verified | `owner:` on every artifact; ratification is a recorded human act (this session) |
 | `inv-ratifiable-artifacts` | true | enforced | independent-agent | honored-implicitly | verified | the ratifiable state is **merged on `main`**, reached by the maintainer's merge (`decision-0082` retired the status field; the lifecycle moved to VCS, it did not disappear); `core/rubrics/artifact-contract.md` carries `## Acceptance criteria` |
 | `inv-graph-maintenance` | true | enforced | independent-agent | honored-implicitly | verified | `depends_on` graph; `invariants-v1` supersede registry; v0 retirement resolved this session |
-| `inv-gate-at-handover` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | automated PR review (`decision-0007`) + `conformance-reviewer` fire at the PR handover |
-| `inv-independent-judgment` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | `conformance-reviewer` is read-only + distinct from producer; ran independently this session |
+| `inv-gate-at-handover` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | automated PR review (`decision-0007`) still runs — `.github/workflows/claude-code-review.yml`, on every `opened`/`synchronize` — and `AGENTS.md` requires the repo-owned `corpus-reviewer` *"before merging a change to `decisions/`, `research/` or `core/`"*. Both fire at the PR handover and both resolve today. **Re-pointed:** the `conformance-reviewer` named here at ratification retired with grove (`decision-0076`), and the handover is now checked more narrowly than in 2026-07 — `core/README.md` records conformance of code to its authorizing decision as *"currently uncovered"*, the spec stage it checked against having retired with `decision-0079`. That a gate fires at the handover is what this row claims, and it does |
+| `inv-independent-judgment` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | the repo-owned `corpus-reviewer` is read-only **by construction** — `tools: Read, Grep, Glob` in its frontmatter, no write tool — and independent of the producer by charter: *"Derive your checklist yourself … Do not accept a checklist from whoever produced the artifacts."* That it *operates*, and is not merely chartered, is recorded where an author had every reason to smooth it away: `decision-0076` counts its own defects at *"None of the sixteen was self-caught — three from the corpus review, nine from the diff review, four from the automated one. The author caught two arithmetic errors and no substantive defect."* Records written by the reviewer rather than the author exist too — PR #298 carries seven `claude[bot]` review records naming findings on the pushes they reviewed. **Re-argued, not re-pointed:** the original evidence named `conformance-reviewer` (retired with grove, `decision-0076`) and rested on *"ran independently this session"* — a claim that could not be re-pointed, because `corpus-reviewer` was not created until 2026-07-08, four days after this snapshot |
 | `inv-auditable-archive` | true | enforced | independent-agent | honored-implicitly | verified | `decisions/` append-only; `decision-0014` splits current-truth from change-history |
-| `inv-bounded-context` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | sub-agents scoped to declared inputs (conformance-reviewer corpus; narrow tool sets) |
+| `inv-bounded-context` | true | default-on-but-skippable | independent-agent | honored-implicitly | verified | sub-agents are scoped to declared inputs, and the repo-owned `corpus-reviewer` (which carries the role the retired `conformance-reviewer` held — its charter records that lineage, and grove's retirement is `decision-0076`) carries both halves in one readable file: a **Default corpus** paragraph naming the paths it may read and the one it must exclude (`core/fixtures/`), and a three-tool allowlist in its frontmatter, `tools: Read, Grep, Glob` |
 | `inv-self-improvement` | true | default-on-but-skippable | human | honored-implicitly | verified | `decision-0018` restored it after friction (the merge into `inv-graph-maintenance` lost "evolve"); the conformance check caught *this row's own absence* and it was added in the same change |
 | `inv-deliberate-succession` | true | default-on-but-skippable | human | honored-implicitly | inferred | PR #165 is a real forward instance (the retrofit question surfaced and ruled on) and math-quest's phase-1 architecture the backward one (`#166`). **Deliberately not `verified`:** the entry is `*provisional*` in the set, and the change that minted it failed this rule four times — three count sweeps that each matched only some of the shapes a succession leaves behind, and the `superseded_in_part_by` mark omitted on `decision-0052` — all caught by independent review, not by the author. The repo holds this one with help, not natively |
 | `inv-no-orphan-followups` | true | default-on-but-skippable | human | honored-implicitly | inferred | `AGENTS.md` states the address test outright — *"Ideas are a document, not issues — one long-form Linear doc, each entry carrying the trigger that would promote it. An idea filed as an issue is a to-do nobody agreed to"* — and every artifact's `## Open questions` rides a consumer that must read it. `decision-0074` deferred the curl-upgrade false all-clear and gave it a real address (trellis#241 → TRL-2, live in the Linear backlog): the honored *(process)* shape. **Deliberately not `verified`:** the entry is `*provisional*`, and the repo holds two live counter-instances — the catalog's own open question *"Owed to the Assess build (cluster 1)"* names a consumer that does not exist yet, and the payload→VERSION guard (trellis#245, open since 2026-08-23) is a designed consumer never switched on, so `decision-0078`'s own release obligation had to be discharged by hand |
@@ -79,11 +88,13 @@ design, `signature-catalog-v1`.)*
   `decision-0078`): the repo states the address test in `AGENTS.md` but holds two live orphans, both
   cited in the row. A rule the reference organism needs help to hold is not one it honors natively,
   and saying otherwise would be the sycophancy the floors forbid.
-- **The behavioral genes** (`inv-independent-judgment` intent face, `inv-clarify-before-commit`,
-  `floor-transparency`) are the hardest to evidence — I ground them in the `AGENTS.md` rule **plus a
-  demonstrated instance from this very session** (surfacing frictions, and this profile authored as a
-  proposal for the maintainer's gate), which is the strongest honest evidence short of a longitudinal
-  audit.
+- **The behavioral genes** (`inv-clarify-before-commit`, `floor-transparency`) are the hardest to
+  evidence — I ground them in the `AGENTS.md` rule **plus a demonstrated instance from this very
+  session** (surfacing frictions, and this profile authored as a proposal for the maintainer's gate),
+  which is the strongest honest evidence short of a longitudinal audit. **`inv-independent-judgment`
+  no longer rides that grounding:** a session instance is true only at the moment of writing, so its
+  row now cites the reviewer's construction plus records of it catching what the author missed —
+  evidence a reader can open today.
 - **`floor-intent-gate` is the live demonstration:** the producer proposed this profile and the
   **maintainer's merge ratifies it** (`decision-0022`, merge=ratify) — the gate is exercised, not
   asserted.
