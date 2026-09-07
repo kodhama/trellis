@@ -105,3 +105,38 @@ stand.
 - **No orphan follow-ups (`decision-0078`).** This record parks nothing. The one question it
   raised — whether superpowers plans should be retained in-repo — is **dropped**, not deferred:
   plans are session scaffolding, and what survives a change is the decision and the diff.
+
+  > **Note, 2026-09-07 — this bullet was wrong about `spec-0002`, and the migration was narrower
+  > than point 3 describes.** Filed as **TRL-64**. Measured by diffing
+  > `c75eace^:specs/0002-expression-profile-and-signature-catalog.md` against
+  > `core/schemas/typed-artifacts.md`: §1–§3 did migrate verbatim (three cross-reference retargets,
+  > no clause changed), and §4's checks were already in the rubric — **but `spec-0002` also carried
+  > `## 5. Worked fragments`, an `## Acceptance criteria` section (AC1–AC7) and six
+  > `## Open questions`, and those three blocks were carried nowhere.** They were deleted with the
+  > spec. Point 3 above accounts for §1–§3 and §4 only, so nothing in this record is untrue about
+  > what it migrated — what is untrue is *"this record parks nothing"*. Thirteen items sat in the
+  > two deleted sections (seven acceptance criteria, six questions); **seven of them were already
+  > covered elsewhere and six were not**, and none was disposed of by any of `decision-0078`'s
+  > three outcomes. Dropping without saying so is the silent fourth that rule exists to forbid.
+  > The sibling claim two bullets up — *"Trellis-core loses no shipped rule"* — **survives**,
+  > narrowly: every dropped item was a criterion or a question, never a rule the conformance check
+  > enforces.
+  >
+  > Repaired by a note here rather than by a successor record, because this record's *argument*
+  > stands entirely — the spec stage is still retired and the migration was still right; the error
+  > is factual, and the maintainer's ruling for that case is a dated note in place. **Already
+  > covered (seven):** AC1–AC4 are rubric checks 8–11; AC5 is `typed-artifacts.md` §3, which
+  > `decision-0082` explicitly left standing as product-layer; the detection-heuristics question is
+  > `signature-catalog-v1.md`'s own; the `approved`-state question is `decision-0082`'s.
+  > **Re-homed (six):** AC6, AC7 and four schema-shaped questions now live in
+  > `core/schemas/typed-artifacts.md`'s `## Acceptance criteria` and `## Open questions`, and §5's
+  > hand-written fragments are replaced there by a pointer at the two live artifacts that fill this
+  > schema. AC7 needed a home most: `profiles/trellis-self.md` cites *"`spec-0002` AC7"* by name as
+  > the test that Assess works, and that citation resolved through the registry above to a file
+  > that did not contain it.
+  >
+  > **One scope addition, flagged not smuggled (`floor-transparency`):** deleting `specs/` also
+  > broke a deferral that *pointed at* `spec-0002` rather than living in it — `decision-0038` parks
+  > its `default_C1`/`default_C2` rename *"when `spec-0002` is next opened"*, an address this
+  > record removed. That question is re-homed to the same `## Open questions`, against the file
+  > that is now the referent. Same defect class, same change.
