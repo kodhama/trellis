@@ -11,12 +11,12 @@ ratified: 2026-07-04
 # Expression profile — Trellis-self (the self-hosting instance)
 
 > **Assessment dated 2026-07-04; the repairs named below dated 2026-09-07.** Read each verdict as of
-> the first date, and read as of the second date **only the evidence those named repairs touch** —
-> this pass did not re-audit every pointer in the file, and the one class it found but did not repair
-> is named at the end of this note. The verdicts are not re-run here; a *pointer* is repaired in place
-> when what it names is retired, and where no pointer repair is possible the evidence is re-argued
-> from durable material instead. Either way the repair names the decision that retired the thing.
-> Two retirements are repaired here.
+> the first date. As of the second: every `AGENTS.md` quotation in this file, and every pointer in
+> the rows repaired below, was opened against its source. The pre-migration GitHub citations (`#28`,
+> `#165`, `#166`) were **not** re-audited. The verdicts are not re-run here; a *pointer* is repaired
+> in place when what it names is retired or has moved, and where no pointer repair is possible the
+> evidence is re-argued from durable material instead. Either way the repair names the change that
+> broke the pointer.
 >
 > `decision-0079` retired the spec stage and deleted `specs/`. The `inv-directional-flow` evidence
 > was re-staged at `decision-0082`'s change (`310894c`), and the surviving `spec-0002`
@@ -30,14 +30,14 @@ ratified: 2026-07-04
 > gatekeeper column, which at ratification named that repo-authored agent, is filled by the
 > repo-owned `corpus-reviewer` and `decision-0007`'s PR-review workflow.
 >
-> **A third staleness reaches this file and is deliberately *not* repaired here.** `decision-0035`
-> stripped the invariant echoes out of this repo's Claude adapter on 2026-07-06 (`61b6618`), and a
-> later pass re-pointed this file's citations of that adapter to `AGENTS.md` (`31bb938`) without
-> re-checking that the quoted text had survived the strip. `AGENTS.md` carries no "Gates" section and no "Loud failure" today, and the
-> `inv-handover-points`, `floor-transparency` and `floor-intent-gate` rows each quote one of them.
-> Named rather than quietly re-pointed: re-arguing what a `verified` row rests on is an assessment
-> act, not a pointer repair, and it belongs in its own change with its own review. Found while
-> repairing the two retirements above (PR #299).
+> **A third staleness reached three more rows, and is repaired here too.** They quoted two bullets
+> that have since left this repo's shared instructions. *"Loud failure"* went from the Claude adapter
+> at `61b6618` (`decision-0035`, 2026-07-06). *"Gates"* — quoted by two rows — did **not**: that same
+> commit says the specific-method bullets *"stay"*, `AGENTS.md` still carried Gates when this file's
+> citations were re-pointed to it at `31bb938`, and the bullet left at `c75eace`, `decision-0079`'s
+> own change. So `inv-handover-points`, `floor-transparency` and `floor-intent-gate` are re-pointed
+> at live `AGENTS.md` text, or re-argued from durable material where the live text does not carry
+> the claim. `AGENTS.md` carries no "Gates" section and no "Loud failure" today.
 >
 > *An earlier form of this note said the assessment was "kept unedited". It was not, and had not been
 > when that was written: `git log -- profiles/trellis-self.md` shows rows rewritten and two added
@@ -60,9 +60,9 @@ ratified: 2026-07-04
 ## Delivery
 
 - **delivery_relationship:** `supervisor` — the checks run *live* on this repo (CI review
-  `decision-0007`; the repo-owned `corpus-reviewer` sub-agent, `.claude/agents/`, which took over the artifact-contract
-  half of the `conformance-reviewer` named here at ratification, retired with grove by
-  `decision-0076`), not as an external consult.
+  `decision-0007`; the repo-owned `corpus-reviewer` sub-agent, `.claude/agents/`, which took over
+  the artifact-contract half of the `conformance-reviewer` named here at ratification, retired with
+  grove by `decision-0076`), not as an external consult.
 - **payload_depth:** `+mechanism` — the instance carries the full regulatory apparatus (it *is* the
   apparatus) and self-regulates (`decision-0009` improvement loop).
 - **application_model:** `M2-morph` — the **degenerate self-hosting case**: the host's own
@@ -78,7 +78,7 @@ ratified: 2026-07-04
 | slug | active | C1 | C2 | basis | confidence | evidence |
 |---|---|---|---|---|---|---|
 | `inv-directional-flow` | true | enforced | independent-agent | honored-implicitly | verified | `research/ → decisions/` staging (`specs/` retired by `decision-0079`); the merge carries the flow since `decision-0082` (everything on `main` is settled), so the check is that every `depends_on` resolves in-corpus — conformance run confirms it does |
-| `inv-handover-points` | true | enforced | independent-agent | honored-implicitly | verified | one-change-per-PR; `AGENTS.md` "Gates" (intent approval + execution verification) |
+| `inv-handover-points` | true | enforced | independent-agent | honored-implicitly | verified | `AGENTS.md` states the handover live — *"one logical change per PR; descriptive, linear history; diffs small enough to review on a phone"* — and its `## Checks and review` section names what must run before a merge, which is what makes the PR a point rather than a continuum. **Re-pointed:** the *"Gates"* bullet quoted here left `AGENTS.md` at `c75eace` (`decision-0079`), having survived the `31bb938` re-point intact |
 | `inv-intent-locus` | true | enforced | human | honored-implicitly | verified | `owner:` on every artifact; ratification is a recorded human act (this session) |
 | `inv-ratifiable-artifacts` | true | enforced | independent-agent | honored-implicitly | verified | the ratifiable state is **merged on `main`**, reached by the maintainer's merge (`decision-0082` retired the status field; the lifecycle moved to VCS, it did not disappear); `core/rubrics/artifact-contract.md` carries `## Acceptance criteria` |
 | `inv-graph-maintenance` | true | enforced | independent-agent | honored-implicitly | verified | `depends_on` graph; `invariants-v1` supersede registry; v0 retirement resolved this session |
@@ -91,8 +91,8 @@ ratified: 2026-07-04
 | `inv-no-orphan-followups` | true | default-on-but-skippable | human | honored-implicitly | inferred | `AGENTS.md` states the address test outright — *"Ideas are a document, not issues — the team's Ideas doc, each entry carrying the trigger that would promote it. An idea filed as an issue is a to-do nobody agreed to"* — and every artifact's `## Open questions` rides a consumer that must read it. `decision-0074` deferred the curl-upgrade false all-clear and gave it a real address (trellis#241 → TRL-2, which the backlog carried and closed on 2026-09-02): the honored *(process)* shape. **Deliberately not `verified`:** the entry is `*provisional*`, and the repo held two counter-instances, one still live — the catalog's own open question *"Owed to the Assess build (cluster 1)"* names a consumer that does not exist yet, which is the live one; the payload→VERSION guard was a designed consumer never switched on for thirteen days, so `decision-0078`'s own release obligation had to be discharged by hand, until trellis#245 merged `release-guard.yml` on 2026-09-05. One live orphan still holds this row below `verified` |
 | `inv-minimal-first` | true | expressed | human | honored-implicitly | verified | `AGENTS.md`: "a deliberately tiny instance of the seed operating method" |
 | `inv-clarify-before-commit` | true | default-on-but-skippable | human | honored-implicitly | verified | `## Open questions` in every artifact; the delivery-axis + dial-coverage frictions were surfaced, not guessed |
-| `floor-transparency` | true | enforced | human | honored-implicitly | verified | `AGENTS.md` "Loud failure"; this session surfaced the merge conflict + catalog friction rather than papering over |
-| `floor-intent-gate` | true | enforced | human | honored-implicitly | verified | `AGENTS.md` "Gates: Human approval at the intent layer"; this profile is ratified by the maintainer's merge — the intent gate, exercised (`decision-0022`) |
+| `floor-transparency` | true | enforced | human | honored-implicitly | verified | the floor is named by slug in both honesty clauses that gate this corpus, and both resolve today: `core/rubrics/artifact-contract.md` — *"Missing/unparseable input → halt loudly (`floor-transparency`), never a partial pass"* — and the `corpus-reviewer` charter, *"Accurately listing the violations **is** success. Never hide drift to report PASS."* Practised, not merely written: `decision-0076` keeps its own retractions in the record rather than deleting them, and this profile's *"kept unedited"* claim is withdrawn in place above rather than quietly removed. **Re-argued:** the *"Loud failure"* bullet quoted here left the Claude adapter at `61b6618` (`decision-0035`), and what remained was a session anecdote true only when written |
+| `floor-intent-gate` | true | enforced | human | honored-implicitly | verified | `AGENTS.md` states the gate live — *"An agent still may not merge on his behalf without his act (`floor-intent-gate`) — the gate did not move; only the bookkeeping around it went away"* — and this profile is ratified by the maintainer's merge (`decision-0022`): the gate exercised, not asserted. **Re-pointed:** the *"Gates: Human approval at the intent layer"* bullet quoted here left `AGENTS.md` at `c75eace` (`decision-0079`) |
 
 *(The two dials are not rows here — they are the `C1`/`C2` columns above (the schema field names,
 `spec-0002`). Catalog excludes them by
@@ -108,13 +108,13 @@ design, `signature-catalog-v1`.)*
   `decision-0078`): the repo states the address test in `AGENTS.md` but holds a live orphan,
   cited in the row. A rule the reference organism needs help to hold is not one it honors natively,
   and saying otherwise would be the sycophancy the floors forbid.
-- **The behavioral genes** (`inv-clarify-before-commit`, `floor-transparency`) are the hardest to
-  evidence — I ground them in the `AGENTS.md` rule **plus a demonstrated instance from this very
-  session** (surfacing frictions, and this profile authored as a proposal for the maintainer's gate),
-  which is the strongest honest evidence short of a longitudinal audit. **`inv-independent-judgment`
-  no longer rides that grounding:** a session instance is true only at the moment of writing, so its
-  row now cites the reviewer's construction plus records of it catching what the author missed —
-  evidence a reader can open today.
+- **The behavioral genes are the hardest to evidence.** `inv-clarify-before-commit` still rides its
+  2026-07-04 grounding — `## Open questions` in every artifact, plus frictions surfaced rather than
+  guessed in the authoring session — which is the strongest honest evidence short of a longitudinal
+  audit, and is dated accordingly. **`inv-independent-judgment` and `floor-transparency` no longer
+  ride it:** a session instance is true only at the moment of writing, so both rows now cite durable
+  material a reader can open today — the reviewer's construction and records of it catching what the
+  author missed, and the two honesty clauses that name the transparency floor by slug.
 - **`floor-intent-gate` is the live demonstration:** the producer proposed this profile and the
   **maintainer's merge ratifies it** (`decision-0022`, merge=ratify) — the gate is exercised, not
   asserted.
