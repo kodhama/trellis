@@ -136,10 +136,10 @@ stand.
   >
   > **Already covered (six):** AC1–AC4 are rubric checks 8–11; AC5 is `typed-artifacts.md` §3, which
   > `decision-0082` explicitly left standing as product-layer; the detection-heuristics question is
-  > `signature-catalog-v1.md`'s own. *(The `approved`-state question is **not** covered by
-  > `decision-0082` as first drafted here: 0082 asks whether to retire the lifecycle, `spec-0002`
-  > asked whether to add a state to it. A retirement would moot it; keeping the lifecycle brings it
-  > back. It is re-homed rather than counted as covered.)* **Re-homed (seven):** AC6, AC7 and five
+  > `signature-catalog-v1.md`'s own. *(The `approved`-state question is deliberately **not** counted
+  > here: `decision-0082` asks whether to retire the lifecycle, `spec-0002` asked whether to add a
+  > state to it. A retirement would moot it; keeping the lifecycle brings it back — so it is
+  > re-homed rather than treated as covered.)* **Re-homed (seven):** AC6, AC7 and five
   > schema-shaped questions now live in
   > `core/schemas/typed-artifacts.md`'s `## Acceptance criteria` and `## Open questions`, and §5's
   > hand-written fragments are replaced there by a pointer at the two live artifacts that fill this

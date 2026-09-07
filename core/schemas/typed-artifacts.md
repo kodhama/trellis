@@ -27,17 +27,20 @@ date: 2026-08-29
 > diffing `c75eace^:specs/0002-expression-profile-and-signature-catalog.md` against this file.
 > **Six of the thirteen items were already covered elsewhere** and are recorded below as pointers
 > rather than restored; the other **seven** are stated here, because this file is where they bind.
-> SCOPE: additive, plus four repairs to prose the migration left inaccurate — three references
+> SCOPE: additive, plus four repairs to prose the migration left inaccurate — two references
 > pointing at sections that **do not exist in this file**, where a reader is stranded rather than
-> redirected (`§4.5` and `§4` → their rubric checks; `this spec` → `this schema`), and §2's
-> parenthetical *"(a spec-forces-revision the decision explicitly permits)"* → *"(the one revision
-> `decision-0016` explicitly permits)"*, which is the wording `decision-0016` itself uses. The
-> dropped `AC3` inline marker is restored, so §1 and §2 again cite their criteria alike. Citations
-> to `spec-0001`/`spec-0002` themselves are left alone: `decision-0079`'s retired-artifacts registry
-> is what resolves those, and that record chose not to edit citing artifacts. Retired display codes
-> (`D2`, `B4`) are likewise left as migrated — they resolve through the legacy code map in
-> `invariants-v1`, and sweeping one of seven is worse than sweeping none. **No field rule changed.**
-> POINTER: `decision-0079` Consequences, dated note.*
+> redirected (`§4.5` and `§4` → their rubric checks); one stale self-description (`this spec` →
+> `this schema`, since this file is not a spec); and §2's parenthetical *"(a spec-forces-revision
+> the decision explicitly permits)"* → *"(the one revision `decision-0016` explicitly permits)"* —
+> `decision-0016` supplies *"did force one revision"*, and "permits" is inherited from the migrated
+> text rather than quoted from it. The dropped `AC3` inline marker is restored, so §1 and §2 again
+> cite their criteria alike. Citations to `spec-0001`/`spec-0002` themselves are left alone:
+> `decision-0079`'s retired-artifacts registry is what resolves those, and that record chose not to
+> edit citing artifacts. **Retired display codes (`D2` ×7, `B4` ×1) are left as migrated**, against
+> `decision-0038`'s instruction to *"migrate opportunistically as each file is next edited"* — on
+> that record's own stated rationale, *"no sweep ceremony over revise-in-place files nothing else
+> touches"*: an eight-code sweep is a second logical change, and doing one of the eight is worse
+> than doing none. **No field rule changed.** POINTER: `decision-0079` Consequences, dated note.*
 
 ## 1. The signature-catalog schema (`trellis-product`, one, shipped)
 
@@ -141,9 +144,10 @@ fragment.
   and the `honored-implicitly` + `confidence` + `evidence` path §2 requires. Rubric checks 9–11
   grade it.
 
-**Both instances are the same fill, and it is the heavy one.** `trellis-self` is `supervisor` /
-`+mechanism` / `M2-morph`, so `advisor`, `expressed-only`, `+latent` and `M1-overlay` are **all**
-undemonstrated — and the dropped §5b fragment exercised three of them at once. That gap is why AC6
+**The repo holds one profile, and it fills the heavy end of every axis.** `trellis-self` is
+`supervisor` / `+mechanism` / `M2-morph`, so `advisor`, `expressed-only`, `+latent` and `M1-overlay`
+are **all** undemonstrated — and the dropped §5b fragment exercised three of them at once. (The
+catalog carries no axes at all; §2's three axis fields are the profile's.) That gap is why AC6
 below is a criterion to be met rather than a property already shown, and it is the honest cost of
 preferring checked instances to fragments: the fragments covered a corner the instances do not
 reach.
@@ -190,10 +194,12 @@ owed to an unbuilt component** — that is the shape the same profile row names 
 live orphan, and adding more of them would make the reference instance worse at the invariant this
 section reasons under.
 
-- **Axis-B granularity vs. `decision-0016`.** §2 makes Axis A/B **instance-level**, against that
-  decision's per-invariant wording — sharpened deliberately, and **flagged rather than silently
-  reconciled**. If `+latent` genes ever need per-gene presence (active / latent / absent as three
-  states), §2's `active` boolean must widen. Settle this before widening it.
+- **Axis-B granularity.** §2 makes Axis A/B **instance-level**. That was a revision of
+  `decision-0016`'s original per-invariant framing, and it is **not an open tension** — 0016 was
+  amended to match *"before ratification"* and now states the instance-level form itself. What
+  stays open is forward-looking: if `+latent` genes ever need per-gene presence (active / latent /
+  absent as three states), §2's `active` boolean must widen, and widening it re-opens the
+  granularity question 0016 settled. Settle it deliberately rather than by widening a field.
 - **Catalog vs. profile: still two types?** `research-0009` still carries the question of whether
   the dictionary and the per-instance readout collapse into one artifact. This schema keeps them
   two, and the `trellis-product` / `core-methodology` scope split is the reason. **Confirm at
