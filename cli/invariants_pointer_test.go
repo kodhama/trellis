@@ -292,8 +292,9 @@ func TestCodexReportsTheOverlaysOwnDeadInvariantsWithoutSubstituting(t *testing.
 // report must carry, and "" is the healthy control that must be reported on at
 // all.
 //
-// The four unusable shapes are the four decision-0094's Consequences and TRL-73
-// name, and they are not duplicates of each other: payload_read reaches "empty"
+// The four unusable shapes are the four decision-0094's "What is not decided
+// here" and TRL-73 name — its Consequences list the PLUGIN-side four, which is a
+// different table — and they are not duplicates of each other: payload_read reaches "empty"
 // through `$(cat)`, which strips trailing newlines AND NUL bytes, so a
 // newline-only and an all-NUL file are empty on the other host too. A JS mirror
 // written as `readFileSync(...).length === 0` passes the zero-byte row and fails
@@ -414,6 +415,17 @@ func assertOverlayOwnCopyReport(t *testing.T, pluginRoot, project, overlayCopy s
 	if !strings.Contains(got.SystemMessage, wantRemedy) {
 		t.Errorf("the report dropped the one repair that works on this arm (decision-0096:2)\nwant: %q\ngot: %q", wantRemedy, got.SystemMessage)
 	}
+	// The POSITIVE half, and it is pinned because review showed it droppable in
+	// silence: deleting this sentence left the whole guard green. The negative
+	// assertions above pin what must NOT appear; without this one, nothing pins
+	// the sentence that tells the reader WHY no substitute is offered — which is
+	// the only place decision-0096:1's ruling reaches a person. The sibling arm
+	// sets the precedent for exactly this hazard (both of its remedy clauses are
+	// pinned, "because review found the second one droppable in silence").
+	const wantWhyNoSubstitute = "A vendored overlay is authoritative, so the plugin's own copy does not stand in for it"
+	if !strings.Contains(got.SystemMessage, wantWhyNoSubstitute) {
+		t.Errorf("the report does not say why no substitute is offered, so a reader meeting the sibling report's reinstall advice has no way to tell why it is absent here (decision-0096:1)\nwant: %q\ngot: %q", wantWhyNoSubstitute, got.SystemMessage)
+	}
 
 	// The report costs the injected context NOTHING: it rides systemMessage,
 	// outside the MAX_CONTEXT_BYTES bound on `context`. That is the one way a
@@ -424,6 +436,50 @@ func assertOverlayOwnCopyReport(t *testing.T, pluginRoot, project, overlayCopy s
 		t.Errorf("the report was assembled into the injected context; a report about a consulted file must not spend the context budget (decision-0093:1)\n%s", context)
 	}
 	return got.SystemMessage
+}
+
+// TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer is the second
+// condition review put on decision-0096's arm, and it is a guard against the
+// report asserting something the hook never checked.
+//
+// The report states as FACT that "the invariants pointer in the context just
+// injected names a file that yields nothing to read". On the vendored branch the
+// prose is the PROJECT's own .trellis/internal/trellis.md, and the only thing
+// the hook validates about it is its @rules.md placeholder count — nothing
+// requires it to carry the invariants pointer at all. A project that edited the
+// pointer out would otherwise draw a report about a pointer that was never
+// delivered, sending the reader to repair a file nothing names. That is the
+// right-diagnosis-wrong-artifact class this whole thread has been closing, so it
+// may not be reintroduced by the change that closes its last cell.
+//
+// The overlay's own copy is zero-byte here, so EVERY other condition for the
+// report is satisfied: this fixture isolates the pointer-presence check alone,
+// and reverting it turns this test red while the rest of the suite stays green.
+func TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer(t *testing.T) {
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	prose := filepath.Join(project, ".trellis", "internal", "trellis.md")
+	before := readFileT(t, prose)
+	if !strings.Contains(before, invariantsToken) {
+		t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer, so removing it proves nothing")
+	}
+	writeFileT(t, prose, strings.ReplaceAll(before, invariantsToken, "`the invariants reference`"))
+	// Every other precondition for the report holds, so a firing here can only
+	// come from the pointer-presence check being absent.
+	writeFileT(t, filepath.Join(project, ".trellis", "internal", "invariants.md"), "")
+
+	raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("the overlay still governs and must still be injected (decision-0093:1): %s", raw)
+	}
+	if strings.Contains(got.HookSpecificOutput.AdditionalContext, invariantsToken) {
+		t.Fatal("fixture drift: the delivered context still carries the pointer, so this test is not exercising its subject")
+	}
+	if got.SystemMessage != "" {
+		t.Errorf("the delivered prose names no invariants pointer, so there is no dead pointer to report and this report claims one was injected — a repair for a file nothing points at\ngot: %q", got.SystemMessage)
+	}
 }
 
 // TestBothHostsRepointTheInvariantsPointerIdentically is decision-0028's guard
@@ -807,6 +863,13 @@ const vendoredInvariantsReportLead = "Trellis warning: this project's vendored o
 // against the floor warning, which the report displaces by prefixing it. An
 // earlier version of this comment called all five silence proxies; review
 // measured that false.
+//
+// That count is the PRE-REWRITE one and is kept as the measurement it was:
+// decision-0096's guard now runs each shape twice, against a healthy plugin copy
+// and a missing one, so the same instrumentation returns EIGHT on this tree. The
+// figure that matters is unchanged either way — every firing is inside that
+// guard, and no fixture reached by this helper is in decision-0096's cell at
+// all, since writeValidCodexOverlay writes no invariants.md.
 //
 // Narrowing those five is deliberately preferred over healing
 // writeCodexPluginRoot. Giving that helper a reference/invariants.md would move

@@ -37,7 +37,11 @@ repointed at the plugin's copy, because the alternative is naming a file that is
 (`decision-0094`) — otherwise it would trade one dead pointer for another. Where it is not usable
 the pointer stays at the overlay's own address, and the session is told which file is unusable and
 how, and why no copy could stand in, on a channel that costs the injected context nothing
-(`decision-0095`).
+(`decision-0095`). Where the overlay's **own** copy is the unusable one — present but empty or
+unreadable — nothing is substituted at all: that file is the project's, at the address the project
+chose, so the pointer stays on it and the session is told which file is unusable and how, with the
+one repair that works on that branch (`decision-0096`). The plugin's copy is not offered there,
+because it may not stand in whatever state it is in, and reinstalling would not move the pointer.
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
 see below. Trellis requires no

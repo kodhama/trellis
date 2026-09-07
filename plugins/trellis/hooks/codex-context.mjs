@@ -1319,7 +1319,40 @@ if (sources.root === pluginRoot) {
   // deleted between them gives "is missing", which is a true sentence about the
   // address the model was handed. Neither can render the empty `(it )` the
   // sibling arm was fixed for.
-  ownOverlayInvariantsDefect = payloadDefect(overlayInvariants);
+  const ownCopyDefect = payloadDefect(overlayInvariants);
+  // TWO CONDITIONS, both found by review, and each closes a way this report
+  // could say something untrue.
+  //
+  // ONE: the defect must be one of the two that leave the file PRESENT. This
+  // arm was entered because existingFile said a regular file is at that path,
+  // and payloadDefect is a SECOND stat that can disagree if the file changes in
+  // between. `is missing` or `is not a readable file` coming back here means it
+  // did: the file was deleted or replaced by a directory, and the condition that
+  // now holds is the arm ABOVE this one, which was not taken. Reporting anyway
+  // would ship a second sentence -- "a vendored overlay is authoritative, so the
+  // plugin's own copy does not stand in for it" -- that is FALSE in exactly
+  // those states, because with no file at the overlay path decision-0093:2's
+  // fallback does make the plugin's copy eligible and the reinstall this report
+  // withholds would be a real remedy. Silence through a microsecond race is the
+  // right answer: the pointer still names the overlay's own address, and the
+  // next session classifies it correctly.
+  //
+  // TWO: the pointer must actually BE in the prose about to be delivered. This
+  // report asserts, as fact, that "the invariants pointer in the context just
+  // injected names a file that yields nothing to read" -- and on this branch the
+  // prose is the PROJECT's own .trellis/internal/trellis.md, which nothing here
+  // validates beyond its @rules.md placeholder count. A vendored trellis.md with
+  // the pointer edited out would otherwise draw a report about a pointer that
+  // was never delivered, handing the reader a repair for a file nothing names:
+  // the right-diagnosis-wrong-artifact class this whole thread has been closing.
+  // The token is unrewritten on this arm, so testing `trellis` here tests what
+  // ships.
+  if (
+    (ownCopyDefect === DEFECT_EMPTY || ownCopyDefect === DEFECT_UNREADABLE) &&
+    trellis.includes(INVARIANTS_TOKEN)
+  ) {
+    ownOverlayInvariantsDefect = ownCopyDefect;
+  }
 }
 // The rules payload's own well-formedness (the sentinel gate) must be checked
 // BEFORE it is trusted enough to derive a slug set from it — moved ahead of
@@ -1645,9 +1678,10 @@ if (vendoredInvariantsOverlayDefect !== "") {
 // reinstalling would even have helped. Here it is ineligible WHATEVER STATE IT
 // IS IN, so naming it would be noise and offering the reinstall would send the
 // reader to a remedy that cannot work -- there is exactly one repair on this
-// arm, and it is the project's own file. TestCodexReportsTheOverlaysOwnDead-
-// InvariantsWithoutSubstituting pins that by running each shape against a
-// healthy plugin copy and a missing one and requiring the same answer.
+// arm, and it is the project's own file. That is pinned by
+// TestCodexReportsTheOverlaysOwnDeadInvariantsWithoutSubstituting, which runs
+// each shape against a healthy plugin copy and a missing one and requires the
+// same answer.
 //
 // Not a fail(): decision-0093:1 rules that a CONSULTED reference may not fail a
 // session closed, and this rides systemMessage, outside the MAX_CONTEXT_BYTES
