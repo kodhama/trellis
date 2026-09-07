@@ -1207,6 +1207,9 @@ const overlayInvariants = path.join(
 let vendoredInvariantsOverlay = "";
 let vendoredInvariantsOverlayDefect = "";
 let vendoredInvariantsPluginDefect = "";
+// TRL-73's own, kept separate from the two above because it is a DIFFERENT
+// report with a different remedy -- see the fourth arm and its warning below.
+let ownOverlayInvariantsDefect = "";
 if (sources.root === pluginRoot) {
   trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
   pluginInvariantsDefect = payloadDefect(pluginInvariants);
@@ -1271,6 +1274,52 @@ if (sources.root === pluginRoot) {
     vendoredInvariantsOverlayDefect = payloadDefect(overlayInvariants);
     vendoredInvariantsPluginDefect = pluginCopyDefect;
   }
+} else {
+  // TRL-73, the last cell of the table decision-0093 opened: the overlay's OWN
+  // copy is present but unusable -- zero-byte, newline-only, NUL-filled, or
+  // mode 0000. existingFile succeeds on every one of those, so the arm above
+  // is not reached, the pointer stays on the overlay's own address, and until
+  // decision-0096 nothing was said about it.
+  //
+  // THE ELIGIBILITY CHECK ABOVE IS UNTOUCHED, and that is decision-0096:1
+  // rather than an omission. decision-0094:5 reserved "whether an overlay's
+  // unusable copy should be substituted for" and decision-0096 answers it NO,
+  // for a reason stronger than the one that deferred it: a vendored overlay is
+  // authoritative precisely because it may hold a DIFFERENT VERSION of the
+  // invariants from the plugin's. Substituting the plugin's copy for a
+  // zero-byte overlay copy would silently change which invariants govern --
+  // the runtime substitution README.md:27 forbids, and worse than a dead
+  // pointer because it is invisible. So `existingFile` above stays a presence
+  // test and this arm moves nothing.
+  //
+  // WHAT IS DECIDED IS THE REPORT, which is the line decision-0095:3 already
+  // drew on the sibling cell ("This widens no eligibility check ... What
+  // classifies is the REPORT"). The two questions are independent, and this
+  // record answers them in opposite directions.
+  //
+  // The objection this arm has to answer is that the overlay's copy is the
+  // PROJECT's file, so remarking on it is commentary on the project's own
+  // content. It does not survive what payloadDefect can actually see: it reads
+  // no content, only whether the path yields a byte that is not a newline or a
+  // NUL. A zero-byte invariants.md is not an editorial choice about invariants,
+  // and the hook has JUST TOLD THE MODEL TO READ IT. That makes the report a
+  // statement about this delivery, not about the project's prose.
+  //
+  // The decisive shape is the adjacency. `absent` + an unusable plugin copy
+  // reports (decision-0095); `zero-byte` + the same plugin copy was silent.
+  // Both hand the model the same dead token and both have the same remedy; the
+  // only thing between them is statSync().isFile(), which is load-bearing for
+  // ELIGIBILITY and says nothing about whether the address yields anything.
+  //
+  // ONE READ, AND THE GUARD IS ON THE DEFECT rather than on the arm -- the same
+  // correction the arm above carries. existingFile above and payloadDefect here
+  // are two stats and can disagree if the file changes between them. Both
+  // directions resolve correctly: repaired between the calls gives "" and
+  // nothing is reported, which is right because the pointer now resolves;
+  // deleted between them gives "is missing", which is a true sentence about the
+  // address the model was handed. Neither can render the empty `(it )` the
+  // sibling arm was fixed for.
+  ownOverlayInvariantsDefect = payloadDefect(overlayInvariants);
 }
 // The rules payload's own well-formedness (the sentinel gate) must be checked
 // BEFORE it is trusted enough to derive a slug set from it — moved ahead of
@@ -1580,6 +1629,38 @@ if (vendoredInvariantsOverlayDefect !== "") {
       `The plugin's own copy could not stand in for it: there is no readable ${pluginInvariants} either (it ${vendoredInvariantsPluginDefect}). ` +
       "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
       "Putting a readable invariants.md at that overlay path, or reinstalling the Trellis plugin so its copy can stand in, is the likely fix.",
+  );
+}
+// TRL-73, decided at the fourth arm above. Same lead, same classification
+// vocabulary, same claim as the report directly above -- both blame the
+// overlay, and an operator who meets one and then the other must not have to
+// reconcile two vocabularies for one class of fault (decision-0028's
+// guard-per-pair, applied to a string table that lives in two files in two
+// languages).
+//
+// WHERE IT DELIBERATELY DIFFERS IS THE SECOND SENTENCE AND THE REMEDY, and that
+// difference is forced rather than stylistic (decision-0096:2). In the cell
+// above, the plugin's copy is an ELIGIBLE substitute that happened to be
+// unavailable, so naming it and classifying it tells the reader whether
+// reinstalling would even have helped. Here it is ineligible WHATEVER STATE IT
+// IS IN, so naming it would be noise and offering the reinstall would send the
+// reader to a remedy that cannot work -- there is exactly one repair on this
+// arm, and it is the project's own file. TestCodexReportsTheOverlaysOwnDead-
+// InvariantsWithoutSubstituting pins that by running each shape against a
+// healthy plugin copy and a missing one and requiring the same answer.
+//
+// Not a fail(): decision-0093:1 rules that a CONSULTED reference may not fail a
+// session closed, and this rides systemMessage, outside the MAX_CONTEXT_BYTES
+// bound on `context`. Measured across all five overlay shapes, the delivered
+// context is 7908 bytes -- the SAME on the healthy row as on the four broken
+// ones, because the pointer keeps the 32-byte token rather than an absolute
+// path. The report costs the context nothing at all.
+if (ownOverlayInvariantsDefect !== "") {
+  warnings.push(
+    `Trellis warning: this project's vendored overlay has no readable ${overlayInvariants} (it ${ownOverlayInvariantsDefect}), so the invariants pointer in the context just injected names a file that yields nothing to read. ` +
+      "A vendored overlay is authoritative, so the plugin's own copy does not stand in for it whatever state that copy is in. " +
+      "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
+      "Putting a readable invariants.md at that overlay path is the likely fix.",
   );
 }
 // Floors are the `floor-` half of the same derived slug set, not a second
