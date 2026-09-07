@@ -36,11 +36,13 @@ date: 2026-08-29
 > text rather than quoted from it. The dropped `AC3` inline marker is restored, so §1 and §2 again
 > cite their criteria alike. Citations to `spec-0001`/`spec-0002` themselves are left alone:
 > `decision-0079`'s retired-artifacts registry is what resolves those, and that record chose not to
-> edit citing artifacts. **Retired display codes (`D2` ×7, `B4` ×1) are left as migrated**, against
+> edit citing artifacts. **The retired display codes `D2` and `B4` are left as migrated**, against
 > `decision-0038`'s instruction to *"migrate opportunistically as each file is next edited"* — on
 > that record's own stated rationale, *"no sweep ceremony over revise-in-place files nothing else
-> touches"*: an eight-code sweep is a second logical change, and doing one of the eight is worse
-> than doing none. **No field rule changed.** POINTER: `decision-0079` Consequences, dated note.*
+> touches"*: sweeping every one of them is a second logical change, and sweeping a single code
+> while its siblings stay is worse than sweeping none. (No count is written here on purpose —
+> `signature-catalog-v1` records that a count in prose has gone stale twice.) **No field rule
+> changed.** POINTER: `decision-0079` Consequences, dated note.*
 
 ## 1. The signature-catalog schema (`trellis-product`, one, shipped)
 
