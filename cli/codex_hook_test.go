@@ -239,7 +239,7 @@ func TestCodexHookValidStartupAndLiveRows(t *testing.T) {
 	writeValidCodexOverlay(t, project)
 	pluginRoot := writeCodexPluginRoot(t)
 	raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
-	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+	if got.HookSpecificOutput == nil || warningsBesideVendoredInvariants(t, got.SystemMessage) != "" {
 		t.Fatalf("valid startup must emit hookSpecificOutput only: %s", raw)
 	}
 	if got.HookSpecificOutput.HookEventName != "SessionStart" {
@@ -457,8 +457,8 @@ func TestCodexHookFalseFloorRowsWarnButSucceed(t *testing.T) {
 		t.Fatal("false floor rows must retain successful context delivery")
 	}
 	want := "Trellis warning: floor rows set active = false are overridden-by-floor and remain active: floor-intent-gate, floor-transparency."
-	if got.SystemMessage != want {
-		t.Errorf("floor warning mismatch\n got: %q\nwant: %q", got.SystemMessage, want)
+	if beside := warningsBesideVendoredInvariants(t, got.SystemMessage); beside != want {
+		t.Errorf("floor warning mismatch\n got: %q\nwant: %q", beside, want)
 	}
 }
 
@@ -1386,7 +1386,7 @@ func assertReconciledFitsCodexBudget(t *testing.T, reconciled string) {
 	}
 
 	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
-	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+	if got.HookSpecificOutput == nil || warningsBesideVendoredInvariants(t, got.SystemMessage) != "" {
 		t.Fatalf("the reconciled payload must still fit and govern under Codex, not fail closed: %s", raw)
 	}
 	if n := len([]byte(got.HookSpecificOutput.AdditionalContext)); n > 9500 {
@@ -1494,7 +1494,7 @@ func TestCodexToleratesADuplicateSlugTagInRulesMd(t *testing.T) {
 	}
 
 	raw, got := runCodexHook(t, writeCodexPluginRoot(t), startupInput(t, project))
-	if got.HookSpecificOutput == nil || got.SystemMessage != "" {
+	if got.HookSpecificOutput == nil || warningsBesideVendoredInvariants(t, got.SystemMessage) != "" {
 		t.Fatalf("a duplicated slug tag in rules.md must not fail every row closed: %s", raw)
 	}
 }

@@ -1181,35 +1181,96 @@ const repointedInvariants = `\`${pluginInvariants}\``;
 // is REPORTED and the pointer moves anyway, because there is no second address
 // to fall back to. There a defect is disqualifying, because there is: the
 // overlay's own path, which stays named.
+//
+// TRL-71 is the third arm below, and it is the cell the two above leave. When
+// the overlay has no invariants.md AND the plugin's copy is unusable, NEITHER
+// half of the fallback can help: there is no second address to move to, so the
+// token survives naming a file that is not there -- and until this change the
+// hook knew that and said nothing. What it earns is the same REPORT the
+// plugin-native arm earns, on the same channel, with one difference that
+// #294's scoping argument dictates rather than contradicts. That argument --
+// "on the vendored branch it is not the source: a plugin root with no
+// reference/ at all is a legitimate shape there" -- is sound about WORDING and
+// silent about SILENCE. It says the plugin install is the wrong thing to blame
+// here, not that nothing is wrong: the defect the reader must repair is the
+// OVERLAY's missing file, and the plugin's copy is named only as the
+// substitute that was unavailable.
 let pluginInvariantsDefect = "";
+// The overlay's own authoritative address. Hoisted because two arms need it
+// and it is a pure path join -- no read is moved earlier by naming it here.
+const overlayInvariants = path.join(
+  projectRoot,
+  ".trellis",
+  "internal",
+  "invariants.md",
+);
+let vendoredInvariantsOverlay = "";
+let vendoredInvariantsOverlayDefect = "";
+let vendoredInvariantsPluginDefect = "";
 if (sources.root === pluginRoot) {
   trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
   pluginInvariantsDefect = payloadDefect(pluginInvariants);
-} else if (
-  !existingFile(path.join(projectRoot, ".trellis", "internal", "invariants.md")) &&
-  payloadDefect(pluginInvariants) === ""
-) {
-  // TRL-58: the vendored overlay that has no invariants.md. The paragraph above
-  // argues the token must SURVIVE on the vendored branch, and it holds wherever
-  // the file is there -- but the overlay's writer was the retired setup skill:
-  // model-executed instructions rather than a script, so an overlay whose
-  // session skipped the `cp` is a shape nothing rules out. There the surviving
-  // token is TRL-52's defect verbatim: a last line telling the model to read a
-  // file that is not there.
-  //
-  // This is not the silent fall-through :1025-1030 forbids, on two counts. That
-  // rule governs the three DELIVERED files, whose absence makes the injected
-  // chain itself wrong; invariants.md is CONSULTED -- read on demand when a rule
-  // seems ambiguous, never injected -- so a session that meets no ambiguous rule
-  // never opens it, and failing the session closed over it would trade a dead
-  // pointer for no governance at all. And nothing switches mode: prose, rules and
-  // version still come from `sources`, which is untouched. Only the pointer moves.
-  //
-  // README.md:27 is not in tension either. "Installation sources rather than
-  // runtime substitutes" presupposes something to substitute FOR; this arm runs
-  // only when there is not. The plugin's copy is checked for existence too, so
-  // the fallback cannot replace one dead pointer with another.
-  trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
+} else if (!existingFile(overlayInvariants)) {
+  // ONE read, shared by the two arms below, and that is a correctness property
+  // rather than a saving. Asking payloadDefect twice let the answer CHANGE
+  // between the eligibility test and the report: a plugin copy restored between
+  // the two calls yielded a defect of "" on the second, and the report -- guarded
+  // on the overlay path rather than on the defect -- still fired, rendering
+  // `there is no readable <path> either (it ).` Reading once cannot disagree with
+  // itself. The read still happens only when the overlay has no copy of its own,
+  // because that is what this branch tests.
+  const pluginCopyDefect = payloadDefect(pluginInvariants);
+  if (pluginCopyDefect === "") {
+    // TRL-58: the vendored overlay that has no invariants.md. The paragraph above
+    // argues the token must SURVIVE on the vendored branch, and it holds wherever
+    // the file is there -- but the overlay's writer was the retired setup skill:
+    // model-executed instructions rather than a script, so an overlay whose
+    // session skipped the `cp` is a shape nothing rules out. There the surviving
+    // token is TRL-52's defect verbatim: a last line telling the model to read a
+    // file that is not there.
+    //
+    // This is not the silent fall-through :1025-1030 forbids, on two counts. That
+    // rule governs the three DELIVERED files, whose absence makes the injected
+    // chain itself wrong; invariants.md is CONSULTED -- read on demand when a rule
+    // seems ambiguous, never injected -- so a session that meets no ambiguous rule
+    // never opens it, and failing the session closed over it would trade a dead
+    // pointer for no governance at all. And nothing switches mode: prose, rules and
+    // version still come from `sources`, which is untouched. Only the pointer moves.
+    //
+    // README.md:27 is not in tension either. "Installation sources rather than
+    // runtime substitutes" presupposes something to substitute FOR; this arm runs
+    // only when there is not. The plugin's copy is checked for USABILITY too
+    // (decision-0094:4), so the fallback cannot replace one dead pointer with
+    // another.
+    trellis = trellis.split(INVARIANTS_TOKEN).join(repointedInvariants);
+  } else {
+    // TRL-71. The plugin's copy is unusable and the overlay has none, so both
+    // addresses are dead and the pointer stays at the overlay's -- which on this
+    // branch is not a lie: the project really does have a `.trellis/internal/`.
+    // decision-0094:4 widened this cell and said so ("TRL-71's population widens
+    // slightly, and this is stated rather than discovered later"), naming TRL-71
+    // as its consumer.
+    //
+    // BOTH halves are classified, which applies decision-0094's ruling rather
+    // than extending it. Its Decision HEADLINE, above the numbered points, is
+    // "A host that cannot say which fault it found has not reported the fault"
+    // -- the headline, not point 1, which is about which host changes.
+    // Classifying only the plugin's copy would leave the file the
+    // reader must actually repair as the one described least precisely -- and it
+    // is not hypothetical, because existingFile asks statSync(...).isFile(): a
+    // directory at the overlay path is not a present FILE and so reaches this
+    // arm, where "restore invariants.md" is the wrong instruction until the
+    // directory is gone.
+    //
+    // This does NOT widen the eligibility check decision-0094:5 reserves. That
+    // check is the `existingFile(overlayInvariants)` above and it is untouched;
+    // what is classified is the REPORT. The distinction matters for TRL-73: an
+    // overlay whose own copy is present but unusable never reaches this arm at
+    // all, because existingFile succeeds on it.
+    vendoredInvariantsOverlay = overlayInvariants;
+    vendoredInvariantsOverlayDefect = payloadDefect(overlayInvariants);
+    vendoredInvariantsPluginDefect = pluginCopyDefect;
+  }
 }
 // The rules payload's own well-formedness (the sentinel gate) must be checked
 // BEFORE it is trusted enough to derive a slug set from it — moved ahead of
@@ -1484,6 +1545,41 @@ if (pluginInvariantsDefect !== "") {
     `Trellis warning: this plugin payload has no readable ${pluginInvariants} (it ${pluginInvariantsDefect}), so the invariants pointer in the context just injected names a file that yields nothing to read. ` +
       "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
       "Reinstalling or updating the Trellis plugin is the likely fix.",
+  );
+}
+// TRL-71, decided at the third arm above. The overlay is what the reader must
+// repair, so the overlay is what this sentence blames -- naming the plugin
+// install here would name the wrong artifact on a branch where the plugin's
+// reference/ is not the delivery source (#294's own scoping reason, applied
+// rather than overridden).
+//
+// The shared vocabulary is kept verbatim on BOTH paths it names: the
+// `no readable <abs path>` lead that TestBothHostsReportAMissingInvariantsTarget
+// pins on the other branch, the `(it <defect>)` classification in
+// staleness.sh's own words and punctuation, and "yields nothing to read" rather
+// than "cannot be read" -- false for an empty file, which reads fine (#295).
+// An operator who meets one host's report and then the other's must not have to
+// reconcile two vocabularies for one fault.
+//
+// Not a fail(): decision-0093:1 rules that a CONSULTED reference may not fail a
+// session closed, and this rides systemMessage, outside the MAX_CONTEXT_BYTES
+// bound on `context`. The delivery is untouched -- prose, rules and version
+// still come from the overlay.
+//
+// GUARDED ON THE DEFECT, not on the path, and that is the same correction the
+// arm above already carries -- review found it applied to one half only. The
+// overlay's eligibility is decided by existingFile and its classification by a
+// SECOND stat, so the two can disagree if the file appears between them: the
+// defect comes back "" and a path-guarded push renders `has no readable <path>
+// (it ), so ...`. Guarding on the defect makes the race resolve the right way
+// rather than merely quietly -- if the overlay's own file now exists, the
+// pointer this report is about RESOLVES, and there is nothing to report.
+if (vendoredInvariantsOverlayDefect !== "") {
+  warnings.push(
+    `Trellis warning: this project's vendored overlay has no readable ${vendoredInvariantsOverlay} (it ${vendoredInvariantsOverlayDefect}), so the invariants pointer in the context just injected names a file that yields nothing to read. ` +
+      `The plugin's own copy could not stand in for it: there is no readable ${pluginInvariants} either (it ${vendoredInvariantsPluginDefect}). ` +
+      "The rules themselves were delivered and govern this session normally; the reference is consulted on demand, so only a rule that turns out ambiguous needs it. " +
+      "Putting a readable invariants.md at that overlay path, or reinstalling the Trellis plugin so its copy can stand in, is the likely fix.",
   );
 }
 // Floors are the `floor-` half of the same derived slug set, not a second

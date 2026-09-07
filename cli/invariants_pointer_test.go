@@ -107,6 +107,21 @@ func codexContextFor(t *testing.T, pluginRoot, project string) string {
 // claudeContextFor runs staleness.sh on the same shapes.
 func claudeContextFor(t *testing.T, pluginRoot, project string) string {
 	t.Helper()
+	return nudgeContext(t, claudeStdoutFor(t, pluginRoot, project))
+}
+
+// claudeStdoutFor is claudeContextFor's raw half: staleness.sh's stdout,
+// trimmed, WITHOUT requiring that it parse as a delivered context.
+//
+// Split out for the vendored fixtures, where staleness.sh legitimately emits
+// NOTHING -- path A opens at `if [ -d "$internal" ]` (staleness.sh:482) and
+// every route out of it exits, unconditionally at :529, long before the repoint
+// at :1403. An earlier version of this comment cited :559, which is a comment
+// inside path C; review caught it. nudgeContext fails on
+// that empty string, which is right for every caller that expects a delivery
+// and wrong for a caller asserting the absence of one.
+func claudeStdoutFor(t *testing.T, pluginRoot, project string) string {
+	t.Helper()
 	hook, err := filepath.Abs("../plugins/trellis/hooks/staleness.sh")
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +159,7 @@ func claudeContextFor(t *testing.T, pluginRoot, project string) string {
 	if stderr.Len() > 0 {
 		t.Logf("staleness.sh wrote to stderr (not a failure; stdout carries the contract):\n%s", stderr.String())
 	}
-	return nudgeContext(t, strings.TrimSpace(stdout.String()))
+	return strings.TrimSpace(stdout.String())
 }
 
 // pointerIn extracts the backticked path the delivered prose tells the model to
@@ -212,6 +227,77 @@ func TestCodexLeavesAVendoredInvariantsPointerAlone(t *testing.T) {
 	}
 	if strings.Contains(context, pluginRoot) {
 		t.Errorf("a vendored project must not be pointed at the plugin's reference/ — those stay installation sources, not runtime substitutes:\n%s", context)
+	}
+}
+
+// TestCodexSaysNothingWhenTheOverlayCarriesItsOwnInvariants is TRL-71's OTHER
+// boundary, and it exists because review found the change without it: mutating
+// the reporting arm's condition to `true` — so it fires on every vendored
+// project, including one whose overlay is complete — survived the entire suite.
+//
+// Nothing else could catch it. TestCodexLeavesAVendoredInvariantsPointerAlone
+// reads through codexContextFor, which discards systemMessage;
+// TestCodexDoesNotFallBackOnAnUnusablePluginCopy skips the healthy row outright;
+// and assertInvariantsReport's over-correction arm runs only on the pair guard's
+// config-only fixture, where this arm cannot fire at all. So the assertion that
+// a COMPLETE overlay is reported on is made here or nowhere.
+//
+// The four unusable shapes are subtests rather than decoration: they are TRL-73,
+// and the boundary decision-0094:5 draws is that an overlay's own copy is judged
+// on PRESENCE, not usability. `existingFile` succeeds on every one of them, so
+// none reaches the reporting arm, and this test is what would fail if that half
+// were ever quietly widened to payloadDefect.
+func TestCodexSaysNothingWhenTheOverlayCarriesItsOwnInvariants(t *testing.T) {
+	shapes := []struct {
+		name  string
+		write func(t *testing.T, target string)
+	}{{
+		name:  "a healthy overlay copy",
+		write: func(t *testing.T, target string) { writeFileT(t, target, payloadFiles()["invariants.md"]) },
+	}, {
+		name:  "a zero-byte overlay copy (TRL-73)",
+		write: func(t *testing.T, target string) { writeFileT(t, target, "") },
+	}, {
+		name:  "an overlay copy holding nothing but newlines (TRL-73)",
+		write: func(t *testing.T, target string) { writeFileT(t, target, "\n\n\n") },
+	}, {
+		name:  "an overlay copy holding nothing but NUL bytes (TRL-73)",
+		write: func(t *testing.T, target string) { writeFileT(t, target, "\x00\x00\x00") },
+	}, {
+		name: "an unreadable overlay copy (TRL-73)",
+		write: func(t *testing.T, target string) {
+			if os.Geteuid() == 0 {
+				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
+			}
+			writeFileT(t, target, payloadFiles()["invariants.md"])
+			if err := os.Chmod(target, 0o000); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(target, 0o644) })
+		},
+	}}
+	for _, shape := range shapes {
+		t.Run(shape.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+			shape.write(t, filepath.Join(project, ".trellis", "internal", "invariants.md"))
+			// The plugin's copy is broken too, so a report firing here could
+			// only come from the overlay half being judged wrongly — this is
+			// the fixture where BOTH halves would otherwise look alike.
+			removeFileT(t, filepath.Join(pluginRoot, "reference", "invariants.md"))
+
+			raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+			if got.HookSpecificOutput == nil {
+				t.Fatalf("the overlay is complete enough to govern; the hook must still deliver: %s", raw)
+			}
+			if got.SystemMessage != "" {
+				t.Errorf("the overlay has its own invariants.md, so this project is not TRL-71's cell and nothing may be reported about it (decision-0094:5 judges the overlay's copy on presence, not usability)\ngot: %q", got.SystemMessage)
+			}
+			if !strings.Contains(got.HookSpecificOutput.AdditionalContext, invariantsToken) {
+				t.Errorf("the overlay's own address must survive whatever state its copy is in:\n%s", got.HookSpecificOutput.AdditionalContext)
+			}
+		})
 	}
 }
 
@@ -326,6 +412,17 @@ func TestCodexRepointsWhenAVendoredOverlayLacksInvariants(t *testing.T) {
 	if first := strings.SplitN(strings.TrimSpace(overlayRules), "\n", 2)[0]; first != "" && !strings.Contains(context, first) {
 		t.Errorf("the injected rules no longer come from the overlay — the fallback switched delivery mode, not just the pointer\nwant a line from: %s", first)
 	}
+
+	// TRL-71's discrimination control, and the reason it lives HERE: this is
+	// the fixture where the fallback actually fires. A hook that reported an
+	// incomplete overlay unconditionally would satisfy every assertion in
+	// TestCodexDoesNotFallBackOnAnUnusablePluginCopy and still be wrong on the
+	// shape that is not broken at all -- the over-correction
+	// assertInvariantsReport guards against on the other arm.
+	_, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+	if got.SystemMessage != "" {
+		t.Errorf("the fallback fired onto a healthy plugin copy, so nothing is broken and nothing may be reported\ngot: %q", got.SystemMessage)
+	}
 }
 
 // TestCodexDoesNotFallBackOnAnUnusablePluginCopy is the other half of the test
@@ -350,38 +447,189 @@ func TestCodexRepointsWhenAVendoredOverlayLacksInvariants(t *testing.T) {
 // The token SURVIVING is the assertion, and on this branch that is the right
 // outcome rather than a lesser evil: a vendored project really does have a
 // `.trellis/internal/`, so naming it is not the lie it would be on the
-// plugin-native arm. Both addresses are dead here — that residue is TRL-71's,
-// not this test's.
+// plugin-native arm.
+//
+// TRL-71 is the other half, and it is this test's now rather than a residue it
+// hands on. Both addresses ARE dead here: the pointer survives at an address
+// the hook has just proved nothing is at, and until this change the hook said
+// nothing. #294 scoped its report away from this arm on a reason that is sound
+// about WORDING and silent about SILENCE — "on the vendored branch it is not
+// the source: a plugin root with no reference/ at all is a legitimate shape
+// there" — so what is asserted below is a report that blames the OVERLAY and
+// names the plugin copy only as the substitute that was unavailable.
+//
+// The classification assertions are the same shared table and the same
+// assertInvariantsReport as the pair guard, against the PLUGIN path, because
+// that is the copy the classification describes. The overlay's own address is
+// asserted separately: it is the address the model was actually handed.
+// overlayAbsences is how the OVERLAY's own copy can be missing-as-a-file while
+// still reaching this arm. Both rows fail existingFile, which is what the
+// eligibility check asks; they differ in what payloadDefect then calls them, and
+// that difference is the whole reason decision-0095:3 classifies this half.
+//
+// The directory row exists because review found its absence: with only the
+// absent row, `payloadDefect(overlayInvariants)` could be replaced by the string
+// literal "is missing" and the entire suite still passed. The shape is not
+// exotic — it is the one decision-0095:3 names as the case where a bare
+// "restore invariants.md" would be incomplete until the directory is gone.
+func overlayAbsences() []struct {
+	name string
+	make func(t *testing.T, target string)
+	why  string
+} {
+	return []struct {
+		name string
+		make func(t *testing.T, target string)
+		why  string
+	}{{
+		name: "the overlay simply has no copy",
+		make: func(t *testing.T, target string) {},
+		why:  "is missing",
+	}, {
+		name: "a directory sits at the overlay's own path",
+		make: func(t *testing.T, target string) {
+			if err := os.Mkdir(target, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		},
+		why: "is not a readable file — a directory or a device sits at that path",
+	}}
+}
+
 func TestCodexDoesNotFallBackOnAnUnusablePluginCopy(t *testing.T) {
-	for _, tc := range invariantsFaults() {
-		// The healthy row is the control for the test above, not for this one:
-		// with a good plugin copy the fallback SHOULD fire. Skipping it here
-		// keeps this test a statement about unusable copies only.
-		if tc.why == "" {
-			continue
+	for _, overlay := range overlayAbsences() {
+		for _, tc := range invariantsFaults() {
+			// The healthy row is the control for the test above, not for this
+			// one: with a good plugin copy the fallback SHOULD fire. Skipping it
+			// here keeps this test a statement about unusable copies only.
+			if tc.why == "" {
+				continue
+			}
+			runUnusablePluginCopyCase(t, overlay.name+" / "+tc.name, overlay.make, overlay.why, tc)
 		}
-		t.Run(tc.name, func(t *testing.T) {
-			pluginRoot := writeDualHostPluginRoot(t)
-			project := newGitProject(t)
-			writeValidCodexOverlay(t, project)
-			overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
-			if _, err := os.Stat(overlayCopy); err == nil {
-				t.Fatal("fixture drift: writeValidCodexOverlay now writes invariants.md, so the fallback arm is no longer reached")
-			}
-			tc.breakIt(t, filepath.Join(pluginRoot, "reference", "invariants.md"))
-
-			context := codexContextFor(t, pluginRoot, project)
-
-			// Delivery is untouched: only the pointer was ever in question
-			// (decision-0093:1).
-			if !strings.Contains(context, rulesLoadedSentinel) {
-				t.Fatalf("the overlay's rules must still be delivered whole:\n%s", context)
-			}
-			if got := pointerIn(t, context); got != ".trellis/internal/invariants.md" {
-				t.Errorf("the fallback fired onto a plugin copy that %s — decision-0093:2's second half exists to stop exactly this substitution\nwant the overlay's own address to survive: .trellis/internal/invariants.md\ngot:  %s", tc.why, got)
-			}
-		})
 	}
+}
+
+// runUnusablePluginCopyCase is one cell of the overlay-shape x plugin-fault
+// matrix above, lifted out so the two loops stay readable.
+func runUnusablePluginCopyCase(t *testing.T, name string, makeOverlay func(*testing.T, string), overlayWhy string, tc invariantsFault) {
+	t.Helper()
+	t.Run(name, func(t *testing.T) {
+		pluginRoot := writeDualHostPluginRoot(t)
+		project := newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
+		if _, err := os.Stat(overlayCopy); err == nil {
+			t.Fatal("fixture drift: writeValidCodexOverlay now writes invariants.md, so the fallback arm is no longer reached")
+		}
+		makeOverlay(t, overlayCopy)
+		pluginCopy := filepath.Join(pluginRoot, "reference", "invariants.md")
+		tc.breakIt(t, pluginCopy)
+
+		raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("a consulted reference is not a delivered payload (decision-0093:1): Codex must still inject the overlay's rules: %s", raw)
+		}
+		context := got.HookSpecificOutput.AdditionalContext
+
+		// Delivery is untouched: only the pointer was ever in question
+		// (decision-0093:1).
+		if !strings.Contains(context, rulesLoadedSentinel) {
+			t.Fatalf("the overlay's rules must still be delivered whole:\n%s", context)
+		}
+		if got := pointerIn(t, context); got != ".trellis/internal/invariants.md" {
+			t.Errorf("the fallback fired onto a plugin copy that %s — decision-0093:2's second half exists to stop exactly this substitution\nwant the overlay's own address to survive: .trellis/internal/invariants.md\ngot:  %s", tc.why, got)
+		}
+
+		// TRL-71. The pointer above survives at an address this hook has
+		// just proved nothing is at, and the overlay is what the reader
+		// must repair — the plugin's reference/ is not this delivery's
+		// source, so blaming the install would name the wrong artifact.
+		//
+		// BOTH halves are asserted as path-and-classification PAIRS rather
+		// than through assertInvariantsReport, and that is forced by the
+		// report naming two files. That helper's exclusion arm treats a
+		// second classification as flattening, which is right when one file
+		// is described and wrong here: two files with two different faults
+		// SHOULD carry two classifications. Pinning the pairs is also
+		// strictly stronger than the helper's separate contains-checks,
+		// which a report that attached the wrong defect to the wrong path
+		// would satisfy.
+		// decision-0095:2's ruling, asserted HERE rather than left to the
+		// strip helper's HasPrefix in five tests about other things. Review
+		// showed that swapping this lead for the plugin-native one — the
+		// exact advice that ruling rejects — failed only those five, with
+		// messages blaming unrelated subjects, and would go entirely
+		// unpinned if writeCodexPluginRoot were ever healed.
+		if !strings.HasPrefix(got.SystemMessage, vendoredInvariantsReportLead) {
+			t.Errorf("the report must blame the overlay, not the install: on this branch the plugin's reference/ is not the delivery source (decision-0095:2)\nwant the lead: %q\ngot: %q", vendoredInvariantsReportLead, got.SystemMessage)
+		}
+		overlayTarget := filepath.Join(project, ".trellis", "internal", "invariants.md")
+		// The overlay's own classification is the fixture's, not a
+		// constant: review found that hardcoding "is missing" here left
+		// payloadDefect(overlayInvariants) replaceable by that same literal
+		// with the whole suite still green.
+		wantOverlay := invariantsReportLead + overlayTarget + " (it " + overlayWhy + ")"
+		if !strings.Contains(got.SystemMessage, wantOverlay) {
+			t.Errorf("the hook kept a pointer it had just proved dead and did not name the overlay's own missing file — TRL-52's defect, surviving on the arm #294 did not change\nwant: %s\ngot:  %q", wantOverlay, got.SystemMessage)
+		}
+		wantPlugin := invariantsReportLead + pluginCopy + " either (it " + tc.why + ")"
+		if !strings.Contains(got.SystemMessage, wantPlugin) {
+			t.Errorf("the plugin copy is why no substitute was available, and which fault it is decides whether reinstalling would have helped\nwant: %s\ngot:  %q", wantPlugin, got.SystemMessage)
+		}
+		// Flattening is still refused: no classification may appear beyond
+		// the two these two files actually have.
+		for _, why := range invariantsClassifications() {
+			if why == strings.SplitN(overlayWhy, " — ", 2)[0] || why == tc.classification() || !strings.Contains(got.SystemMessage, why) {
+				continue
+			}
+			t.Errorf("the report names %q as well, so the reader is told the two files are broken in more ways than they are\ngot: %q", why, got.SystemMessage)
+		}
+		// The claim both hosts share about a file in this state, and the
+		// wording #295 corrected because it is false for an empty one.
+		if !strings.Contains(got.SystemMessage, invariantsReportClaim) {
+			t.Errorf("the report does not say what is actually true of every classification\nwant: %q\ngot: %q", invariantsReportClaim, got.SystemMessage)
+		}
+		if strings.Contains(got.SystemMessage, invariantsReportFalseClaim) {
+			t.Errorf("the report says the file %q, false for an empty one which reads fine (#295)\ngot: %q", invariantsReportFalseClaim, got.SystemMessage)
+		}
+		// The remedy is the actionable half of "blame the overlay", and it
+		// is pinned because review found it unpinned: swapping it for the
+		// plugin-native remedy — the very advice decision-0095:2 rules out,
+		// since it sends the reader to reinstall an install that may be
+		// fine — passed the whole suite.
+		// BOTH clauses, because review found the second one droppable in
+		// silence: wantRemedy pinned only the first, and the strip helper
+		// needs no more than "is the likely fix." to exist somewhere.
+		for _, wantRemedy := range []string{
+			"Putting a readable invariants.md at that overlay path",
+			"reinstalling the Trellis plugin so its copy can stand in",
+		} {
+			if !strings.Contains(got.SystemMessage, wantRemedy) {
+				t.Errorf("the report dropped half its remedy; both repairs are real and the reader needs both (decision-0095:2)\nwant: %q\ngot: %q", wantRemedy, got.SystemMessage)
+			}
+		}
+
+		// The report costs the injected context NOTHING: it rides
+		// systemMessage, outside the MAX_CONTEXT_BYTES bound on `context`.
+		// That is the one way a report about a CONSULTED file could fail a
+		// session closed (decision-0093:1), and on this host it holds
+		// structurally — so the structure is what is pinned.
+		if strings.Contains(context, invariantsReportLead+overlayTarget) {
+			t.Errorf("the report was assembled into the injected context; a report about a consulted file must not spend the context budget (decision-0093:1)\n%s", context)
+		}
+
+		// The asymmetry is deliberate and is pinned here rather than left
+		// as a reading of the other hook: staleness.sh's path A exits at
+		// the vendored branch, so Claude never delivers an invariants
+		// pointer into a vendored project and has nothing to report about.
+		// A vendored row in the pair guard would therefore have to assert
+		// Claude delivers NOTHING, contradicting that guard's own delivery
+		// assertion — which is why this cell is guarded here instead.
+		if out := claudeStdoutFor(t, pluginRoot, project); strings.Contains(out, "read its entry in `") {
+			t.Errorf("staleness.sh delivered an invariants pointer into a vendored project; this cell is Codex-only by construction and the pair guard's shape depends on it:\n%s", out)
+		}
+	})
 }
 
 // invariantsReportLead is the phrase BOTH hosts must produce when the plugin
@@ -410,6 +658,61 @@ const invariantsReportLead = "no readable "
 // between them contradicted itself.
 const invariantsReportClaim = "yields nothing to read"
 const invariantsReportFalseClaim = "cannot be read"
+
+// vendoredInvariantsReportLead opens the report codex-context.mjs makes when a
+// vendored overlay has no invariants.md and the plugin's copy cannot stand in
+// for it (TRL-71). It names the OVERLAY, because the overlay is what the reader
+// must repair; the plugin's copy appears later in the same sentence pair as the
+// substitute that was unavailable.
+const vendoredInvariantsReportLead = "Trellis warning: this project's vendored overlay has no readable "
+
+// warningsBesideVendoredInvariants returns a Codex systemMessage with that
+// report removed, so a test whose subject is something else can still assert
+// "and nothing else was said".
+//
+// It exists because a large family of vendored fixtures is in TRL-71's cell BY
+// CONSTRUCTION and always was: writeCodexPluginRoot builds a plugin root
+// carrying only .codex-plugin/plugin.json, with no reference/ at all, and
+// writeValidCodexOverlay writes no invariants.md. Both addresses are therefore
+// dead on every one of them, so the report is CORRECT there — it is simply not
+// what those tests are about. Measured when the report was first wired up: 58
+// hook invocations across the suite fire it, and exactly five assertions
+// noticed. FOUR are `SystemMessage != ""` standing in for "the hook did not fail
+// closed"; the fifth, TestCodexHookFalseFloorRowsWarnButSucceed, is an equality
+// against the floor warning, which the report displaces by prefixing it. An
+// earlier version of this comment called all five silence proxies; review
+// measured that false.
+//
+// Narrowing those five is deliberately preferred over healing
+// writeCodexPluginRoot. Giving that helper a reference/invariants.md would move
+// all 58 onto the decision-0093 fallback path, changing the pointer every one
+// of them delivers from a 32-byte token to an absolute temp path — a silent
+// change to what they cover, and to the byte profile two of them measure.
+//
+// What is NOT relaxed, stated precisely because an earlier version of this
+// comment was not: a spurious report is caught by
+// TestCodexRepointsWhenAVendoredOverlayLacksInvariants for a HEALTHY plugin copy
+// (the fallback's own cell), and by
+// TestCodexSaysNothingWhenTheOverlayCarriesItsOwnInvariants for an overlay that
+// has its own copy in any state. The second of those was added because review
+// showed the first does not cover it: mutating the reporting arm's condition to
+// `true` survived the whole suite without it. assertInvariantsReport's
+// over-correction arm does NOT cover this arm at all — it runs only on the pair
+// guard's config-only fixture, where this arm cannot fire.
+func warningsBesideVendoredInvariants(t *testing.T, msg string) string {
+	t.Helper()
+	if !strings.HasPrefix(msg, vendoredInvariantsReportLead) {
+		return msg
+	}
+	// The report is pushed first and the warnings are joined by one space, so
+	// the remainder starts after this report's own final sentence.
+	const tail = "is the likely fix."
+	i := strings.Index(msg, tail)
+	if i < 0 {
+		t.Fatalf("the vendored invariants report no longer ends with %q, so this helper would swallow the whole systemMessage instead of just that report\ngot: %q", tail, msg)
+	}
+	return strings.TrimPrefix(msg[i+len(tail):], " ")
+}
 
 // invariantsFault is one way the plugin's `reference/invariants.md` can be
 // broken, paired with the classification BOTH hosts must hand the reader for
