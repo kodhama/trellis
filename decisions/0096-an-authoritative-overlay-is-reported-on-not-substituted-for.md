@@ -19,7 +19,13 @@ date: 2026-09-07
 > *No claim of session independence is made here, and an earlier draft's — "written by a later
 > session, which authored none of `#284`, `#294`, `#295`, `#296` or `#297`" — was removed in review
 > as unverifiable: `#297`'s commit carries the same `Claude-Session` trailer this one does, so the
-> assertion is contradicted by the only record that could check it. `decision-0095` makes the same
+> assertion is contradicted by the only record that could check it. **`decision-0095`'s own version
+> of the claim is contradicted more broadly than an earlier draft of this note said** — it names
+> `#284`, `#294`, `#295` and `#296`, and measured, **all four** carry that trailer, as does `#297`.
+> An earlier draft cited `#297` alone; review measured the rest, in the record whose Self-check
+> asserts every figure is re-runnable. *A trailer is authorship metadata rather than proof of
+> session identity, so what is established is that the claim cannot be checked the way it invites,
+> not who wrote what.* `decision-0095` makes the same
 > claim with the same contradiction; that is `decision-0095`'s own to correct, and `TRL-79` carries it rather than this record fixing it
 > here. What can honestly be said is the sentence above — what this record re-derived and what it
 > re-measured — which is the property the claim was reaching for anyway.*
@@ -61,7 +67,7 @@ overlay's copy is commentary on the project's own content rather than on a broke
 
 | | measured | `decision-0095`'s cell, for contrast |
 |---|---|---|
-| hook invocations that fire the report | **4** | 58 |
+| hook invocations that fire the report | **4** | 58 (does not reproduce — see below) |
 | top-level tests that fail | **1** | 5 |
 | named subtests that fail | **4** | 4 |
 | failures that are byte-budget overruns | **0** | 0 |
@@ -80,6 +86,16 @@ copy and a missing one — so the same instrumentation returns **8** firings on 
 the failing-test count is meaningless once the test it counts has been rewritten. What is stable is
 the shape of the answer: every firing is inside this cell's own guard, and no other fixture reaches
 it.*
+
+*A third figure is not this change's and does not reproduce either. The **58** in the contrast
+column is `decision-0095`'s, inherited rather than re-measured, and instrumenting the suite returns
+**65** — on `main` and on this branch alike, out of 155 and 161 hook invocations respectively. The
+number is left in the table as the quoted historical figure it is, flagged here and in
+`cli/invariants_pointer_test.go`, and **not** silently re-endorsed: an earlier draft of this caption
+corrected two figures and walked past the third, in a record whose Self-check claims every figure is
+re-runnable. What it was used to argue is unaffected — whatever the count, every one of those
+invocations is in that cell by construction — and correcting `decision-0095`'s own copy is that
+record's to do.*
 
 ## Decision
 
@@ -175,7 +191,11 @@ to the second no, and `decision-0095` already drew the line between them.**
 6. **`decision-0093`:1 is obeyed, and on this host structurally.** The report rides
    `systemMessage`, outside the `MAX_CONTEXT_BYTES` bound on `context`. Measured across all five
    overlay shapes, the delivered context is **7908 bytes — the same on the healthy row as on the
-   four broken ones**, because the pointer keeps the 32-byte token rather than an absolute path.
+   four broken ones**, because the pointer keeps the 33-byte token rather than an absolute path.
+  *An earlier draft said 32 in three places, inherited from `decision-0095`:5 and repeated rather
+  than measured; the token is `` `.trellis/internal/invariants.md` ``, 31 characters plus its two
+  backticks. `decision-0095`'s own copy is left as written — it is that record's to correct — and
+  the three copies this change ships are right.*
    That is the figure `decision-0095`:5 measured on its own cell and it reproduces here, which is
    expected: neither cell moves the pointer. The report cannot grow the context, so it cannot tip
    a governed session into a refusal, and a session that meets no ambiguous rule is unaffected
@@ -272,10 +292,17 @@ reason is now the true one.
   reason the `changes:` count is four rather than three.* D5's substantive prediction for the
   eligibility half stands and this record agrees with it.
 - **The report is `decision-0095`'s sentence in its first half and deliberately not in its second.**
-  The pair is behaviourally pinned rather than textually: `assertOverlayOwnCopyReport` requires the
-  shared lead, the fixture's own classification, the shared claim and the absence of the wording
-  `#295` corrected, and separately requires that the plugin root appear **nowhere** in the report
-  and that no reinstall be offered. **No byte constant is claimed for the report**, deliberately:
+  The pair is pinned behaviourally on the *shared* vocabulary and **textually on the three
+  sentences that carry this record's own ruling** — a distinction an earlier draft flattened into
+  "behaviourally pinned rather than textually" while its own helper asserted the literals.
+  `assertOverlayOwnCopyReport` requires the shared lead, the fixture's own classification, the
+  shared claim and the absence of the wording `#295` corrected; it requires that the plugin root
+  appear **nowhere** and that no reinstall be offered; and it pins verbatim the remedy
+  (*"Putting a readable invariants.md at that overlay path"*), the whole
+  why-no-substitute sentence including its load-bearing tail *"whatever state that copy is in"*,
+  and the sentence discharging `decision-0093`:1 to the reader
+  (*"The rules themselves were delivered and govern this session normally"*). Each of those three
+  was added after a planted mutant deleted or weakened it in silence. **No byte constant is claimed for the report**, deliberately:
   it embeds the overlay's absolute path, so its size tracks that path's length and a figure
   measured under `t.TempDir()` is a property of the fixture rather than of the report — the error
   `decision-0095`:5 refused to make and `decision-0094`:148-151 recorded paying for. What **is** reproducible is its

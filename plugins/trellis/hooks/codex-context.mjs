@@ -1284,13 +1284,24 @@ if (sources.root === pluginRoot) {
   // THE ELIGIBILITY CHECK ABOVE IS UNTOUCHED, and that is decision-0096:1
   // rather than an omission. decision-0094:5 reserved "whether an overlay's
   // unusable copy should be substituted for" and decision-0096 answers it NO,
-  // for a reason stronger than the one that deferred it: a vendored overlay is
-  // authoritative precisely because it may hold a DIFFERENT VERSION of the
-  // invariants from the plugin's. Substituting the plugin's copy for a
-  // zero-byte overlay copy would silently change which invariants govern --
-  // the runtime substitution README.md:27 forbids, and worse than a dead
-  // pointer because it is invisible. So `existingFile` above stays a presence
-  // test and this arm moves nothing.
+  // on the ground decision-0094:5 itself named: THE PROJECT HAS ITS OWN
+  // AUTHORITATIVE LOCATION FOR THIS FILE, AND IT IS OCCUPIED. Substitution
+  // presupposes something to substitute FOR (decision-0093:3); here there is.
+  // Repointing would move a vendored project off the address it chose onto one
+  // the plugin controls -- the runtime substitution README.md:27 forbids -- and
+  // would do it INVISIBLY, where the dead pointer it replaces is at least
+  // visible to whoever opens it. So `existingFile` above stays a presence test
+  // and this arm moves nothing.
+  //
+  // THE DIFFERENT-VERSION ARGUMENT IS AN INSTANCE, NOT THE GROUND, and this
+  // comment said otherwise until review caught it against the record it cites.
+  // It reaches the mode-0000 shape, where the file has contents this hook cannot
+  // read and so MAY hold a different version of the invariants. It does not
+  // reach the zero-byte, newline-only or NUL-filled shapes -- those hold
+  // nothing, and the hook has just proved it -- which is exactly why
+  // decision-0096:1 rests the ruling on the ADDRESS rather than on the bytes.
+  // An overlay that owns the location owns it whether or not this session found
+  // anything at it.
   //
   // WHAT IS DECIDED IS THE REPORT, which is the line decision-0095:3 already
   // drew on the sibling cell ("This widens no eligibility check ... What
@@ -1313,15 +1324,30 @@ if (sources.root === pluginRoot) {
   //
   // ONE READ, AND THE GUARD IS ON THE DEFECT rather than on the arm -- the same
   // correction the arm above carries. existingFile above and payloadDefect here
-  // are two stats and can disagree if the file changes between them. Both
-  // directions resolve correctly: repaired between the calls gives "" and
-  // nothing is reported, which is right because the pointer now resolves;
-  // deleted between them gives "is missing", which is a true sentence about the
-  // address the model was handed. Neither can render the empty `(it )` the
-  // sibling arm was fixed for.
+  // are two stats and can disagree if the file changes between them, and
+  // payloadDefect has FOUR non-empty answers rather than the two an earlier
+  // version of this paragraph enumerated. Repaired between the calls gives ""
+  // and nothing is reported, which is right because the pointer now resolves.
+  // The other two disagreements -- "is missing" and "is not a readable file" --
+  // are handled by condition ONE below rather than tolerated here: that earlier
+  // version called them "a true sentence about the address the model was
+  // handed", which is true of the LEAD and false of the second sentence, and
+  // the guard was narrowed for exactly that reason. Nothing can render the
+  // empty `(it )` the sibling arm was fixed for.
   const ownCopyDefect = payloadDefect(overlayInvariants);
   // TWO CONDITIONS, both found by review, and each closes a way this report
   // could say something untrue.
+  //
+  // A NOTE ON THE UNREADABLE PHRASE, since review asked and the answer is "no
+  // change": DEFECT_UNREADABLE offers three causes, and one of them -- "a
+  // symlink whose target is gone" -- CANNOT apply on this arm, because such a
+  // link fails statSync and so fails the existingFile above. The phrase is not
+  // narrowed for that, deliberately: these four strings are the vocabulary
+  // shared byte for byte with staleness.sh payload_read (decision-0094:2,
+  // decision-0028 guard-per-pair), and forking one of them per arm is the exact
+  // divergence that pair guard exists to prevent. A slightly over-broad cause
+  // list costs a reader one discarded hypothesis; two hosts describing one fault
+  // differently costs them the whole diagnosis.
   //
   // ONE: the defect must be one of the two that leave the file PRESENT. This
   // arm was entered because existingFile said a regular file is at that path,
@@ -1329,27 +1355,43 @@ if (sources.root === pluginRoot) {
   // between. `is missing` or `is not a readable file` coming back here means it
   // did: the file was deleted or replaced by a directory, and the condition that
   // now holds is the arm ABOVE this one, which was not taken. Reporting anyway
-  // would ship a second sentence -- "a vendored overlay is authoritative, so the
-  // plugin's own copy does not stand in for it" -- that is FALSE in exactly
+  // would ship a second sentence -- "A vendored overlay is authoritative, so the
+  // plugin's own copy does not stand in for it WHATEVER STATE THAT COPY IS IN"
+  // (the tail is load-bearing and an earlier version of this comment dropped it:
+  // it is the clause that makes the copy ineligible by rule rather than merely
+  // unavailable, and the whole sentence is what the guard pins) -- that is FALSE in exactly
   // those states, because with no file at the overlay path decision-0093:2's
   // fallback does make the plugin's copy eligible and the reinstall this report
   // withholds would be a real remedy. Silence through a microsecond race is the
   // right answer: the pointer still names the overlay's own address, and the
   // next session classifies it correctly.
   //
-  // TWO: the pointer must actually BE in the prose about to be delivered. This
+  // TWO: the pointer must actually BE in the context about to be delivered. This
   // report asserts, as fact, that "the invariants pointer in the context just
   // injected names a file that yields nothing to read" -- and on this branch the
-  // prose is the PROJECT's own .trellis/internal/trellis.md, which nothing here
-  // validates beyond its @rules.md placeholder count. A vendored trellis.md with
-  // the pointer edited out would otherwise draw a report about a pointer that
-  // was never delivered, handing the reader a repair for a file nothing names:
-  // the right-diagnosis-wrong-artifact class this whole thread has been closing.
-  // The token is unrewritten on this arm, so testing `trellis` here tests what
-  // ships.
+  // delivery is assembled from the PROJECT's own files, which nothing here
+  // validates beyond trellis.md's @rules.md placeholder count and rules.md's
+  // sentinel. A vendored overlay with the pointer edited out would otherwise draw
+  // a report about a pointer that was never delivered, handing the reader a
+  // repair for a file nothing names: the right-diagnosis-wrong-artifact class
+  // this whole thread has been closing.
+  //
+  // BOTH HALVES, because the delivery is both. The context is
+  // `trellis.replace("@rules.md", rules)` below, so the pointer ships if EITHER
+  // file carries it, and an overlay is free to put it in its rules half. Review
+  // found this check written against `trellis` alone: a project that moved the
+  // pointer into .trellis/internal/rules.md got silence while the delivered
+  // context really did carry a dead pointer -- the same defect the check exists
+  // to prevent, missed by half. The disjunction is exact rather than
+  // approximate: the rules body is substituted INTO the prose at the
+  // placeholder, so the assembled text contains the token exactly when one of
+  // the two files does.
+  // TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf pins the
+  // rules half and TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer the
+  // absence of both, so neither direction can be widened or narrowed unobserved.
   if (
     (ownCopyDefect === DEFECT_EMPTY || ownCopyDefect === DEFECT_UNREADABLE) &&
-    trellis.includes(INVARIANTS_TOKEN)
+    (trellis.includes(INVARIANTS_TOKEN) || rules.includes(INVARIANTS_TOKEN))
   ) {
     ownOverlayInvariantsDefect = ownCopyDefect;
   }
@@ -1687,7 +1729,7 @@ if (vendoredInvariantsOverlayDefect !== "") {
 // session closed, and this rides systemMessage, outside the MAX_CONTEXT_BYTES
 // bound on `context`. Measured across all five overlay shapes, the delivered
 // context is 7908 bytes -- the SAME on the healthy row as on the four broken
-// ones, because the pointer keeps the 32-byte token rather than an absolute
+// ones, because the pointer keeps the 33-byte token rather than an absolute
 // path. The report costs the context nothing at all.
 if (ownOverlayInvariantsDefect !== "") {
   warnings.push(

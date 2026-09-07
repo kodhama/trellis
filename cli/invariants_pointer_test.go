@@ -433,6 +433,17 @@ func assertOverlayOwnCopyReport(t *testing.T, pluginRoot, project, overlayCopy s
 	if !strings.Contains(got.SystemMessage, wantWhyNoSubstitute) {
 		t.Errorf("the report does not say why no substitute is offered, so a reader meeting the sibling report's reinstall advice has no way to tell why it is absent here (decision-0096:1)\nwant: %q\ngot: %q", wantWhyNoSubstitute, got.SystemMessage)
 	}
+	// decision-0093:1 discharged TO THE READER, and pinned because review found
+	// it droppable in silence. Everything else in this guard establishes that a
+	// dead pointer is REPORTED; this is the only sentence telling the person who
+	// reads the report that the session is still governed -- that the rules
+	// arrived, and that a consulted reference is not a delivered payload. Without
+	// it the report reads as "your governance is broken", which is precisely the
+	// reading decision-0093:1 exists to prevent, and no other assertion notices.
+	const wantStillGoverns = "The rules themselves were delivered and govern this session normally"
+	if !strings.Contains(got.SystemMessage, wantStillGoverns) {
+		t.Errorf("the report does not tell the reader the session is still governed, so a dead consulted reference reads as a governance failure (decision-0093:1)\nwant: %q\ngot: %q", wantStillGoverns, got.SystemMessage)
+	}
 
 	// The report costs the injected context NOTHING: it rides systemMessage,
 	// outside the MAX_CONTEXT_BYTES bound on `context`. That is the one way a
@@ -486,6 +497,57 @@ func TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer(t *testing.T) {
 	}
 	if got.SystemMessage != "" {
 		t.Errorf("the delivered prose names no invariants pointer, so there is no dead pointer to report and this report claims one was injected — a repair for a file nothing points at\ngot: %q", got.SystemMessage)
+	}
+}
+
+// TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf is the other
+// half of the pointer-presence check, and it exists because review found the
+// check written against only one of the two files it needed to cover.
+//
+// The delivered context is `trellis.replace("@rules.md", rules)`
+// (codex-context.mjs:1455). On the vendored branch BOTH halves are the project's
+// own unvalidated files: `.trellis/internal/trellis.md` and
+// `.trellis/internal/rules.md`. A guard that asks only whether `trellis` carries
+// the pointer therefore goes silent on a project that moved the pointer into its
+// rules half — while every substantive precondition for reporting holds and the
+// delivered context really does carry a dead pointer. That is the same
+// right-diagnosis-wrong-artifact defect the check was added to prevent, missed
+// by half.
+//
+// The mirror mutant is what makes this test necessary rather than decorative:
+// widening the production check to `(trellis + rules).includes(...)` is
+// unobservable to the rest of the suite, so the check's SCOPE is unpinned in
+// both directions without a fixture that puts the pointer in the rules half.
+func TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf(t *testing.T) {
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	// Move the pointer out of the prose half and into the rules half. Inserted
+	// at the START of rules.md so the sentinel gate — exactly one sentinel, and
+	// the file ending with it — is untouched.
+	prose := filepath.Join(project, ".trellis", "internal", "trellis.md")
+	proseBody := readFileT(t, prose)
+	if !strings.Contains(proseBody, invariantsToken) {
+		t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer, so moving it proves nothing")
+	}
+	writeFileT(t, prose, strings.ReplaceAll(proseBody, invariantsToken, "`the invariants reference`"))
+	rules := filepath.Join(project, ".trellis", "internal", "rules.md")
+	writeFileT(t, rules, "Consult "+invariantsToken+" when a rule seems ambiguous.\n\n"+readFileT(t, rules))
+
+	// Every other precondition for the report holds.
+	writeFileT(t, filepath.Join(project, ".trellis", "internal", "invariants.md"), "")
+
+	raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+	if got.HookSpecificOutput == nil {
+		t.Fatalf("a consulted reference is not a delivered payload (decision-0093:1): the overlay still governs and must still be injected: %s", raw)
+	}
+	// The premise: the pointer really is delivered, through the rules half.
+	if !strings.Contains(got.HookSpecificOutput.AdditionalContext, invariantsToken) {
+		t.Fatalf("fixture drift: the delivered context carries no pointer, so this test is not exercising its subject:\n%s", got.HookSpecificOutput.AdditionalContext)
+	}
+	if !strings.HasPrefix(got.SystemMessage, vendoredInvariantsReportLead) {
+		t.Errorf("the delivered context carries a pointer this hook has just proved dead, and the hook said nothing — the pointer-presence check reads only the prose half, while the delivery is trellis.replace(\"@rules.md\", rules)\ngot: %q", got.SystemMessage)
 	}
 }
 
@@ -887,7 +949,7 @@ const vendoredInvariantsReportLead = "Trellis warning: this project's vendored o
 // Narrowing those five is deliberately preferred over healing
 // writeCodexPluginRoot. Giving that helper a reference/invariants.md would move
 // all 58 onto the decision-0093 fallback path, changing the pointer every one
-// of them delivers from a 32-byte token to an absolute temp path — a silent
+// of them delivers from a 33-byte token to an absolute temp path — a silent
 // change to what they cover, and to the byte profile two of them measure.
 //
 // What is NOT relaxed, stated precisely because an earlier version of this
