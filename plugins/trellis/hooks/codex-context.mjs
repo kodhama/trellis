@@ -1382,10 +1382,20 @@ if (sources.root === pluginRoot) {
   // found this check written against `trellis` alone: a project that moved the
   // pointer into .trellis/internal/rules.md got silence while the delivered
   // context really did carry a dead pointer -- the same defect the check exists
-  // to prevent, missed by half. The disjunction is exact rather than
-  // approximate: the rules body is substituted INTO the prose at the
-  // placeholder, so the assembled text contains the token exactly when one of
-  // the two files does.
+  // to prevent, missed by half. The disjunction is exact for any rules body
+  // holding no `$`, which is every one this payload ships: the rules body is
+  // substituted INTO the prose at the placeholder, so the assembled text
+  // contains the token exactly when one of the two files does.
+  //
+  // NOT claimed as exact without that qualifier, which review corrected. The
+  // substitution below is `trellis.replace("@rules.md", rules)`, and
+  // String.replace interprets `$&`, `` $` `` and `$'` in the REPLACEMENT --
+  // which `rules` is. A `$`-pattern adjacent to the token could therefore make
+  // the assembled text and this test disagree in either direction. That hazard
+  // is pre-existing and untouched here, and it is the same one :1127-1132
+  // records the repoint using split/join to avoid; the assembly was never given
+  // the same treatment. Filed rather than fixed in this change, which is about
+  // a report rather than about how the payload is joined.
   // TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf pins the
   // rules half and TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer the
   // absence of both, so neither direction can be widened or narrowed unobserved.

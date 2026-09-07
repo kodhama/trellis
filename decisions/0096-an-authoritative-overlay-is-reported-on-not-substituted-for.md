@@ -82,10 +82,20 @@ install/vendor failures; every one is a bundle-checksum artifact that clears onc
 *Every figure above is a measurement of **the tree as it stood before this change**, which is what
 a cost weighed before choosing has to be. Two of them do not survive the change that follows, and
 review was right to check: the rewritten guard runs each shape **twice** — against a healthy plugin
-copy and a missing one — so the same instrumentation returns **8** firings on the merged tree, and
+copy and a missing one — so the same instrumentation returns more firings on the merged tree, and
 the failing-test count is meaningless once the test it counts has been rewritten. What is stable is
-the shape of the answer: every firing is inside this cell's own guard, and no other fixture reaches
-it.*
+the shape of the answer: every firing is inside one of this cell's own guards, and no fixture
+belonging to any other subject reaches the arm.*
+
+*Measured at the merged tree rather than estimated, because two review rounds got this wrong in the
+same place: **9** firings — **8** in
+`TestCodexReportsTheOverlaysOwnDeadInvariantsWithoutSubstituting` (five shapes, each run twice,
+less the healthy shape's two silent runs) and **1** in
+`TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf`. An earlier version of this
+caption said **8** and "no other fixture reaches it", and both were falsified **by the very commit
+that wrote them**, which added the second guard without re-measuring. That is the third figure in
+this record review has had to correct, which is worth recording as a pattern rather than a
+one-off.*
 
 *A third figure is not this change's and does not reproduce either. The **58** in the contrast
 column is `decision-0095`'s, inherited rather than re-measured, and instrumenting the suite returns
@@ -220,8 +230,10 @@ to the second no, and `decision-0095` already drew the line between them.**
 - **The pointer-presence gap on the two older report arms.** This record's arm now requires the
   invariants token to be in the prose about to ship before it claims one was delivered;
   `decision-0095`'s arm and the plugin-native one make the same claim without the same check.
-  Pre-existing, same one-line shape, not fixed here because each is a different arm with its own
-  fixture. `TRL-78` carries it, and separates the two: the vendored arm reads the **project's**
+  Pre-existing, not fixed here because each is a different arm with its own fixture — and **not
+  the same one-line shape any more**: this arm's check had to grow to both delivery halves, and the
+  plugin-native arm cannot take even the single-half form, since its repoint rewrites the token
+  before the report site. `TRL-78` carries it, and separates the two: the vendored arm reads the **project's**
   prose and is genuinely exposed, while the plugin-native arm reads the payload generator's own
   output, where the token is present by construction and the check would guard a regression rather
   than fix a defect.
@@ -340,9 +352,18 @@ reason is now the true one.
   drawn a report about a pointer nothing delivered — the right-diagnosis-wrong-artifact class this
   thread has spent five changes closing, reintroduced by the change that closes its last cell. The
   arm now also requires the token to be present in the prose about to ship, pinned by
-  `TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer`. **The same gap is live on
-  `decision-0095`'s arm and on the plugin-native one**, where it is pre-existing; `TRL-78` carries
-  it, not fixed here.
+  `TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer`. **The check reads BOTH halves of the
+  delivery**, because the delivery is both: the context is `trellis.replace("@rules.md", rules)`,
+  so the pointer ships if either the overlay's prose or its rules body carries it. *An earlier
+  version of this arm asked the prose alone, and a project that moved its pointer into
+  `.trellis/internal/rules.md` got silence while the delivered context really did carry a dead
+  pointer — the same defect the check exists to prevent, missed by half. Review reproduced it;
+  `TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf` pins the rules half, and
+  between the two guards neither direction can be widened or narrowed unobserved.* **The same gap
+  is live on `decision-0095`'s arm and on the plugin-native one**, where it is pre-existing;
+  `TRL-78` carries it, not fixed here. *The disjunction is exact for any rules body holding no `$`,
+  which is every one this payload ships: the assembly is `String.replace`, which interprets
+  `$&`-style patterns in its replacement, and `TRL-81` carries that pre-existing hazard.*
 - **The renamed guard's assertions are strictly stronger than the silence they replace.** Four
   rows stopped asserting `SystemMessage == ""` — a proxy for *"the eligibility half was not
   widened"* — and now assert that property **directly**: the delivered pointer must still name the

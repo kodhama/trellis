@@ -504,8 +504,10 @@ func TestCodexSaysNothingWhenTheVendoredProseCarriesNoPointer(t *testing.T) {
 // half of the pointer-presence check, and it exists because review found the
 // check written against only one of the two files it needed to cover.
 //
-// The delivered context is `trellis.replace("@rules.md", rules)`
-// (codex-context.mjs:1455). On the vendored branch BOTH halves are the project's
+// The delivered context is `trellis.replace("@rules.md", rules)` — cited without
+// a line number deliberately, because an earlier version of this comment cited
+// :1455 and the commit that wrote it grew the file 42 lines above that point.
+// On the vendored branch BOTH halves are the project's
 // own unvalidated files: `.trellis/internal/trellis.md` and
 // `.trellis/internal/rules.md`. A guard that asks only whether `trellis` carries
 // the pointer therefore goes silent on a project that moved the pointer into its
@@ -935,7 +937,7 @@ const vendoredInvariantsReportLead = "Trellis warning: this project's vendored o
 //
 // THE 58 DOES NOT REPRODUCE, and is flagged rather than re-endorsed. Measured on
 // this branch and on main alike, by logging every hook stdout the suite drives:
-// 155 invocations on main and 161 here, of which THIS report fires 65 on both.
+// 155 invocations on main and 162 here, of which THIS report fires 65 on both.
 // The count is pre-existing (it predates this branch and is quoted in TRL-75's
 // own title), so it is left as the historical figure it is and corrected here
 // rather than silently carried forward. What the number was used to argue is
@@ -972,9 +974,13 @@ const vendoredInvariantsReportLead = "Trellis warning: this project's vendored o
 // reached by this helper is in decision-0096's cell at all, since
 // writeValidCodexOverlay writes no invariants.md. Measured: wiring that report up
 // fired it on 4 hook invocations suite-wide against the PRE-REWRITE fixture, and
-// on 8 against the merged one, because decision-0096's guard runs each shape
-// twice — against a healthy plugin copy and a missing one. Every firing is inside
-// that guard on either count.
+// on 9 against the merged one: 8 in that guard, which runs each of five shapes
+// twice less the healthy shape's two silent runs, and 1 in
+// TestCodexReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf. An earlier
+// version of this comment said 8 and claimed every firing was inside a single
+// guard — both were made false by the commit that wrote them, which added the
+// second guard without re-measuring. Every firing is still inside a guard whose
+// subject IS this report.
 func warningsBesideVendoredInvariants(t *testing.T, msg string) string {
 	t.Helper()
 	if !strings.HasPrefix(msg, vendoredInvariantsReportLead) {

@@ -35,16 +35,17 @@ rather than a payload: an overlay carrying no `invariants.md` has that *consulte
 repointed at the plugin's copy, because the alternative is naming a file that is not there
 (`decision-0093`). That substitution needs the plugin's copy to be **usable**, not merely present
 (`decision-0094`) — otherwise it would trade one dead pointer for another. Where it is not usable
-the pointer stays at the overlay's own address, and the session is told which file is unusable and
-how, and why no copy could stand in, on a channel that costs the injected context nothing
-(`decision-0095`). Where the overlay's **own** copy is the unusable one — present but empty or
+the pointer stays at the overlay's own address, and the **Codex** session is told which file is
+unusable and how, and why no copy could stand in, on a channel that costs the injected context
+nothing (`decision-0095`). Where the overlay's **own** copy is the unusable one — present but empty or
 unreadable — nothing is substituted at all: that file is the project's, at the address the project
 chose, so the pointer stays on it and the **Codex** session is told which file is unusable and how,
 with the one repair that works on that branch (`decision-0096`). The plugin's copy is not offered
 there, because it may not stand in whatever state it is in, and reinstalling would not move the
-pointer. **On Claude that report has no counterpart** — the hook injects nothing into a vendored
-project, so it never reaches the check, while the static import chain still carries the pointer.
-A Claude session in that cell is not told, and closing that gap is tracked separately.
+pointer. **On Claude neither report has a counterpart** — `staleness.sh` exits on any project with
+a `.trellis/internal/`, long before either check, while the static import chain still carries the
+pointer into the session. A Claude session in either cell is not told, and closing that gap is
+tracked separately.
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
 see below. Trellis requires no
