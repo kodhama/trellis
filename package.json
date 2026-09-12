@@ -1,0 +1,23 @@
+{
+  "name": "trellis-repository-quality",
+  "private": true,
+  "scripts": {
+    "check:go-format": "test -z \"$(gofmt -l cli/*.go)\"",
+    "check:go-mod": "scripts/check-go-mod.sh",
+    "check:go-vet": "cd cli && go vet ./...",
+    "format": "prettier --write package.json package-lock.json eslint.config.mjs .prettierrc.json scripts/plugin-smoke.mjs plugins/trellis/hooks/codex-context.mjs plugins/trellis/hooks/*.json plugins/trellis/.claude-plugin/*.json plugins/trellis/.codex-plugin/*.json",
+    "format:check": "prettier --check package.json package-lock.json eslint.config.mjs .prettierrc.json scripts/plugin-smoke.mjs plugins/trellis/hooks/codex-context.mjs plugins/trellis/hooks/*.json plugins/trellis/.claude-plugin/*.json plugins/trellis/.codex-plugin/*.json",
+    "lint:js": "eslint eslint.config.mjs plugins/trellis/hooks/codex-context.mjs scripts/plugin-smoke.mjs",
+    "lint:shell": "shellcheck --severity=warning --exclude=SC2154 install.sh && shellcheck --severity=warning --exclude=SC2034 plugins/trellis/hooks/staleness.sh && shellcheck --severity=warning .github/scripts/*.sh scripts/check-go-mod.sh",
+    "test:plugin-smoke": "node scripts/plugin-smoke.mjs",
+    "quality": "npm run check:go-format && npm run check:go-mod && npm run check:go-vet && npm run format:check && npm run lint:js && npm run lint:shell && npm run test:plugin-smoke"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.10.0",
+    "prettier": "3.9.6"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}

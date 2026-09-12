@@ -1,2 +1,10 @@
 .DS_Store
 .superpowers/
+node_modules/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/

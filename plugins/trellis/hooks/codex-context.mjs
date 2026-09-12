@@ -100,8 +100,7 @@ function existingFile(value) {
 // (TestBothHostsReportAMissingInvariantsTarget) can only compare reports that
 // are stated in the same words. Change one of these and change the other.
 const DEFECT_MISSING = "is missing";
-const DEFECT_NOT_A_FILE =
-  "is not a readable file — a directory or a device sits at that path";
+const DEFECT_NOT_A_FILE = "is not a readable file — a directory or a device sits at that path";
 const DEFECT_UNREADABLE =
   "exists but could not be read — a permission mode, a stale ACL, or a symlink whose target is gone";
 const DEFECT_EMPTY = "is empty";
@@ -290,13 +289,7 @@ function readRequired(projectRoot, relativePath, options = {}) {
     const buffer = Buffer.alloc(MAX_CONTEXT_BYTES + 1);
     let total = 0;
     while (total < buffer.length) {
-      const count = fs.readSync(
-        descriptor,
-        buffer,
-        total,
-        buffer.length - total,
-        null,
-      );
+      const count = fs.readSync(descriptor, buffer, total, buffer.length - total, null);
       if (count === 0) break;
       total += count;
     }
@@ -373,10 +366,7 @@ function parseQuotedTomlString(source) {
     const hex = source.slice(index + 1, index + 1 + digits);
     if (hex.length !== digits || !/^[0-9A-Fa-f]+$/u.test(hex)) return null;
     const codePoint = Number.parseInt(hex, 16);
-    if (
-      codePoint > 0x10ffff ||
-      (codePoint >= 0xd800 && codePoint <= 0xdfff)
-    ) {
+    if (codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) {
       return null;
     }
     value += String.fromCodePoint(codePoint);
@@ -557,8 +547,7 @@ function parseRulesToml(source, slugs) {
 const QUARANTINE_NOTE_TEMPLATE =
   "  # quarantined {date}: not in {stamp}. If a newer Trellis" +
   " release ships this slug, update the Trellis plugin and uncomment this row.";
-const ADDED_HEADER_TEMPLATE =
-  "# added {count} row(s) below on {date} (missing from {stamp})";
+const ADDED_HEADER_TEMPLATE = "# added {count} row(s) below on {date} (missing from {stamp})";
 
 function fillTemplate(template, values) {
   return template.replace(/\{(\w+)\}/gu, (_match, key) => values[key]);
@@ -1031,9 +1020,7 @@ const vendored = existingDirectory(path.join(projectRoot, ".trellis", "internal"
 // Both TOML string forms. parseRulesToml below accepts literal strings, so
 // matching only the basic form served a firm project the adaptive posture
 // without saying so.
-const posture = /^\s*strictness\s*=\s*(?:"firm"|'firm')\s*(?:#.*)?$/mu.test(rulesToml)
-  ? "a"
-  : "b";
+const posture = /^\s*strictness\s*=\s*(?:"firm"|'firm')\s*(?:#.*)?$/mu.test(rulesToml) ? "a" : "b";
 const sources = vendored
   ? { root: projectRoot, ...VENDORED_PAYLOAD }
   : {
@@ -1198,12 +1185,7 @@ const repointedInvariants = `\`${pluginInvariants}\``;
 let pluginInvariantsDefect = "";
 // The overlay's own authoritative address. Hoisted because two arms need it
 // and it is a pure path join -- no read is moved earlier by naming it here.
-const overlayInvariants = path.join(
-  projectRoot,
-  ".trellis",
-  "internal",
-  "invariants.md",
-);
+const overlayInvariants = path.join(projectRoot, ".trellis", "internal", "invariants.md");
 let vendoredInvariantsOverlay = "";
 let vendoredInvariantsOverlayDefect = "";
 let vendoredInvariantsPluginDefect = "";
@@ -1417,10 +1399,7 @@ if (sources.root === pluginRoot) {
 // yielded an empty or malformed slug set, parseRulesToml then failed on the
 // PROJECT's .trellis/rules.toml, and the reported label blamed the project's
 // config for a defect that was actually in the plugin's own payload.
-if (
-  rules.split(SENTINEL).length - 1 !== 1 ||
-  !rules.endsWith(`${SENTINEL}\n`)
-) {
+if (rules.split(SENTINEL).length - 1 !== 1 || !rules.endsWith(`${SENTINEL}\n`)) {
   // sources.rules, for the same reason as sources.prose above: hardcoded, this
   // named the vendored path on the plugin-native branch too, where the file
   // actually read is reference/rules.md.
