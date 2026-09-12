@@ -237,6 +237,14 @@ vendored bundle at `.claude/skills/trellis/` behind your confirmation, then dele
 leaving your own content intact; for an M2-morphed project it points you at the recorded git
 rollback (`trellis-pre-morph` / `.trellis/rollback`).
 
+## Local QA
+
+From the repository root, `npm ci && npm run test:plugin-smoke` runs both SessionStart hooks against
+a temporary healthy project and verifies that each delivers a complete rules payload. The smoke
+path uses no live credentials or network services and removes its temporary project at exit.
+`npm run quality` adds the repository's formatter, JavaScript, ShellCheck, Go formatting, module,
+and vet checks.
+
 ## Plugin vs manual copy
 
 This plugin covers Claude Code and the Phase 1 trusted-local Codex startup boundary described

@@ -330,6 +330,32 @@ execution is independently verified** (the builder never grades itself); frictio
 product research rather than something to route around. See
 [`AGENTS.md`](AGENTS.md).
 
+### Local quality checks
+
+Use Node.js 20.19 or newer, install the pinned repository tools once, and install
+[ShellCheck](https://www.shellcheck.net/) on `PATH` (`brew install shellcheck` on macOS). Then run
+the same static checks and plugin smoke path as CI:
+
+```sh
+npm ci
+npm run quality
+```
+
+`npm run quality` checks Go formatting, module tidiness, and vet; formats and lints the plugin's
+JavaScript and JSON; runs ShellCheck over the maintained shell entrypoints; and starts both host
+hooks against a temporary healthy project. It does not use live credentials, network services, or
+your current `.trellis/` state.
+
+To enable the checked-in pre-commit gate for this clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+The hook runs `npm run quality`. It fails with the relevant installation command when the pinned Node
+tools or ShellCheck are missing. Use Git's standard `--no-verify` escape hatch only when you intend
+CI to be the first full check; CI runs the same command and cannot be bypassed by the local flag.
+
 ## License
 
 **[MIT](LICENSE)** — free and open (`decision-0019`). Read it, fork it, run it; that's the whole point
