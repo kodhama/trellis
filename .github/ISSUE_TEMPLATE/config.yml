@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Trellis work tracking (maintainer workflow)
+    url: https://linear.app/kodhama/team/TRL
+    about: Issues, stages, and priorities for this project live in the Kodhama Linear workspace (decision-0075). External bug reports are welcome here; the maintainer files planned work in Linear.

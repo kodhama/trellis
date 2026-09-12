@@ -20,8 +20,11 @@ name: Agent workflow parity
 # claude-code-action, so it is the one check in this area that cannot itself
 # skip green. Do not "improve" it into an agentic check.
 #
-# Advisory: `main` carries no branch protection here, so a red never blocks a
-# merge. It exists to make an invisible state visible, not to gate.
+# Advisory by design, even with the `main` ruleset requiring other checks: a PR
+# that edits a claude-code-action workflow necessarily differs from the
+# default-branch copy, so this check is red on exactly the PRs it exists to
+# watch. It can never be a required check. It exists to make an invisible state
+# visible, not to gate.
 
 on:
   pull_request:
