@@ -8,6 +8,10 @@ if [ ! -x node_modules/.bin/eslint ]; then
   echo "Trellis pre-commit checks need the pinned development tools. Run: npm ci" >&2
   exit 1
 fi
+if ! command -v go >/dev/null 2>&1; then
+  echo "Trellis pre-commit checks need Go on PATH (for example: brew install go)." >&2
+  exit 1
+fi
 if ! command -v shellcheck >/dev/null 2>&1; then
   echo "Trellis pre-commit checks need ShellCheck on PATH (for example: brew install shellcheck)." >&2
   exit 1
