@@ -5,8 +5,10 @@
 # invariants catalog and eval fixtures quote TODOs as examples on purpose.
 set -eu
 
+# Self-excluded: this script's patterns and prose necessarily name the tokens.
 hits=$(git ls-files '*.go' '*.mjs' '*.js' '*.cjs' '*.sh' '*.yml' '*.yaml' |
   grep -v '^eval/' |
+  grep -v '^scripts/check-todos.sh$' |
   xargs grep -nE 'TODO|FIXME' 2>/dev/null |
   grep -vE '(TODO|FIXME)\((TRL-[0-9]+|#[0-9]+|decision-[0-9]+)\)' || true)
 
