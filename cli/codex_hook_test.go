@@ -1251,7 +1251,7 @@ func TestCliCIProvidesNode20BeforeGoTests(t *testing.T) {
 	workflow := readFileT(t, "../.github/workflows/cli-ci.yml")
 	setupNode := strings.Index(workflow, "uses: actions/setup-node@v5")
 	node20 := strings.Index(workflow, `node-version: "20"`)
-	goTests := strings.Index(workflow, "run: go test -count=1 ./...")
+	goTests := strings.Index(workflow, "run: go test -count=1 -coverprofile=")
 	if setupNode < 0 || node20 < setupNode || goTests < node20 {
 		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node@v5 before Go tests execute the Codex hook")
 	}
@@ -1261,8 +1261,10 @@ func TestCliCIProvidesNode20BeforeGoTests(t *testing.T) {
 	// no .go change replays a stale `ok (cached)`. Reproduced by deleting
 	// codex-context.mjs's empty-slug-set guard. Pinned here so dropping the flag
 	// from the workflow is a red test rather than a silent loss of coverage.
-	if !strings.Contains(workflow, "run: go test -count=1 ./...") {
-		t.Error("cli-ci must run tests with -count=1 — the hook tests exec external files the Go test cache does not track")
+	// -coverprofile= is pinned with it: the coverage-floor step consumes that
+	// profile, so dropping the flag must be red here rather than a silent loss.
+	if !strings.Contains(workflow, "run: go test -count=1 -coverprofile=") {
+		t.Error("cli-ci must run tests with -count=1 and a coverprofile — the hook tests exec external files the Go test cache does not track, and the coverage floor consumes the profile")
 	}
 }
 

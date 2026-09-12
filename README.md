@@ -341,11 +341,21 @@ npm ci
 npm run quality
 ```
 
-`npm run quality` checks Go formatting, module tidiness, and vet; formats and lints the plugin's
-JavaScript and JSON; runs ShellCheck over the maintained shell entrypoints; and starts both host
+`npm run quality` checks Go formatting, module tidiness, and vet; runs
+[staticcheck](https://staticcheck.dev/) over the CLI (pinned via `go run`, so no install step);
+formats and lints the plugin's JavaScript and JSON; runs ShellCheck over the maintained shell
+entrypoints; enforces a 500 KB ceiling on tracked files; requires every TODO/FIXME in source to
+name its tracker (`TODO(TRL-123)`, `TODO(#45)`, or `TODO(decision-0042)`); and starts both host
 hooks against a temporary healthy project. It does not use live credentials, network services, or
 your current `.trellis/` state. On a machine without Go, leave the full gate to CI; it runs the same
 command.
+
+The `cli-ci` workflow additionally enforces a test-coverage floor on the CLI: the suite runs with a
+coverprofile and fails below 90% of statements (measured 92.3% when the floor was set). The floor is
+a ratchet — raise it as coverage climbs, lower it only with a reason recorded in the PR.
+
+A [devcontainer](.devcontainer/devcontainer.json) provisions the whole toolchain — Go 1.22, Node 20,
+the pinned Node tools, and ShellCheck — for GitHub Codespaces or any devcontainer-capable editor.
 
 To enable the checked-in pre-commit gate for this clone:
 

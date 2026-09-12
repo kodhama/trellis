@@ -1963,19 +1963,6 @@ func keysOfBool(m map[string]bool) []string {
 	return out
 }
 
-// reportSection returns just the "(...)" defect report the hook prints after
-// "the rules the installed plugin ships", excluding the remedy prose that
-// follows. The remedy names every category by name, so assertions against the
-// whole message cannot tell a one-category report from a three-category one.
-func reportSection(t *testing.T, out string) string {
-	t.Helper()
-	m := regexp.MustCompile(`installed plugin ships \(([^)]*)\)`).FindStringSubmatch(out)
-	if m == nil {
-		t.Fatalf("no defect report found in the hook output:\n%s", out)
-	}
-	return m[1]
-}
-
 // TestStalenessHookHandlesInlineManagedBlock guards decision-0073 D2/AC2 (and
 // carries the S6 pin, decision-0073 D1/D4). S4 — the inline managed block — is
 // a column-0 `<!-- trellis:begin` marker in CLAUDE.md or AGENTS.md, with the

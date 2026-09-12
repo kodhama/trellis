@@ -68,4 +68,11 @@ jobs:
       # red under -count=1. Redundant on a fresh CI runner (cache: false above,
       # and nothing to restore) — kept so this line and AGENTS.md's documented
       # command are the same command, and the local run is safe by default.
-      - run: go test -count=1 ./...
+      # The coverprofile feeds the coverage floor below; AGENTS.md's command
+      # stays the canonical local form — the profile is CI-side plumbing.
+      - run: go test -count=1 -coverprofile="$RUNNER_TEMP/cover.out" ./...
+      # The floor is a ratchet (scripts/check-coverage.sh): 90 sits below the
+      # 92.3% measured at introduction. Raise it as coverage climbs. Runs from
+      # the module directory — `go tool cover` resolves the profile's package
+      # paths against go.mod.
+      - run: ../scripts/check-coverage.sh "$RUNNER_TEMP/cover.out" 90
