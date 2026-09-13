@@ -53,7 +53,7 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
 
 **Accounting for every rule**
 
-- R5. Every part of every rubric check has a recorded outcome with its reason, from the Check outcomes vocabulary: implemented, accepts, halts, covered, dropped, guidance, no rule, retired or rewritten. A guard fails when a numbered rubric check has no outcome, or when a check's text changes without its outcome rows being re-reviewed.
+- R5. Every part of every rubric check has a recorded outcome with its reason, from the Check outcomes vocabulary: implemented, accepts, halts, covered, dropped, guidance, no rule or retired. A guard fails when a numbered rubric check has no outcome, or when a check's text changes without its outcome rows being re-reviewed.
 - R6. Parts kept as review guidance are written where a named reviewer reads them.
 
 **Positive control**
@@ -75,7 +75,7 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
 
 - Nothing under `plugins/trellis/` changes, and `plugins/trellis/VERSION` does not move.
 - Repository settings are not changed. The check runs on every corpus PR but does not block a merge, because `build-test` is not among `main`'s required status checks (A9).
-- The text of rubric checks 1–12 is not reworded. Only the rubric's framing sections change (U5).
+- The text of rubric checks 1–12 is not reworded, and the rubric stays in `core/`. Only its **Derived resource** paragraph, a short repository note and its `depends_on` change (KTD13).
 - Historical mentions of `corpus-reviewer` stay as written: append-only decisions, `research/0012`'s `status:` comment, the plans and specs under `docs/superpowers/`, and the dated repair notes in `profiles/trellis-self.md`.
 - `.github/workflows/claude-code-review.yml` is not edited (A11).
 - No type registry is built for check 2's centrally declared scope (A4).
@@ -87,13 +87,13 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
 ### Key Technical Decisions
 
 - KTD1. **A Go test in `cli/`, not a standalone script or a new workflow.** The `cli` module is dependency-free Go (`decision-0043`), and `cli-ci` already runs `go test -count=1`. `cli/ci_paths_guard_test.go` fails unless the paths filter covers every repository path a test reads, so adding the corpus reads forces the coverage R2 needs rather than leaving it to a hand-maintained filter. Test files stay out of the binary and out of the coverage floor. `decision-0010`'s fourth Decision bullet already permits a project's own-stack helper for CI gating, and this repository's stack is Go. Cost: a decision-only PR now also runs `npm ci`, ShellCheck and staticcheck inside `build-test`.
-- KTD2. **One corpus-roots declaration, written as `../`-prefixed string literals.** This declaration is the only place the check names corpus paths (R4). The literal form is what `ci_paths_guard_test.go` extracts; a loop joining bare directory names would be invisible to it. Every rule keys on an artifact's `type`, never its directory, so a move changes no rule.
+- KTD2. **One corpus-roots declaration, written as `../`-prefixed string literals.** This declaration is the only place the check names corpus paths (R4). The literal form is what `ci_paths_guard_test.go` extracts; a loop joining bare directory names would be invisible to it. Every rule keys on an artifact's `type`, never its directory, so a move changes no rule. The rubric's own path is likewise one constant (KTD13).
 - KTD3. **The rubric is read as data where it states data, and implemented as code where it states logic.** The check reads check 6's type-to-sections rows and check 4's cross-repo registry list from the rubric at test time, reusing `contractWindow` and `contractRows` from `cli/artifact_contract_guard_test.go`, so no second copy can drift. Check 4's five accepted forms are code, and the guard maps each rubric row to one implemented form (U4). The pinned row counts stay at 10 and 5.
 - KTD4. **Registries are found by artifact id, not by path.** Retired ids come from the Identifiers section of the artifact whose id is `invariants-v1`, and from the §3a table of `decision-0079`. Check 8's slug coverage is not re-derived here: `TestRowSetDerivativesFollowThePin` already fails when the catalog or the invariant set differs from the pinned slug set (Check outcomes, 8a and 8d).
 - KTD5. **Finding contract.** One finding per violation, as `<path>:<line>: check <N> (<rule-id>): <detail>`. A missing section is one finding per section. A dangling supersession pointer is a check 7 finding, not a check 4 one. Findings are collected over the whole corpus first and reported per check in subtests, so `go test -v` shows PASS or FAIL for each check.
 - KTD6. **Halt policy.** The run halts only when a shared input is missing or unparseable: a corpus root that is absent or holds no artifacts, a rubric enumeration marker, a registry artifact or its table, or a catalog's entries section when a profile needs it. A problem inside one file, such as malformed frontmatter or a missing heading, is a finding, so one bad file never hides the others.
 - KTD7. **The positive control is a standalone fixture corpus on disk.** `core/fixtures/known-bad/` holds a small self-contained corpus with its own `invariants-v1`, `decision-0079`, catalog and profile. It contains seeded violations and deliberately valid constructs. The expected findings live in Go as an exact multiset keyed by file, rule id and the detail the finding names (the missing field or section, the dangling reference, the slug or the pair position), so two findings of one rule in one file are each required. This was chosen over in-memory mutations of live artifacts, because a mutation breaks whenever unrelated live text changes, and because the rubric already names `core/fixtures/` as its positive control. `core/fixtures/known-bad.md` moves into the new directory.
-- KTD8. **The outcome table is enforced data.** The check carries one row per rule from Check outcomes below, keyed by rule id, or by clause name for the three unnumbered rows. Each row carries one of the table's outcomes (implemented, accepts, halts, covered, dropped, guidance, no rule, retired, rewritten) and its reason.
+- KTD8. **The outcome table is enforced data.** The check carries one row per rule from Check outcomes below, keyed by rule id, or by clause name for the three unnumbered rows. Each row carries one of the table's outcomes (implemented, accepts, halts, covered, dropped, guidance, no rule, retired) and its reason.
   - An implemented rule reports findings and needs at least one seeded violation in the expected set.
   - An accepts rule only accepts or exempts input and needs a deliberately valid fixture construct that yields no finding.
   - The halts row is proven by the halt scenarios in U1 and U2.
@@ -101,10 +101,14 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
   - The guard fails when a numbered rubric check (1–12) has no row or its digest no longer matches. The control test fails when an implemented rule has no expected finding or an accepts rule has no valid construct.
 - KTD9. **Heading match.** A required section is an H2 whose text, compared case-insensitively, is the section name alone or the name followed by ` (`. Fenced code blocks are skipped. The rule accepts `## Decision (direction — draft, for future reasoning)` in `decisions/0008` and `## Consequences (execution — downstream, deferred)` in `decisions/0047`, and it rejects `## Decision state`.
 - KTD10. **Frontmatter parsing is line-based.** Every corpus frontmatter line is a single-line `key: value`. A flow-list value ends at its closing `]`, and the rest of the line is a comment that may contain brackets, colons and pipes. Keys the rubric does not type are not validated; `supersedes: invariants-v0` is a scalar and passes.
-- KTD11. **Review guidance is stated in `AGENTS.md`, citing the rubric.** The two guidance rules (5d and 10b) are already prose inside rubric checks 5 and 10. The conformance bullet in `AGENTS.md` states each in one sentence and cites its rubric check. `ce-code-review`'s project-standards reviewer grades changed files against the root `AGENTS.md` and must cite a rule from a standards file, so the rule is written there rather than pointed at (A11). Outcome rows 5d and 10b name that bullet as the guidance home, so KTD8's digest on checks 5 and 10 forces the pair to be re-reviewed together (`decision-0028`).
-- KTD12. **Supersession scope.** `decision-0098` supersedes, in part: `decision-0010`'s second Decision bullet as it applies to this repository's own gate; `decision-0076` point 6's standing rule; and `decision-0089`'s Consequences sentence "Artifact **conformance** stays agent-applied via `corpus-reviewer`". Each record gains a clause-scoped forward pointer (A5).
+- KTD11. **Review guidance is stated in `AGENTS.md`, citing the rubric.** The two guidance rules (5d and 10b) are already prose inside rubric checks 5 and 10. The conformance bullet in `AGENTS.md` states each in one sentence and cites its rubric check. `ce-code-review`'s project-standards reviewer grades changed files against the root `AGENTS.md` and must cite a rule from a standards file, so the rule is written there rather than pointed at (A11). Outcome rows 5d and 10b name that bullet as the guidance home, so KTD8's digest on checks 5 and 10 forces the pair to be re-reviewed together (`decision-0028`). (session-settled: user-approved — chosen over a review-guidance section in the rubric: the named reviewer cites only rules written in its standards files)
+- KTD12. **Supersession scope.** `decision-0098` supersedes, in part: `decision-0010`'s second Decision bullet as it applies to this repository's own gate; `decision-0076` point 6's standing rule; and `decision-0089`'s Consequences sentence "Artifact **conformance** stays agent-applied via `corpus-reviewer`". Each record gains a clause-scoped forward pointer. (session-settled: user-directed — chosen over superseding `decision-0010` alone: all three records state the agent-applied gate as current truth)
+- KTD13. **The rubric stays in `core/`, and this change is provisionally a repository gate only.** Nothing ships the rubric today: no plugin payload, `install.sh` or CLI reference carries it, so there is no `plugins/trellis/VERSION` bump. The rubric keeps its consumer-facing agent wording and gains only a changed **Derived resource** paragraph and a short note that this repository enforces the contract with a Go test. The check reads the rubric through one path constant, so a later move is a one-line change. Whether the rubric should leave `core/` is open for the maintainer (A6). (session-settled: user-directed — chosen over moving the rubric out of `core/` in this change: whether it ships with the product is still undecided)
+- KTD14. **Profile gatekeeper framing.** Where a profile row's C2 stays `independent-agent`, the gatekeeper named is the Claude Code Review workflow (`decision-0007`) and `ce-code-review`. The deterministic check is cited as supporting evidence, never as the gatekeeper, because C2 admits only `independent-agent`, `human` or `none`. (session-settled: user-directed — chosen over naming the check as the gatekeeper: a deterministic test is not one of the three C2 values)
 
 ### Check outcomes
+
+The maintainer accepted these outcomes on 2026-09-14, including every dropped and guidance row. (session-settled: user-approved — chosen over keeping every rubric clause mechanically enforced: 2c, 2d, 5b and the charter clause cannot be decided by a program, and 5d and 10b are judgment)
 
 | Rule | Rubric text | Outcome | Notes |
 |---|---|---|---|
@@ -145,7 +149,7 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
 | 11 | No `C2: none` on `intent_locus: true` | Implemented | |
 | 12 | Version cross-check | Retired | No check; the number is kept |
 | — | Honesty clause | Halts | Findings per KTD5 and halts per KTD6, proven by the halt scenarios in U1 and U2; the charter's own wording retires with the charter |
-| — | How it is graded | Rewritten | Describes the test's output (U5) |
+| — | How it is graded | Implemented | KTD5's per-check subtests and finding format meet it for this repository; the section's consumer-facing agent wording stays (KTD13) |
 | — | Charter: "derive your checklist yourself" | Dropped | An instruction to an agent; the checklist is now code pinned to the rubric, and CI runs it whoever authored the change |
 
 ### High-Level Technical Design
@@ -196,22 +200,22 @@ decisions/
 
 ### Assumptions
 
-These are calls made without a user present, each with its default taken. Rows marked **(confirm)** fall under the worker protocol's records and gates questions, and go to `trellis-d1` before implementation.
+These are calls made without a user present, each with its default taken. The maintainer settled the records and gates questions (A5, A7, A8, A14) on 2026-09-14; A6's framing is provisional while his open question stands.
 
 - A1. The Go-test form (KTD1) is taken over a standalone script with its own workflow.
 - A2. The rubric is read as data for check 6's rows and the registry list (KTD3), rather than mirrored into Go tables.
 - A3. The positive control is an on-disk fixture corpus (KTD7).
 - A4. Check 2's centrally declared scope is dropped rather than kept as review guidance; the rubric's existing open question already carries it.
-- A5. **(confirm)** Supersession scope per KTD12: `decision-0010` bullet 2 in part (this repository's gate only), `decision-0076` point 6, and one sentence of `decision-0089`.
-- A6. **(confirm)** Consumers are unaffected. `plugins/trellis/` carries no rubric, fixture or agent, and the rubric stays runtime-free prose that a consumer's agent or its own check can apply.
-- A7. **(confirm)** The rubric changes beyond its **Derived resource** line: the header blockquote, `## How it is graded`, the acceptance criterion "applied by an agent with no runtime", and `decision-0098` added to `depends_on`. Review guidance goes in `AGENTS.md`, not a new rubric section (KTD11).
-- A8. **(confirm)** Profile rows keep `confidence: verified` with re-argued evidence. `inv-bounded-context` is re-argued from `depends_on` declared on every artifact (now checked in CI) and from the single payload-read gateway and pinned read budget (`decision-0087`, `decision-0090`), quoted from source in U6. The sub-agent tell leaves with the agent. The alternative is to lower that row to `inferred`. Separately, the eight rows whose C2 is `independent-agent` keep that value; whether a deterministic check still counts as that gatekeeper is a verdict question the profile's convention does not re-run, left for the maintainer.
-- A9. The check does not block a merge. `main`'s ruleset requires the status checks `release-guard`, `Analyze (go)`, `Analyze (javascript)` and `hygiene`, and `build-test`, the job that runs the check, is not among them. `decision-0098` and the PR body say so. The comment at `.github/workflows/decision-id-guard.yml:15-16` saying `main` has no branch protection is stale and outside this change.
+- A5. Settled by the maintainer on 2026-09-14: supersession scope per KTD12.
+- A6. Provisional, per the maintainer on 2026-09-14: repository gate only, with no `plugins/trellis/VERSION` bump, because `plugins/trellis/` carries no rubric, fixture or agent (KTD13). Open for the maintainer: should the artifact-contract rubric leave `core/` (not ship with the product)?
+- A7. Settled by the maintainer on 2026-09-14: the rubric changes only its **Derived resource** paragraph and gains a short note that this repository enforces the contract with a Go test. Its header blockquote, `## How it is graded` and the "applied by an agent with no runtime" criterion keep their consumer-facing agent wording. Adding `decision-0098` to its `depends_on` follows from that note citing the record (`decision-0047`).
+- A8. Settled by the maintainer on 2026-09-14: the four profile rows keep `confidence: verified` on re-argued evidence. `inv-bounded-context` is re-argued from `depends_on` declared on every artifact (now checked in CI) and from the single payload-read gateway and pinned read budget (`decision-0087`, `decision-0090`), quoted from source in U6. Gatekeeper framing per KTD14.
+- A9. The check does not block a merge. `main`'s ruleset requires the status checks `release-guard`, `Analyze (go)`, `Analyze (javascript)` and `hygiene`, and `build-test`, the job that runs the check, is not among them. `decision-0098` and the PR body say so. U5 corrects the stale comment at `.github/workflows/decision-id-guard.yml:15-16`, which says `main` has no branch protection.
 - A10. The agent's past FAILs on `decisions/0044:5` and `research/0010:5` become passes. `decision-0098` names both rather than special-casing them.
 - A11. Whether `/code-review:code-review` in `.github/workflows/claude-code-review.yml` reads `AGENTS.md` is unverified, so KTD11 rests on `ce-code-review` alone.
 - A12. `eval/experiments/annotation-vs-absence/README.md:41` keeps its historical "corpus-reviewer PASS" and gains a pointer to `decision-0098`.
 - A13. The `boundedReferences` entry in `cli/selfapply_test.go` is removed without adding an absence assertion, since nothing reinstalls the file.
-- A14. **(confirm)** The Check outcomes rows that take a rule out of what gets enforced mechanically are the maintainer's to rule on before U1: dropped 2c, 2d, 5b and the charter's "derive your checklist yourself", and review guidance 5d and 10b. Removing a check from the conformance contract counts as weakening a guard.
+- A14. Settled by the maintainer on 2026-09-14: the dropped rows (2c, 2d, 5b and the charter's "derive your checklist yourself") and the guidance rows (5d, 10b) stand, and `decision-0098` names each dropped row with its reason.
 
 ### Risks
 
@@ -332,8 +336,8 @@ These are calls made without a user present, each with its default taken. Rows m
 
 **Approach:**
 1. Write frontmatter in `decision-0097`'s shape: `id`, `type: decision`, `depends_on`, `informed_by` for provenance only (`decision-0047`), `changes` for the corpus artifacts it edits, `owner: agent`, `date`, and no `status`.
-2. Use the sections Context, Decision, Consequences and Self-check. Add Open questions only if one is real.
-3. The Decision states: the check replaces the agent for this repository's gate; the dropped and guidance rows of Check outcomes, with reasons; the supersession scope (KTD12); that no shipped surface changes (A6); that the check runs on every corpus PR but does not block a merge (A9); and that the two past FAILs now pass (A10).
+2. Use the sections Context, Decision, Consequences, Open questions and Self-check. Open questions carries the maintainer's question whether the artifact-contract rubric should leave `core/` (A6).
+3. The Decision states: the check replaces the agent for this repository's gate; each dropped row of Check outcomes with its reason, and the two guidance rows; the supersession scope (KTD12); that no shipped surface changes (A6); that the check runs on every corpus PR but does not block a merge (A9); and that the two past FAILs now pass (A10).
 4. Append the forward pointers with clause-scoped comments, keeping each record's existing comment text. `decisions/0068` shows the `|`-separated form.
 
 **Patterns to follow:** `decisions/0097-compound-engineering-replaces-superpowers.md`, `decisions/0082-retire-the-status-field.md`, and the `superseded_in_part_by` comments in `decisions/0079` and `decisions/0068`.
@@ -380,15 +384,16 @@ These are calls made without a user present, each with its default taken. Rows m
 
 **Dependencies:** U3, U4.
 
-**Files:** modify `core/rubrics/artifact-contract.md`, `AGENTS.md`, `core/README.md`, `core/fixtures/README.md`, `.github/workflows/repo-hygiene.yml` and `eval/experiments/annotation-vs-absence/README.md`.
+**Files:** modify `core/rubrics/artifact-contract.md`, `AGENTS.md`, `core/README.md`, `core/fixtures/README.md`, `.github/workflows/repo-hygiene.yml`, `.github/workflows/decision-id-guard.yml` and `eval/experiments/annotation-vs-absence/README.md`.
 
 **Approach:**
-1. Rubric (A7): the header blockquote names the check; the **Derived resource** paragraph names the check and the guard, keeping the `**Derived resource` and **Corpus:** markers; `## How it is graded` describes KTD5 to KTD7; the "applied by an agent with no runtime" criterion names the check for this repository and keeps the rubric runtime-free for consumers; `depends_on` gains `decision-0098`. The text of checks 1–12 is unchanged.
+1. Rubric (A7, KTD13): the **Derived resource** paragraph names the check and the guard, keeping the `**Derived resource` and **Corpus:** markers; a short note says this repository enforces the contract with a Go test (`decision-0098`); `depends_on` gains `decision-0098`. The header blockquote, `## How it is graded` and the "applied by an agent with no runtime" criterion keep their consumer-facing agent wording, and the text of checks 1–12 is unchanged.
 2. `AGENTS.md`: the conformance bullet under "Checks and review" says conformance is CI-applied (`decision-0098`), gives the local test command, and states the two review-guidance rules (Check outcomes 5d and 10b) in one sentence each, citing rubric checks 5 and 10 (KTD11).
 3. `core/README.md`: artifact conformance runs as the check; conformance of code to its authorizing decision stays uncovered.
 4. `core/fixtures/README.md`: describes the fixture corpus and points at the expected set in Go, replacing the prose answer key.
 5. `repo-hygiene.yml`: the header comment stops saying `research/` and `decisions/` are outside `cli-ci`.
 6. The eval README gains a pointer to `decision-0098` after "corpus-reviewer PASS" (A12).
+7. `decision-id-guard.yml`: the header comment stops saying `main` has no branch protection, and says instead that the guard is not among `main`'s required status checks, so a red does not block a merge (A9).
 
 **Test expectation:** none new. The live test (rubric and record conform), `TestDocsClaimOnlyRealCommands`, `TestSharedProjectInstructionEntrypoints` and U4's guard must pass.
 
@@ -406,12 +411,12 @@ These are calls made without a user present, each with its default taken. Rows m
 
 **Approach:**
 1. Header: add a repair paragraph in the voice of the existing three, naming `decision-0098` as the change that broke these pointers. Update the header's dates line (`:13-15`) to carry the `decision-0098` repair date, and extend its "opened against its source" statement to that repair.
-2. Delivery (`:62-65`) and `inv-gate-at-handover` (`:85`): re-point to the check in `cli-ci` and the rewritten `AGENTS.md` bullet. For `:85`, re-argue `default-on-but-skippable` from the check not blocking a merge (`build-test` is not a required status check on `main`, A9), replacing the sentence that rests it on an agent-applied gate and `decision-0010`.
-3. `inv-independent-judgment` (`:86`): re-argue from the check's construction (its checklist is pinned to the rubric, it runs on every corpus PR, and it fails its fixture corpus), keeping the `decision-0076` defect count and the `decision-0007` workflow evidence.
+2. Delivery (`:62-65`) and `inv-gate-at-handover` (`:85`): re-point to the check in `cli-ci` and the rewritten `AGENTS.md` bullet, with the review workflow and `ce-code-review` as the gatekeeper and the check as supporting evidence (KTD14). For `:85`, re-argue `default-on-but-skippable` from the check not blocking a merge (`build-test` is not a required status check on `main`, A9), replacing the sentence that rests it on an agent-applied gate and `decision-0010`.
+3. `inv-independent-judgment` (`:86`): name the Claude Code Review workflow (`decision-0007`) and `ce-code-review` as the `independent-agent` gatekeeper and keep the `decision-0076` defect count. Cite the check's construction (its checklist is pinned to the rubric, it runs on every corpus PR, and it fails its fixture corpus) as supporting evidence only (KTD14).
 4. `inv-bounded-context` (`:88`): re-argue per A8, quoting `decision-0087` and `decision-0090` from source.
 5. `floor-transparency` (`:94`) and the Assessment note (`:111-117`): rest the evidence on the rubric's honesty clause, which names `floor-transparency`, and on the check's halt contract that implements it, dropping "named by slug in both honesty clauses". In the note, "the reviewer's construction" becomes the check's construction.
 6. Keep the table's columns and every `| true |` value, which `TestRowSetDerivativesFollowThePin` matches.
-7. Header note (`:29-31`): amend in place its claim that the `independent-agent` column is filled by `corpus-reviewer`, re-pointing it to the conformance check and `decision-0007`'s workflow under the same repair convention.
+7. Header note (`:29-31`): amend in place its claim that the `independent-agent` column is filled by `corpus-reviewer`, re-pointing it to the Claude Code Review workflow (`decision-0007`) and `ce-code-review`, with the conformance check as supporting evidence (KTD14), under the same repair convention.
 
 **Test expectation:** none new. The live check (checks 9–11 on the profile) and the row-set guard must pass.
 
@@ -438,4 +443,5 @@ These are calls made without a user present, each with its default taken. Rows m
 - `npm run quality` passes, or the PR names the tool that was missing locally.
 - No abandoned experiments, scratch fixtures or dead code remain in the diff.
 - The PR body lists the calls made without asking and a checklist of unapplied review findings.
-- The PR body also states that `build-test` is not a required status check on `main`, names TRL-92 (the broader cli-ci filter gap that this change's new filter entries overlap), and names the model behind every Codex pass: the plan review used `gpt-5.6-luna`, and later passes use `gpt-5.6-sol` at high.
+- The PR body also states that `build-test` is not a required status check on `main`, names TRL-92 (the broader cli-ci filter gap that this change's new filter entries overlap), and names the model behind every Codex pass: the plan review used `gpt-5.6-luna` (CE's hard-coded default). Later passes override it to `gpt-5.6-sol` at high, the maintainer's routing rule for adversarial and whole-document review, and the PR names the model each run's own log reports.
+- The PR body lists as unresolved: "Open for the maintainer: should the artifact-contract rubric leave core/ (not ship with the product)?"
