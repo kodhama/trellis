@@ -1,9 +1,9 @@
 ---
 id: decision-0099
 type: decision
-depends_on: [decision-0092, decision-0097]
+depends_on: [decision-0015, decision-0092, decision-0097]
 changes: [decision-0092]
-informed_by: [decision-0005, decision-0015, decision-0028, decision-0040, decision-0076, decision-0082, decision-0089]
+informed_by: [decision-0005, decision-0028, decision-0040, decision-0076, decision-0082, decision-0089]
 owner: agent
 date: 2026-09-14
 ---
