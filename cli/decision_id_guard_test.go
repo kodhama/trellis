@@ -422,10 +422,10 @@ func TestDecisionIDGuardToleratesSpacesOutsideDecisions(t *testing.T) {
 		}
 	})
 
-	// The first fix scoped the refusal to `docs/decisions/*`, which closed the
-	// outage for paths OUTSIDE the directory and left it open one directory in.
-	// `docs/decisions/` holds non-record files too, so a spaced one there aborted
-	// every PR in the repo exactly as `docs/my notes.md` had.
+	// Scoping the refusal to `docs/decisions/*` closes the outage for paths
+	// OUTSIDE the directory and leaves it open one directory in: `docs/decisions/`
+	// holds non-record files too, so a spaced one there would abort every PR in
+	// the repo exactly as `docs/my notes.md` would.
 	t.Run("a spaced NON-RECORD file inside docs/decisions/", func(t *testing.T) {
 		out, code := runGuard(t, "300", guardMainFiles,
 			"299 added docs/decisions/notes on ids.md\n"+
@@ -617,8 +617,9 @@ func TestDecisionIDGuardWorkflowRunsTheScript(t *testing.T) {
 // TestDecisionIDGuardRootPathClaimsNothing — the guard reads docs/decisions/ and
 // nothing else (decision-0099). A record added at the old root
 // `decisions/NNNN-*.md` path claims nothing, even when its id is already on the
-// base branch: a record at the root is the root tripwire's job, not this
-// guard's, and a second prefix here would be a permanent rule kept for one move.
+// base branch: a record at the root is caught by the root-absence check in
+// cli/selfapply_test.go (TestSharedProjectInstructionEntrypoints), not by this
+// guard, and a second prefix here would be a permanent rule kept for one move.
 func TestDecisionIDGuardRootPathClaimsNothing(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
 		"300 added decisions/0087-z.md")

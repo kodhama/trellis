@@ -19,8 +19,8 @@ name: cli-ci
 # cli/row_set_guard_test.go reads; core/rubrics/**, which
 # cli/artifact_contract_guard_test.go reads against .claude/agents/corpus-reviewer.md
 # (TRL-60); .claude/**, which cli/selfapply_test.go and
-# cli/docs_consistency_test.go read; and .grove/**, decisions/** and research/**, so the
-# PR reinstating a retired directory is the one cli/selfapply_test.go fails on (decision-0076, decision-0099).
+# cli/docs_consistency_test.go read; and .grove/** (retired, decision-0076), decisions/**
+# and research/** (moved under docs/, decision-0099): a PR recreating one fails cli/selfapply_test.go.
 #
 # That rule is now checked rather than described: cli/ci_paths_guard_test.go
 # extracts every repo-relative path cli/*_test.go reads and fails naming any this
