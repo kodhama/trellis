@@ -104,12 +104,14 @@ func docSurfacesIn(root string) ([]string, error) {
 // and left a plain clone parked anywhere in the tree just as readable.
 func structuralSkip(root, path string) bool {
 	name := filepath.Base(path)
-	// .context holds Compound Engineering's git-ignored local scratch
-	// (decision-0097): agent working notes, never content of this checkout. A
-	// worker session writes there inside its own worktree, so walking it made a
-	// local run fail on the agent's notes while CI, which never sees them,
-	// passed.
-	return name == ".git" || name == "node_modules" || name == ".context" || isSeparateCheckout(root, path)
+	// .context/compound-engineering/ at the root of the walk is Compound
+	// Engineering's git-ignored local scratch (decision-0097): agent working
+	// notes, never content of this checkout. A worker session writes there inside
+	// its own worktree, so walking it made a local run fail on the agent's notes
+	// while CI, which never sees them, passed. The match is that exact path, not
+	// the basename: a tracked .context directory anywhere else is still walked.
+	ceScratch := filepath.Join(root, ".context", "compound-engineering")
+	return name == ".git" || name == "node_modules" || filepath.Clean(path) == ceScratch || isSeparateCheckout(root, path)
 }
 
 // isSeparateCheckout reports whether dir holds a checkout of its own rather than

@@ -1,4 +1,7 @@
 .DS_Store
+# Legacy superpowers scratch (decision-0097): kept ignored so a stale workspace
+# in an existing checkout never shows up as untracked or gets committed.
+.superpowers/
 node_modules/
 coverage/
 *.log
