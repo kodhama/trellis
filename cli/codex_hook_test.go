@@ -1249,11 +1249,14 @@ func TestPhaseOneSkillsAndDocsDeclareHostBoundaries(t *testing.T) {
 // guards spec-0007@v1 R26, R30, R40, S17, S21
 func TestCliCIProvidesNode20BeforeGoTests(t *testing.T) {
 	workflow := readFileT(t, "../.github/workflows/cli-ci.yml")
-	setupNode := strings.Index(workflow, "uses: actions/setup-node@v5")
+	// The action's major version is not what this guards: Node 20 installed before
+	// the Go tests is (spec-0007 R40, the Codex hook needs Node >=20). Matching any
+	// setup-node release keeps a dependabot bump from turning this red.
+	setupNode := strings.Index(workflow, "uses: actions/setup-node@")
 	node20 := strings.Index(workflow, `node-version: "20"`)
 	goTests := strings.Index(workflow, "run: go test -count=1 -coverprofile=")
 	if setupNode < 0 || node20 < setupNode || goTests < node20 {
-		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node@v5 before Go tests execute the Codex hook")
+		t.Errorf("cli-ci must install Node.js 20 with actions/setup-node before Go tests execute the Codex hook")
 	}
 	// -count=1 is matched, not just `go test`, because the cache hazard this
 	// suite lives inside is real: these tests execute the production hooks as
