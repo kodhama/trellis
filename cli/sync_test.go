@@ -52,7 +52,7 @@ func TestInvariantsPageMatchesCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, err := os.ReadFile("../docs/invariants.html")
+	page, err := os.ReadFile("../site/invariants.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestInvariantsPageMatchesCatalog(t *testing.T) {
 			continue
 		}
 		if !strings.Contains(pageText, want) {
-			t.Errorf("docs/invariants.html is out of sync with the catalog — this example is missing:\n"+
+			t.Errorf("site/invariants.html is out of sync with the catalog — this example is missing:\n"+
 				"  %q\nRegenerate the page from the catalog. [decision-0028]", want)
 		}
 	}

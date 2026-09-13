@@ -1,6 +1,6 @@
 # trellis — landing page content
 
-This is trellis's own copy for its generated landing page (`docs/index.html`),
+This is trellis's own copy for its generated landing page (`site/index.html`),
 per `kodhama/design-system`'s LP generator contract (`lp-generator.md`). The
 design system supplies no copy — everything below is trellis's, extracted
 verbatim from the hand-built page this repo already shipped
@@ -13,7 +13,7 @@ and `patterns.md` were both extracted verbatim from this exact page (see
 their own file headers). So this generation is a retrofit, not a fresh
 build — composing the DS's tokens/patterns back against trellis's own
 content should reproduce the original almost exactly, and it does; see the
-parity note in `docs/index.html`'s own top-of-file comment.
+parity note in `site/index.html`'s own top-of-file comment.
 
 ## Eyebrow
 
@@ -248,8 +248,8 @@ no longer "carried over unchanged" from the pre-retrofit page, and the
 
 ## Out of scope for this retrofit
 
-`docs/invariants.html` is a separate page (the invariants detail page
-linked from this one). Only `docs/index.html` is a DS derivative, and that
+`site/invariants.html` is a separate page (the invariants detail page
+linked from this one). Only `site/index.html` is a DS derivative, and that
 is still true — but "untouched", which this section used to say, is not.
 
 The TRL-11 accessibility pass changed it substantially: the two pages share

@@ -268,8 +268,8 @@ func readDocSurface(t *testing.T, path string) string {
 	return string(b)
 }
 
-// docs/index.html claims in its own header to be "Generated per kodhama/design-system's
-// lp-generator.md contract … composed against this repo's own docs/lp-content.md".
+// site/index.html claims in its own header to be "Generated per kodhama/design-system's
+// lp-generator.md contract … composed against this repo's own site/lp-content.md".
 // No generator exists: no build script, no workflow step, and nothing outside
 // lp-content.md even references it. The two files are maintained BY HAND IN
 // PARALLEL and had silently diverged.
@@ -285,8 +285,8 @@ func readDocSurface(t *testing.T, path string) string {
 // Comparing extracted structure instead of hardcoded strings has no list to go
 // stale.
 func TestInstallTerminalIsConsistentAcrossSourceRenderAndScript(t *testing.T) {
-	page := readDocSurface(t, "../docs/index.html")
-	source := readDocSurface(t, "../docs/lp-content.md")
+	page := readDocSurface(t, "../site/index.html")
+	source := readDocSurface(t, "../site/lp-content.md")
 
 	buttons := setOf(submatches(regexp.MustCompile(`data-tab="([^"]+)"`), page))
 	panels := parseRenderedPanels(t, page)
@@ -312,14 +312,14 @@ func TestInstallTerminalIsConsistentAcrossSourceRenderAndScript(t *testing.T) {
 	// 3. The content brief and the rendered page must agree, command for command.
 	//    These are hand-maintained in parallel with no generator; this is the only
 	//    thing that makes a one-sided edit visible.
-	assertSameKeys(t, "docs/index.html panels", setOf(keysOf(panels)), "docs/lp-content.md tabs", setOf(keysOf(brief)))
+	assertSameKeys(t, "site/index.html panels", setOf(keysOf(panels)), "site/lp-content.md tabs", setOf(keysOf(brief)))
 	for tab, pageCmds := range panels {
 		briefCmds, ok := brief[tab]
 		if !ok {
 			continue // already reported by assertSameKeys
 		}
 		if strings.Join(pageCmds, "\n") != strings.Join(briefCmds, "\n") {
-			t.Errorf("tab %q differs between the LP source and the rendered page:\n  docs/lp-content.md:\n    %s\n  docs/index.html:\n    %s\nboth are hand-maintained; a change to one must be made in the other", tab, strings.Join(briefCmds, "\n    "), strings.Join(pageCmds, "\n    "))
+			t.Errorf("tab %q differs between the LP source and the rendered page:\n  site/lp-content.md:\n    %s\n  site/index.html:\n    %s\nboth are hand-maintained; a change to one must be made in the other", tab, strings.Join(briefCmds, "\n    "), strings.Join(pageCmds, "\n    "))
 		}
 	}
 }
@@ -399,7 +399,7 @@ func parseRenderedPanels(t *testing.T, page string) map[string][]string {
 	re := regexp.MustCompile(`(?s)<div class="panel[^"]*" data-panel="([^"]+)"[^>]*>(.*?)</div>\s*(?:<div class="panel|</div>)`)
 	ms := re.FindAllStringSubmatch(page, -1)
 	if len(ms) == 0 {
-		t.Fatal("no terminal panels found in docs/index.html — this test's premise has drifted")
+		t.Fatal("no terminal panels found in site/index.html — this test's premise has drifted")
 	}
 	out := map[string][]string{}
 	code := regexp.MustCompile(`(?s)<code>(.*?)</code>`)
@@ -417,7 +417,7 @@ func parseCommandsObject(t *testing.T, page string) map[string]string {
 	t.Helper()
 	body := regexp.MustCompile(`(?s)var commands = \{(.*?)\n\s*\};`).FindStringSubmatch(page)
 	if body == nil {
-		t.Fatal("could not find `var commands = {...};` in docs/index.html — if the copy-to-clipboard code was restructured, update this test in the same commit rather than letting it silently stop checking")
+		t.Fatal("could not find `var commands = {...};` in site/index.html — if the copy-to-clipboard code was restructured, update this test in the same commit rather than letting it silently stop checking")
 	}
 	out := map[string]string{}
 	for _, m := range regexp.MustCompile(`(?m)^\s*([A-Za-z0-9_-]+):\s*"((?:[^"\\]|\\.)*)"`).FindAllStringSubmatch(body[1], -1) {
@@ -432,7 +432,7 @@ func parseBriefTabs(t *testing.T, source string) map[string][]string {
 	re := regexp.MustCompile("(?s)- `([a-z0-9_-]+)` \\(.*?\\):\n\\s*```\n(.*?)```")
 	ms := re.FindAllStringSubmatch(source, -1)
 	if len(ms) == 0 {
-		t.Fatal("no install tabs found in docs/lp-content.md — this test's premise has drifted")
+		t.Fatal("no install tabs found in site/lp-content.md — this test's premise has drifted")
 	}
 	out := map[string][]string{}
 	for _, m := range ms {
@@ -551,7 +551,7 @@ func TestMarketplaceAddNamesTheRepoThatServesIt(t *testing.T) {
 			}
 		}
 	}
-	for _, surface := range []string{"README.md", "plugins/trellis/README.md", "cli/main.go", "docs/index.html", "docs/lp-content.md"} {
+	for _, surface := range []string{"README.md", "plugins/trellis/README.md", "cli/main.go", "site/index.html", "site/lp-content.md"} {
 		if len(found[surface]) == 0 {
 			t.Errorf("%s no longer carries a `marketplace add` command — it is one of the live install surfaces this guard pins; if the command moved, update this list in the same change", surface)
 		}

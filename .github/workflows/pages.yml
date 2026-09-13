@@ -1,0 +1,39 @@
+name: pages
+
+# Publishes site/ (the landing page and the invariants page) to GitHub Pages at
+# https://kodhama.github.io/trellis/. The site lived in docs/ and was served by
+# the branch build from main:/docs until docs/ became the Compound Engineering
+# artifact root (TRL-86). A branch build can only serve / or /docs, so site/ is
+# deployed by this workflow instead (TRL-87) — which takes effect only while the
+# repository's Pages source is set to "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push queues behind a running deploy rather than
+# cancelling it mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5
