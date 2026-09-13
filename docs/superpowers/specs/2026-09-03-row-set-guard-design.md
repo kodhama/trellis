@@ -85,7 +85,7 @@ fails unless the number is the pin's. `install.sh` and `staleness.sh` are exclud
 negative sweep (they carry legitimate historical comments) and get the positive check only.
 
 Why this and not a generated fragment: there is no templating pipeline for `README.md`,
-`docs/*.html`, `install.sh` or a hook's `emit` string, and building one would edit twelve files
+`site/*.html`, `install.sh` or a hook's `emit` string, and building one would edit twelve files
 including hooks and `install.sh`, which concurrent PRs own. The test is the least invasive
 checkable mechanism, and it follows the repo's existing exemplar (`remove_skill_test.go:179`,
 `decision-0078`). It does not make the edit automatic; it makes the *omission* impossible, which
@@ -138,7 +138,7 @@ verified, not assumed.
 
 - Editing any of the 22 prose sites; editing `install.sh` (its bundle hashes included),
   `plugins/trellis/hooks/*`, `VERSION` or `plugin.json` at all (owned by #261/#262/#263).
-- A generator for `docs/*.html` or the READMEs.
+- A generator for `site/*.html` or the READMEs.
 - Hook code comments that narrate historical counts.
 - A decision record. This is `decision-0028` applied ("a guard per pair"), with `decision-0078`'s
   derived needle as the exemplar, and it changes no maintenance workflow — same ground PR #245
