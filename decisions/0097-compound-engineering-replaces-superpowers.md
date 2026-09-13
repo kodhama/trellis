@@ -99,6 +99,9 @@ work done under the previous tooling, so they are neither migrated to CE's layou
 - **`cli/docs_consistency_test.go`** replaces its `superpowers` and `.superpowers` name skips with a
   skip of the top-level `docs/` directory, and its comment cites this record. A nested directory
   named `docs` is still walked.
+- **The guard walks in `cli/` skip `.context/`**, CE's git-ignored scratch, as structurally outside the
+  checkout. A worker session writes scratch inside its own worktree, and walking it failed a local
+  run on the agent's notes while CI, which never sees them, passed.
 - **`.gitignore`** drops `.superpowers/`.
 - **Forward pointers:** `decision-0079` gains `decision-0097` in `superseded_in_part_by`, and
   `decision-0085` gains `superseded_by`.
