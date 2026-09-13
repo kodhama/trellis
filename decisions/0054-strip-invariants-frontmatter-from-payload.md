@@ -49,7 +49,7 @@ date: 2026-07-21
 - **Why the frontmatter has no consumer value at all.** `id`, `status`,
   `owner`, `ratified`, `depends_on`, `scope` — every field describes
   `invariants.md`'s life *inside trellis's own repo*. Nothing downstream of
-  the vendored copy reads any of them (verified, not assumed): `docs/invariants.html`
+  the vendored copy reads any of them (verified, not assumed): `site/invariants.html`
   regenerates from `core/catalog/signature-catalog-v1.md` directly, never the
   payload copy (`cli/sync_test.go` `TestInvariantsPageMatchesCatalog`); the
   eval scorecard generator reads the same source file directly
@@ -90,7 +90,7 @@ generator has access to.
 **2. The source keeps its frontmatter, unconditionally.**
 `core/catalog/signature-catalog-v1.md` is unaffected — trellis's own
 `depends_on`/sync-guard machinery (`decision-0028`) needs it, and
-`docs/invariants.html` / the eval scorecard both already read the source
+`site/invariants.html` / the eval scorecard both already read the source
 directly, not the payload copy.
 
 **3. `TestBundledCatalogInSync`'s assertion changes** from three-way byte
@@ -117,7 +117,7 @@ that consumer's own config to set — not built or asserted here.
   write site); `plugins/trellis/reference/invariants.md`
   (frontmatter gone); `checksums`; `version` stamp; `install.sh` manifest;
   this repo's own `.trellis/internal/invariants.md` (self-application,
-  `decision-0035`). `docs/invariants.html` and the eval scorecard are
+  `decision-0035`). `site/invariants.html` and the eval scorecard are
   **unaffected** — confirmed above, both read the source, not the payload.
 - **Family repos pick this up on their next refresh** — no urgency; the six
   repos just refreshed (grove, kodhama, wisp, design-system, stewards,

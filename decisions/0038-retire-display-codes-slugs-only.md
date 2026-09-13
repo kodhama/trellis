@@ -44,7 +44,7 @@ Slugs carry their meaning in their name (`inv-independent-judgment` needs no reg
 - **Swept in this change (slug-first):** `core/invariants/trellis-invariants-v1.md` (headings,
   prose, registry retitled), `core/catalog/signature-catalog-v1.md` + its three verbatim
   copies (`cli/assets/`, `plugins/trellis/reference/`, `.trellis/invariants.md`),
-  `docs/invariants.html` (card badges now show slugs; group letters dropped),
+  `site/invariants.html` (card badges now show slugs; group letters dropped),
   `core/lexicon.md`, `profiles/trellis-self.md`, `README.md`, `CLAUDE.md`, the plugin setup
   skill, `core/rubrics/artifact-contract.md`, the `conformance-reviewer` agent, and the
   **eval invariant scorecard** — `eval/scorecards/invariants.md` is a *derived resource of the

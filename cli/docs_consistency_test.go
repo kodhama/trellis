@@ -17,7 +17,7 @@ import (
 // their session, discovered by walking the tree.
 //
 // It used to be a hand-maintained list, and that list was found SHORT TWICE:
-// docs/lp-content.md on 2026-07-31 (the LP's own source, the file most likely to
+// site/lp-content.md on 2026-07-31 (the LP's own source, the file most likely to
 // be edited), then plugins/trellis/README.md, skills/remove/SKILL.md and
 // cli/README.md on 2026-08-02 while decision-0072 retired /trellis:setup — where
 // fixing only the listed files would have turned this guard GREEN with three

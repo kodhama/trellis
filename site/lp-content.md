@@ -4,7 +4,7 @@ This is trellis's own copy for its generated landing page (`site/index.html`),
 per `kodhama/design-system`'s LP generator contract (`lp-generator.md`). The
 design system supplies no copy — everything below is trellis's, extracted
 verbatim from the hand-built page this repo already shipped
-(`docs/index.html` as of commit `0e3b6df`, the last content edit before this
+(`site/index.html` as of commit `0e3b6df`, the last content edit before this
 retrofit).
 
 trellis is a special case among the family's LP derivatives: this page *is*

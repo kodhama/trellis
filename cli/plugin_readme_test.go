@@ -4,7 +4,7 @@ package main
 // (decision-0066 §2, AC4/AC5).
 //
 // Before this file, nothing in the suite read plugins/trellis/README.md at all:
-// docs_consistency_test.go's docSurfaces list covers ../README.md, ../docs/*.html
+// docs_consistency_test.go's docSurfaces list covers ../README.md, ../site/*.html
 // and ../install.sh, and its only assertions are that docs name no nonexistent
 // `trellis <cmd>` or `/trellis:<skill>`. Deleting the entire host-support section
 // left `go test ./...` green, and so did shipping a live relative link into a

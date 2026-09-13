@@ -79,7 +79,7 @@ ship in the payload exactly as they read in the source today — parked for
 `decision-0056`, a separate, carefully-authored, independently-verified
 rewrite, not a build-time transform.
 
-**4. `docs/invariants.html` and the eval scorecard are unaffected**, same
+**4. `site/invariants.html` and the eval scorecard are unaffected**, same
 guarantee as `decision-0054` established and the same mechanism confirms it
 by (both read `core/catalog/signature-catalog-v1.md` directly, never the
 payload copy).

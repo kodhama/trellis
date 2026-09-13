@@ -90,7 +90,7 @@ absent from the file entirely, as is the marketplace hedge.
 
 **This paragraph is unguarded today.** The repo's only doc-consistency test is
 `cli/docs_consistency_test.go:35 TestDocsClaimOnlyRealCommands`, whose subject
-list at `:15-20` is `../README.md`, `../docs/index.html`, `../docs/invariants.html`,
+list at `:15-20` is `../README.md`, `../site/index.html`, `../site/invariants.html`,
 `../install.sh` — **`plugins/trellis/README.md` is not in it** — and whose only
 assertions are that docs name no nonexistent `trellis <cmd>` or `/trellis:<skill>`.
 It would not fail if the entire host-support section were deleted. The assertion
