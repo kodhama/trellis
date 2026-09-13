@@ -58,6 +58,12 @@ jobs:
         working-directory: .
       - run: npm run quality
         working-directory: .
+        # setup-go@v6+ exports GOTOOLCHAIN=local. The quality bar's staticcheck
+        # (v0.8.1) needs Go >= 1.26 while this job pins 1.22; under setup-go@v5 the
+        # go command downloaded a newer toolchain for it on its own. auto restores
+        # that for this step only; build, vet and test stay on the pinned 1.22.
+        env:
+          GOTOOLCHAIN: auto
       - run: go build ./...
       - run: go vet ./...
       # -count=1 disables Go's test cache. cli/plugin_hook_test.go and
