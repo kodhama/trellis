@@ -281,7 +281,7 @@ func retiredFieldNames() []string {
 }
 
 // TestNoMatrixFieldsInCode is AC6 part 2: code-scoped — cli/, plugins/ and
-// install.sh only. decisions/ is deliberately out of scope; the
+// install.sh only. docs/decisions/ is deliberately out of scope; the
 // archive keeps its words.
 func TestNoMatrixFieldsInCode(t *testing.T) {
 	needles := retiredFieldNames()

@@ -2,7 +2,7 @@ name: repo-hygiene
 
 # Repository-wide hygiene gates, deliberately outside cli-ci: that workflow's
 # paths filter is a coverage contract for the Go test suite, so a PR touching
-# only omitted paths (research/, decisions/, eval/) never runs it. An oversized
+# only omitted paths (CODEOWNERS, LICENSE) never runs it. An oversized
 # file or a debt marker without a tracker lands repo-wide, so these gates run
 # on every PR. The same checks stay in `npm run quality` for local and
 # pre-commit use.
