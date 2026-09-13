@@ -50,12 +50,17 @@ asked for a PR, open it. An agent still may not merge on his behalf without his 
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
 | record a significant choice | append to `decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main`, on every open PR, **and** within your own diff; `decision-0089`'s CI guard fails the higher-numbered claimant, and `decision-0092` states what it counts as a claim |
 | plan a build between a decision and the code | the **superpowers** skills (`brainstorming`, `writing-plans`, `executing-plans`) — the spec stage retired in `decision-0079`, and `specs/` with it |
+| implement or debug in an area a past fix touched | `docs/solutions/` — documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`) |
 | record a next step | `decision-0078` — name the consumer that will re-present it, or drop it |
 | pick up or file work | `decision-0075` — see *Where work lives* below |
 
 Beyond the records: **one logical change per PR**; descriptive, linear history; diffs small
 enough to review on a phone. When friction reveals a missing rule, add it *where it fires*,
 **prefer retiring to adding**, and keep it subordinate to the work (`inv-self-improvement`).
+
+After a solved, verified problem, automatically invoke the `ce-compound` skill with `mode:non-interactive` at the completion checkpoint only when the work produced durable project reasoning that is not readily recoverable from the final code, tests, types, comments, or existing documentation, and losing it would plausibly cause recurrence, material risk, or substantial rediscovery. Apply this counterfactual: if the learning document disappeared, would a future engineer reading the final implementation still be likely to repeat the mistake or redo substantial investigation? If not, do not invoke it. Completion, effort, and diff size alone are not enough. Capture at the checkpoint so a qualifying learning can ship in the PR that produced it, and only where the repository treats captured learnings as tracked, committed knowledge.
+
+Write every report, summary, or handoff to the user through the `ce-noslop` skill. This applies when you are the top-level agent writing to the user, not when you are a subagent reporting to its caller. Do not apply it to code, config, verbatim quotes, or text the user asked to post as written.
 
 The invariants themselves — transparency, independent judgment, the rest — are delivered live by
 the Trellis plugin at session start, not hand-written here (`decision-0035`, `decision-0071`). A
