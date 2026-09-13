@@ -1,11 +1,11 @@
 #!/bin/sh
 #
 # decision-id-guard.sh — refuse a pull request that claims an already-taken
-# `decisions/NNNN-*.md` id. TRL-40 / decision-0089.
+# `docs/decisions/NNNN-*.md` id. TRL-40 / decision-0089; path per decision-0099.
 #
-# WHY THIS EXISTS. `decisions/` on `main` is not the allocation authority; the
+# WHY THIS EXISTS. `docs/decisions/` on `main` is not the allocation authority; the
 # merge queue is. Every branch does the right thing in isolation — list
-# `decisions/`, take the next free number — and two branches cut before the race
+# `docs/decisions/`, take the next free number — and two branches cut before the race
 # take the same one. It happened three times (decision-0077, then trellis#252 on
 # an already-taken decision-0076, then decision-0086 on both trellis#262 and
 # trellis#263). Nothing failed on any of them; a human noticed.
@@ -37,7 +37,7 @@
 #                     rows, covering every open PR INCLUDING this one. The
 #                     fourth field is GitHub's `previous_filename` and is
 #                     present only on a rename. Paths must be space-free, which
-#                     every `decisions/NNNN-slug.md` is; a row with more fields
+#                     every `docs/decisions/NNNN-slug.md` is; a row with more fields
 #                     than its status allows is REFUSED (exit 2), never treated
 #                     as "no claim" — a space would otherwise split the path
 #                     across fields, match no decision shape, and pass green
@@ -72,13 +72,13 @@ cannot_run() {
 	exit 2
 }
 
-# decisions/0089-a-slug.md -> 0089 ; anything else -> nothing.
-# Four digits and a dash is the whole shape: `decisions/README.md` is not a
-# claim, and neither is `decisions/0089.md`.
+# docs/decisions/0089-a-slug.md -> 0089 ; anything else -> nothing.
+# Four digits and a dash is the whole shape: `docs/decisions/README.md` is not a
+# claim, and neither is `docs/decisions/0089.md`.
 decision_id() {
 	case "$1" in
-	decisions/[0-9][0-9][0-9][0-9]-*.md)
-		d=${1#decisions/}
+	docs/decisions/[0-9][0-9][0-9][0-9]-*.md)
+		d=${1#docs/decisions/}
 		printf '%s\n' "${d%%-*}"
 		;;
 	*) ;;
@@ -91,8 +91,8 @@ if [ -n "${GUARD_MAIN_FILES+x}" ]; then
 else
 	git fetch --no-tags --depth=1 origin "$base" >/dev/null 2>&1 ||
 		cannot_run "could not fetch origin/$base."
-	git ls-tree -r --name-only FETCH_HEAD -- decisions/ >"$work/base-files" ||
-		cannot_run "could not read decisions/ on origin/$base."
+	git ls-tree -r --name-only FETCH_HEAD -- docs/decisions/ >"$work/base-files" ||
+		cannot_run "could not read docs/decisions/ on origin/$base."
 fi
 
 : >"$work/base-ids" # `<id> <path>`
@@ -155,7 +155,7 @@ mv "$work/pr-files.trimmed" "$work/pr-files" ||
 
 # --- what counts as a claim ---------------------------------------------------
 #
-# A claim is a file this PR puts at a NEW `decisions/NNNN-*.md` path:
+# A claim is a file this PR puts at a NEW `docs/decisions/NNNN-*.md` path:
 #
 #   added    the obvious case.
 #   copied   the destination path is new and the source survives, so it claims.
@@ -195,18 +195,18 @@ while read -r p st path prev extra; do
 	#
 	# SCOPED TO THE RECORD-ID PREFIX ON PURPOSE, and this is load-bearing. The
 	# check sees every row of every open PR, so refusing on any spaced path
-	# would let one `docs/my notes.md` — or one `decisions/notes on ids.md` —
+	# would let one `docs/my notes.md` — or one `docs/decisions/notes on ids.md` —
 	# in one unrelated PR abort the guard for every PR in the repo, including
 	# PRs touching no decision file at all. That is a repo-wide CI outage
 	# triggered by somebody naming a file, traded for a hole nobody has hit.
 	#
 	# The pattern is the four-digit PREFIX, not the full record shape, and that
 	# is the whole subtlety: splitting on whitespace truncates the path BEFORE
-	# its suffix, so `decisions/0088 old.md` arrives as `decisions/0088`.
-	# Matching `decisions/[0-9][0-9][0-9][0-9]-*.md` would therefore stop
+	# its suffix, so `docs/decisions/0088 old.md` arrives as `docs/decisions/0088`.
+	# Matching `docs/decisions/[0-9][0-9][0-9][0-9]-*.md` would therefore stop
 	# refusing the very case this check exists for, while matching plain
-	# `decisions/*` re-opens the outage one directory in. Only the prefix
-	# catches the truncation without swallowing `decisions/README.md`.
+	# `docs/decisions/*` re-opens the outage one directory in. Only the prefix
+	# catches the truncation without swallowing `docs/decisions/README.md`.
 	#
 	# `copied` tolerates a fourth field for the same reason `renamed` does:
 	# GitHub populates previous_filename for both. Omitting it made the
@@ -217,7 +217,7 @@ while read -r p st path prev extra; do
 	# SOURCE path contains a space refuses too, though the destination parsed
 	# fine. Loud and actionable, unlike the silent pass it replaces.
 	case "${path:-}" in
-	decisions/[0-9][0-9][0-9][0-9]*)
+	docs/decisions/[0-9][0-9][0-9][0-9]*)
 		case "${st:-}" in
 		renamed | copied) surplus_ok=yes ;;
 		*) surplus_ok=no ;;
@@ -249,7 +249,7 @@ sort -u "$work/mine.raw" >"$work/mine" ||
 	cannot_run "could not sort this pull request's claims."
 
 if [ ! -s "$work/mine" ]; then
-	echo "PR #$pr adds no decisions/NNNN-*.md file — no id claimed, nothing to check."
+	echo "PR #$pr adds no docs/decisions/NNNN-*.md file — no id claimed, nothing to check."
 	exit 0
 fi
 
