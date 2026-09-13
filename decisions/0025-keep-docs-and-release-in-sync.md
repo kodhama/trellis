@@ -43,7 +43,7 @@ Two guards keep **landing ↔ code ↔ release** locked:
    reference and **fails if any names something the CLI or plugin does not actually have**. This is
    `decision-0020`'s rule — *no claim on the page without a rule behind it* — generalized from the
    invariants to the whole product surface. It stops the docs running **ahead** of the code. The check
-   runs whenever `cli/`, `plugins/`, `install.sh`, `docs/`, or `README.md` change.
+   runs whenever `cli/`, `plugins/`, `install.sh`, `site/`, or `README.md` change.
 
 2. **Auto-release on merge to main** — when a change to the **shipped surface** (`cli/**`,
    `install.sh`, `plugins/**`) lands on `main`, `auto-release.yml` bumps the patch version, builds the

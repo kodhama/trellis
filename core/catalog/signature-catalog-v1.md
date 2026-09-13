@@ -69,7 +69,7 @@ ratified: 2026-07-04
 > it waits — delete the two rows when a change that already touches the bundle deletes the
 > numerals.
 >
-> Elsewhere — the root README, `docs/`, the corpus — the numeral was simply deleted ("all sixteen
+> Elsewhere — the root README, `site/`, the corpus — the numeral was simply deleted ("all sixteen
 > rules" → "all rules"), because a list of count sites kept here was found short twice
 > (`decision-0074`, `decision-0078`), and a twenty-two-row table of them in a test file was the
 > same mistake one layer down (TRL-28). **If you are about to write a row count into prose, delete
