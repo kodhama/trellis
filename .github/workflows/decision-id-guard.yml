@@ -35,7 +35,7 @@ jobs:
     steps:
       # depth 1 is enough: the script shallow-fetches the base branch itself,
       # because it needs `decisions/` on the base ref and nothing else.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
