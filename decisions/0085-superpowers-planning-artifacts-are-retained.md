@@ -4,6 +4,7 @@ type: decision
 depends_on: [decision-0079]
 changes: [decision-0079]
 informed_by: [decision-0011, decision-0028]
+superseded_by: [decision-0097]  # decision-0097, 2026-09-13 — superpowers is replaced by Compound Engineering (TRL-86); as this record's own Consequences state, it retires with superpowers rather than binding its successor. Points 4 and 5 are restated in 0097 on their own footing.
 owner: agent
 date: 2026-08-31
 ---

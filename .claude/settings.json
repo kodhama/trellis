@@ -1,13 +1,20 @@
 {
   "enabledPlugins": {
     "trellis@kodhama": true,
-    "superpowers@claude-plugins-official": true
+    "compound-engineering@compound-engineering-plugin": true,
+    "superpowers@claude-plugins-official": false
   },
   "extraKnownMarketplaces": {
     "kodhama": {
       "source": {
         "source": "github",
         "repo": "kodhama/stewards"
+      }
+    },
+    "compound-engineering-plugin": {
+      "source": {
+        "source": "github",
+        "repo": "EveryInc/compound-engineering-plugin"
       }
     }
   }
