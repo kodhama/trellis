@@ -28,7 +28,9 @@ import (
 //
 // The governance corpus is excluded on purpose: decisions, specs and research
 // records legitimately name artifacts that later retired, and they are
-// append-only, so a live-command check there would be permanently red.
+// append-only, so a live-command check there would be permanently red. The
+// top-level docs/ is excluded on the same ground: it is the record root for
+// planning records (decision-0097).
 func docSurfaces(t *testing.T) []string {
 	t.Helper()
 	out, err := docSurfacesIn(repoRoot)
@@ -57,18 +59,17 @@ func docSurfacesIn(root string) ([]string, error) {
 		".github": true, ".claude": true,
 		"decisions": true, "specs": true, "research": true, "eval": true,
 		"fixtures": true, "testdata": true,
-		// docs/superpowers/ (committed specs and plans) and .superpowers/
-		// (working SDD state) are exempt on the SAME ground as the three
-		// above, not by inheritance from specs/: a planning record
-		// legitimately names artifacts that later retired — e.g.
-		// /trellis:setup before decision-0072 retired it — and a retirement
-		// must not force an edit to the record of the work that preceded it.
-		// An earlier version of this comment argued succession from specs/
-		// via decision-0079. decision-0085 shows that argument assumed 0079
-		// permitted retention, which as written it did not; the exemption
-		// stands, its stated ground does not.
-		"superpowers": true, ".superpowers": true,
 	}
+	// The top-level docs/ is a record root (decision-0097): planning records from
+	// superpowers and Compound Engineering, and the governance corpus once TRL-89
+	// moves it there. It is exempt on the SAME ground as decisions, specs and
+	// research: a record legitimately names artifacts that later retired — e.g.
+	// /trellis:setup before decision-0072 retired it — and a retirement must not
+	// force an edit to the record of the work that preceded it. The skip is by
+	// path, not by name, so a nested directory called docs is still walked. It
+	// replaces the superpowers and .superpowers name skips, whose ground
+	// (decision-0085) retired with superpowers.
+	recordRoot := filepath.Join(root, "docs")
 	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}
 	var out []string
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -76,7 +77,7 @@ func docSurfacesIn(root string) ([]string, error) {
 			return err
 		}
 		if d.IsDir() {
-			if structuralSkip(root, path) || skipDirs[d.Name()] {
+			if structuralSkip(root, path) || skipDirs[d.Name()] || filepath.Clean(path) == recordRoot {
 				return fs.SkipDir
 			}
 			return nil
