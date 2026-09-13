@@ -74,7 +74,7 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
 ### Scope Boundaries
 
 - Nothing under `plugins/trellis/` changes, and `plugins/trellis/VERSION` does not move.
-- Repository settings are not changed. The check stays advisory, like every other guard in this repository (A9).
+- Repository settings are not changed. The check runs on every corpus PR but does not block a merge, because `build-test` is not among `main`'s required status checks (A9).
 - The text of rubric checks 1–12 is not reworded. Only the rubric's framing sections change (U5).
 - Historical mentions of `corpus-reviewer` stay as written: append-only decisions, `research/0012`'s `status:` comment, the plans and specs under `docs/superpowers/`, and the dated repair notes in `profiles/trellis-self.md`.
 - `.github/workflows/claude-code-review.yml` is not edited (A11).
@@ -206,11 +206,12 @@ These are calls made without a user present, each with its default taken. Rows m
 - A6. **(confirm)** Consumers are unaffected. `plugins/trellis/` carries no rubric, fixture or agent, and the rubric stays runtime-free prose that a consumer's agent or its own check can apply.
 - A7. **(confirm)** The rubric changes beyond its **Derived resource** line: the header blockquote, `## How it is graded`, the acceptance criterion "applied by an agent with no runtime", and `decision-0098` added to `depends_on`. Review guidance goes in `AGENTS.md`, not a new rubric section (KTD11).
 - A8. **(confirm)** Profile rows keep `confidence: verified` with re-argued evidence. `inv-bounded-context` is re-argued from `depends_on` declared on every artifact (now checked in CI) and from the single payload-read gateway and pinned read budget (`decision-0087`, `decision-0090`), quoted from source in U6. The sub-agent tell leaves with the agent. The alternative is to lower that row to `inferred`. Separately, the eight rows whose C2 is `independent-agent` keep that value; whether a deterministic check still counts as that gatekeeper is a verdict question the profile's convention does not re-run, left for the maintainer.
-- A9. CI stays advisory. `main` carries no branch protection (`.github/workflows/decision-id-guard.yml:15-16`), and `decision-0098` says so.
+- A9. The check does not block a merge. `main`'s ruleset requires the status checks `release-guard`, `Analyze (go)`, `Analyze (javascript)` and `hygiene`, and `build-test`, the job that runs the check, is not among them. `decision-0098` and the PR body say so. The comment at `.github/workflows/decision-id-guard.yml:15-16` saying `main` has no branch protection is stale and outside this change.
 - A10. The agent's past FAILs on `decisions/0044:5` and `research/0010:5` become passes. `decision-0098` names both rather than special-casing them.
 - A11. Whether `/code-review:code-review` in `.github/workflows/claude-code-review.yml` reads `AGENTS.md` is unverified, so KTD11 rests on `ce-code-review` alone.
 - A12. `eval/experiments/annotation-vs-absence/README.md:41` keeps its historical "corpus-reviewer PASS" and gains a pointer to `decision-0098`.
 - A13. The `boundedReferences` entry in `cli/selfapply_test.go` is removed without adding an absence assertion, since nothing reinstalls the file.
+- A14. **(confirm)** The Check outcomes rows that take a rule out of what gets enforced mechanically are the maintainer's to rule on before U1: dropped 2c, 2d, 5b and the charter's "derive your checklist yourself", and review guidance 5d and 10b. Removing a check from the conformance contract counts as weakening a guard.
 
 ### Risks
 
@@ -332,7 +333,7 @@ These are calls made without a user present, each with its default taken. Rows m
 **Approach:**
 1. Write frontmatter in `decision-0097`'s shape: `id`, `type: decision`, `depends_on`, `informed_by` for provenance only (`decision-0047`), `changes` for the corpus artifacts it edits, `owner: agent`, `date`, and no `status`.
 2. Use the sections Context, Decision, Consequences and Self-check. Add Open questions only if one is real.
-3. The Decision states: the check replaces the agent for this repository's gate; the dropped and guidance rows of Check outcomes, with reasons; the supersession scope (KTD12); that no shipped surface changes (A6); that the gate is advisory (A9); and that the two past FAILs now pass (A10).
+3. The Decision states: the check replaces the agent for this repository's gate; the dropped and guidance rows of Check outcomes, with reasons; the supersession scope (KTD12); that no shipped surface changes (A6); that the check runs on every corpus PR but does not block a merge (A9); and that the two past FAILs now pass (A10).
 4. Append the forward pointers with clause-scoped comments, keeping each record's existing comment text. `decisions/0068` shows the `|`-separated form.
 
 **Patterns to follow:** `decisions/0097-compound-engineering-replaces-superpowers.md`, `decisions/0082-retire-the-status-field.md`, and the `superseded_in_part_by` comments in `decisions/0079` and `decisions/0068`.
@@ -405,7 +406,7 @@ These are calls made without a user present, each with its default taken. Rows m
 
 **Approach:**
 1. Header: add a repair paragraph in the voice of the existing three, naming `decision-0098` as the change that broke these pointers. Update the header's dates line (`:13-15`) to carry the `decision-0098` repair date, and extend its "opened against its source" statement to that repair.
-2. Delivery (`:62-65`) and `inv-gate-at-handover` (`:85`): re-point to the check in `cli-ci` and the rewritten `AGENTS.md` bullet. For `:85`, re-argue `default-on-but-skippable` from the check being advisory (no branch protection on `main`, A9), replacing the sentence that rests it on an agent-applied gate and `decision-0010`.
+2. Delivery (`:62-65`) and `inv-gate-at-handover` (`:85`): re-point to the check in `cli-ci` and the rewritten `AGENTS.md` bullet. For `:85`, re-argue `default-on-but-skippable` from the check not blocking a merge (`build-test` is not a required status check on `main`, A9), replacing the sentence that rests it on an agent-applied gate and `decision-0010`.
 3. `inv-independent-judgment` (`:86`): re-argue from the check's construction (its checklist is pinned to the rubric, it runs on every corpus PR, and it fails its fixture corpus), keeping the `decision-0076` defect count and the `decision-0007` workflow evidence.
 4. `inv-bounded-context` (`:88`): re-argue per A8, quoting `decision-0087` and `decision-0090` from source.
 5. `floor-transparency` (`:94`) and the Assessment note (`:111-117`): rest the evidence on the rubric's honesty clause, which names `floor-transparency`, and on the check's halt contract that implements it, dropping "named by slug in both honesty clauses". In the note, "the reviewer's construction" becomes the check's construction.
@@ -437,3 +438,4 @@ These are calls made without a user present, each with its default taken. Rows m
 - `npm run quality` passes, or the PR names the tool that was missing locally.
 - No abandoned experiments, scratch fixtures or dead code remain in the diff.
 - The PR body lists the calls made without asking and a checklist of unapplied review findings.
+- The PR body also states that `build-test` is not a required status check on `main`, names TRL-92 (the broader cli-ci filter gap that this change's new filter entries overlap), and names the model behind every Codex pass: the plan review used `gpt-5.6-luna`, and later passes use `gpt-5.6-sol` at high.
