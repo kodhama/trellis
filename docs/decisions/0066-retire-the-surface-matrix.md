@@ -170,7 +170,7 @@ change and a reader should be told which: `:194-195` *"Surface facts have one
 small product-owned home"* (that home becomes the README) and `:198-199`
 *"Future surface tests can add bounded rows or observations"* (they cannot; no
 row remains to add to). The prose forward pointer AC7 requires names both.
-`decisions/0061-independent-dual-host-plugin-package.md` gains
+`docs/decisions/0061-independent-dual-host-plugin-package.md` gains
 `superseded_in_part_by: [decision-0066]`.
 
 **`decision-0063` — superseded in part**, at `:73-78` only, and narrowly: the
@@ -179,7 +179,7 @@ that the README alone is authoritative for it, not the README *and*
 `surfaces.json`. `0063` already names the README as co-authoritative, so this
 removes a co-author rather than an authority. Nothing about preview adoption,
 the catalog copy, or the rollback path changes.
-`decisions/0063-permit-codex-preview-adoption.md` gains
+`docs/decisions/0063-permit-codex-preview-adoption.md` gains
 `superseded_in_part_by: [decision-0066]`.
 
 **`spec-0005` — amended, at two sites.** `:84` is the bundle-table row for
@@ -204,7 +204,7 @@ future product decision is what this record answers. This decision adds nothing
 to it.
 
 **Full sweep result.** Greps for `surfaces.json`, `behavior_state`, `surface_id`
-and `marketplace_test_observations` across all of `decisions/` and `specs/` hit
+and `marketplace_test_observations` across all of `docs/decisions/` and `specs/` hit
 only `0059`, `0061`, `0063`, `0064`, `spec-0005`, `spec-0008`, and this record.
 The list above is exhaustive.
 
@@ -283,7 +283,7 @@ to one sentence would leave the other three deletable with the suite green.
 
 **AC6 — the reintroduction guard is two-part, and part 2 must not match itself.**
 A single repo-wide content grep is **not** implementable: `surfaces.json` appears
-today in `decisions/0059`, `0061`, `0063`, `specs/0005` and `specs/0008` — the
+today in `docs/decisions/0059`, `0061`, `0063`, `specs/0005` and `specs/0008` — the
 append-only archive, which must keep the name. Such a guard is red on day one and
 degenerates into an exclusion list. The shape:
 

@@ -30,7 +30,7 @@ date: 2026-08-23
   mid-migration and never updated. Recorded here because this decision would have inherited a false
   premise from it.
 
-- **The citation problem is specific to this repo.** `decisions/` is append-only and cites issue
+- **The citation problem is specific to this repo.** `docs/decisions/` is append-only and cites issue
   numbers heavily — `#165`, `#201`, `#206`, `#212` and others. Those citations can never be
   rewritten, so `github.com/kodhama/trellis/issues/N` must keep resolving no matter what moves.
 
@@ -92,7 +92,7 @@ copy. Dual-homing does not announce itself (`inv-deliberate-succession`, backwar
   here. **This decision does not amend the family record** — it cannot; that is a kodhama-level act.
   The maintainer's stated intent is to move the family to Linear progressively, trellis first. Until
   that lands, trellis is a declared exception rather than a silent one.
-- **Old issue numbers resolve forever**, so no `decisions/` citation was touched, and none needed to
+- **Old issue numbers resolve forever**, so no `docs/decisions/` citation was touched, and none needed to
   be. Verified after the port: `#165`, `#166`, `#212` all still resolve.
 - **The Kodhama team is owed an archive.** It holds only Linear's four onboarding stubs. Team
   structure has no MCP mutation, so moving Trellis and Math Quest out and archiving it is UI work,

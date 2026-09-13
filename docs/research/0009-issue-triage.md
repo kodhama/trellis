@@ -46,7 +46,7 @@ two primitives **first**; then each cluster is a consumer of them rather than a 
   expressed-only** ([[research-0007]]) as the lighter, PR-reviewed alternative. Detection heuristics
   live in the catalog (`trellis-core`), not the CLI. Keep producer ≠ ratifier ≠ verifier separate.
 - **Next action.** Spec the expression-profile artifact + the signature catalog first (shared with
-  clusters 3/4/5), then the Assess/Apply flow. Lift #24 into `research/0004` (still owed) as the first
+  clusters 3/4/5), then the Assess/Apply flow. Lift #24 into `docs/research/0004` (still owed) as the first
   instance report.
 
 ## Cluster 2 — Deferred spine machinery (#25 conformance-to-upstream · #26 self-improvement loop)

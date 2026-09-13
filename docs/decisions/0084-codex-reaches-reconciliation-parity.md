@@ -288,7 +288,7 @@ is real and worth fixing — it is not a loss against what shipped before.
 behaviour change that needs its own tests and its own reviewable diff — the same argument that kept
 `block-codex.md` out of this commit. [TRL-29](https://linear.app/kodhama/issue/TRL-29) is **reopened
 with this measurement** and is the named consumer that will re-present it (`decision-0078`). The
-claim is corrected here, before merge, rather than superseded afterwards, because `decisions/` is
+claim is corrected here, before merge, rather than superseded afterwards, because `docs/decisions/` is
 append-only and this record is not yet on `main`.
 
 ### 7. What this supersedes
@@ -361,7 +361,7 @@ changed.
   nothing to re-present it is exactly the shape `inv-no-orphan-followups` was minted against
   (`decision-0078`) — whose own analysis names this case in `inv-self-improvement`'s violated
   example, *"a PR raises the same open question every time, with no follow-up, and it rots
-  unowned"* (`decisions/0078:47`), while ruling that a deferral is not a glitch but **planned work
+  unowned"* (`docs/decisions/0078:47`), while ruling that a deferral is not a glitch but **planned work
   with no address**. It now has one: **TRL-31** (Medium, Bug, related to TRL-30 and TRL-20) is the
   named consumer that will re-present it.
 
@@ -467,7 +467,7 @@ carried forward as a second record's unowned open question.
 
 **A false claim this record itself made is corrected in place, before merge, and named as false.**
 §6's original *"nothing left to degrade"* was measurably wrong and concealed a permanent-blackout
-path. `decisions/` is append-only once merged, so the cheap moment to fix it was while this record
+path. `docs/decisions/` is append-only once merged, so the cheap moment to fix it was while this record
 was still unmerged; the correction says what the earlier draft claimed rather than quietly
 substituting better prose, and the limitation now has a tracked consumer (TRL-29) instead of a
 reassuring sentence.

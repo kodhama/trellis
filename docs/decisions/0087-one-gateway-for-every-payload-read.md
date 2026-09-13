@@ -15,11 +15,11 @@ date: 2026-09-03
 > **Numbered 0087, not 0086.** This record was drafted as `0086` — `0085` was the highest on
 > `main` when the branch opened, verified against `origin/main` rather than asserted — and
 > renumbered before merge because `kodhama/trellis#263` (TRL-29) claims `0086` and lands first.
-> `decisions/` numbers are allocated by whichever branch merges first, not by whichever drafts
+> `docs/decisions/` numbers are allocated by whichever branch merges first, not by whichever drafts
 > first; nothing else in this record moved.
 >
 > **`decision-0078` recorded this same mechanism and armed a trigger on it**
-> (`decisions/0078-no-orphan-followups.md:147-156`): *"nothing catches two branches claiming one
+> (`docs/decisions/0078-no-orphan-followups.md:147-156`): *"nothing catches two branches claiming one
 > id… if it recurs a third time, that is the trigger to file it."* The two it counted were
 > `0077` and trellis#252's `0076`. **This is the third**, so the trigger has fired and the
 > obligation is discharged rather than noted: filed as
@@ -41,7 +41,7 @@ date: 2026-09-03
 either predecessor**, because neither states a total and a count in a record is a measurement with
 a date (`decision-0083`'s own discipline). What they say is: *"That branch turned out to be **one
 of seven**, not the only one. Review of this branch, before merge, found six more"*
-(`decisions/0083-rules-toml-reconciles-itself.md:87-88`), then *"An **eighth** instance of the same
+(`docs/decisions/0083-rules-toml-reconciles-itself.md:87-88`), then *"An **eighth** instance of the same
 class is fixed but is NOT in the table"* (`:127-128`) — *line numbers as of this record; `0083`'s
 frontmatter has grown since it was written, and an earlier draft of this paragraph cited the
 pre-growth positions. The quoted text is the citation; the numbers are a convenience that decays.*
@@ -122,7 +122,7 @@ stale. This narrows `decision-0043` rule 2's `payload@<content-hash>` without co
 every stamp the payload generator has ever written is twelve hex.
 
 **6a. This changes `decision-0043` rule 3, and the forward pointer says exactly which clause.**
-That rule reads, verbatim at `decisions/0043-generator-only-cli-and-payload-stamp-staleness.md:54-56`:
+That rule reads, verbatim at `docs/decisions/0043-generator-only-cli-and-payload-stamp-staleness.md:54-56`:
 
 > **Staleness is a file-to-file compare; `trellis status` retires.** `hooks/staleness.sh` compares
 > `.trellis/version` against the installed plugin's `reference/version`: warn on mismatch,

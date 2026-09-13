@@ -29,7 +29,7 @@ here is the family's), not a reversal of it.
 
 ## Decision
 
-1. **Forward artifacts** in `decisions/` and `specs/` use the family
+1. **Forward artifacts** in `docs/decisions/` and `specs/` use the family
    enum: `draft → gated → approved (→ superseded)`. `gated` =
    self-checked, agent-consumable. Consuming a `draft` remains
    forbidden.

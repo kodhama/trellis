@@ -57,7 +57,7 @@ date: 2026-07-10
 > **Disclosed, because the precedent is thinner than `## Consequences` implies.** This is the
 > **first** time a `depends_on` value has been changed on an already-merged record in this repo.
 > PR #131, which that section names, moved only `superseded_by`/`superseded_in_part_by`; the one
-> corpus-wide `depends_on` migration (`decision-0047`) explicitly **exempted** frozen `decisions/`
+> corpus-wide `depends_on` migration (`decision-0047`) explicitly **exempted** frozen `docs/decisions/`
 > — though that was a provenance *reclassification* into `informed_by`, a change of what the edge
 > means, where this changes only how the same edge is spelled. The prevailing shape for a merged
 > record is *"a dated note, 0 deletions"* (PR #272 on `decision-0089`); this change carries
@@ -100,7 +100,7 @@ declared external-ref prefix (v0 allowlist: `brief-§…`). Anything else is a d
 fail"* — and the rubric's check 4 enforces the same allowlist. So the *mechanism* (a declared
 allowlist gates what counts as a legitimate non-local reference) already exists; only the
 *allowlist's contents* are narrow. `brief-§…` is itself a soft, unverifiable anchor (a section
-cite into a planning brief, e.g. `decisions/0001`'s own `depends_on: [brief-§9.1, brief-§7]`) —
+cite into a planning brief, e.g. `docs/decisions/0001`'s own `depends_on: [brief-§9.1, brief-§7]`) —
 generalizing it to cover another repo's *artifact id* is an extension of an existing pattern,
 not a new concept.
 

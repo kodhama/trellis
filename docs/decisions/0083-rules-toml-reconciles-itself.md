@@ -353,7 +353,7 @@ change removes on Claude. The obvious reading was that 8000 is an external Codex
 provenance must be compressed to fit under it.
 
 **It is not an external limit. It has no provenance at all.** The string `8000` appears nowhere in
-`decisions/`, `research/` or `core/`; the constant entered in commit `3490555` with no rationale
+`docs/decisions/`, `docs/research/` or `core/`; the constant entered in commit `3490555` with no rationale
 recorded anywhere. Codex's own documented behaviour, primary source
 (<https://learn.chatgpt.com/docs/hooks>):
 
