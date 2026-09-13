@@ -1,9 +1,9 @@
 ---
 id: decision-0097
 type: decision
-depends_on: [decision-0079, decision-0085]
+depends_on: [decision-0015, decision-0079, decision-0085]
 changes: [decision-0079, decision-0085]
-informed_by: [decision-0015, decision-0028, decision-0078, decision-0081, decision-0082]
+informed_by: [decision-0025, decision-0028, decision-0078, decision-0081, decision-0082]
 owner: agent
 date: 2026-09-13
 ---
@@ -80,17 +80,20 @@ stays retired and `specs/` stays deleted. The maintainer still merges (`floor-in
 The learnings' lifecycle is quoted. For plans it is partly inference, from `ce-work`'s checkpoint
 commit and the absence of any deletion instruction. Ideation is treated like plans on inference alone.
 
-**4. The top-level `docs/` is exempt from `TestDocsClaimOnlyRealCommands`'s walk.** After `TRL-87`,
-`docs/` holds no live doc surface: it holds planning records and CE's learnings now, and the
-governance corpus after `TRL-89`. **The ground is restated here, not inherited from `0085`**:
+**4. The top-level `docs/` is exempt from `TestDocsClaimOnlyRealCommands`'s walk, and the line is
+its location.** That walk guards the documents that describe the product to its users, so none of
+them advertises a command the code doesn't have (`decision-0025`). After `TRL-87`, `docs/` holds
+none of those documents. It holds planning records and CE's learnings, and it will hold the
+governance corpus if `TRL-89` lands. **The ground is restated here, not inherited from `0085`:**
 - A planning record legitimately names artifacts that later retired, and a retirement must not force
   an edit to the record of the work before it.
-- Learnings are kept current by `ce-compound-refresh`, not by a guard that would fail an unrelated
-  retirement.
+- A learning records how a past problem was solved. `ce-compound-refresh` reconciles it with the
+  code, and a retirement elsewhere should not fail on it.
 
 The exemption covers only that walk. `marketplaceCommands` still reads `docs/`, and `cli-ci`'s path
-filter keeps `docs/**` for it. **`CONCEPTS.md` is not exempt.** It lives at the repo root, it is a
-live document, and the walk reads it like any other doc surface.
+filter keeps `docs/**` for it. **`CONCEPTS.md` gets no exemption.** CE maintains it too, but it
+lives at the repo root, outside `docs/`, so the walk reads it like any other document there. If an
+entry trips a guard, the entry is what gets fixed.
 
 **5. Planning records are history, not contracts.** This covers plans, ideation and the superpowers
 records in `docs/superpowers/`. When one turns out wrong about what shipped, the correction is a
@@ -102,13 +105,16 @@ follow point 3. This carries `0085` point 5 forward on its own footing.
 work done under the previous tooling, so they are neither migrated to CE's layout nor deleted.
 
 **7. `decision-0085` is superseded in full.**
-- Points 2 and 3 were about superpowers, and they retire with it. `.superpowers/` is deleted and its
-  `.gitignore` line removed.
+- **What was about superpowers retires with it:** point 2's retention rule for superpowers' own
+  specs, plans and SDD workspace, and point 3 (`.superpowers/` git-ignored). `.superpowers/` is
+  deleted and its `.gitignore` line removed. The specs and plans already committed stay, under
+  point 6.
 - Points 4 and 5 are restated above, on their own ground.
 - Point 1 restated `0079` and stays true through `0079`.
-- **Its correction of `0079` does not lapse.** `0085` overrode the sentence in `0079`'s
-  Consequences that dropped the plan-retention question. Point 3 above keeps planning artifacts
-  retained, so this record now carries that override, and `0079`'s sentence stays overridden.
+- **Point 2's correction of `0079` does not lapse.** `0085` overrode the sentence in `0079`'s
+  Consequences that dropped the plan-retention question, *"only as to superpowers artifacts"*. This
+  record carries that override and extends it to CE's planning artifacts: point 6 keeps the
+  superpowers records, and point 3 keeps CE's plans and ideation. `0079`'s sentence stays overridden.
 
 ## Consequences
 
@@ -121,9 +127,9 @@ work done under the previous tooling, so they are neither migrated to CE's layou
 - **The guard walks in `cli/` skip `.context/`**, CE's git-ignored scratch, as structurally outside the
   checkout. A worker session writes scratch inside its own worktree, and walking it failed a local
   run on the agent's notes while CI, which never sees them, passed.
-- **`CONCEPTS.md` is a doc surface** once a CE skill creates it. A stale live claim there, such as
-  one about the retired setup skill (`decision-0072`), fails the docs-consistency tests the same way
-  it would in `README.md`.
+- **`CONCEPTS.md` is walked** once a CE skill creates it. A stale live claim there, such as one about
+  the retired setup skill (`decision-0072`), fails the docs-consistency tests the same way it would
+  in `README.md`.
 - **`.gitignore`** drops `.superpowers/` and ignores `.context/compound-engineering/`.
 - **Forward pointers:** `decision-0079` gains `decision-0097` in `superseded_in_part_by`, and
   `decision-0085` gains `superseded_by`.
@@ -144,6 +150,11 @@ work done under the previous tooling, so they are neither migrated to CE's layou
   only `ce-plan`, `ce-brainstorm` and `ce-compound`, so the claim was never established. The quoted
   bullets in Context replace it, and point 3 now distinguishes what CE maintains from what it keeps as
   history.
+- **A second `corpus-reviewer` pass found internal contradictions, now resolved.**
+  - Point 7 retired `0085`'s point 2 whole while keeping that point's correction of `0079`. Point 7
+    now separates the two.
+  - Point 4 gave a reason for exempting learnings that would also have exempted `CONCEPTS.md`. The
+    exemption now rests on location, which is the line actually drawn.
 - **Point 3's evidence is uneven, and it is labelled.** The learnings' lifecycle is quoted. Plans rest
   partly on inference, and ideation on inference alone. A reader who rejects that inference can
   reject point 3's first bullet without rejecting the rest.
