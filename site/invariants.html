@@ -16,7 +16,7 @@
     --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   }
-  /* Dark surface ramp — kept byte-identical to docs/index.html, which carries
+  /* Dark surface ramp — kept byte-identical to site/index.html, which carries
      the reasoning in full. Short version: --surface sat 3.6 L* above --bg, so
      the cards barely read as cards. The page lifts, the cards lift further,
      and the pair fills come with them. Those sit inside a .card, so --surface
@@ -73,7 +73,7 @@
   /* This header had no responsive treatment at all — a fixed 58px sticky bar
      with a nav that could not wrap, so on a phone the row simply overflowed and
      the toggle was sliced by the right edge, on every screen the reader scrolled
-     past. docs/index.html grew its own version of this block in #216; this page
+     past. site/index.html grew its own version of this block in #216; this page
      was left behind. Both anchors here are cross-page and both earn their place
      (there is no same-page nav to drop), so the row wraps rather than hides. */
   @media (max-width: 640px) {
@@ -149,7 +149,7 @@
       <nav>
         <a href="index.html">← Landing</a>
         <a href="https://github.com/kodhama/trellis">GitHub</a>
-        <!-- Three states, matching docs/index.html — see the comment there for
+        <!-- Three states, matching site/index.html — see the comment there for
              why (WCAG 2.5.3, and a localStorage pin that was a one-way door out
              of "follow my system"). This page's copy of the control had drifted
              further still: its label was the literal string "theme" and never
@@ -534,7 +534,7 @@
 
 <script>
   (function () {
-    /* Kept in step with docs/index.html: auto → light → dark → auto, where
+    /* Kept in step with site/index.html: auto → light → dark → auto, where
        "auto" clears the localStorage pin rather than writing another one. The
        two pages share the `trellis-theme` key, so a reader who picks dark on
        one arrives in dark on the other — which is exactly why they could not
@@ -546,7 +546,7 @@
     var pinned = null;
     try { pinned = localStorage.getItem("trellis-theme"); } catch (e) {}
     if (THEMES.indexOf(pinned) < 1) pinned = "auto";
-    // State lives here, not in the button's label — see docs/index.html.
+    // State lives here, not in the button's label — see site/index.html.
     var mode = pinned;
     function applyTheme(m, speak) {
       mode = m;

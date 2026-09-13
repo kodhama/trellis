@@ -107,7 +107,7 @@ record's `approved` flip, in the same change**.
   gains the `@.trellis/rules.toml` import (import style) / the rows section (inline
   style); seeds' comments become the live-rows wording; `checksums`, `version` stamp,
   `install.sh` manifest, scorecard (unchanged content-wise unless the ✗/directive
-  render moves — executor verifies), `docs/invariants.html` untouched (no catalog
+  render moves — executor verifies), `site/invariants.html` untouched (no catalog
   change), repo overlay refreshed. Family and consumers pick it all up on refresh.
 - **The experiment machinery is an archive, not a derivative** —
   `eval/experiments/annotation-vs-absence/` stays byte-untouched (its runs are the

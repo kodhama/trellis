@@ -11,8 +11,9 @@ name: cli-ci
 # The paths filter is a coverage contract, not a convenience. build-test is the
 # only job that runs `go test`, so EVERY file the suite reads out of the repo has
 # to be selected here — otherwise a PR touching only that file skips the one guard
-# that pins it, and nothing is ever red. Hence: the doc surfaces (docs/, README,
-# install.sh, plugins/) for the docs-consistency test (decision-0025);
+# that pins it, and nothing is ever red. Hence: the doc surfaces (site/, README,
+# install.sh, plugins/) for the docs-consistency test (decision-0025), and docs/,
+# whose Markdown that test's repo-wide marketplace walk still reads (TRL-87);
 # .github/scripts/** and decision-id-guard.yml, which cli/decision_id_guard_test.go
 # executes and reads (decision-0089); core/invariants/** and profiles/**, which
 # cli/row_set_guard_test.go reads; core/rubrics/**, which
@@ -27,10 +28,10 @@ name: cli-ci
 # lists below identical; both are checked.
 on:
   pull_request:
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", ".githooks/**", "scripts/**", "package.json", "package-lock.json", "eslint.config.mjs", ".prettierrc.json", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/rubrics/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
+    paths: ["cli/**", "site/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", ".githooks/**", "scripts/**", "package.json", "package-lock.json", "eslint.config.mjs", ".prettierrc.json", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/rubrics/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", ".githooks/**", "scripts/**", "package.json", "package-lock.json", "eslint.config.mjs", ".prettierrc.json", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/rubrics/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
+    paths: ["cli/**", "site/**", "docs/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", ".githooks/**", "scripts/**", "package.json", "package-lock.json", "eslint.config.mjs", ".prettierrc.json", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/rubrics/**", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
 
 jobs:
   build-test:

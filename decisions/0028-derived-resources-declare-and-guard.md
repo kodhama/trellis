@@ -30,7 +30,7 @@ right one fires — and put a deterministic floor under the part that can be che
 A general rule, made concrete so B1 actually fires:
 
 1. **Forward-edges.** Every source artifact **names its derived resources**, co-located, so editing it
-   shows the dependents right there. (The catalog now lists: rendered → `docs/invariants.html`; copied →
+   shows the dependents right there. (The catalog now lists: rendered → `site/invariants.html`; copied →
    `cli/assets/invariants.md`, `plugins/trellis/reference/invariants.md`.)
 2. **A sync guard per source↔derivative pair** — a deterministic check wherever the relationship is
    expressible: byte-identical for copies, "the render contains the source's content" for renders.

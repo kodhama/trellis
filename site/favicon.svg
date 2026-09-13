@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- trellis mark — identical path data to kodhama/design-system's icons/trellis.svg.
      Colors are baked literals (favicons render outside the page's CSS cascade,
-     so custom properties aren't reachable) mirroring docs/index.html's :root.
+     so custom properties aren't reachable) mirroring site/index.html's :root.
      data-season is dormant on this page (never set) — this ships the evergreen
      accent to match. Re-bake if that changes. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">

@@ -364,12 +364,12 @@ supersession beyond any check — which `inv-independent-judgment` forbids. *Ope
 
 - **The derived chain must regenerate in the same change** (`decision-0028`) — catalog → the plugin's
   `reference/` render → `rules.md` → both inline-block sandwiches → `checksums` → `version` stamp →
-  `install.sh` bundle manifest → the invariant scorecard → `docs/invariants.html` → `cli/assets/`. A
+  `install.sh` bundle manifest → the invariant scorecard → `site/invariants.html` → `cli/assets/`. A
   directive change lands in the **always-loaded block**, so it touches every rendered surface.
   **Attribution, since an earlier draft blurred it:** `decision-0074:118-125` enumerates the render
   chain through the scorecard *and* names a second, **contract** layer this list must not drop —
   `spec-0007`'s slug inventory and activation-row predicate, `spec-0002` §1 check 2 + AC1,
-  `core/rubrics/artifact-contract.md`, and the `corpus-reviewer` checklist. `docs/invariants.html`
+  `core/rubrics/artifact-contract.md`, and the `corpus-reviewer` checklist. `site/invariants.html`
   and `cli/assets/` come from `decision-0028:33-34`, not from 0074. `decision-0040:78-80` is the
   narrower worked instance, cited only for the point that a directive change reaches the
   always-loaded block. *(A directive-only change plausibly leaves the contract layer alone — it
@@ -485,7 +485,7 @@ honest reason this record should not be read as settled:
   three.
 - **`AGENTS.md:44` was wrong twice** (the quoted sentence is at `:36`) — an off-by-eight that survived
   the first review, whose own self-check had claimed line cites were cleared.
-- **The derived chain over-attributed `decision-0074`** — `docs/invariants.html` and `cli/assets/` are
+- **The derived chain over-attributed `decision-0074`** — `site/invariants.html` and `cli/assets/` are
   `decision-0028`'s, and 0074's second *contract* layer had been dropped. Both corrected.
 - **"Three weeks on" was wrong** — `decision-0074` dates to 2026-08-19/08-22, so the un-propagated
   window is six to nine days; the three-week figure belongs to a different clock.

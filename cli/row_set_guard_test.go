@@ -105,9 +105,9 @@ func TestRowSetDerivativesFollowThePin(t *testing.T) {
 			fix: "add the profile row, or set its `active` back to true — the reference organism assesses every gene AND holds it active (the Profile note says so in prose); a row present but false reads as missing here",
 		},
 		{
-			name: "docs/invariants.html (cards)",
+			name: "site/invariants.html (cards)",
 			got: captureAll(regexp.MustCompile(`<span class="code">([a-z-]+)</span>`),
-				readFileT(t, "../docs/invariants.html")),
+				readFileT(t, "../site/invariants.html")),
 			fix: "add or remove the card; TestInvariantsPageMatchesCatalog checks its examples",
 		},
 		{

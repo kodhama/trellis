@@ -127,9 +127,9 @@ func TestRowSetDerivativesFollowThePin(t *testing.T) {
 			fix: "add or remove the profile row — the reference organism assesses every gene",
 		},
 		{
-			name: "docs/invariants.html (cards)",
+			name: "site/invariants.html (cards)",
 			got: captureAll(regexp.MustCompile(`<span class="code">([a-z-]+)</span>`),
-				readFileT(t, "../docs/invariants.html")),
+				readFileT(t, "../site/invariants.html")),
 			fix: "add or remove the card; TestInvariantsPageMatchesCatalog checks its examples",
 		},
 		{
@@ -283,14 +283,14 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 		{"../install.sh", "all %[2]s rules are active"},
 		{"../install.sh", "two rules out of %[2]s"},
 		{"../plugins/trellis/hooks/staleness.sh", "— %[1]d rules, followed by default"},
-		{"../docs/index.html", "all %[1]d rules active, adaptive posture"},
-		{"../docs/index.html", "%[3]s load-bearing invariants"},
-		{"../docs/index.html", "See all %[2]s, with why + examples"},
-		{"../docs/lp-content.md", "all %[1]d rules active, adaptive posture"},
-		{"../docs/lp-content.md", "%[3]s load-bearing"},
-		{"../docs/lp-content.md", "%[2]s, with why + examples"},
-		{"../docs/invariants.html", "The %[2]s Trellis invariants"},
-		{"../docs/invariants.html", "<h1>%[3]s invariants."},
+		{"../site/index.html", "all %[1]d rules active, adaptive posture"},
+		{"../site/index.html", "%[3]s load-bearing invariants"},
+		{"../site/index.html", "See all %[2]s, with why + examples"},
+		{"../site/lp-content.md", "all %[1]d rules active, adaptive posture"},
+		{"../site/lp-content.md", "%[3]s load-bearing"},
+		{"../site/lp-content.md", "%[2]s, with why + examples"},
+		{"../site/invariants.html", "The %[2]s Trellis invariants"},
+		{"../site/invariants.html", "<h1>%[3]s invariants."},
 		{"../profiles/trellis-self.md", "All %[1]d assessable genes"},
 		{"../core/catalog/signature-catalog-v1.md", "Covers the **%[1]d assessable invariants**"},
 		{"../core/catalog/signature-catalog-v1.md", "Covers all **%[1]d assessable** slugs (the %[4]s structural, the %[5]s remaining operating, the %[6]s floors"},
@@ -315,8 +315,8 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 	// table above does not know about yet. install.sh and the hooks are excluded:
 	// they carry comments that narrate historical counts on purpose.
 	docs := []string{
-		"../README.md", "../plugins/trellis/README.md", "../docs/index.html", "../docs/lp-content.md",
-		"../docs/invariants.html", "../profiles/trellis-self.md", "../core/catalog/signature-catalog-v1.md",
+		"../README.md", "../plugins/trellis/README.md", "../site/index.html", "../site/lp-content.md",
+		"../site/invariants.html", "../profiles/trellis-self.md", "../core/catalog/signature-catalog-v1.md",
 		"../core/rubrics/artifact-contract.md", "../.claude/agents/corpus-reviewer.md",
 		"../plugins/trellis/skills/remove/SKILL.md",
 	}
@@ -401,7 +401,7 @@ Replace lines 55–67 of `core/catalog/signature-catalog-v1.md` (from `> **Addin
 > not listed.** `cli/row_set_guard_test.go` reads the pinned slug set (`assessableSlugs`,
 > `cli/payload_test.go` — the one pin) and fails naming what has not followed: every derivative
 > that carries the set — the `invariants-v1` registry, `profiles/trellis-self.md`, the
-> `docs/invariants.html` cards, this repo's `.trellis/rules.toml`, the rendered `reference/rules-*.toml`
+> `site/invariants.html` cards, this repo's `.trellis/rules.toml`, the rendered `reference/rules-*.toml`
 > (**without a row the rule ships but is inactive**) — and every prose site that states the count
 > (the READMEs, `install.sh`, the hooks' announcements, `docs/`, this catalog's Coverage note and
 > AC1, the contract, the reviewer charter, the remove skill), each in the shape it uses there:
@@ -409,7 +409,7 @@ Replace lines 55–67 of `core/catalog/signature-catalog-v1.md` (from `> **Addin
 > and follow the failures. The list lives in the test because a list kept here was found short
 > twice (`decision-0074`, `decision-0078`) and the sweep that rebuilt it found 22 sites where this
 > note named six files (TRL-28). Two obligations the guard cannot see: a new card in
-> `docs/invariants.html` needs its *examples* rendered (`cli/sync_test.go` catches those), and the
+> `site/invariants.html` needs its *examples* rendered (`cli/sync_test.go` catches those), and the
 > release stamp `plugins/trellis/VERSION` (**unguarded — trellis#245 is still open**; without it
 > every cached consumer keeps the old rule set, `d4a2c7b`). The Codex hook is not a surface: it
 > derives its slug set from the generated `reference/rules.md` since `decision-0083`.

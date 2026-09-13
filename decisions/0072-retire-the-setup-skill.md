@@ -109,7 +109,7 @@ lacks: `plugins/trellis/README.md` (5 references), `skills/remove/SKILL.md` (2),
 and `cli/README.md` (1). Fixing only the four covered files would have turned the
 guard green with three user-facing surfaces still teaching `/trellis:setup`.
 This is the second time that list has been found short — the note above
-`docs/lp-content.md` records the first, on 2026-07-31 — so **the failure mode is
+`site/lp-content.md` records the first, on 2026-07-31 — so **the failure mode is
 the list, not either omission**, and `docSurfaces` becomes a walk of the tree
 rather than a third hand-written extension. The walk immediately covered a
 surface no version of the list ever had: `hooks/staleness.sh`, which emits slash

@@ -56,7 +56,7 @@ none carry a contrastive *with/without* pair.
 
 - **`signature-catalog` schema extended** (`spec-0002`): `why` / `honored` / `violated` per entry;
   the conformance check learns the completeness + sync rule.
-- **The benefits page + the landing "how it works" section derive from the catalog** — a `docs/`
+- **The benefits page + the landing "how it works" section derive from the catalog** — a `site/`
   resource + the landing page, both generated (by hand first; a render step later).
 - **Named preset profiles** — the two distinct postures **A · conductor** (adopt one framework,
   strictly) and **B · author-adapt** (synthesize/evolve) ship as shelf expression profiles; **C ·

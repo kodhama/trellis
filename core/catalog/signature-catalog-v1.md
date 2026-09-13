@@ -47,7 +47,7 @@ ratified: 2026-07-04
 > a conformance failure** (`decision-0020` meta-rule — the iron rule applied to the rule-set itself).
 
 > **Derived resources — sync them on any change (`decision-0028`).** This catalog is the single source.
-> It is **rendered** to [`docs/invariants.html`](../../docs/invariants.html) (the pairs as cards) and
+> It is **rendered** to [`site/invariants.html`](../../site/invariants.html) (the pairs as cards) and
 > **copied verbatim** to `cli/assets/invariants.md` + `plugins/trellis/reference/invariants.md` (the
 > bundled reference). Change an example here → regenerate all three. A CI check enforces it
 > (`cli/sync_test.go`) — but this note is here so you see the dependents *before* the check does.
@@ -56,7 +56,7 @@ ratified: 2026-07-04
 > not listed.** `cli/row_set_guard_test.go` reads the pinned slug set (`assessableSlugs`,
 > `cli/payload_test.go` — the one pin) and fails naming what has not followed: this catalog's own
 > entry list, the `invariants-v1` registry, `profiles/trellis-self.md` (each gene present *and*
-> active), the `docs/invariants.html` cards, this repo's `.trellis/rules.toml`, and the rendered
+> active), the `site/invariants.html` cards, this repo's `.trellis/rules.toml`, and the rendered
 > `reference/rules-*.toml` (**without a row the rule ships but is inactive**). Run
 > `go test -count=1 ./...` in `cli/` and follow the failures.
 >
@@ -69,7 +69,7 @@ ratified: 2026-07-04
 > it waits — delete the two rows when a change that already touches the bundle deletes the
 > numerals.
 >
-> Elsewhere — the root README, `docs/`, the corpus — the numeral was simply deleted ("all sixteen
+> Elsewhere — the root README, `site/`, the corpus — the numeral was simply deleted ("all sixteen
 > rules" → "all rules"), because a list of count sites kept here was found short twice
 > (`decision-0074`, `decision-0078`), and a twenty-two-row table of them in a test file was the
 > same mistake one layer down (TRL-28). **If you are about to write a row count into prose, delete
@@ -79,7 +79,7 @@ ratified: 2026-07-04
 > count of the set as it stands *today* has no **unguarded** home: it is pinned in the list above,
 > or it is deleted (TRL-47).
 >
-> Two obligations the guard cannot see: a new card in `docs/invariants.html` needs its *examples*
+> Two obligations the guard cannot see: a new card in `site/invariants.html` needs its *examples*
 > rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
 > (**unguarded — trellis#245 is still open**; without it every cached consumer keeps the old rule
 > set, `d4a2c7b`). The Codex hook is not a surface: it derives its slug set from the generated
