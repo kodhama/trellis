@@ -1,6 +1,7 @@
 ---
 id: decision-0092
 type: decision
+superseded_in_part_by: [decision-0099]  # 2026-09-14 decision-0099 — the guard's claim PATH only: a claim is now a file at a docs/decisions/NNNN-*.md path, a root decisions/ path claims nothing, and the guard reads the base branch's ids from docs/decisions/ only. This record's text already names docs/decisions/ because the rename sweep (decision-0015:117-121) rewrote it; the pointer records that the guard changed, not a correction. STANDS: every other rule in points 1-5 — added, copied and a rename's destination claim; three failure conditions; a rename does not release its source id; exit 2 means could not run; and point 5's account of what of decision-0089 stands.
 depends_on: [decision-0081, decision-0089]
 changes: [decision-0089]
 informed_by: [decision-0028, decision-0040, decision-0078, decision-0082, decision-0085]
