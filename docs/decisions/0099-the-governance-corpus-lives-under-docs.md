@@ -56,5 +56,5 @@ Concretely: `docs/decisions/0100-x.md` added claims `0100`; `decisions/0100-x.md
 - **Line citations survive the move.** Every edit to a file a record cites by line was a same-line substitution, and swept Markdown was not re-wrapped. `decision-0092` gains one frontmatter line, so its body moves down by one; no `decision-0092:NN` citation existed on `main` when this was written.
 - **Links from outside the repository break.** GitHub does not redirect moved paths, so a link to `blob/main/decisions/…` stops resolving. No such link was found in other kodhama repositories; links from Linear were not checked.
 - **Not decided here:**
-  - the other text files `marketplaceCommands` reads that `cli-ci`'s filter does not select, which the maintainer directed to a separate issue;
+  - the other text files `marketplaceCommands` reads that `cli-ci`'s filter does not select, which the maintainer directed to a separate issue, TRL-92;
   - retiring `corpus-reviewer`, which is TRL-88's.
