@@ -150,7 +150,7 @@ Product Contract unchanged, except that its three Deferred to Planning questions
   No file cites `decision-0099` by line, and `decision-0082` is cited by line only from a plan.
 - KTD6. **`cli/selfapply_test.go` keeps its assertion that no root `decisions/` directory exists, and its comment and failure message name the conformance corpus instead of the guard.** Governs R7. The assertion still catches a record landing outside `docs/decisions/`, the only record path `corpusRoots` in `cli/corpus_conformance_test.go` reads.
 - KTD7. **`package.json`'s `lint:shell` drops its `.github/scripts/*.sh` pattern.** Governs R6. The guard's script is the only file in `.github/scripts/`, and an unmatched pattern reaches shellcheck as a literal path, which fails the quality gate CI runs. Nothing pins that command's file list.
-- KTD8. **No new test.** R5's filter is proved by running it over sample markers during work and recording the result in the PR's Validation. The guard's deletion is proved by the Go suite still building and passing, and by a search showing that nothing outside records, plans and the ideation names the guard. The project is retiring guards (idea 4); #313's plan took the same stance.
+- KTD8. **One new test, `cli/check_todos_test.go`.** `TestCheckTodosMarkerForms` runs `scripts/check-todos.sh` over every marker form the script's error message and `README.md` show, which must pass, and over U3's malformed samples, which must fail. This plan first chose no test, because the project is retiring guards (idea 4). Codex's review of PR #315 pointed out that `decision-0028`, still current on `main`, asks for a guard on each source↔derivative pair, and idea 4 has not landed, so the test was added. The guard's deletion is proved by the Go suite still building and passing, and by a search showing that nothing outside records, plans and the ideation names the guard.
 - KTD9. **The notes cite PR #315**, the next number when this plan was written, since #314 is the newest issue or pull request. The PR corrects them before review if another pull request takes that number first, as `AGENTS.md` requires.
 
 ### Assumptions
@@ -213,9 +213,9 @@ U1, U2 and U3 are independent. U4 follows U2, because its notes name the paragra
 ### U3. Accept the new id form in the TODO check
 
 - **Goal:** a debt marker can cite a date-and-slug record.
-- **Requirements:** R5; AE4; KTD3.
+- **Requirements:** R5; AE4; KTD3, KTD8.
 - **Dependencies:** none.
-- **Files:** modify `scripts/check-todos.sh` and `README.md`.
+- **Files:** modify `scripts/check-todos.sh` and `README.md`; add `cli/check_todos_test.go` (KTD8).
 - **Approach:**
   1. Add the date-and-slug alternative to the filter (KTD3).
   2. Show the new form in the script's error message and in `README.md`'s list of accepted markers.
@@ -263,7 +263,7 @@ Every command runs from the repository root.
 - **Conformance** (U2, U4): the conformance and artifact-contract tests pass when run on their own, with `go -C cli test -count=1 -run 'TestCorpusConform|TestArtifactContract' .`.
 - **Quality gate** (U1, U3): `npm run quality` passes through `lint:js`; `lint:shell` needs `shellcheck`, which CI installs.
 - **Guard search** (U1): `git grep -n -i -E 'decision-id[- ]guard|decision_id_guard|DecisionIDGuard' -- . ':!docs/decisions' ':!docs/plans' ':!docs/ideation'` returns nothing.
-- **TODO samples** (U3): the filter from `scripts/check-todos.sh`, applied to U3's sample markers, passes and fails them as U3 lists.
+- **TODO samples** (U3): `TestCheckTodosMarkerForms` in the Go suite runs `scripts/check-todos.sh` over U3's sample markers and the forms its error message and `README.md` show, and passes and fails them as U3 lists.
 - **Payload** (all): `git diff origin/main...HEAD -- plugins/trellis` is empty once the work is committed. The three-dot form diffs from the merge base, so changes merged to `main` since the branch was cut do not show.
 
 ---
