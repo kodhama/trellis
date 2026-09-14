@@ -44,7 +44,10 @@ import (
 //     normalized rubric text, so an edit anywhere in a check fails here until
 //     that check's rows and rule code are re-reviewed (KTD8). The pins this
 //     guard carried before TRL-88 compared rows only, and the `changes:` and
-//     `informed_by` divergences above were both prose.
+//     `informed_by` divergences above were both prose;
+//   - rule 10a's confidence tags: confidenceTags equals the values the
+//     `confidence` row of schema-typed-artifacts §2 lists, in both directions.
+//     Check 10's text does not list them, so its digest cannot catch a change.
 //
 // Deliberately NOT pinned, so a later reader knows the real bound:
 //
@@ -576,6 +579,72 @@ func TestArtifactContractNumberedChecksHaveReviewedOutcomes(t *testing.T) {
 	contractGuardReport(t, contractOutcomeCoverageProblems(checks, contractOutcomeTable, contractNumberedCount))
 }
 
+// confidenceTagCell is a backticked value in the schema's `confidence` row.
+var confidenceTagCell = regexp.MustCompile("`([^`]+)`")
+
+// schemaConfidenceTags reads the values the `confidence` row of the schema's
+// Field/Rule tables lists in its Rule cell, up to the dash that opens the gloss.
+// A schema with no such row, two of them, or a row naming no value halts the
+// test.
+func schemaConfidenceTags(t *testing.T, schema *corpusArtifact) []string {
+	t.Helper()
+	var cells []string
+	for _, tb := range schema.tables(0, len(schema.lines)) {
+		field, rule := slices.Index(tb.header, "Field"), slices.Index(tb.header, "Rule")
+		if field < 0 || rule < 0 {
+			continue
+		}
+		for _, r := range tb.rows {
+			if len(r.cells) == len(tb.header) && cellValue(r.cells[field]) == "confidence" {
+				cells = append(cells, r.cells[rule])
+			}
+		}
+	}
+	if len(cells) != 1 {
+		t.Fatalf("%s: found %d `confidence` rows in its Field/Rule tables, and this guard needs exactly one to read the tags rule 10a accepts", schema.path, len(cells))
+	}
+	values, _, _ := strings.Cut(cells[0], " — ")
+	var tags []string
+	for _, m := range confidenceTagCell.FindAllStringSubmatch(values, -1) {
+		tags = append(tags, m[1])
+	}
+	if len(tags) == 0 {
+		t.Fatalf("%s: the `confidence` row's Rule cell names no backticked value: %q", schema.path, cells[0])
+	}
+	return tags
+}
+
+// confidenceTagProblems compares the tags rule 10a accepts with the tags the
+// schema lists, in both directions.
+func confidenceTagProblems(accepted map[string]bool, listed []string) []string {
+	var problems []string
+	inSchema := map[string]bool{}
+	for _, tag := range listed {
+		inSchema[tag] = true
+		if !accepted[tag] {
+			problems = append(problems, fmt.Sprintf("schema-typed-artifacts lists confidence tag %q, and confidenceTags does not accept it", tag))
+		}
+	}
+	var extra []string
+	for tag := range accepted {
+		if !inSchema[tag] {
+			extra = append(extra, tag)
+		}
+	}
+	slices.Sort(extra)
+	for _, tag := range extra {
+		problems = append(problems, fmt.Sprintf("confidenceTags accepts %q, and schema-typed-artifacts does not list it", tag))
+	}
+	return problems
+}
+
+// TestArtifactContractConfidenceTagsMatchTheSchema pins rule 10a's accepted
+// confidence tags to the schema table they are copied from (decision-0028).
+func TestArtifactContractConfidenceTagsMatchTheSchema(t *testing.T) {
+	schema := liveArtifact(t, liveCorpusCheck(t), "schema-typed-artifacts")
+	contractGuardReport(t, confidenceTagProblems(confidenceTags, schemaConfidenceTags(t, schema)))
+}
+
 // TestArtifactContractGuardComparisonsFail seeds each failure path of the
 // comparisons above, so a comparison that stopped detecting its drift turns
 // this red instead of leaving the live tests green by finding nothing. Every
@@ -694,6 +763,11 @@ func TestArtifactContractGuardComparisonsFail(t *testing.T) {
 			contractOutcomeCoverageProblems(contractNumberedChecks(mutated), contractOutcomeTable, contractNumberedCount), 1, []string{"check 4 ", strconv.Quote(newDigest)}},
 		{"numbered checks: an italic item is a check, and an item outside the check sections is not",
 			contractOutcomeCoverageProblems(contractNumberedChecks(synthetic), syntheticTable, 2), 1, []string{"check 2 "}},
+
+		{"confidence tags: a tag the schema lists and confidenceTags does not accept",
+			confidenceTagProblems(confidenceTags, []string{"verified", "inferred", "speculated", "likely"}), 1, []string{`"likely"`, "does not accept"}},
+		{"confidence tags: a tag confidenceTags accepts and the schema does not list",
+			confidenceTagProblems(confidenceTags, []string{"verified", "inferred"}), 1, []string{`"speculated"`, "does not list"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

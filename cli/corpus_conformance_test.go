@@ -1409,60 +1409,99 @@ func TestCorpusConformanceHaltsOnMissingInput(t *testing.T) {
 	}{
 		{"a corpus root that does not exist", func(t *testing.T, dir string) []string {
 			return []string{dir, filepath.Join(dir, "absent")}
-		}, "absent"},
+		}, "<dir>/absent cannot be read"},
 		{"a corpus root that holds no Markdown", func(t *testing.T, dir string) []string {
 			empty := t.TempDir()
 			writeFileT(t, filepath.Join(empty, "notes.txt"), "not an artifact\n")
 			return []string{dir, empty}
-		}, "holds no Markdown"},
+		}, "holds no Markdown artifact"},
 		{"no artifact declares invariants-v1", func(t *testing.T, dir string) []string {
 			removeFileT(t, filepath.Join(dir, "invariants.md"))
 			return []string{dir}
-		}, "invariants-v1"},
+		}, "declares id `invariants-v1`"},
 		{"invariants-v1 has no Identifiers section", func(t *testing.T, dir string) []string {
 			rewriteFixtureT(t, filepath.Join(dir, "invariants.md"), "## Identifiers (stable slugs)", "## Names")
 			return []string{dir}
-		}, "Identifiers"},
+		}, "has no `## Identifiers` section"},
 		{"the Identifiers section has no retired-id column", func(t *testing.T, dir string) []string {
 			p := filepath.Join(dir, "invariants.md")
 			rewriteFixtureT(t, p, "| Slug | Legacy code (retired) | Note |", "| Slug | Legacy code | Note |")
 			rewriteFixtureT(t, p, "| Retired id | → Successor |", "| Old id | → Successor |")
 			rewriteFixtureT(t, p, "id resolves to `inv-kept`", "id maps to `inv-kept`")
 			return []string{dir}
-		}, "retired"},
+		}, "header names `retired`"},
 		{"no artifact declares decision-0079", func(t *testing.T, dir string) []string {
 			removeFileT(t, filepath.Join(dir, "decision-0079.md"))
 			return []string{dir}
-		}, "decision-0079"},
+		}, "declares id `decision-0079`"},
 		{"decision-0079 has no 3a registry", func(t *testing.T, dir string) []string {
 			rewriteFixtureT(t, filepath.Join(dir, "decision-0079.md"), "**3a. Retired-artifacts registry.**", "**Registry.**")
 			return []string{dir}
-		}, "3a"},
+		}, "found 0 `**3a.` markers"},
 		{"decision-0079's 3a table has no Retired id column", func(t *testing.T, dir string) []string {
 			rewriteFixtureT(t, filepath.Join(dir, "decision-0079.md"), "| Retired id | Was |", "| Id | Was |")
 			return []string{dir}
-		}, "Retired id"},
+		}, "the 3a table has no `Retired id` column"},
 		{"a catalog with no Entries section while a profile needs it", func(t *testing.T, dir string) []string {
 			rewriteFixtureT(t, filepath.Join(dir, "catalog.md"), "## Entries", "## Items")
 			return []string{dir}
-		}, "catalog.md"},
+		}, "<dir>/catalog.md is a signature-catalog with no `## Entries` section"},
 		{"no signature-catalog while a profile needs one", func(t *testing.T, dir string) []string {
 			removeFileT(t, filepath.Join(dir, "catalog.md"))
 			return []string{dir}
-		}, "profile.md"},
+		}, "<dir>/profile.md needs signature-catalog entries"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			roots := tc.setup(t, copyKnownBadCorpus(t))
+			dir := copyKnownBadCorpus(t)
+			roots := tc.setup(t, dir)
 			findings, err := checkArtifactCorpus(roots, contract)
 			if err == nil {
 				t.Fatalf("the check did not halt, and returned %d findings as if the corpus were complete — a partial pass", len(findings))
 			}
-			if !strings.Contains(err.Error(), tc.want) {
-				t.Errorf("the check halted, but its error does not name %q:\n  %v", tc.want, err)
+			// The copy's directory name carries the subtest's name, so it is replaced
+			// before matching: each want must match the halt's own words.
+			if msg := strings.ReplaceAll(err.Error(), dir, "<dir>"); !strings.Contains(msg, tc.want) {
+				t.Errorf("the check halted, but its error does not name %q:\n  %v", tc.want, msg)
 			}
 			if findings != nil {
 				t.Errorf("a halted run returned %d findings; a halt reports the missing input and nothing else", len(findings))
+			}
+		})
+	}
+}
+
+// TestArtifactContractRowParsersHaltOnMalformedRows seeds the rubric rows the
+// check reads as data in shapes it cannot read. loadArtifactContract halts on
+// each of these errors, so a parser that stopped returning one would hand the
+// check a partial contract instead.
+func TestArtifactContractRowParsersHaltOnMalformedRows(t *testing.T) {
+	sectionRuleErr := func(row string) error {
+		_, _, err := parseSectionRule(row)
+		return err
+	}
+	registryErr := func(rows ...string) error {
+		_, err := parseRepoRegistry(rows)
+		return err
+	}
+	cases := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"check 6: a row with no arrow", sectionRuleErr("`decision` Context + Decision"), "is not in the form"},
+		{"check 6: a row naming an empty section", sectionRuleErr("`decision` → Context +  + Consequences"), "names an empty section"},
+		{"check 4: no row names the registry", registryErr("an existing artifact `id` in any corpus"), "carries 0 rows"},
+		{"check 4: two rows name a registry", registryErr("recognized registry (kodhama)", "recognized registry (trellis)"), "carries 2 rows"},
+		{"check 4: a registry member that is not a repository name", registryErr("recognized registry (kodhama, Not A Repo)"), `"Not A Repo"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.err == nil {
+				t.Fatalf("the parser accepted a malformed row, so the check would read a partial contract")
+			}
+			if !strings.Contains(tc.err.Error(), tc.want) {
+				t.Errorf("the parser rejected the row, but its error does not name %q:\n  %v", tc.want, tc.err)
 			}
 		})
 	}
