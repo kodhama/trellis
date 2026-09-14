@@ -19,13 +19,7 @@ var catalogFields = []string{"what", "directive", "why", "signature", "honored",
 
 // catalogKnownKeys are the keys a `·`-joined line splits on: the ten, and the
 // optional `intent_locus`. A middle dot followed by anything else is prose.
-var catalogKnownKeys = map[string]bool{"intent_locus": true}
-
-func init() {
-	for _, f := range catalogFields {
-		catalogKnownKeys[f] = true
-	}
-}
+var catalogKnownKeys = setOf(append([]string{"intent_locus"}, catalogFields...))
 
 var (
 	catalogEntryShape = regexp.MustCompile("^- \\*\\*`([^`]+)`\\*\\*")
@@ -345,14 +339,8 @@ func parseProfileRows(a *corpusArtifact) ([]profileRow, []profileProblem) {
 // live catalog and profile, whose wrapped, bolded and `·`-joined lines are the
 // shapes most likely to break them.
 func TestCorpusConformanceReadsLiveCatalogAndProfile(t *testing.T) {
-	c, err := newCorpusCheck(corpusRoots, loadArtifactContract(t))
-	if err != nil {
-		t.Fatalf("the check halted on the live corpus: %v", err)
-	}
-	cat := c.artifactByID("signature-catalog-v1")
-	if cat == nil {
-		t.Fatal("no live artifact declares signature-catalog-v1")
-	}
+	c := liveCorpusCheck(t)
+	cat := liveArtifact(t, c, "signature-catalog-v1")
 	entries, strays, ok := parseCatalogEntries(cat)
 	if !ok {
 		t.Fatalf("%s has no `## Entries` section", cat.path)
@@ -406,10 +394,7 @@ func TestCorpusConformanceReadsLiveCatalogAndProfile(t *testing.T) {
 		}
 	}
 
-	profile := c.artifactByID("profile-trellis-self")
-	if profile == nil {
-		t.Fatal("no live artifact declares profile-trellis-self")
-	}
+	profile := liveArtifact(t, c, "profile-trellis-self")
 	rows, problems := parseProfileRows(profile)
 	for _, p := range problems {
 		t.Errorf("%s:%d: %s", profile.path, p.line, p.detail)

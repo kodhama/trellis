@@ -10,11 +10,12 @@ package main
 //   - TestCorpusConformsToArtifactContract runs the check on the live corpus.
 //     Findings are collected over the whole corpus first and reported in one
 //     subtest per numbered check, so `go test -v` shows each check pass or fail.
-//   - TestCorpusConformanceRejectsKnownBadFixture runs the same entry point on
+//   - TestCorpusConformanceRejectsKnownBadFixture runs the same check on
 //     core/fixtures/known-bad/, a standalone corpus of seeded violations and
 //     deliberately valid constructs, and requires exactly the expected findings.
-//     A check is trusted only after it rejects the known-bad fixture (the
-//     rubric's "How it is graded").
+//     It calls newCorpusCheck and run itself rather than checkArtifactCorpus,
+//     because it needs the check value. A check is trusted only after it
+//     rejects the known-bad fixture (the rubric's "How it is graded").
 //   - TestCorpusConformanceHaltsOnMissingInput proves the halt policy: a missing
 //     or unparseable shared input stops the run by name, never a partial pass.
 //
@@ -30,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -158,21 +160,18 @@ var contractClauseOutcomes = []contractRuleOutcome{
 	{"Charter: \"derive your checklist yourself\"", outcomeDropped, "an instruction to an agent; the checklist is now code pinned to the rubric, and CI runs it whoever authored the change"},
 }
 
-// contractRuleIndex maps each numbered rule id to its check and outcome.
-func contractRuleIndex() map[string]struct {
+// contractRuleRef is a numbered rule's check and outcome.
+type contractRuleRef struct {
 	check   int
 	outcome contractOutcome
-} {
-	idx := map[string]struct {
-		check   int
-		outcome contractOutcome
-	}{}
+}
+
+// contractRuleIndex maps each numbered rule id to its check and outcome.
+func contractRuleIndex() map[string]contractRuleRef {
+	idx := map[string]contractRuleRef{}
 	for _, c := range contractOutcomeTable {
 		for _, r := range c.rules {
-			idx[r.rule] = struct {
-				check   int
-				outcome contractOutcome
-			}{c.check, r.outcome}
+			idx[r.rule] = contractRuleRef{c.check, r.outcome}
 		}
 	}
 	return idx
@@ -206,7 +205,7 @@ type artifactContract struct {
 func loadArtifactContract(t *testing.T) artifactContract {
 	t.Helper()
 	rubric := readFileT(t, artifactContractPath)
-	c := artifactContract{sections: map[string][]string{}, repos: map[string]bool{}}
+	c := artifactContract{sections: map[string][]string{}}
 	for _, row := range contractSectionRuleRows(t, rubric) {
 		typ, sections, err := parseSectionRule(row)
 		if err != nil {
@@ -221,9 +220,7 @@ func loadArtifactContract(t *testing.T) artifactContract {
 	if err != nil {
 		t.Fatalf("%s: %v", artifactContractPath, err)
 	}
-	for _, r := range repos {
-		c.repos[r] = true
-	}
+	c.repos = setOf(repos)
 	return c
 }
 
@@ -482,6 +479,26 @@ var (
 	closingHashes  = regexp.MustCompile(`(?:^|[ \t]+)#+$`)
 )
 
+// nextFence advances the fenced-code state by one line. open is the fence run
+// in force before line, empty outside a fence. It returns the run in force
+// after line, and whether line is fenced code: an opening fence, a line inside
+// one, or its closing fence. A fence opens on fenceOpenShape, matched against
+// the untrimmed line, and closes on a line that, trimmed, starts with the
+// opening run and holds nothing but its character. eachBodyLine and the
+// artifact-contract guard's contractNumberedChecks share it.
+func nextFence(open, line string) (stillOpen string, isFenceLine bool) {
+	if open != "" {
+		if t := strings.TrimSpace(line); strings.HasPrefix(t, open) && strings.Trim(t, open[:1]) == "" {
+			return "", true
+		}
+		return open, true
+	}
+	if m := fenceOpenShape.FindStringSubmatch(line); m != nil {
+		return m[1], true
+	}
+	return "", false
+}
+
 // eachBodyLine calls fn for every line after the frontmatter that is outside a
 // fenced code block, so an example inside a fence is never read as structure.
 func (a *corpusArtifact) eachBodyLine(fn func(i int, line string)) {
@@ -490,18 +507,10 @@ func (a *corpusArtifact) eachBodyLine(fn func(i int, line string)) {
 		start = a.fmEnd + 1
 	}
 	for i := start; i < len(a.lines); i++ {
-		line := a.lines[i]
-		if fence != "" {
-			if t := strings.TrimSpace(line); strings.HasPrefix(t, fence) && strings.Trim(t, fence[:1]) == "" {
-				fence = ""
-			}
-			continue
+		var fenced bool
+		if fence, fenced = nextFence(fence, a.lines[i]); !fenced {
+			fn(i, a.lines[i])
 		}
-		if m := fenceOpenShape.FindStringSubmatch(line); m != nil {
-			fence = m[1]
-			continue
-		}
-		fn(i, line)
 	}
 }
 
@@ -510,12 +519,18 @@ type h2Heading struct {
 	index int
 }
 
+// h2Text is a heading's text from h2Shape's first group: closing hashes
+// removed, then trimmed.
+func h2Text(group string) string {
+	return strings.TrimSpace(closingHashes.ReplaceAllString(group, ""))
+}
+
 // h2Headings returns the level-2 ATX headings outside fenced code.
 func (a *corpusArtifact) h2Headings() []h2Heading {
 	var out []h2Heading
 	a.eachBodyLine(func(i int, line string) {
 		if m := h2Shape.FindStringSubmatch(line); m != nil {
-			out = append(out, h2Heading{strings.TrimSpace(closingHashes.ReplaceAllString(m[1], "")), i})
+			out = append(out, h2Heading{h2Text(m[1]), i})
 		}
 	})
 	return out
@@ -585,10 +600,11 @@ func (a *corpusArtifact) tables(start, end int) []mdTable {
 		if i < start || i >= end {
 			return
 		}
-		if !strings.HasPrefix(strings.TrimSpace(line), "|") || (len(block) > 0 && block[len(block)-1] != i-1) {
+		isRow := strings.HasPrefix(strings.TrimSpace(line), "|")
+		if !isRow || (len(block) > 0 && block[len(block)-1] != i-1) {
 			flush()
 		}
-		if strings.HasPrefix(strings.TrimSpace(line), "|") {
+		if isRow {
 			block = append(block, i)
 		}
 	})
@@ -1035,11 +1051,7 @@ func (c *corpusCheck) checkSections() {
 		}
 		headings := a.h2Headings()
 		for _, name := range c.contract.sections[typ] {
-			found := false
-			for _, h := range headings {
-				found = found || headingNames(h.text, name)
-			}
-			if !found {
+			if !slices.ContainsFunc(headings, func(h h2Heading) bool { return headingNames(h.text, name) }) {
 				c.report(a, a.typeLine(), "6a", name, "type `%s` requires a `## %s` section, and the file has none outside fenced code", typ, name)
 			}
 		}
@@ -1084,10 +1096,7 @@ func (c *corpusCheck) checkSupersededDependencies() {
 			if !superseded {
 				continue
 			}
-			listed := false
-			for _, s := range succ {
-				listed = listed || (id != "" && s == id)
-			}
+			listed := id != "" && slices.Contains(succ, id)
 			if !listed {
 				c.report(a, f.line, "7c", bare, "a `%s` depends on `%s`, which carries `superseded_by: [%s]`; a revise-in-place artifact re-points to the successor", typ, bare, strings.Join(succ, ", "))
 			}
@@ -1096,7 +1105,9 @@ func (c *corpusCheck) checkSupersededDependencies() {
 }
 
 // checkArtifactCorpus is the entry point: the live test calls it on
-// corpusRoots, the control test on knownBadRoot. A non-nil error is a halt.
+// corpusRoots, and the halt test on altered copies of the fixture corpus. The
+// control test calls newCorpusCheck and run itself, because it needs the check
+// value. A non-nil error is a halt.
 func checkArtifactCorpus(roots []string, contract artifactContract) ([]contractFinding, error) {
 	c, err := newCorpusCheck(roots, contract)
 	if err != nil {
@@ -1122,11 +1133,7 @@ func reportFindingsPerCheck(t *testing.T, findings []contractFinding) {
 		byCheck[r.check] = append(byCheck[r.check], f)
 	}
 	for _, c := range contractOutcomeTable {
-		implemented := false
-		for _, r := range c.rules {
-			implemented = implemented || r.outcome == outcomeImplemented
-		}
-		if !implemented {
+		if !slices.ContainsFunc(c.rules, func(r contractRuleOutcome) bool { return r.outcome == outcomeImplemented }) {
 			continue
 		}
 		t.Run(fmt.Sprintf("check %d", c.check), func(t *testing.T) {
@@ -1272,45 +1279,56 @@ func TestCorpusConformanceRejectsKnownBadFixture(t *testing.T) {
 	checkAcceptedConstructs(t, c, findings, fixturePrefix)
 }
 
-// TestCorpusConformanceReadsLiveShapes pins the parser to the live constructs
-// most likely to break it, so a brittle read fails here by name instead of
-// surfacing as a finding against a valid file, or as a silent pass.
-func TestCorpusConformanceReadsLiveShapes(t *testing.T) {
+// liveCorpusCheck loads the live corpus under corpusRoots for a test that pins
+// a parser to live shapes, and fails the test when the load halts.
+func liveCorpusCheck(t *testing.T) *corpusCheck {
+	t.Helper()
 	c, err := newCorpusCheck(corpusRoots, loadArtifactContract(t))
 	if err != nil {
 		t.Fatalf("the check halted on the live corpus: %v", err)
 	}
-	byID := func(id string) *corpusArtifact {
-		t.Helper()
-		a := c.artifactByID(id)
-		if a == nil {
-			t.Fatalf("no live artifact declares %s", id)
-		}
-		return a
+	return c
+}
+
+// liveArtifact returns the live artifact declaring id, and fails the test when
+// none does.
+func liveArtifact(t *testing.T, c *corpusCheck, id string) *corpusArtifact {
+	t.Helper()
+	a := c.artifactByID(id)
+	if a == nil {
+		t.Fatalf("no live artifact declares %s", id)
 	}
+	return a
+}
+
+// TestCorpusConformanceReadsLiveShapes pins the parser to the live constructs
+// most likely to break it, so a brittle read fails here by name instead of
+// surfacing as a finding against a valid file, or as a silent pass.
+func TestCorpusConformanceReadsLiveShapes(t *testing.T) {
+	c := liveCorpusCheck(t)
 
 	// A trailing comment holding brackets, colons and pipes ends nothing early
 	// and adds nothing to the list.
 	want := "decision-0037 decision-0047 decision-0057 decision-0068 decision-0070 decision-0073 decision-0090"
-	if f, ok := byID("decision-0091").listValue("depends_on"); !ok || strings.Join(f.list, " ") != want {
+	if f, ok := liveArtifact(t, c, "decision-0091").listValue("depends_on"); !ok || strings.Join(f.list, " ") != want {
 		t.Errorf("decision-0091's depends_on parses as %q (well-formed %v), want %q", strings.Join(f.list, " "), ok, want)
 	}
-	for _, line := range byID("decision-0091").lines[:6] {
+	for _, line := range liveArtifact(t, c, "decision-0091").lines[:6] {
 		if strings.HasPrefix(line, "depends_on:") && !strings.ContainsAny(line[strings.Index(line, "]")+1:], "[:|") {
 			t.Errorf("decision-0091's depends_on comment no longer carries brackets, colons or pipes, so this case tests nothing: %q", line)
 		}
 	}
 
 	// An untyped scalar is read as written, and a legacy status loses its comment.
-	if got := byID("invariants-v1").scalarValue("supersedes"); got != "invariants-v0" {
+	if got := liveArtifact(t, c, "invariants-v1").scalarValue("supersedes"); got != "invariants-v0" {
 		t.Errorf("invariants-v1's supersedes reads as %q, want invariants-v0", got)
 	}
-	if got := byID("schema-typed-artifacts").scalarValue("status"); got != "approved" {
+	if got := liveArtifact(t, c, "schema-typed-artifacts").scalarValue("status"); got != "approved" {
 		t.Errorf("schema-typed-artifacts' legacy status reads as %q, want approved with its comment stripped", got)
 	}
 
 	// Each live reference form resolves through the form the rubric names.
-	if f, ok := byID("decision-0044").listValue("depends_on"); !ok || !strings.Contains(strings.Join(f.list, " "), "kodhama/kodhama-0004-uniform-lifecycle") {
+	if f, ok := liveArtifact(t, c, "decision-0044").listValue("depends_on"); !ok || !strings.Contains(strings.Join(f.list, " "), "kodhama/kodhama-0004-uniform-lifecycle") {
 		t.Errorf("decision-0044's depends_on no longer carries kodhama/kodhama-0004-uniform-lifecycle, so the case below tests nothing")
 	}
 	for _, tc := range []struct {
@@ -1380,9 +1398,7 @@ func TestCorpusConformanceHaltsOnMissingInput(t *testing.T) {
 			return []string{dir, empty}
 		}, "holds no Markdown"},
 		{"no artifact declares invariants-v1", func(t *testing.T, dir string) []string {
-			if err := os.Remove(filepath.Join(dir, "invariants.md")); err != nil {
-				t.Fatal(err)
-			}
+			removeFileT(t, filepath.Join(dir, "invariants.md"))
 			return []string{dir}
 		}, "invariants-v1"},
 		{"invariants-v1 has no Identifiers section", func(t *testing.T, dir string) []string {
@@ -1397,9 +1413,7 @@ func TestCorpusConformanceHaltsOnMissingInput(t *testing.T) {
 			return []string{dir}
 		}, "retired"},
 		{"no artifact declares decision-0079", func(t *testing.T, dir string) []string {
-			if err := os.Remove(filepath.Join(dir, "decision-0079.md")); err != nil {
-				t.Fatal(err)
-			}
+			removeFileT(t, filepath.Join(dir, "decision-0079.md"))
 			return []string{dir}
 		}, "decision-0079"},
 		{"decision-0079 has no 3a registry", func(t *testing.T, dir string) []string {
@@ -1415,9 +1429,7 @@ func TestCorpusConformanceHaltsOnMissingInput(t *testing.T) {
 			return []string{dir}
 		}, "catalog.md"},
 		{"no signature-catalog while a profile needs one", func(t *testing.T, dir string) []string {
-			if err := os.Remove(filepath.Join(dir, "catalog.md")); err != nil {
-				t.Fatal(err)
-			}
+			removeFileT(t, filepath.Join(dir, "catalog.md"))
 			return []string{dir}
 		}, "profile.md"},
 	}

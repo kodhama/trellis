@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -269,8 +270,8 @@ func contractCorpusPaths(paragraph string) (paths, problems []string) {
 	// the paragraph that looks like a path but did not match is called out
 	// rather than dropped: "`core/plans`" without its trailing slash matched
 	// only as far as "core/" and vanished.
-	for _, m := range contractQuotedToken.FindAllStringSubmatch(paragraph, -1) {
-		if tok := m[1]; strings.Contains(tok, "/") && !seen[tok] && !seen[tok+"/"] {
+	for _, tok := range captureAll(contractQuotedToken, paragraph) {
+		if strings.Contains(tok, "/") && !seen[tok] && !seen[tok+"/"] {
 			problems = append(problems, fmt.Sprintf("corpus: the rubric's corpus paragraph quotes %q, which contains a path separator but is not in the form this guard compares. Write a corpus directory with its trailing slash so it is pinned", tok))
 		}
 	}
@@ -427,25 +428,24 @@ func contractNumberedChecks(rubric string) []contractNumberedCheck {
 		body, contentIndent = nil, -1
 	}
 	for i, line := range strings.Split(strings.ReplaceAll(rubric, "\r\n", "\n"), "\n") {
-		if fence != "" {
-			if t := strings.TrimSpace(line); strings.HasPrefix(t, fence) && strings.Trim(t, fence[:1]) == "" {
-				fence = ""
+		// Fenced code is never read as a marker or a heading, and stays in the
+		// open item's text.
+		var fenced bool
+		if fence, fenced = nextFence(fence, line); !fenced {
+			if m := h2Shape.FindStringSubmatch(line); m != nil {
+				closeItem()
+				inChecks = contractCheckSection.MatchString(h2Text(m[1]))
+				continue
+			} else if m := contractCheckMarker.FindStringSubmatch(line); inChecks && m != nil && (contentIndent < 0 || len(m[1]) < contentIndent) {
+				closeItem()
+				n, _ := strconv.Atoi(m[2])
+				checks = append(checks, contractNumberedCheck{number: n, line: i + 1})
+				gap := len(m[3])
+				if gap == 0 || gap > 4 {
+					gap = 1
+				}
+				body, contentIndent = []string{}, len(m[1])+len(m[2])+1+gap
 			}
-		} else if m := fenceOpenShape.FindStringSubmatch(line); m != nil {
-			fence = m[1]
-		} else if m := h2Shape.FindStringSubmatch(line); m != nil {
-			closeItem()
-			inChecks = contractCheckSection.MatchString(strings.TrimSpace(closingHashes.ReplaceAllString(m[1], "")))
-			continue
-		} else if m := contractCheckMarker.FindStringSubmatch(line); inChecks && m != nil && (contentIndent < 0 || len(m[1]) < contentIndent) {
-			closeItem()
-			n, _ := strconv.Atoi(m[2])
-			checks = append(checks, contractNumberedCheck{number: n, line: i + 1})
-			gap := len(m[3])
-			if gap == 0 || gap > 4 {
-				gap = 1
-			}
-			body, contentIndent = []string{}, len(m[1])+len(m[2])+1+gap
 		}
 		if body != nil {
 			body = append(body, line)
@@ -553,30 +553,19 @@ func TestArtifactContractRefFormRowsMapToImplementedForms(t *testing.T) {
 // TestArtifactContractSectionRulesAreTheRowsTheCheckReads pins check 6, the
 // enumeration TRL-60 was filed about: the rubric states that its list "names
 // every type the corpus holds", so a check reading fewer rows silently exempts
-// a type the contract gates. The rows are parsed by parseSectionRule, the
-// conformance check's own parser, and compared with what loadArtifactContract
-// hands the check.
+// a type the contract gates.
+//
+// It pins that the rubric holds contractTypeRows (ten) check 6 rows, and that
+// each parses, through parseSectionRule, into a type with its sections or
+// `exempt`, with no type named twice. contractSectionRuleRows pins the count,
+// both in the direct call here and inside loadArtifactContract.
+// loadArtifactContract parses the rows and halts on a row that does not parse
+// or a repeated type. The check's section rules are built from that one read
+// and parse, so no second parse exists that could diverge from it, and this
+// test compares nothing against a second copy.
 func TestArtifactContractSectionRulesAreTheRowsTheCheckReads(t *testing.T) {
-	rows := contractSectionRuleRows(t, readFileT(t, artifactContractPath))
-	sections := loadArtifactContract(t).sections
-	for _, row := range rows {
-		typ, want, err := parseSectionRule(row)
-		if err != nil {
-			t.Errorf("check 6: %v", err)
-			continue
-		}
-		got, ok := sections[typ]
-		if !ok {
-			t.Errorf("check 6: the rubric row %q names type %q, and the conformance check reads no rule for it", row, typ)
-			continue
-		}
-		if strings.Join(got, " + ") != strings.Join(want, " + ") {
-			t.Errorf("check 6: the rubric row %q requires %q, and the conformance check requires %q", row, want, got)
-		}
-	}
-	if len(sections) != len(rows) {
-		t.Errorf("check 6: the rubric carries %d type rows and the conformance check reads %d types, so it gates a type the rubric does not state", len(rows), len(sections))
-	}
+	contractSectionRuleRows(t, readFileT(t, artifactContractPath))
+	loadArtifactContract(t)
 }
 
 // TestArtifactContractNumberedChecksHaveReviewedOutcomes pins R5: every numbered
@@ -712,11 +701,7 @@ func TestArtifactContractGuardComparisonsFail(t *testing.T) {
 				t.Errorf("want %d problems, got %d:\n  %s", tc.n, len(tc.problems), strings.Join(tc.problems, "\n  "))
 			}
 			for _, w := range tc.want {
-				found := false
-				for _, p := range tc.problems {
-					found = found || strings.Contains(p, w)
-				}
-				if !found {
+				if !slices.ContainsFunc(tc.problems, func(p string) bool { return strings.Contains(p, w) }) {
 					t.Errorf("no problem names %s:\n  %s", w, strings.Join(tc.problems, "\n  "))
 				}
 			}
