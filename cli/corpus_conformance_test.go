@@ -127,10 +127,11 @@ var contractOutcomeTable = []contractCheckOutcomes{
 		{"6b", outcomeAccepts, "`feedback` and `schema` are exempt"},
 		{"6c", outcomeNoRule, "the rubric states that a research note's sources and confidence tags are not gated"},
 	}},
-	{7, "24127ddd4e98bb20", []contractRuleOutcome{
+	{7, "55c189416dfdd502", []contractRuleOutcome{
 		{"7a", outcomeImplemented, "`superseded_by` entries resolve by check 4's forms"},
 		{"7b", outcomeImplemented, "`superseded_in_part_by` entries resolve by check 4's forms"},
 		{"7c", outcomeImplemented, "a non-`decision` artifact may not `depends_on` one carrying `superseded_by`, unless it is listed as that artifact's successor"},
+		{"7d", outcomeGuidance, "a part retired now carries a dated note instead of a new `superseded_in_part_by` entry; whether a note is due is judgment, stated in `AGENTS.md`'s operating method"},
 	}},
 	{8, "b698024e0925d3af", []contractRuleOutcome{
 		{"8a", outcomeCovered, "covered by TestRowSetDerivativesFollowThePin, which fails when the catalog's entries or the invariant set's live entries differ from the pinned slug set in cli/payload_test.go, which holds no dial or collapsed slug"},

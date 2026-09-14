@@ -122,7 +122,9 @@ scope: trellis-meta
    formerly by `status: superseded`): an artifact carrying `superseded_by` is superseded, and its
    entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point
    to the successor. A **partially superseded** artifact stays current for its remainder and carries
-   `superseded_in_part_by`, whose entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
+   `superseded_in_part_by`, whose entries resolve like `depends_on` (`decision-0040`). A part retired
+   now carries a dated note instead of a new entry (`AGENTS.md`); the entries already present still
+   resolve. *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.* *FAIL → name the offender.*
