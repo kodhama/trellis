@@ -164,14 +164,15 @@ This plan covers PR 1 of idea 1a (TRL-98). The rest is the current understanding
   - `decision-0018:142`: it restates `decision-0014` inside a dated aside and cites it by id, so a reader lands on `decision-0014`'s note.
   - `decision-0081`: its test moves into `AGENTS.md`, but its own claims are about who may retire a record, which PR 1 does not change.
   - `decision-0089` and `decision-0092`: their "successor record" sentences are a dated note and a quoted ruling, not rules.
-- KTD4. **R15 reaches `README.md` and rubric check 7, and nothing else outside `docs/decisions/`.** Two surfaces change:
+- KTD4. **R15 reaches `README.md`, rubric check 7 and the invariant set's two sentences on recording its changes, and nothing else outside `docs/decisions/`.** Three surfaces change:
   - `README.md:301` and `README.md:326-331` describe this repository's own records.
   - Rubric check 7 describes partial supersession only by `superseded_in_part_by`.
+  - `core/invariants/trellis-invariants-v1.md`'s provenance block and its last acceptance criterion say every significant invariant change is recorded as an ADR (`decision-0014`). Codex review on PR #313 found them; this plan first read the file only for retired-id resolution. No shipped copy carries either sentence.
 
   Checked and unchanged:
   - `profiles/trellis-self.md:105`: "`docs/decisions/` append-only" still holds, because append-only guarantees a record's decisions are not re-made, not that its bytes never change (`decision-0015:117-121`), and dated notes add text without re-making anything.
   - The catalog, `cli/assets/invariants.md`, `site/invariants.html` and the plugin reference: their "append-only decision records" signatures describe a consumer project's own ADR practice and ship to consumers.
-  - `core/invariants/trellis-invariants-v1.md`, rubric line 71 and check 7's exemption: they concern retired-id resolution and dependencies of append-only records, which still hold.
+  - Rubric line 71 and check 7's exemption: they concern retired-id resolution and dependencies of append-only records, which still hold.
   - Comments in `cli/` tests and the `cli/testdata/known-bad/` fixtures: they exercise existing checks.
 - KTD5. **A line citation is live unless it sits in a plan or in a dated inventory.** A dated inventory is a passage that reports what was true on a stated date: a sweep table, a self-check count, a dated note, or a whole record that dates its own citations, as `decision-0081`'s header does. `AGENTS.md` carries this test with R10's rule, so every PR applies R10 the same way.
 - KTD6. **PR 1's notes cite the PR number the repository will assign next.** The number is read from the repository just before the PR opens. If another PR takes it first, a follow-up commit on the branch corrects the three notes before review. `TRL-98` is known now.
@@ -216,7 +217,7 @@ U1 first, because U3's notes name the `AGENTS.md` block U1 writes. U2 does not d
 - **Goal:** the two restatements outside `docs/decisions/` match the new method.
 - **Requirements:** R15; KTD4, KTD7.
 - **Dependencies:** none.
-- **Files:** `README.md`, `docs/rubrics/artifact-contract.md`, `cli/corpus_conformance_test.go`.
+- **Files:** `README.md`, `docs/rubrics/artifact-contract.md`, `cli/corpus_conformance_test.go`, `core/invariants/trellis-invariants-v1.md` (added after Codex review on PR #313).
 - **Approach:**
   1. `README.md:301`: the repo-map row describes the records without claiming supersession is only by pointer.
   2. `README.md:326-331`: the "How we work" sentence says decisions are rare, keep their text, and are marked by dated notes or `superseded_by`, pointing to `AGENTS.md`.
