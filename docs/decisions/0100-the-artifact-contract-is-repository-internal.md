@@ -25,7 +25,7 @@ TRL-95 moved the rubric from `core/rubrics/artifact-contract.md` to `docs/rubric
 and its known-bad fixtures from `core/fixtures/` to `cli/testdata/`. Nothing Trellis ships reads
 either: nothing under `plugins/` or in `install.sh` names them (`decision-0098` point 4).
 
-Three texts still called the contract part of the product:
+Four texts still called the contract part of the product:
 
 - `decision-0010`, Decision bullet 1, lists Trellis's resources "(including the artifact contract and
   its conformance check)".
@@ -35,6 +35,8 @@ Three texts still called the contract part of the product:
   decision-0098's open question on whether the rubric leaves core/ is unanswered".
 - `core/invariants/trellis-invariants-v1.md:147-148` named `rubric-artifact-contract` as the deferred
   conformance-to-upstream check.
+- `README.md`'s repo map described `core/` as "The shippable product: invariants, the conformance
+  rubric, the signature catalog, the lexicon."
 
 ## Decision
 
@@ -76,7 +78,8 @@ and `docs/` holds none. The rubric is repository-internal, so `TestDocsClaimOnly
   - The rubric's corpus paragraph, `scope`, `depends_on`, header, repository note, "How it is graded"
     and acceptance criterion change.
   - `AGENTS.md`, `README.md`, `core/README.md`, `core/schemas/typed-artifacts.md`,
-    `cli/testdata/README.md` and `profiles/trellis-self.md` take the new paths.
+    `cli/testdata/README.md` and `profiles/trellis-self.md` take the new paths, and `README.md`'s repo
+    map stops listing the rubric under `core/`.
   - Eleven records and four planning records take the new path token, per `decision-0015:117-121`.
     `decision-0098:133-134`, which describe this move, keep the old paths.
   - `decision-0010`'s forward pointer, `core/invariants/trellis-invariants-v1.md:148` and the comment in

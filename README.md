@@ -294,7 +294,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | Path | What |
 |---|---|
 | [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md) | The full thesis (start at §10 verdict, §11 start-here, §12 operating method). |
-| [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
+| [`core/`](core/) | The shippable product: invariants, the signature catalog, the lexicon. |
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043`. |
 | [`plugins/trellis/`](plugins/trellis/) | The **Claude Code and local Codex plugin** — `/trellis:remove`, host-isolated hooks, and the vendored payload (`reference/`). |
 | [`install.sh`](install.sh) | The **curl path** — vends the whole plugin bundle onto disk as a skills-directory plugin, and on project scope renders `.claude/rules/trellis.md`, the file that actually delivers the rules (`decision-0068`). Claude Code only. |
