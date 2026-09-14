@@ -11,7 +11,7 @@ date: 2026-09-14
 > **Provenance.** TRL-88 records the maintainer's decision of 2026-09-13 to move `corpus-reviewer`'s
 > checks into a deterministic script that runs in CI, and to retire the agent. On 2026-09-14 the
 > maintainer settled the supersession scope, the check outcomes, the profile framing and the
-> provisional consumer impact. Those rulings reached the author as relayed by the supervising
+> provisional consumer impact, and later that day ruled that the rubric leaves `core/`. Those rulings reached the author as relayed by the supervising
 > session `trellis-d1`, and are recorded here as relayed, not quoted. The plan is
 > `docs/plans/2026-09-13-2321-feat-corpus-conformance-ci-check-plan.md`.
 
@@ -105,8 +105,9 @@ cite.
 **3. Four records are superseded in part, each by a clause-scoped forward pointer** in
 `superseded_in_part_by` (`decision-0040`). Only frontmatter changes; no body is edited.
 
-- **`decision-0010`: Decision bullet 2, as it governs this repository's own gate.** Bullet 2 stands,
-  provisionally, as a description of Trellis's product for a consumer project (point 4). Bullet 4
+- **`decision-0010`: Decision bullet 2, as it governs this repository's own gate.** Bullet 2 stands
+  as a description of Trellis's product for a consumer project; whether moving the rubric out of
+  `core/` (point 4) changes that is left to TRL-95. Bullet 4
   stands, and is this record's authority. Open question 2, how the conformance sub-agent is invoked
   in CI without a runtime, is answered for this repository only: it is not invoked, because a test in
   the repository's own stack replaced it. The question stays open for a consumer.
@@ -122,14 +123,18 @@ cite.
   merged, following the maintainer's choice of clause-scoped pointers for the three records above,
   as relayed by `trellis-d1`.
 
-**4. Nothing Trellis ships changes, so for now this is this repository's gate only.** Nothing under
+**4. Nothing Trellis ships changes, and the rubric leaves `core/`.** Nothing under
 `plugins/trellis/` names the rubric, the fixtures or the agent, and neither does `install.sh`. The
 one mention in the CLI's non-test sources, `cli/payload.go`, is a comment saying the payload leaves
 artifact-contract metadata out. There is no payload change and no `plugins/trellis/VERSION` bump.
-The rubric stays in `core/` and keeps its consumer-facing agent wording. It changes only its
-**Derived resource** paragraph, a short note that this repository enforces it with a Go test, and
-its `depends_on`, which gains this record. The framing is provisional until the maintainer answers
-the open question below.
+On 2026-09-14 the maintainer ruled that the rubric leaves `core/`, because the plugin does not need
+it; the ruling reached the author as relayed by `trellis-d1`. The move is TRL-95, which waits for
+this change: the rubric goes to `docs/rubrics/artifact-contract.md` with `scope: trellis-meta`, and
+`core/fixtures/known-bad/` goes to `cli/testdata/known-bad/`. The typed-artifacts schema stays in
+`core/`. Until TRL-95 lands, the rubric sits at `core/rubrics/` with its check text and its
+consumer-facing agent wording unchanged. This change touches only its **Derived resource**
+paragraph, a short note that this repository enforces it with a Go test, and its `depends_on`,
+which gains this record.
 
 **5. The check runs on every corpus PR but does not block a merge.** `main`'s ruleset,
 `main protection`, requires `release-guard`, `Analyze (go)`, `Analyze (javascript)` and `hygiene`.
@@ -206,17 +211,15 @@ maintainer ruled.
   paragraph with `corpusRoots`.
 - **Forward pointers:** `decision-0010`, `decision-0076`, `decision-0089` and `decision-0099` each gain
   `decision-0098` in `superseded_in_part_by`.
-- **Not decided here:** whether the rubric leaves `core/` (Open questions), whether `build-test`
-  becomes a required check, and TRL-92's root fix.
+- **Not decided here:** whether `build-test` becomes a required check, TRL-92's root fix, and what
+  TRL-95 owes the records when it moves the rubric out of `core/` (point 4).
 
 ## Open questions
 
-- **Should the artifact-contract rubric leave `core/`, and not ship with the product?** The
-  maintainer asked this instead of choosing a framing (TRL-88). `AGENTS.md` calls `core/` the
-  shippable product, and the rubric's frontmatter says `scope: trellis-product`, yet nothing ships
-  it today (point 4). Until he answers, point 4's framing holds: a repository gate, with no
-  `VERSION` bump. The check reads the rubric through one path constant, `artifactContractPath`, so a
-  move is a one-line change. **Where it is answered:** the maintainer's review of this PR.
+- None open. The question this record carried, whether the artifact-contract rubric leaves `core/`,
+  was answered by the maintainer on 2026-09-14 in review of this change: it does (point 4), and
+  TRL-95 moves it. The check reads the rubric through one path constant, `artifactContractPath`, so
+  that move is a one-line change there.
 
 ## Self-check
 
