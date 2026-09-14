@@ -13,6 +13,8 @@ date: 2026-09-14
 
 > **Dated note, 2026-09-14 — TRL-96 (PR #312):** Point 3's "`cli-ci`'s filters keep `decisions/**` and `research/**`", point 5 and the TRL-92 item under the Consequences' *Not decided here* no longer hold, because `cli-ci` has no path filter. Every pull request now runs `build-test`, including one that recreates a root `decisions/` or `research/`, as `.github/workflows/cli-ci.yml` states.
 
+> **Dated note, 2026-09-14 — TRL-99 (PR #315):** Point 2's claim rule no longer holds, nor point 4's "once this merges, the base branch holds `docs/decisions/` and the guard sees it", nor point 6's "`decision-0089` is not superseded: its surviving clauses are true once swept": the guard was deleted, and `decision-0089` carries a note retiring it in full. `AGENTS.md`'s *Operating method* states how a record is named now.
+
 ## Context
 
 On 2026-09-13 the maintainer decided that `decisions/` and `research/` move inside `docs/`, the artifact root Compound Engineering uses (`decision-0097`). TRL-89 records the decision and its scope:

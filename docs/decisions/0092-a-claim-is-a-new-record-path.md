@@ -22,6 +22,8 @@ date: 2026-09-05
 
 # 0092 — a claim is a new record path, and a branch can collide with itself
 
+> **Dated note, 2026-09-14 — TRL-99 (PR #315):** The whole decision no longer holds: the guard whose claim rules it states was deleted, and a new record is named by date and slug, so nothing claims an id. `AGENTS.md`'s *Operating method* states how a record is named and why no check replaces the guard.
+
 ## Context
 
 `decision-0089` (`#266`) stated the decision-id guard's rules. `#272` then fixed two confirmed false
