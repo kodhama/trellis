@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ideation: Simplifying the Trellis repository</title>
+<style>
+:root {
+  --bg: #fbfaf7; --ink: #1f2328; --ink2: #57606a; --card: #ffffff; --line: #d8dee4;
+  --soft: #f1efe9; --accent: #0b5cad; --accent-soft: #e6f0fa; --accent-text: #0a4a8a;
+  --warn-soft: #fbf1e3; --warn-text: #7a4a0c; --code-bg: #f3f1ec;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181c; --ink: #e6e8eb; --ink2: #a3acb6; --card: #1d2126; --line: #353b43;
+    --soft: #252a30; --accent: #6cb0f5; --accent-soft: #1b2b3d; --accent-text: #9ccaf8;
+    --warn-soft: #33281a; --warn-text: #f0c890; --code-bg: #22262c;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+main { max-width: 920px; margin-inline: auto; padding: 2.5rem 1.25rem 4rem; }
+p, li, dd { max-width: 72ch; }
+h1 { font-size: 1.9rem; line-height: 1.25; margin: .2rem 0 .6rem; }
+h2 { font-size: 1.35rem; margin: 2.6rem 0 .8rem; padding-bottom: .3rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.12rem; margin: 1.4rem 0 .4rem; }
+.eyebrow { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); }
+strong { color: inherit; }
+code { font: .88em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code-bg); padding: .08em .3em; border-radius: 4px; }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; margin: 0; }
+pre code { background: none; padding: 0; font-size: .82rem; }
+a { color: var(--accent); }
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; margin: .8rem 0 0; font-size: .92rem; }
+.meta dt { color: var(--ink2); }
+.meta dd { margin: 0; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; margin: .6rem 0 1rem; }
+th, td { text-align: left; vertical-align: top; padding: .45rem .6rem; border-bottom: 1px solid var(--line); }
+th { color: var(--ink2); font-weight: 600; }
+.jump { columns: 2; padding-left: 1.2rem; font-size: .95rem; }
+.jump li { break-inside: avoid; }
+article.idea { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem 1.3rem 1.2rem; margin: 1.3rem 0; }
+article.idea h3 { margin-top: .2rem; font-size: 1.2rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .1rem 0 .6rem; }
+.chip { font-size: .78rem; padding: .12rem .55rem; border-radius: 999px; background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+.chip.id { background: var(--accent-soft); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+.fields { margin: .4rem 0 0; }
+.fields dt { font-size: .74rem; letter-spacing: .07em; text-transform: uppercase; color: var(--ink2); margin-top: .8rem; }
+.fields dd { margin: .15rem 0 0; }
+.fields dd ul { margin: .2rem 0; padding-left: 1.2rem; }
+.callout { background: var(--warn-soft); color: var(--ink); border-radius: 8px; padding: .7rem 1rem; margin: .8rem 0; }
+.callout .eyebrow { color: var(--warn-text); }
+figure { margin: 1rem 0 .4rem; }
+figcaption { font-size: .85rem; color: var(--ink2); margin-top: .35rem; }
+svg { max-width: 100%; height: auto; display: block; color: var(--ink2); }
+svg .node { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+svg .node.soft { fill: var(--soft); }
+svg .node.hi { fill: var(--accent-soft); stroke: var(--accent); }
+svg text { fill: var(--ink); font: 13px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+svg text.lbl { fill: var(--ink2); font-size: 12px; }
+svg text.row { fill: var(--ink2); font-size: 11px; letter-spacing: .08em; }
+svg .edge { stroke: currentColor; stroke-width: 1.5; fill: none; }
+svg .edge.dash { stroke-dasharray: 5 4; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+@media (max-width: 700px) { .cols { grid-template-columns: 1fr; } .jump { columns: 1; } }
+footer.composition-signal { margin-top: 3rem; padding-top: .8rem; border-top: 1px solid var(--line); font-size: .82rem; color: var(--ink2); }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <div class="eyebrow">Ideation</div>
+  <h1>Simplifying the Trellis repository</h1>
+  <p>Seven ranked directions for making the repository much smaller, chosen from 47 raw ideas that were merged into 18 candidates and checked against the repository.</p>
+  <dl class="meta">
+    <dt>Date</dt><dd><time datetime="2026-09-14">2026-09-14</time></dd>
+    <dt>Topic</dt><dd>repo-simplification</dd>
+    <dt>Focus</dt><dd>Compress the decision history (not git history) into living specs; question the rule-configuration machinery; cut whatever does not serve what ships.</dd>
+    <dt>Mode</dt><dd>repo-grounded</dd>
+    <dt>Repository</dt><dd><code>kodhama/trellis</code> at <code>83adb8c</code></dd>
+  </dl>
+</header>
+
+<section id="grounding-context">
+<h2>Codebase Context</h2>
+
+<p><strong>What ships is about 8 KB of rule text.</strong> A session receives <code>rules.md</code> (6.0 KB), a posture header (0.7 KB) and the active rows (1.1 KB). The 29 KB <code>invariants.md</code> is referenced from that text but not injected.</p>
+
+<table>
+  <thead><tr><th>Area</th><th>Size today</th><th>What it serves</th></tr></thead>
+  <tbody>
+    <tr><td>Injected rule text</td><td>~8 KB</td><td>What every governed session receives</td></tr>
+    <tr><td>Delivery code</td><td><code>staleness.sh</code> 1,532 lines · <code>codex-context.mjs</code> 1,751 · <code>install.sh</code> 1,177</td><td>Getting that text into sessions on two hosts, across the seven delivery states decision-0073 defines</td></tr>
+    <tr><td>Go source</td><td>811 lines in <code>cli/</code></td><td>Release tooling with one command, <code>payload</code> (<code>cli/main.go</code>: "release tooling, not an end-user installer")</td></tr>
+    <tr><td>Go tests</td><td>20,040 lines</td><td>13,519 test shipped behaviour · 1,273 test the generator · 5,248 guard the repository's own docs and process</td></tr>
+    <tr><td>Decision records</td><td>98 records, ~150k words</td><td>Current truth, per AGENTS.md; 53 carry a supersession pointer (47 in part, 7 in full, 1 both) and hold ~85k of the words</td></tr>
+    <tr><td><code>eval/</code></td><td>243 files</td><td>181 are one experiment's run output; the flagship suite ran 2 of its 11 tasks</td></tr>
+    <tr><td>CI</td><td>9 workflows</td><td>Required on <code>main</code>: release-guard, Analyze (go), Analyze (javascript), hygiene. <code>build-test</code>, which runs the Go suite, is not required</td></tr>
+  </tbody>
+</table>
+
+<p><strong>A consumer touches one file.</strong> <code>.trellis/rules.toml</code> holds <code>strictness</code> and 16 <code>active</code> rows, or <code>governed = false</code>. The two floor rows apply whatever the file says. The shipped presets both switch every row on, and the two postures differ by one sentence in the ~8 KB block. Nothing a consumer runs reads <code>profiles/</code>, <code>core/lexicon.md</code>, <code>core/schemas/typed-artifacts.md</code> or <code>core/invariants/trellis-invariants-v1.md</code>; only Go tests read them.</p>
+
+<p><strong>One invariant passes through eight steps</strong> before a session sees it: the catalog entry, a <code>go:generate</code> copy into <code>cli/assets/</code>, parsing in <code>apply.go</code>, rendering by <code>trellis payload</code> into 14 reference files plus checksums, a manifest baked into <code>install.sh</code>, a <code>VERSION</code> bump that release-guard enforces, one of three delivery channels, and reconciliation against the consumer's <code>rules.toml</code>.</p>
+
+<p><strong>Decisions are the rulebook.</strong> AGENTS.md says "The method lives in <code>docs/decisions/</code>, not restated here — a decision is the current truth". Records are append-only and superseded by forward pointer, so learning a current rule can mean walking a chain such as 0011 → 0079 → 0085 → 0097. Code is coupled to the records: tests name 53 of the 98 ids, mostly in comments and failure messages, and 63 of the 98 ids are cited somewhere in <code>cli/</code>, the plugin, <code>install.sh</code> or <code>.github/</code>. No test opens a decision file by path, since the decision paths in test code are fixture strings, but <code>corpus_conformance_test.go</code> looks up decision-0079, 0091 and 0044 by id in the directory it walks. The corpus grew by 12 records in June, 57 in July, 14 in August and 15 in the first half of September.</p>
+
+<p><strong>Known consumers.</strong> The only record, decision-0081, is a read-only inspection of the maintainer's machine listing this repository, math-quest and six Kodhama repositories. No record gives a count of outside installs. Claude Code cloud sessions receive the rules only when a setup script installs the plugin before launch, or through <code>install.sh</code>'s rendered <code>.claude/rules/trellis.md</code>; the project-scope <code>enabledPlugins</code> setting does not reach cloud (<code>plugins/trellis/README.md</code>).</p>
+
+<p><strong>The one experiment that ran.</strong> research-0012 measured one rule on one task, 20 runs per arm: control 95%, rule text removed 0%, rule switched off in <code>rules.toml</code> 0%. Switching the row off moved behaviour by 95 points (p = 3×10⁻¹⁰), and decision-0053 acted on that result. The note says "A positive result generalizes by assumption, not evidence."</p>
+
+<p><strong>Outside practice.</strong> Mature processes keep the decision log apart from the living specification: a Final PEP "is considered a historical document rather than a living specification", the Rust Reference is authoritative over accepted RFCs, and Oxide edits committed RFDs in place. IETF RFC 9110 folded a chain of superseded RFCs into one document. For agent instructions, the Claude Code documentation targets under 200 lines per CLAUDE.md, and one study found instruction adherence declining past roughly 150 instructions.</p>
+
+<p><code>docs/solutions/</code> does not exist yet, so there were no captured learnings to draw on.</p>
+
+<h3>Sources</h3>
+<ul>
+  <li><a href="https://peps.python.org/pep-0001/">PEP 1</a>: Final PEPs are historical; the specification lives elsewhere</li>
+  <li><a href="https://github.com/rust-lang/rfcs">rust-lang/rfcs</a>: accepted RFCs are not substantially changed</li>
+  <li><a href="https://rfd.shared.oxide.computer/rfd/0001">Oxide RFD 1</a>: committed RFDs describe the current system and are corrected in place</li>
+  <li><a href="https://github.com/Open-Factory-Digital/openfactory-core/pull/80">openfactory-core PR #80</a>: amend an ADR in place; write a new one only on reversal</li>
+  <li><a href="https://www.rfc-editor.org/info/rfc9110/">RFC 9110</a>: one document replacing a supersession chain</li>
+  <li><a href="https://code.claude.com/docs/en/memory">Claude Code memory docs</a>: CLAUDE.md size guidance</li>
+  <li><a href="https://arxiv.org/abs/2507.11538">IFScale (arXiv 2507.11538)</a>: instruction-density benchmark</li>
+  <li><a href="https://arxiv.org/abs/2602.11988">arXiv 2602.11988</a>: effect of repository context files on agent task success and cost</li>
+  <li><a href="https://testing.googleblog.com/2015/01/testing-on-toilet-change-detector-tests.html">Change-Detector Tests Considered Harmful</a>: Google Testing Blog</li>
+  <li><a href="https://www.rfc-editor.org/rfc/rfc801">RFC 801</a>: the NCP-to-TCP flag day</li>
+</ul>
+</section>
+
+<section id="topic-axes">
+<h2>Topic Axes</h2>
+<ol>
+  <li>Where current truth lives: decision records, living specs, research notes, plans, and the AGENTS.md operating method</li>
+  <li>The rule model: what a rule is and how it is configured (catalog, invariants-v1, the 16 rows, floors, postures, <code>rules.toml</code>, profiles, lexicon, schemas)</li>
+  <li>Delivery to a consuming project: hooks per host, <code>install.sh</code>, delivery states, reconciliation, the remove skill, the payload generator, releases</li>
+  <li>Copies and the guards that keep them in step: derivative pairs, guard tests over the repository's own docs, CI workflows, lint and coverage</li>
+  <li>Evidence and outward story: the eval harness, research notes, the brief, the landing site, the self-profile, README</li>
+</ol>
+</section>
+
+<section id="ranked-ideas">
+<h2>Ranked Ideas</h2>
+<ul class="jump">
+  <li><a href="#idea-1">1. Decisions become history; living specs hold current truth</a></li>
+  <li><a href="#idea-2">2. Rule configuration shrinks to an opt-out list</a></li>
+  <li><a href="#idea-3">3. Claim only what ships; keep only evidence that ran</a></li>
+  <li><a href="#idea-4">4. Guards follow their subject</a></li>
+  <li><a href="#idea-5">5. One delivery path, and a hook that checks adoption and prints</a></li>
+  <li><a href="#idea-6">6. Delete cli-ci's path filter and the guards that police it</a></li>
+  <li><a href="#idea-7">7. Comments say what the code does now; history lives in commits</a></li>
+</ul>
+
+<article class="idea" id="idea-1">
+  <h3>1. Decisions become history; living specs hold current truth</h3>
+  <div class="chips"><span class="chip id">Idea 1</span><span class="chip">Axis 1 · Where current truth lives</span><span class="chip">Confidence 85%</span><span class="chip">Complexity High</span></div>
+  <dl class="fields">
+    <dt>Description</dt>
+    <dd>
+      <p>A one-time consolidation reads all 98 records and sorts each into in force, spent or repealed. The in-force content moves into a few living spec documents that pull requests edit in place, for example one each for the rules, delivery, and repository and release. One final record states that the specs are the authority and the 98 records are history. That single full supersession replaces the clause-level pointers, the record set stays append-only, and git history is untouched.</p>
+      <p>From then on, AGENTS.md admits a new decision record only for a choice that is costly to reverse, the kind records 0001–0004 hold. Renames, moves, tool swaps, guard fixes and refinements become spec edits explained in the PR body, and <code>superseded_in_part_by</code> retires. Because new records are rare, they are named by date and slug as <code>docs/plans/</code> already is, which retires <code>.github/scripts/decision-id-guard.sh</code>, its workflow, <code>cli/decision_id_guard_test.go</code> (697 lines) and the id-reservation rule in AGENTS.md.</p>
+      <p>Order inside the idea: re-point the decision-id citations in code and tests at spec sections first, while the conformance tests still check the migration.</p>
+      <figure>
+        <svg viewBox="0 0 760 240" role="img" aria-label="Today an agent follows a chain of partial supersession pointers from AGENTS.md through decisions 0011, 0079, 0085 and 0097; after the change AGENTS.md points to one living spec section and the 98 records sit apart as history.">
+          <defs><marker id="arr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <text class="row" x="20" y="22">TODAY</text>
+          <rect class="node" x="20" y="36" width="110" height="44" rx="6"/><text x="75" y="63" text-anchor="middle">AGENTS.md</text>
+          <rect class="node" x="170" y="36" width="110" height="44" rx="6"/><text x="225" y="63" text-anchor="middle">decision-0011</text>
+          <rect class="node" x="320" y="36" width="110" height="44" rx="6"/><text x="375" y="63" text-anchor="middle">0079</text>
+          <rect class="node" x="470" y="36" width="110" height="44" rx="6"/><text x="525" y="63" text-anchor="middle">0085</text>
+          <rect class="node" x="620" y="36" width="110" height="44" rx="6"/><text x="675" y="63" text-anchor="middle">0097</text>
+          <path class="edge" d="M130,58 L166,58" marker-end="url(#arr1)"/>
+          <path class="edge" d="M280,58 L316,58" marker-end="url(#arr1)"/>
+          <path class="edge" d="M430,58 L466,58" marker-end="url(#arr1)"/>
+          <path class="edge" d="M580,58 L616,58" marker-end="url(#arr1)"/>
+          <text class="lbl" x="375" y="104" text-anchor="middle">each hop is a forward pointer; the reader holds every clause-level change</text>
+          <text class="row" x="20" y="146">AFTER</text>
+          <rect class="node" x="20" y="160" width="110" height="44" rx="6"/><text x="75" y="187" text-anchor="middle">AGENTS.md</text>
+          <rect class="node hi" x="170" y="160" width="200" height="44" rx="6"/><text x="270" y="187" text-anchor="middle">living spec section</text>
+          <path class="edge" d="M130,182 L166,182" marker-end="url(#arr1)"/>
+          <rect class="node soft" x="470" y="160" width="260" height="44" rx="6"/><text x="600" y="187" text-anchor="middle">decisions 0001–0100 · history</text>
+          <path class="edge dash" d="M470,182 L374,182" marker-end="url(#arr1)"/>
+          <text class="lbl" x="420" y="226" text-anchor="middle">one record hands authority to the spec</text>
+        </svg>
+        <figcaption>Illustrative. The chain shown is the spec-retirement lineage named in the evidence.</figcaption>
+      </figure>
+    </dd>
+    <dt>Basis</dt>
+    <dd><ul>
+      <li><code>direct:</code> AGENTS.md:29-30, "The method lives in <code>docs/decisions/</code>, not restated here — a decision is the current truth, and a summary in this file only goes stale against it."</li>
+      <li><code>direct:</code> 53 of 98 records carry a supersession pointer. decision-0089's frontmatter is a "~500-word run-on clause-by-clause diff against two later records". <code>0090:160-162</code>: "That is a decision record with no decision in it".</li>
+      <li><code>direct:</code> <code>decision-id-guard.sh:8-11</code>: "It happened three times … Nothing failed on any of them; a human noticed." <code>0089:44-45</code>: a renumber touched "seven files on recurrence #3".</li>
+      <li><code>direct:</code> tests name 53 of the 98 decision ids, mostly in comments and failure messages. No test opens a decision file by path; <code>corpus_conformance_test.go:715</code> reads decision-0079's retired-artifacts table, and <code>:1333-1353</code> pin the <code>depends_on</code> lists of decision-0091 and decision-0044.</li>
+      <li><code>external:</code> PEP 1, RFC 9110, Oxide RFD 1, openfactory-core PR #80 (see Sources).</li>
+      <li>The maintainer: "Should have more specs and less decisions", and the pattern "was never a choice but something that emerged".</li>
+    </ul></dd>
+    <dt>Rationale</dt>
+    <dd>An agent learns a current rule by reading one section instead of walking pointers. The admission rule is what stops the corpus growing back: it added 57 records in July, and four records plus about a dozen pointers on 13–14 September alone.</dd>
+    <dt>Downsides</dt>
+    <dd>The migration is large semantic work, and a wrong "spent" call drops a live clause, so each classification needs review. It needs a sweep of the 63 decision ids cited from code and CI. It abandons the append-only-as-truth practice that decision-0015 and decision-0082 rely on. Date-and-slug names are not strictly collision-free, only unlikely to clash once records are rare.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-2">
+  <h3>2. Rule configuration shrinks to an opt-out list</h3>
+  <div class="chips"><span class="chip id">Idea 2</span><span class="chip">Axis 2 · The rule model</span><span class="chip">Confidence 80%</span><span class="chip">Complexity Medium</span></div>
+  <dl class="fields">
+    <dt>Description</dt>
+    <dd>
+      <p><code>.trellis/rules.toml</code> becomes optional and holds a single key, <code>disabled = ["slug", …]</code>. No file means every rule applies. An unknown slug prints a warning and is ignored, and floor rules cannot be listed. <code>strictness</code>, <code>seeded_from</code>, the 16 <code>active</code> rows, <code>rules-a.toml</code> and <code>rules-b.toml</code>, the posture headers <code>trellis-a.md</code> and <code>trellis-b.md</code>, and the reconcile, quarantine and rewrite logic in both hooks are deleted.</p>
+      <p>A catalog change then never touches consumer config, because the file lists only what a project turned off. Deleting the file format entirely stays available later, if no project ever lists a rule.</p>
+      <div class="cols">
+        <figure><pre><code># this repository's .trellis/rules.toml (trimmed)
+seeded_from = "conductor"  # provenance only — the rows below win if they diverge
+strictness  = "firm"  # firm (a·conductor) | adaptive (b·author-adapt)
+
+[rules]  # one row per assessable catalog slug (signature-catalog-v1)
+inv-directional-flow      = { active = true }
+inv-handover-points       = { active = true }
+# … 12 more rows, all active = true
+floor-transparency        = { active = true }  # floor — applies regardless of this row
+floor-intent-gate         = { active = true }  # floor — applies regardless of this row</code></pre><figcaption>Today: 16 rows, every one switched on.</figcaption></figure>
+        <figure><pre><code># .trellis/rules.toml: optional
+disabled = ["inv-minimal-first"]</code></pre><figcaption>After: only the exceptions. The slug is an example.</figcaption></figure>
+      </div>
+    </dd>
+    <dt>Basis</dt>
+    <dd><ul>
+      <li><code>direct:</code> the two postures' rows are byte-identical and the ~8 KB blocks differ by one sentence. <code>0033:29</code>: the posture lean is "descriptive, not enforced (nothing acts on it yet)".</li>
+      <li><code>direct:</code> <code>0083:25</code>: "A single unmatched row cost all sixteen rules, every session, until a human edited the file." <code>0083:47-49</code>: the two causes of an unknown row "are indistinguishable at runtime".</li>
+      <li><code>direct:</code> <code>0081:273</code>: "Six consumer repos are still on the 14-row set". <code>.trellis/rules.toml:21-22</code>: floor rows "applies regardless of this row".</li>
+      <li><code>direct:</code> research-0012: switching one row off moved behaviour 95 points, so the opt-out works and is worth keeping.</li>
+      <li><code>external:</code> the International Building Code is adopted by reference, and cities publish only their local amendments.</li>
+      <li>The maintainer: "even the whole rule configuration is really interesting but likely overkill".</li>
+    </ul></dd>
+    <dt>Rationale</dt>
+    <dd>The one measured lever, turning a rule off, survives. Most of the rest of the configuration layer exists to repair the drift that copying the full row set into every consumer creates.</dd>
+    <dt>Downsides</dt>
+    <dd>It changes a consumer-facing file format, so existing <code>rules.toml</code> files need a migration rule (read old rows once, or ask the project to replace the file). Removing postures removes a choice a project may have made, although nothing acts on it today. The reviewer found no support for the stronger "no file at all" variant: that removes the opt-out, and nothing establishes project-owned rule text as a supported replacement.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-3">
+  <h3>3. Claim only what ships; keep only evidence that ran</h3>
+  <div class="chips"><span class="chip id">Idea 3</span><span class="chip">Axis 5 · Evidence and outward story</span><span class="chip">Confidence 75%</span><span class="chip">Complexity Medium</span></div>
+  <dl class="fields">
+    <dt>Description</dt>
+    <dd>
+      <p>The identity sentence in AGENTS.md, README and the brief changes from "fits, teaches, adapts, and guards whatever methodology a project uses" to what ships: invariants injected at session start on Claude Code and Codex, plus a remove skill. The brief moves to <code>docs/research/</code> as the dated founding thesis, and README becomes the only home of positioning.</p>
+      <p>Scaffolding for the unbuilt half then retires: <code>profiles/trellis-self.md</code>, the expression-profile section of <code>core/schemas/typed-artifacts.md</code>, <code>core/lexicon.md</code>, the inert Active-subset code kept for the <code>seed</code> posture, and rubric check 10. The C1/C2 dials stay, because they appear in the shipped invariants reference.</p>
+      <p>In <code>eval/</code>, research-0011 records <code>does-trellis-help</code> as stopped, with the date and reason, and its 50 files, <code>eval-scorecard.yml</code> and <code>check-scorecard.sh</code> are deleted. The 181 run files of annotation-vs-absence move behind a git tag that research-0012 cites, and its runner stays.</p>
+    </dd>
+    <dt>Basis</dt>
+    <dd><ul>
+      <li><code>direct:</code> of the brief's §8 MVP, only invariant injection and the remove skill shipped. <code>core/README.md</code> says the conformance sub-agent "has no home in this repo".</li>
+      <li><code>direct:</code> <code>profiles/trellis-self.md:65-66</code>: "authored by hand (Assess does not exist yet, cluster 1)". <code>:68-73</code>: "is expected, and is not independent validation".</li>
+      <li><code>direct:</code> <code>eval/experiments/README.md</code>: "task suite ready, worker-prompt leak fixed (2026-07-20); full run pending". Only 2 of 11 tasks ran, and <code>03-finalize-and-ship/NOTES.md:1</code> reads "CONFOUNDED (kept as a methodological lesson, not a result)".</li>
+      <li><code>direct:</code> the N=1 risk is restated at <code>brief:193</code>, <code>brief:251</code>, <code>README.md:289-290</code> and <code>research/0005:187</code>.</li>
+      <li><code>external:</code> ClinicalTrials.gov marks stopped studies Terminated with a "Why Stopped" reason instead of leaving them as recruiting.</li>
+    </ul></dd>
+    <dt>Rationale</dt>
+    <dd>The broad claim is why artifacts for an unbuilt product exist and get repaired on every rename. A claim sized to the product turns those deletions into a consequence of scope, and removes about 230 eval files and one workflow while every result a decision used stays retrievable.</dd>
+    <dt>Downsides</dt>
+    <dd>Stopping <code>does-trellis-help</code> gives up the only prepared test of Trellis's cross-project claim. A git tag is harder to find than an archive. Repositioning is the maintainer's call and narrows what the landing site can say.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-4">
+  <h3>4. Guards follow their subject</h3>
+  <div class="chips"><span class="chip id">Idea 4</span><span class="chip">Axis 4 · Copies and guards</span><span class="chip">Confidence 70%</span><span class="chip">Complexity Medium</span></div>
+  <dl class="fields">
+    <dt>Description</dt>
+    <dd>
+      <p>decision-0028's "a guard per pair" becomes "no committed copy that a build step or a deletion can remove; a guard is deleted in the same PR as its subject". decision-0071 already applied this rule once.</p>
+      <p>After idea 1 lands, the artifact-contract tests lose their subject and go with <code>docs/rubrics/artifact-contract.md</code>: <code>corpus_conformance_test.go</code> (1,593 lines), <code>corpus_conformance_typed_test.go</code> (459), <code>artifact_contract_guard_test.go</code> (784) and <code>surface_matrix_guard_test.go</code> (312, guarding a concept already deleted), 3,148 lines in all. The checks in <code>docs_consistency_test.go</code> that protect consumer-facing docs stay.</p>
+      <p>Copies go instead of being guarded: <code>site/invariants.html</code> is rendered from the catalog when Pages deploys, the <code>assessableSlugs</code> pin is parsed from the catalog, and counts in prose are deleted. The 90% coverage ratchet is reviewed against a short list of user-visible failure scenarios.</p>
+    </dd>
+    <dt>Basis</dt>
+    <dd><ul>
+      <li><code>direct:</code> <code>cli/selfapply_test.go:11-25</code>: "the drift that guard prevented is now structurally impossible rather than tested — there is no second copy to drift".</li>
+      <li><code>direct:</code> <code>cli/row_set_guard_test.go</code>: "Do not grow this table by adding a count to prose — delete the count instead." <code>README.md:278</code> still says "40+ decisions, 8+ research notes" against 98 and 11.</li>
+      <li><code>direct:</code> the rubric says "nothing Trellis ships reads it (decision-0098 point 4)".</li>
+      <li><code>direct:</code> AGENTS.md: "<code>build-test</code> is not a required status check on <code>main</code>, so a red is a signal, not a merge block." <code>cli-ci.yml:85-89</code>: "The floor is a ratchet… Raise it as coverage climbs."</li>
+      <li><code>external:</code> Google's "Change-Detector Tests Considered Harmful": tests that fail on change without a behaviour change block refactoring.</li>
+    </ul></dd>
+    <dt>Rationale</dt>
+    <dd>Under decision-0028 the guard suite grows with every copy. Under the deletion rule it shrinks, and the repository already has a working precedent.</dd>
+    <dt>Downsides</dt>
+    <dd>It reverses decision-0098, merged on 2026-09-14 at the maintainer's request. It has to run after idea 1, or the decision migration loses its checks. A site page rendered at deploy time is harder to review in a pull request.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-5">
+  <h3>5. One delivery path, and a hook that checks adoption and prints</h3>
+  <div class="chips"><span class="chip id">Idea 5</span><span class="chip">Axis 3 · Delivery to a consuming project</span><span class="chip">Confidence 60%</span><span class="chip">Complexity High</span></div>
+  <dl class="fields">
+    <dt>Description</dt>
+    <dd>
+      <p>Pick one supported shape per host: the native plugin, installed before launch by a setup script in cloud sessions. Migrate the known repositories in one round of pull requests, and ship one last release whose hook detects the legacy states S1–S6 and prints the single fix. The next release deletes legacy detection, the coexistence branch and the migration nudges from <code>staleness.sh</code> and <code>codex-context.mjs</code>, the <code>install.sh</code> paths that serve only legacy states, and their tests. It also replaces decision-0073's seven-state set.</p>
+      <p>With idea 2 in place, the hook does two things: check that the project adopted Trellis, then print the rules minus the opt-out list. One short script could then serve both hosts. That retires the 1,751-line <code>codex-context.mjs</code> and its Node 20 requirement, the <code>INVARIANTS_TOKEN</code> string kept identical by hand across three files, and <code>invariants_pointer_test.go</code> (1,551 lines). Once nothing is assembled per session, removing the Go generator (811 lines of source) becomes a possible follow-on.</p>
+      <figure>
+        <svg viewBox="0 0 760 250" role="img" aria-label="Today seven delivery states feed three large scripts that reconcile configuration and assemble text; after the change a plugin install feeds one short hook that checks adoption and prints the rules minus opt-outs.">
+          <defs><marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <text class="row" x="20" y="22">TODAY</text>
+          <rect class="node" x="20" y="34" width="200" height="74" rx="6"/>
+          <text x="120" y="66" text-anchor="middle">7 delivery states</text>
+          <text class="lbl" x="120" y="86" text-anchor="middle">S0–S6, on two hosts</text>
+          <rect class="node" x="270" y="34" width="230" height="74" rx="6"/>
+          <text x="385" y="58" text-anchor="middle">staleness.sh · 1,532 lines</text>
+          <text x="385" y="77" text-anchor="middle">codex-context.mjs · 1,751</text>
+          <text x="385" y="96" text-anchor="middle">install.sh · 1,177</text>
+          <rect class="node" x="550" y="34" width="190" height="74" rx="6"/>
+          <text x="645" y="66" text-anchor="middle">reconcile rules.toml</text>
+          <text class="lbl" x="645" y="86" text-anchor="middle">assemble header + rows</text>
+          <path class="edge" d="M220,71 L266,71" marker-end="url(#arr2)"/>
+          <path class="edge" d="M500,71 L546,71" marker-end="url(#arr2)"/>
+          <text class="row" x="20" y="150">AFTER</text>
+          <rect class="node" x="20" y="162" width="200" height="64" rx="6"/>
+          <text x="120" y="189" text-anchor="middle">plugin install</text>
+          <text class="lbl" x="120" y="208" text-anchor="middle">cloud: setup script</text>
+          <rect class="node hi" x="270" y="162" width="230" height="64" rx="6"/>
+          <text x="385" y="189" text-anchor="middle">one short hook</text>
+          <text class="lbl" x="385" y="208" text-anchor="middle">project adopted? then print</text>
+          <rect class="node" x="550" y="162" width="190" height="64" rx="6"/>
+          <text x="645" y="189" text-anchor="middle">rules minus</text>
+          <text class="lbl" x="645" y="208" text-anchor="middle">the opt-out list</text>
+          <path class="edge" d="M220,194 L266,194" marker-end="url(#arr2)"/>
+          <path class="edge" d="M500,194 L546,194" marker-end="url(#arr2)"/>
+        </svg>
+        <figcaption>Illustrative. The shape the delivery cuts add up to, not a design.</figcaption>
+      </figure>
+    </dd>
+    <dt>Basis</dt>
+    <dd><ul>
+      <li><code>direct:</code> <code>0081:266</code>: "Measured on this machine today (read-only inspection of <code>.trellis/rules.toml</code> and <code>~/.claude/plugins/installed_plugins.json</code>)", listing this repository, math-quest and six Kodhama repositories.</li>
+      <li><code>direct:</code> decision-0073: "at least five components each hold their own private, partial enumeration" of delivery layouts.</li>
+      <li><code>direct:</code> <code>staleness.sh:129-141</code>: "Fifteen defects … every one was found by a reviewer RUNNING the hook against a deliberately broken input."</li>
+      <li><code>direct:</code> <code>invariants_pointer_test.go:31-36</code>: "the two implementations share no line to diff". <code>codex-context.mjs</code>: the token is "Byte-identical to the token staleness.sh matches… and to install.sh's own sed pattern".</li>
+      <li><code>direct:</code> hook and install tests: <code>plugin_hook</code> 4,546 lines, <code>install_script</code> 3,019, <code>codex_hook</code> 2,748.</li>
+      <li><code>external:</code> RFC 801. ARPANET hosts switched from NCP to TCP/IP on one day, which worked because the hosts were few and known.</li>
+    </ul></dd>
+    <dt>Rationale</dt>
+    <dd>Legacy states cause most of the branching in about 4,500 lines of delivery code and about 10,000 lines of its tests, and they are where the fifteen-defect class comes from.</dd>
+    <dt>Downsides</dt>
+    <dd>
+      <p>decision-0081's list is a dated measurement on one machine, not an inventory. Unknown installs may sit on legacy shapes, and a last-migration release reaches only plugin installs, since vendored copies keep their frozen hook. Cloud delivery has to keep working through the setup-script path or <code>install.sh</code>'s rendered file. Whether Codex can run a shell hook on every platform it supports is unverified.</p>
+      <div class="callout"><div class="eyebrow">Keep the adoption check</div>A hook that read nothing from the project would apply the rules in every repository a user-scope install opens. The check that the project opted in has to stay.</div>
+    </dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-6">
+  <h3>6. Delete cli-ci's path filter and the guards that police it</h3>
+  <div class="chips"><span class="chip id">Idea 6</span><span class="chip">Axis 4 · Copies and guards</span><span class="chip">Confidence 90%</span><span class="chip">Complexity Low</span></div>
+  <dl class="fields">
+    <dt>Description</dt>
+    <dd><code>build-test</code> runs on every pull request. Deleted with the filter: the 28-entry <code>paths:</code> list and its twin, <code>ci_paths_guard_test.go</code> (437 lines), and the dead entries <code>.grove/**</code>, <code>decisions/**</code> and <code>research/**</code> kept as tripwires. <code>repo-hygiene.yml</code> goes too, with its file-size and todos checks moving back into cli-ci, and the required <code>hygiene</code> check changes in the same ruleset edit. <code>build-test</code> can then become a required check.</dd>
+    <dt>Basis</dt>
+    <dd><ul>
+      <li><code>direct:</code> <code>cli-ci.yml:11-14</code>: "The paths filter is a coverage contract, not a convenience. build-test is the only job that runs <code>go test</code>, so EVERY file the suite reads out of the repo has to be selected here".</li>
+      <li><code>direct:</code> <code>cli-ci.yml:31-32</code>: "Keep the two lists below identical; both are checked."</li>
+      <li><code>direct:</code> <code>repo-hygiene.yml:3-8</code>: it runs "deliberately outside cli-ci: that workflow's paths filter is a coverage contract for the Go test suite".</li>
+      <li><code>external:</code> GitHub leaves a required check pending when a path filter skips its workflow. That may be why <code>build-test</code> was never made required.</li>
+    </ul></dd>
+    <dt>Rationale</dt>
+    <dd>Deleting one YAML block removes a meta-guard, a duplicate workflow, a manual sync rule and three permanent dead entries. Adding a test that reads a new file no longer needs a CI edit.</dd>
+    <dt>Downsides</dt>
+    <dd>Every pull request pays the full Go and Node run, including ones that touch only LICENSE or CODEOWNERS. The ruleset change on <code>main</code> has to land together with the workflow change, or merges wait on a check that no longer runs.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-7">
+  <h3>7. Comments say what the code does now; history lives in commits</h3>
+  <div class="chips"><span class="chip id">Idea 7</span><span class="chip">Axis 4 · Copies and guards</span><span class="chip">Confidence 70%</span><span class="chip">Complexity Medium</span></div>
+  <dl class="fields">
+    <dt>Description</dt>
+    <dd>One house rule for shipped code and tests: a comment says what the code does now and why, and the story of how it got there goes in the commit message and PR. A <code>ce-simplify-code</code> pass then applies the rule to <code>staleness.sh</code> (about 65% comments), <code>install.sh</code> (659 of its 1,177 lines), <code>codex-context.mjs</code> and about 6,000 comment lines in the Go tests. The pass also removes many decision-id citations from code, which shrinks idea 1's sweep.</dd>
+    <dt>Basis</dt>
+    <dd><ul>
+      <li><code>direct:</code> <code>staleness.sh:6-60</code>: "this comment said the opposite until it was corrected… An earlier version of this note claimed exclusivity 'by construction', which was false."</li>
+      <li><code>direct:</code> <code>codex-context.mjs:1-33</code>: "8000 (this constant's prior value) had no recorded rationale — it entered in commit 3490555 with none".</li>
+      <li><code>direct:</code> <code>site/index.html:552-557</code> keeps copy-editing commentary in shipped markup.</li>
+      <li>The maintainer: "even maybe running ce-simplify, although probably that's more for code".</li>
+    </ul></dd>
+    <dt>Rationale</dt>
+    <dd>Someone debugging the Claude hook reads about 1,500 lines to reach the logic, and some of those comments were wrong. Git already keeps the history.</dd>
+    <dt>Downsides</dt>
+    <dd>Some comments are the only surviving statement of retired specs: the <code>spec-0005</code> and <code>spec-0007</code> markers in <code>install.sh</code> and the tests. Those need a new home in test names or a spec rather than deletion. If ideas 2 and 5 land first, much of this code is deleted anyway, so the pass is worth most after them.</dd>
+  </dl>
+</article>
+</section>
+
+<section id="rejection-summary">
+<h2>Rejection Summary</h2>
+<p>Every candidate went to a fresh-context reviewer (Codex, <code>gpt-5.6-sol</code>, 112 file reads), which rated 7 sound, 11 weak and none refuted. The cuts below follow its findings unless a row says otherwise.</p>
+<table>
+  <thead><tr><th>#</th><th>Idea</th><th>Reason rejected</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Shrink the injected rules to about 3,000 characters</td><td>The evidence supports looking at compression, not that target, and one eval task cannot detect regressions across rules, hosts or models. Better handled while editing rule text under idea 2.</td></tr>
+    <tr><td>2</td><td>Gate the rule-model cuts with the annotation-vs-absence runner</td><td>research-0012 disclaims generalisation ("one rule, one task"). Its existing result already informs idea 2, and an arm that changes wording and configuration together cannot tell which caused a difference.</td></tr>
+    <tr><td>3</td><td>The target shape and order of all cuts</td><td>Folded into each idea's dependencies. Its order put guard deletion before codification, which would leave the decision migration unchecked.</td></tr>
+    <tr><td>4</td><td>The shipped rules file is the source; retire the Go generator</td><td>Only possible after idea 5. Hand-authoring both <code>rules.md</code> and <code>invariants.md</code> duplicates directives, and the Go suite holds a bundle-manifest guard the change would still need. Kept as a follow-on in idea 5.</td></tr>
+    <tr><td>5</td><td>Admission rule and no partial supersession</td><td>Merged into idea 1. Banning partial supersession only works after codification.</td></tr>
+    <tr><td>6</td><td>Collision-free record names retire the id guard</td><td>Merged into idea 1. Minute-resolution timestamps are not strictly collision-free, which is acceptable once records are rare.</td></tr>
+    <tr><td>7</td><td>Retire the artifact contract and about 5,000 lines of docs guards</td><td>Merged into idea 4 and moved after idea 1. The named test files total 3,859 lines, and <code>docs_consistency_test.go</code>'s consumer-facing checks stay.</td></tr>
+    <tr><td>8</td><td>Every CI check is required or deleted</td><td>Merged into idea 4 in a softer form. Nothing supports the absolute rule, and advisory checks still catch edge cases.</td></tr>
+    <tr><td>9</td><td><code>core/</code> shrinks to the catalog</td><td>Merged into idea 3, minus the C1/C2 dials, which appear in the shipped invariants reference.</td></tr>
+    <tr><td>10</td><td>Retire <code>does-trellis-help</code> and move run output behind a tag</td><td>Merged into idea 3.</td></tr>
+    <tr><td>11</td><td>Flag-day migration; one tiny hook for both hosts</td><td>Merged into idea 5, keeping an adoption check. A hook with no project reads would govern every repository a user-scope install opens.</td></tr>
+    <tr><td>12</td><td>Remove the copy instead of guarding it</td><td>Merged into idea 4.</td></tr>
+    <tr><td>13</td><td>29 raw duplicates</td><td>Merged while deduplicating 47 raw ideas into 18 candidates.</td></tr>
+  </tbody>
+</table>
+</section>
+
+<footer class="composition-signal">Composed <time datetime="2026-09-14T15:29Z">2026-09-14T15:29Z</time> by ce-ideate from the maintainer's request to simplify the Trellis repository.</footer>
+</main>
+</body>
+</html>

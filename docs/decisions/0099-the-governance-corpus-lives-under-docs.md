@@ -11,6 +11,8 @@ date: 2026-09-14
 
 # 0099 — The governance corpus lives under `docs/`
 
+> **Dated note, 2026-09-14 — TRL-96 (PR #312):** Point 3's "`cli-ci`'s filters keep `decisions/**` and `research/**`", point 5 and the TRL-92 item under the Consequences' *Not decided here* no longer hold, because `cli-ci` has no path filter. Every pull request now runs `build-test`, including one that recreates a root `decisions/` or `research/`, as `.github/workflows/cli-ci.yml` states.
+
 ## Context
 
 On 2026-09-13 the maintainer decided that `decisions/` and `research/` move inside `docs/`, the artifact root Compound Engineering uses (`decision-0097`). TRL-89 records the decision and its scope:
