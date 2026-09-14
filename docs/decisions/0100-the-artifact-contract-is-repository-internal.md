@@ -1,9 +1,9 @@
 ---
 id: decision-0100
 type: decision
-depends_on: [decision-0005, decision-0010, decision-0097, decision-0098, decision-0099]  # coupling under decision-0047's test. 0098 point 4 is the ruling this record carries out, and 0010 is the record it supersedes in part. 0005 is the layer split point 1 places the rubric under. 0097 point 4 and 0099 are the docs/ exemption and the docs/ location point 4 rests on
+depends_on: [decision-0005, decision-0010, decision-0015, decision-0097, decision-0098, decision-0099]  # coupling under decision-0047's test. 0098 point 4 is the ruling this record carries out, and 0010 is the record it supersedes in part. 0005 is the layer split point 1 places the rubric under. 0015:117-121 is the rename-sweep rule the path-token edits to eleven records rest on. 0097 point 4 and 0099 are the docs/ exemption and the docs/ location point 4 rests on
 changes: [decision-0010, invariants-v1, rubric-artifact-contract]
-informed_by: [decision-0015, decision-0028, decision-0040, decision-0082]
+informed_by: [decision-0028, decision-0040, decision-0082]
 owner: agent
 date: 2026-09-14
 ---
@@ -51,8 +51,9 @@ catalog and the profile, which are product types.
 "(including the artifact contract and its conformance check)", and bullet 2 as it describes the
 product. With `decision-0098`'s clause for this repository, bullet 2 is superseded whole. The rest of
 bullet 1, bullets 3 and 4, and Open question 1 stand. `decision-0010` gains `decision-0100` in
-`superseded_in_part_by` with its own clause. That clause also records that this record settles the
-provisional wording in `decision-0098`'s clause, which stays as written.
+`superseded_in_part_by` with its own clause. That clause also records that the provisional standing
+in `decision-0098`'s clause has ended: `decision-0098` point 4 answered the open question it names,
+and this record carries out that ruling. `decision-0098`'s clause stays as written.
 
 **3. `invariants-v1` stops naming the repository-internal id.** The forward re-propagation example at
 `core/invariants/trellis-invariants-v1.md:147-148` read *"(Full content-consistency enforcement is the
