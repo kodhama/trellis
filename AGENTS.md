@@ -36,21 +36,26 @@ cannot tell, ask the maintainer rather than writing a record or skipping one. *E
 strategic forks, `decision-0001`–`0004`, get records. So does a plugin change where a wrong call
 could silently stop rules reaching consumers' sessions, such as how the session-start hook reconciles
 `.trellis/rules.toml` (`decision-0083`). An error-message, reporting, diagnostic or cosmetic plugin
-change gets none, such as a vendored delivery naming its own dead pointer (`decision-0095`); nor does
-a move, such as `decision-0099` putting the corpus under `docs/`.
+change gets none: a vendored delivery naming its own dead pointer (`decision-0095`) would get no record
+today, and nor would a move such as `decision-0099` putting the corpus under `docs/`. Both were
+recorded before this test existed.
 
 **A change without a record keeps its reasoning in its requirements doc, its plan under
 `docs/plans/` and its PR body.** The PR body lists the records the change put dated notes on, or says
 it found none.
 
-**`docs/decisions/` stays append-only: a record's decisions are never re-made or rewritten.** A dated
-note is the only text added to a record, and correcting a line citation is the only edit to its
-existing text. When a merged change makes a point or sentence of a record untrue, the same PR adds
+**`docs/decisions/` stays append-only: a record's decisions are never re-made or rewritten.** The only
+text added to a record is a dated note, or `superseded_by` when the record is retired in full. The only
+edits to its existing text are correcting a line citation or a note's PR number, and a rename sweep
+(`decision-0015`). When a merged change makes a point or sentence of a record untrue, the same PR adds
 one note directly under the record's title, below any notes already there:
 
 ```markdown
 > **Dated note, YYYY-MM-DD — TRL-<n> (PR #<n>):** <what is no longer true, naming the point or sentence>. <where the current behaviour is stated now>.
 ```
+
+A note cites its own PR's number. A note written before the PR opens uses the number the repository
+will assign next, and the same PR corrects it if another PR takes that number first.
 
 The place a note names is a file on `main` kept current in place (this file, a rubric, the code, test
 or workflow that carries the behaviour, or a newer record), never a plan or a PR body; when no such
