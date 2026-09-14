@@ -18,6 +18,8 @@ date: 2026-08-29
 
 # 0082 — retire the `status` field; merging is the acceptance
 
+> **Dated note, 2026-09-14 — TRL-98 (PR #313):** Point 3's partial form no longer applies to new work: a record retired in part gets a dated note, not `superseded_in_part_by`, while full retirement still uses `superseded_by`. `AGENTS.md`'s *Operating method* states the current rule.
+
 ## Context
 
 - **The maintainer's test, in his words.** *"Those status work if I never have to think about them
