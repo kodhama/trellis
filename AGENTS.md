@@ -98,11 +98,23 @@ and CI (`decision-0075`).
   installs and no one else. `release-guard` fails that pair, keyed on the whole shipped bundle
   rather than `reference/`: #275 edited `hooks/staleness.sh` and was a release (0.10.0 → 0.11.0)
   though `reference/version`, which hashes `reference/` only, never moved.
-- **Artifact conformance is agent-applied, not CI-applied** (`decision-0010` — the contract and
-  its conformance check ship as agent instructions with no runtime). Invoke the repo-owned
-  `corpus-reviewer` (`.claude/agents/`) before merging a change to `docs/decisions/`, `docs/research/`
-  or `core/`. It checks the corpus against `core/rubrics/artifact-contract.md`, and is
-  read-only by charter — it reports, never fixes.
+- **Artifact conformance is CI-applied** (`decision-0098`). A Go test checks the corpus that
+  `core/rubrics/artifact-contract.md` names (`docs/decisions/`, `docs/research/`, `profiles/` and the `core/`
+  artifacts listed there) against that rubric, in `cli-ci`'s `build-test` job on every PR that
+  touches them. `build-test` is not a required status check on
+  `main`, so a red is a signal, not a merge block. Run it locally with
+  `cd cli && go test -count=1 -run 'TestCorpusConform|TestArtifactContract' .`. Two of the
+  contract's rules take judgment, and the reviewer of a corpus change applies them:
+  - **A coupling is not provenance** (rubric check 5, `decision-0047`): a source the artifact's
+    correctness is contingent on belongs in `depends_on`, and an `informed_by` edge that is really
+    such a coupling is non-conformant. *Example:* `decision-0098` keeps `decision-0082` in
+    `depends_on`, because it drops rule 5b on 0082's authority; `research-0010`'s edge to
+    `decision-0029` is provenance, so it sits in `informed_by` (TRL-57).
+  - **Evidence shows the tell** (rubric check 10): a profile row's `evidence` must actually show
+    the tell its verdict claims, because the check confirms only that the field is present.
+    *Example:* when `decision-0098` deleted `.claude/agents/corpus-reviewer.md`, four
+    `profiles/trellis-self.md` rows still cited it as evidence. The check passed them, since each
+    cell was non-empty; review had to re-point them.
 - **Branch names are `<category>/<slug>`** — `decision/0075-linear-tracks-the-work`, `research/…`,
   `fix/…`. Since the Linear migration, `feature/*` branches also carry the issue key
   (`feature/trl-22-…`), so **whether a branch is findable by issue number depends on its category**:

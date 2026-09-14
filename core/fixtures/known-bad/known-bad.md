@@ -13,7 +13,7 @@ supersession is identified by the pointer since `decision-0082`, so its entries 
 being declared a `spec` — **omits the required `## Acceptance criteria` and `## Open questions`
 sections**.
 
-The conformance check must reject it and name all four violations. See `README.md`.
+The conformance check must reject it and name all four violations. See `../README.md`.
 
 *(Re-cut by `decision-0082`. It previously carried an invalid `status: gated` as its check-2
 violation; with the `status` field retired that is no longer a violation class, so the slot now

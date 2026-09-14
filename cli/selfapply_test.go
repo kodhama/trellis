@@ -178,9 +178,8 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 		wantAGENTS  bool
 		allowClaude bool
 	}{
-		"README.md":                         {wantAGENTS: true, allowClaude: true},
-		"profiles/trellis-self.md":          {wantAGENTS: true},
-		".claude/agents/corpus-reviewer.md": {wantAGENTS: true},
+		"README.md":                {wantAGENTS: true, allowClaude: true},
+		"profiles/trellis-self.md": {wantAGENTS: true},
 	}
 	// decision-0076: .grove/config.toml and .grove/README.md left this map because the
 	// directory is gone. Asserted absent rather than merely dropped — a bounded
