@@ -632,3 +632,66 @@ func TestDecisionIDGuardRootPathClaimsNothing(t *testing.T) {
 	mustContain(t, out, "adds no docs/decisions/NNNN-*.md file",
 		"the guard should say it found no claim at the one path it reads")
 }
+
+// decisionIDGuardClaimDir is the directory the guard reads ids from: the prefix
+// of decision_id's `case` arm. The base-branch listing and the workflow trigger
+// must name the same directory, and the two tests below hold them to it
+// (decision-0028's pair, on the path decision-0099 moved).
+func decisionIDGuardClaimDir(t *testing.T, script string) string {
+	t.Helper()
+	// Anchored so a comment naming the pattern is not the arm.
+	m := regexp.MustCompile(`(?m)^[ \t]*([^#\s]*/)\[0-9\]\[0-9\]\[0-9\]\[0-9\]-\*\.md\)`).FindStringSubmatch(script)
+	if m == nil {
+		t.Fatal("decision_id's claim pattern (`<dir>/[0-9][0-9][0-9][0-9]-*.md)`) is missing from the guard script")
+	}
+	return m[1]
+}
+
+// TestDecisionIDGuardListsTheBaseAtItsClaimPath — every fixture injects
+// GUARD_MAIN_FILES, so no behavioural test reaches the live `git ls-tree` that
+// lists the base branch. Pointed at any other directory, it lists nothing, every
+// id reads as free on the base, and the suite stays green.
+func TestDecisionIDGuardListsTheBaseAtItsClaimPath(t *testing.T) {
+	b, err := os.ReadFile(decisionIDGuardPath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(b)
+	dir := decisionIDGuardClaimDir(t, src)
+
+	// A command, not a mention: the script's header names `git ls-tree` in a
+	// comment.
+	listings := regexp.MustCompile(`(?m)^[^#\n]*\bgit ls-tree\b[^\n]*`).FindAllString(src, -1)
+	if len(listings) == 0 {
+		t.Fatal("the guard no longer lists the base branch with `git ls-tree`")
+	}
+	pathspec := regexp.MustCompile(`[ \t]--[ \t]+(\S+)`)
+	for _, line := range listings {
+		if m := pathspec.FindStringSubmatch(line); m == nil || m[1] != dir {
+			t.Errorf("the base-branch listing must read %s, the directory the claim pattern reads ids from; got %q",
+				dir, strings.TrimSpace(line))
+		}
+	}
+}
+
+// TestDecisionIDGuardWorkflowTriggersOnTheClaimPath — the workflow's `paths:`
+// filter decides whether the guard runs at all. A pull request adding a record
+// outside it never starts the job, and a job that never starts shows no red.
+// Anchored to a list item for the reason `runsIt` is: the workflow's comments
+// name the directory too.
+func TestDecisionIDGuardWorkflowTriggersOnTheClaimPath(t *testing.T) {
+	b, err := os.ReadFile(decisionIDGuardPath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := decisionIDGuardClaimDir(t, string(b))
+
+	wf, err := os.ReadFile("../.github/workflows/decision-id-guard.yml")
+	if err != nil {
+		t.Fatalf("the guard's workflow is missing: %v", err)
+	}
+	trigger := regexp.MustCompile(`(?m)^[ \t]+-[ \t]+"` + regexp.QuoteMeta(dir+"**") + `"[ \t]*$`)
+	if !trigger.MatchString(string(wf)) {
+		t.Errorf("decision-id-guard.yml has no `- \"%s**\"` paths entry; a pull request adding a record there would never run the guard", dir)
+	}
+}
