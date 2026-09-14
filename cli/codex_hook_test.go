@@ -917,84 +917,85 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 		"active = false",
 		"**Firmly**",
 		"**By default**",
+		// TRL-97: the two retired top-level keys are ignored without comment, so
+		// the fallback names neither; naming one invites the agent to act on it.
+		"strictness",
+		"seeded_from",
+		// Nothing repairs the file and nothing is set aside inside it any more.
+		"reconcil",
+		"commented out",
 	} {
 		if strings.Contains(block, forbidden) {
 			t.Errorf("block-codex.md embeds forbidden rule/row/posture content %q", forbidden)
 		}
 	}
-	// TRL-31: the bootstrap must teach RECONCILIATION, not the retired
-	// all-or-nothing activation predicate. Both hooks now reconcile a slug-set
-	// mismatch — missing slugs govern as active, unknown and duplicate rows are
-	// quarantined rather than dropped (decision-0083 section 1's resolution
-	// table; decision-0084 section 1 brings Codex to parity, where parseRulesToml
-	// became a classifier that returns null ONLY for a genuine syntax fault). The
-	// bootstrap is the fallback the agent follows when no hook ran, so prose that
-	// still refuses a mismatched file tells that agent to refuse what the hook
-	// beside it would repair — the defect decision-0083:460-469 named and
-	// decision-0084:344-366 deferred here.
+	// TRL-97: the bootstrap must teach the opt-out-only row semantics both hooks
+	// now deliver. Only a row set to false switches a rule off, a rule with no
+	// row applies, a bad entry costs that entry and never the file, and nothing
+	// rewrites the file. The bootstrap is the fallback the agent follows when no
+	// hook ran, so prose that still refused a mismatched file, or repaired it,
+	// tells that agent to do what the hook beside it no longer does. TRL-31 fixed
+	// that defect once for reconciliation; this change retires reconciliation and
+	// moves the fallback with it.
 	//
 	// Pinned as WORDING, not behaviour, deliberately: this artifact has no
 	// runtime, so its only enforceable contract is the bytes it ships
 	// (decision-0053 — the tested wording is the shipped wording). The forbidden
-	// half matters as much as the required half: without it the retired predicate
-	// can come back one careless regeneration later, which is exactly how it
-	// survived two decision records.
-	// Every phrase here is a semantic the fallback agent gets wrong without it,
-	// each verified against codex-context.mjs rather than against the records:
+	// half matters as much as the required half: without it a retired predicate
+	// can come back one careless regeneration later, which is exactly how the
+	// all-or-nothing one survived two decision records.
+	// Every phrase here is a semantic the fallback agent gets wrong without it:
 	//
-	//   "governs as active"            :579 appends a missing slug as an active row
-	//   "first occurrence ... is kept"  :559 quarantines only `seen` repeats, so the
-	//                                   first value governs; without this an agent can
-	//                                   quarantine BOTH copies and re-add the slug as
-	//                                   missing, flipping a deliberate disable to active
-	//   "correctly shaped row naming a slug not in that list"
-	//                                   :363-366 makes SHAPE fatal and an unknown SLUG
-	//                                   merely quarantined — `inv-bogus = {...}` is
-	//                                   reconciled, `bogus-rule = {...}` is not. Reading
-	//                                   that boundary either way reproduces TRL-31 itself
 	//   "A single top-level `governed = false` ... not a row set", and its
 	//   "no rule applies including the two floor rules"
-	//                                   :894-897 exits(0) silently on the one-line
-	//                                   opt-out, emitting NOTHING — which hands the file
-	//                                   to this bootstrap. Reconciling it would synthesize
-	//                                   sixteen active rows and govern a project that
-	//                                   declined Trellis. The retired predicate refused
-	//                                   that file by accident (no strictness => not
-	//                                   "complete"); reconciliation removes the accident,
-	//                                   so the exception has to be stated. Pinned as the
-	//                                   WHOLE clause, not the short "is an opt-out": the
-	//                                   qualifier "single top-level" and the floors half
-	//                                   are each load-bearing and were each droppable
-	//                                   while a shorter pin stayed green
-	//   "a row not of the form `inv-…` ..."
-	//                                   the shape half of :363-366, pinned beside the
-	//                                   slug half above so neither can drift alone
-	//   "never by editing the file"     the hooks' write mandate (:697) is NOT carried
-	//                                   here: this block is scanned by neither
+	//                                   the Codex hook emits NOTHING on the opt-out,
+	//                                   which hands the file to this bootstrap. Read as
+	//                                   a row set it holds no `false` row, so every rule
+	//                                   would apply and a project that declined Trellis
+	//                                   would be governed. Pinned as the WHOLE clause:
+	//                                   "single top-level" and the floors half are each
+	//                                   load-bearing and were each droppable while a
+	//                                   shorter pin stayed green
+	//   "Only a row whose boolean is `false` ..." and "a canonical slug with no row applies"
+	//                                   the activation rule itself; the retired
+	//                                   predicate wanted an active row for every rule
+	//   "the first row for a slug decides"
+	//                                   without it a later duplicate can flip a
+	//                                   deliberate disable back on, or the reverse
+	//   "a `false` row for either floor rule" and
+	//   "a row naming a slug not in the list below, which another plugin version may ship"
+	//                                   the two ignored rows a project writes on
+	//                                   purpose; both hooks ignore each with a warning,
+	//                                   so the fallback must honour neither
+	//   "lowercase letters and hyphens only" / "followed by `= { active = <boolean> }`"
+	//                                   the row shape, written with a placeholder so the
+	//                                   forbidden literals above stay out of the block
+	//   "no entry in it makes the file invalid"
+	//                                   a bad entry costs that entry, never the session
+	//   "never edit or rewrite the file"
+	//                                   no host rewrites the file any more, and this
+	//                                   block is scanned by neither
 	//                                   TestEveryDestructiveInstructionIsGated nor
 	//                                   TestEveryDeletionInstructionIsGated (both read
 	//                                   only the two hook files), so a write instruction
 	//                                   landing here would be ungated
 	for _, required := range []string{
-		"reconciled, never refused",
-		"governs as active",
-		"the first occurrence of a repeated slug is kept",
-		"a correctly shaped row naming a slug not in that list",
-		"commented out with the date and the reason, its value kept verbatim, never deleted",
-		"never by editing the file",
 		"A single top-level `governed = false` is an opt-out, not a row set",
 		"no rule applies including the two floor rules",
+		"Only a row whose boolean is `false` switches its rule off",
+		"a canonical slug with no row applies",
+		"the first row for a slug decides",
+		"a `false` row for either floor rule",
+		"a row naming a slug not in the list below, which another plugin version may ship",
 		"lowercase letters and hyphens only",
 		"followed by `= { active = <boolean> }`",
-		"absent, read it as `adaptive`",
-		"before the `[rules]` header, a key other than `seeded_from`, `strictness` or `governed`",
-		"a `governed` that is not a boolean",
-		"Only a genuine syntax fault makes the file invalid",
-		"A reconciled row set is not a failure to load",
-		"tell the user what you reconciled, row by row",
+		"no entry in it makes the file invalid",
+		"never edit or rewrite the file",
+		"An ignored row is not a failure to load",
+		"tell the user which rows you ignored, and why",
 	} {
 		if !strings.Contains(block, required) {
-			t.Errorf("block-codex.md missing reconciliation phrase %q — it must describe decision-0083/0084 reconciliation, not refusal", required)
+			t.Errorf("block-codex.md missing activation phrase %q — it must describe the opt-out-only row semantics (TRL-97), not refusal or repair", required)
 		}
 	}
 	// Scoped to the ROW-SET predicate on purpose. A bare "occurs exactly once"
@@ -1005,9 +1006,10 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 		"slug below occurs exactly once",
 		"no unknown or duplicate slug",
 		"complete activation predicate",
+		"genuine syntax fault",
 	} {
 		if strings.Contains(block, retired) {
-			t.Errorf("block-codex.md carries the retired all-or-nothing activation wording %q — decision-0083/0084 replaced refusal with reconciliation", retired)
+			t.Errorf("block-codex.md carries a retired activation predicate %q — a bad entry costs that entry, never the file (TRL-97)", retired)
 		}
 	}
 	slugs := append([]string(nil), assessableSlugs...)
@@ -1017,8 +1019,7 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 			t.Errorf("bootstrap must carry canonical slug %s exactly once, got %d", slug, n)
 		}
 	}
-	if strings.Contains(files["trellis-a.md"], rulesLoadedSentinel) ||
-		strings.Contains(files["trellis-b.md"], rulesLoadedSentinel) ||
+	if strings.Contains(files["trellis.md"], rulesLoadedSentinel) ||
 		strings.Contains(files["block-claude.md"], rulesLoadedSentinel) {
 		t.Error("sentinel belongs only at the terminal line of rules.md")
 	}
@@ -1026,10 +1027,8 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 		strings.Count(files["rules.md"], rulesLoadedSentinel) != 1 {
 		t.Error("rules.md must end with exactly one completion sentinel")
 	}
-	for _, name := range []string{"trellis-a.md", "trellis-b.md"} {
-		if !strings.Contains(files[name], "@rules.md\n---\n"+invariantsTrigger) {
-			t.Errorf("%s must carry the fixed post-import footer", name)
-		}
+	if !strings.Contains(files["trellis.md"], "@rules.md\n---\n"+invariantsTrigger) {
+		t.Error("trellis.md must carry the fixed post-import footer")
 	}
 }
 
@@ -1151,8 +1150,8 @@ func TestCodexBootstrapBoundaryIsMachineOwned(t *testing.T) {
 	// (c) The generated prose a Codex agent actually receives: the header with
 	// its sibling expanded, exactly what codex-context.mjs injects
 	// (`trellis.replace("@rules.md", rules)`).
-	delivered := strings.Replace(files["trellis-a.md"], "@rules.md", files["rules.md"], 1)
-	if delivered == files["trellis-a.md"] {
+	delivered := strings.Replace(files["trellis.md"], "@rules.md", files["rules.md"], 1)
+	if delivered == files["trellis.md"] {
 		t.Fatal("premise: the header carries no @rules.md expansion point, so nothing was delivered")
 	}
 	// A legitimate editorial reword of the footer: same meaning, same pointer,
@@ -1178,13 +1177,12 @@ func TestCodexBootstrapBoundaryIsMachineOwned(t *testing.T) {
 	}
 
 	// The writer's half.
-	for _, name := range []string{"trellis-a.md", "trellis-b.md"} {
-		if !strings.HasSuffix(files[name], "\n"+proseCompleteMarker+"\n") {
-			t.Errorf("%s must END with %s — the marker proves the header's tail arrived, which it cannot do from the middle: %q", name, proseCompleteMarker, files[name])
-		}
-		if n := strings.Count(files[name], proseCompleteMarker); n != 1 {
-			t.Errorf("%s must carry %s exactly once, got %d — a second copy makes the boundary ambiguous", name, proseCompleteMarker, n)
-		}
+	header := files["trellis.md"]
+	if !strings.HasSuffix(header, "\n"+proseCompleteMarker+"\n") {
+		t.Errorf("trellis.md must END with %s — the marker proves the header's tail arrived, which it cannot do from the middle: %q", proseCompleteMarker, header)
+	}
+	if n := strings.Count(header, proseCompleteMarker); n != 1 {
+		t.Errorf("trellis.md must carry %s exactly once, got %d — a second copy makes the boundary ambiguous", proseCompleteMarker, n)
 	}
 	// rules.md has its own terminator; two end markers in one delivered prose
 	// would let a truncation between them pass.

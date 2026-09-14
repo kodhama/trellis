@@ -3,13 +3,13 @@
 
 You are working in a project that follows **Trellis** — a small, load-bearing set of working rules on top of the project's own process. **Follow the rules below as you work here.** They add guardrails; they don't replace this project's own instructions.
 
-**How strictly to follow them:** **Firmly** — treat these as hard requirements. Follow them as written; don't skip or soften one without the human's explicit say-so.
+**How strictly to follow them:** **By default** — follow them unless you have a clear, specific reason not to, and when you deviate say so out loud rather than doing it silently.
 
-**Rule activation is governed by `.trellis/rules.toml` (its rows are loaded below the rules):** apply each rule below ONLY if its row says `active = true`. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rows apply regardless of their row value.
+**Rule activation is governed by `.trellis/rules.toml` (its rows, when loaded, appear below the rules):** apply each rule below unless its row says `active = false`; a rule with no row applies. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rules always apply while the project is governed, whatever their row says. Nothing else in `.trellis/rules.toml` changes which rules apply.
 
 ## The rules — do these
 
-Each rule below ends with its row's slug. Whether a rule applies is governed by its row in `.trellis/rules.toml` (see the authority note above; the rows are loaded below the rules). Each is a rule to follow, then the ✗ failure it prevents:
+Each rule below ends with its row's slug. Whether a rule applies follows the authority note above. Each is a rule to follow, then the ✗ failure it prevents:
 
 - Build only on settled ground — an approved spec or a made decision, never a draft that's still changing under you. If your input isn't settled, or you can't tell whether it is, ask before you build on it. `inv-directional-flow`
     ✗ an agent builds against a spec still being edited; it shifts, and the work is built on a version that no longer exists.
@@ -44,33 +44,6 @@ Each rule below ends with its row's slug. Whether a rule applies is governed by 
 - Never finalize, ship, or merge something a human is meant to approve without that approval. When you reach such a point, stop and get sign-off. Unsure whether a human must approve? Assume yes. `floor-intent-gate`
     ✗ a fully-automated pipeline ships something *technically* correct that no human confirmed was the *right* thing.
 <!-- trellis:rules-loaded -->
-
-## Active rows (`.trellis/rules.toml`)
-
-```toml
-# Rows govern rule activation live (see the authority note in the project instructions).
-
-seeded_from = "conductor"  # provenance only — the rows below win if they diverge
-strictness  = "firm"  # firm (a·conductor) | adaptive (b·author-adapt)
-
-[rules]  # one row per assessable catalog slug (signature-catalog-v1)
-inv-directional-flow      = { active = true }
-inv-handover-points       = { active = true }
-inv-intent-locus          = { active = true }
-inv-ratifiable-artifacts  = { active = true }
-inv-graph-maintenance     = { active = true }
-inv-self-improvement      = { active = true }
-inv-deliberate-succession = { active = true }
-inv-no-orphan-followups   = { active = true }
-inv-gate-at-handover      = { active = true }
-inv-independent-judgment  = { active = true }
-inv-auditable-archive     = { active = true }
-inv-bounded-context       = { active = true }
-inv-minimal-first         = { active = true }
-inv-clarify-before-commit = { active = true }
-floor-transparency        = { active = true }  # floor — applies regardless of this row
-floor-intent-gate         = { active = true }  # floor — applies regardless of this row
-```
 
 If a rule seems ambiguous, or in tension with this project's own instructions, read its entry — the description and with/without examples — in the shipped Trellis reference: `reference/invariants.md` in the installed plugin, or `plugins/trellis/reference/invariants.md` at github.com/kodhama/trellis — before deviating. Rule activation follows the rows in `.trellis/rules.toml` directly (see the authority note above).
 <!-- trellis:end -->

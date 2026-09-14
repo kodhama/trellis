@@ -29,17 +29,21 @@ func TestRepoDeclaresRulesConfig(t *testing.T) {
 		t.Fatalf("repo overlay has no .trellis/rules.toml — the consumer-authoritative config (decision-0051 rule 1): %v", err)
 	}
 	content := string(b)
+	// TRL-97 (R17) leaves this file unchanged: `strictness` and every `active = true`
+	// row are inert under this release, and the repo's sessions receive the "By
+	// default" posture sentence. They stay because a plugin version older than this
+	// release, pinned by some checkout, still reads them — and because the change
+	// asks no existing file to be edited, this one included.
 	if !strings.Contains(content, `strictness  = "firm"`) {
-		t.Errorf(".trellis/rules.toml must declare strictness \"firm\" (the a/conductor posture the repo overlay is pinned to), got: %q", content)
+		t.Errorf(".trellis/rules.toml must keep its strictness \"firm\" line — TRL-97 leaves this file unchanged, though the key is inert under this release, got: %q", content)
 	}
-	// Every pinned row is ACTIVE — the repo holds every invariant firmly. Whether
-	// the row SET matches the pin (both ways — a stale row after a retire failed
-	// nothing here) is TestRowSetDerivativesFollowThePin's job (row_set_guard_test.go);
-	// this loop is about the value, not the membership.
+	// Every pinned row is ACTIVE. Whether the row SET matches the pin (both ways — a
+	// stale row after a retire failed nothing here) is TestRowSetDerivativesFollowThePin's
+	// job (row_set_guard_test.go); this loop is about the value, not the membership.
 	for _, slug := range assessableSlugs {
 		rowRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `\s+= \{ active = true \}`)
 		if !rowRe.MatchString(content) {
-			t.Errorf(".trellis/rules.toml must carry an active row for %s — the repo holds every invariant firmly (its internal/rules.md is pinned to the all-active assembly)", slug)
+			t.Errorf(".trellis/rules.toml must keep its active row for %s — TRL-97 leaves this file unchanged, and an older installed plugin version still applies a rule only when its row says active = true", slug)
 		}
 	}
 }
