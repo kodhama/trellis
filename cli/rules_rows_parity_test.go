@@ -40,6 +40,11 @@ import (
 // verbatim under the framing; a larger one is replaced by the too-large line.
 const rulesEchoMaxBytes = 1500
 
+// rulesReadMaxBytes is the read bound both hooks put on the project file
+// (codex-context.mjs MAX_PROJECT_CONFIG_BYTES, staleness.sh rules_file_max): a
+// larger file is refused rather than read.
+const rulesReadMaxBytes = 1024 * 1024
+
 // codexContextCap is codex-context.mjs's MAX_CONTEXT_BYTES, written out rather
 // than read from the hook so a changed cap is a visible edit here.
 const codexContextCap = 9500
@@ -142,6 +147,10 @@ type rulesRowsCase struct {
 	off        []string
 	segment    rulesSegment
 	warnings   []string
+	// codexRefusal is the failure class a refused file draws from Codex; ""
+	// means unreadable-file. Claude refuses every such file as
+	// TRELLIS_RULES_NOT_LOADED.
+	codexRefusal string
 }
 
 func (c rulesRowsCase) wantOutcome() rulesOutcome {
@@ -417,6 +426,18 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		toml:       optOut,
 		unreadable: true,
 		outcome:    outcomeRefuse,
+	}, {
+		// The read bound: a file of exactly rulesReadMaxBytes is still
+		// classified, and one byte more is refused on both hosts.
+		name:    "a file of exactly the read bound is classified and not echoed",
+		toml:    rulesFileOfBytes(t, optOut, rulesReadMaxBytes),
+		off:     []string{"inv-minimal-first"},
+		segment: segmentTooLarge,
+	}, {
+		name:         "a file one byte over the read bound is refused",
+		toml:         rulesFileOfBytes(t, optOut, rulesReadMaxBytes+1),
+		outcome:      outcomeRefuse,
+		codexRefusal: "context-over-budget",
 	}}
 }
 
@@ -528,11 +549,15 @@ func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRules
 	}
 	switch r.outcome {
 	case outcomeRefuse:
-		if host == "codex" && !strings.Contains(r.raw, ".trellis/rules.toml: unreadable-file") {
-			t.Errorf("codex: an unreadable file must be refused as unreadable-file:\n%s", r.raw)
+		wantCodex := ".trellis/rules.toml: unreadable-file"
+		if c.codexRefusal != "" {
+			wantCodex = c.codexRefusal
+		}
+		if host == "codex" && !strings.Contains(r.raw, wantCodex) {
+			t.Errorf("codex: this file must be refused as %q:\n%s", wantCodex, r.raw)
 		}
 		if host == "claude" && !strings.Contains(r.context, "TRELLIS_RULES_NOT_LOADED") {
-			t.Errorf("claude: an unreadable file must be refused as TRELLIS_RULES_NOT_LOADED:\n%s", r.context)
+			t.Errorf("claude: this file must be refused as TRELLIS_RULES_NOT_LOADED:\n%s", r.context)
 		}
 		return
 	case outcomeUngoverned:
