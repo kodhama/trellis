@@ -11,7 +11,7 @@ date: 2026-09-14
 
 # 0099 — The governance corpus lives under `docs/`
 
-> **Dated note, 2026-09-14 — TRL-96 (PR #<n>):** Point 3's "`cli-ci`'s filters keep `decisions/**` and `research/**`", point 5 and the TRL-92 item under the Consequences' *Not decided here* no longer hold, because `cli-ci` has no path filter. Every pull request now runs `build-test`, including one that recreates a root `decisions/` or `research/`, as `.github/workflows/cli-ci.yml` states.
+> **Dated note, 2026-09-14 — TRL-96 (PR #312):** Point 3's "`cli-ci`'s filters keep `decisions/**` and `research/**`", point 5 and the TRL-92 item under the Consequences' *Not decided here* no longer hold, because `cli-ci` has no path filter. Every pull request now runs `build-test`, including one that recreates a root `decisions/` or `research/`, as `.github/workflows/cli-ci.yml` states.
 
 ## Context
 
