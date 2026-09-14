@@ -20,7 +20,9 @@ package main
 //
 // Every part of every rubric check has a recorded outcome in
 // contractOutcomeTable. The control test fails when an implemented rule has no
-// seeded violation, or an accepts rule has no valid construct.
+// seeded violation, or an accepts rule has no valid construct, and
+// cli/artifact_contract_guard_test.go fails when a numbered rubric check has no
+// rows or its text no longer matches the digest its rows carry.
 
 import (
 	"fmt"
@@ -73,30 +75,35 @@ type contractRuleOutcome struct {
 	reason  string
 }
 
-// contractCheckOutcomes groups one numbered rubric check's rule rows.
+// contractCheckOutcomes groups one numbered rubric check's rule rows. digest is
+// contractCheckDigest of the check's rubric text as those rows were last
+// reviewed against. cli/artifact_contract_guard_test.go fails when the rubric
+// text no longer matches it, so an edit anywhere in a check, prose included,
+// forces its rows and rule code to be re-reviewed in the same change (KTD8).
 type contractCheckOutcomes struct {
-	check int
-	rules []contractRuleOutcome
+	check  int
+	digest string
+	rules  []contractRuleOutcome
 }
 
 // contractOutcomeTable records an outcome for every part of rubric checks 1–12,
 // accepted by the maintainer on 2026-09-14 (TRL-88).
 var contractOutcomeTable = []contractCheckOutcomes{
-	{1, []contractRuleOutcome{
+	{1, "f584533051ec8b80", []contractRuleOutcome{
 		{"1a", outcomeImplemented, "the file opens with a `---` frontmatter block that closes, and every line in it is a single-line `key: value`"},
 		{"1b", outcomeImplemented, "`id`, `type`, `depends_on` and `owner` each appear once with a value; `status` is never required or flagged"},
 		{"1c", outcomeImplemented, "`depends_on` is a flow list; `informed_by`, `superseded_by`, `superseded_in_part_by` and `changes` are flow lists when present; `id`, `type` and `owner` are scalars"},
 	}},
-	{2, []contractRuleOutcome{
+	{2, "cd40525c2890a982", []contractRuleOutcome{
 		{"2a", outcomeImplemented, "the `type` value is a row of check 6's closed enumeration"},
 		{"2b", outcomeImplemented, "a per-file `scope` is `core-methodology`, `trellis-product` or `trellis-meta`"},
 		{"2c", outcomeDropped, "scope and rubric \"may be declared centrally\", but no central declaration exists (the rubric's own open question), and most files carry no per-file `scope`, so requiring one would reject valid artifacts"},
 		{"2d", outcomeDropped, "the recognized typed artifacts and their scopes are descriptive; the typed checks key on `type`, and 2b validates any declared `scope`"},
 	}},
-	{3, []contractRuleOutcome{
+	{3, "db2436267ba7fc2e", []contractRuleOutcome{
 		{"3", outcomeImplemented, "an `id` declared by more than one file is one finding naming every file"},
 	}},
-	{4, []contractRuleOutcome{
+	{4, "b528af1d8edcda16", []contractRuleOutcome{
 		{"4a", outcomeAccepts, "an existing artifact id in the corpus"},
 		{"4b", outcomeAccepts, "`brief-§` followed by a non-empty section token, on shape only"},
 		{"4c", outcomeAccepts, "`<repo>/<id>` whose repo is in the registry list read from the rubric; not verified against the other repository"},
@@ -107,39 +114,39 @@ var contractOutcomeTable = []contractCheckOutcomes{
 		{"4g", outcomeImplemented, "an `informed_by` entry resolves by the same forms"},
 		{"4h", outcomeImplemented, "an `@version` pin on an `informed_by` entry is a category error, reported before stripping, and no second finding follows"},
 	}},
-	{5, []contractRuleOutcome{
+	{5, "1dc718a76031d4d8", []contractRuleOutcome{
 		{"5a", outcomeCovered, "covered by 4i: every `depends_on` entry resolves in the corpus, with no separate code"},
 		{"5b", outcomeDropped, "the status-lifecycle form applies only where a methodology declares a lifecycle, and this repository declares none (`decision-0082`)"},
 		{"5c", outcomeCovered, "covered by 1c: `changes` is checked for shape only, and no rule walks edges"},
 		{"5d", outcomeGuidance, "whether an artifact's correctness rests on a source relabeled as `informed_by` is judgment (`decision-0047`); stated in the `AGENTS.md` conformance bullet"},
 	}},
-	{6, []contractRuleOutcome{
+	{6, "34023c0a987ead35", []contractRuleOutcome{
 		{"6a", outcomeImplemented, "each required section is an H2 outside fenced code whose text, case-insensitively, is the name alone or the name followed by ` (`; rows read from the rubric"},
 		{"6b", outcomeAccepts, "`feedback` and `schema` are exempt"},
 		{"6c", outcomeNoRule, "the rubric states that a research note's sources and confidence tags are not gated"},
 	}},
-	{7, []contractRuleOutcome{
+	{7, "24127ddd4e98bb20", []contractRuleOutcome{
 		{"7a", outcomeImplemented, "`superseded_by` entries resolve by check 4's forms"},
 		{"7b", outcomeImplemented, "`superseded_in_part_by` entries resolve by check 4's forms"},
 		{"7c", outcomeImplemented, "a non-`decision` artifact may not `depends_on` one carrying `superseded_by`, unless it is listed as that artifact's successor"},
 	}},
-	{8, []contractRuleOutcome{
+	{8, "b698024e0925d3af", []contractRuleOutcome{
 		{"8a", outcomeCovered, "covered by TestRowSetDerivativesFollowThePin, which fails when the catalog's entries or the invariant set's live entries differ from the pinned slug set in cli/payload_test.go, which holds no dial or collapsed slug"},
 		{"8b", outcomeImplemented, "each catalog entry carries the ten fields, read through `·`-joined lines, wrapped lines and bolding"},
 		{"8c", outcomeImplemented, "`honored` and `violated` form at least two pairs, equal in number, whose tags match position by position, compared exactly"},
 		{"8d", outcomeCovered, "covered by TestRowSetDerivativesFollowThePin: a dial entry reads there as an extra slug"},
 	}},
-	{9, []contractRuleOutcome{
+	{9, "6903f339c3624c8d", []contractRuleOutcome{
 		{"9", outcomeImplemented, "every profile slug resolves to a signature-catalog entry"},
 	}},
-	{10, []contractRuleOutcome{
+	{10, "ae19550ba788b2e9", []contractRuleOutcome{
 		{"10a", outcomeImplemented, "an `active: true`, `basis: honored-implicitly` row carries `evidence` and a `confidence` of `verified`, `inferred` or `speculated` (`schema-typed-artifacts`)"},
 		{"10b", outcomeGuidance, "whether the evidence pointer shows the tell is judgment; stated in the `AGENTS.md` conformance bullet"},
 	}},
-	{11, []contractRuleOutcome{
+	{11, "c8ffd19e518966cc", []contractRuleOutcome{
 		{"11", outcomeImplemented, "no profile row sets `C2: none` on a slug whose catalog entry has `intent_locus: true`"},
 	}},
-	{12, []contractRuleOutcome{
+	{12, "d8d6290004c415ab", []contractRuleOutcome{
 		{"12", outcomeRetired, "the rubric retired the version cross-check and keeps only its number"},
 	}},
 }
@@ -200,8 +207,7 @@ func loadArtifactContract(t *testing.T) artifactContract {
 	t.Helper()
 	rubric := readFileT(t, artifactContractPath)
 	c := artifactContract{sections: map[string][]string{}, repos: map[string]bool{}}
-	for _, row := range contractRows(t, "rubric check 6", contractWindow(t, "rubric", rubric,
-		"6. **Required body sections per type**", "7. **Supersede integrity.**"), contractTypeRows) {
+	for _, row := range contractSectionRuleRows(t, rubric) {
 		typ, sections, err := parseSectionRule(row)
 		if err != nil {
 			t.Fatalf("%s: %v", artifactContractPath, err)
@@ -211,8 +217,7 @@ func loadArtifactContract(t *testing.T) artifactContract {
 		}
 		c.sections[typ] = sections
 	}
-	repos, err := parseRepoRegistry(contractRows(t, "rubric check 4", contractWindow(t, "rubric", rubric,
-		"4. **`depends_on` resolves.**", "5. **Directional flow"), contractRefForms))
+	repos, err := parseRepoRegistry(contractRefFormRows(t, rubric))
 	if err != nil {
 		t.Fatalf("%s: %v", artifactContractPath, err)
 	}

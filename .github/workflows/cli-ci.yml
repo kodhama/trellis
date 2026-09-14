@@ -17,8 +17,9 @@ name: cli-ci
 # .github/scripts/** and decision-id-guard.yml, which cli/decision_id_guard_test.go
 # executes and reads (decision-0089); core/invariants/** and profiles/**, which
 # cli/row_set_guard_test.go reads; core/rubrics/**, which
-# cli/artifact_contract_guard_test.go reads against .claude/agents/corpus-reviewer.md
-# (TRL-60); decisions/**, research/**, core/schemas/**, core/lexicon.md and
+# cli/artifact_contract_guard_test.go reads to pin the rubric's corpus paths, check 4
+# forms, check 6 rows, numbered checks and per-check text digests to the conformance
+# check (TRL-60, TRL-88); decisions/**, research/**, core/schemas/**, core/lexicon.md and
 # core/fixtures/**, which cli/corpus_conformance_test.go reads as the artifact
 # corpus and its positive control, beside the core/ and profiles/ paths above
 # (TRL-88); .claude/**, which cli/selfapply_test.go and
