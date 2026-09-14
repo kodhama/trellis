@@ -102,7 +102,7 @@ Governed by R10. Each note is one line, directly under the record's title headin
 
 - `docs/decisions/0098-artifact-conformance-is-a-ci-check.md`:
 
-  > **Dated note, 2026-09-14 — TRL-96 (PR #<n>):** Four statements no longer hold: point 1's "that touches a corpus path, the rubric, the fixtures or the check itself", point 5's "does not block a merge" and "`build-test`, the job that runs the check, is not among them", and the Consequences' "`cli/ci_paths_guard_test.go` forces the filter to cover every path the suite reads" and "the `cli-ci` filter mirror it, and guards pin both". `cli-ci` has no path filter, that guard is deleted, and `build-test` runs on every pull request as a required check on `main`, as `.github/workflows/cli-ci.yml` and `AGENTS.md`'s conformance bullet state.
+  > **Dated note, 2026-09-14 — TRL-96 (PR #<n>):** Five statements no longer hold: point 1's "that touches a corpus path, the rubric, the fixtures or the check itself"; point 5's "requires `release-guard`, `Analyze (go)`, `Analyze (javascript)` and `hygiene`", "does not block a merge" and "`build-test`, the job that runs the check, is not among them"; and the Consequences' "`cli/ci_paths_guard_test.go` forces the filter to cover every path the suite reads", "the `cli-ci` filter mirror it, and guards pin both" and "TRL-92's other paths, and its root fix, stay open there". `cli-ci` has no path filter, that guard is deleted, and `build-test` runs on every pull request as a required check on `main`, so no file the suite reads can skip it, as `.github/workflows/cli-ci.yml` and `AGENTS.md`'s conformance bullet state.
 
 - `docs/decisions/0099-the-governance-corpus-lives-under-docs.md`:
 
