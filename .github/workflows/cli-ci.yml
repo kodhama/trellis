@@ -8,15 +8,19 @@ name: cli-ci
 # retired with the overlay itself, decision-0071),
 # the docs-consistency check, and the staleness-hook contract.
 #
-# build-test runs on every pull request and every push to main, and is a required
-# status check on main. It runs unconditionally because the suite reads files from
-# across the repository, so a PR touching any of them has to run it.
+# build-test runs on every pull request and every push to main. It runs
+# unconditionally because the suite reads files from across the repository, so a
+# PR touching any of them has to run it.
 on:
   pull_request:
   push:
     branches: [main]
 
 jobs:
+  # build-test is a required status check on main (ruleset "main protection").
+  # Renaming this job, or giving the triggers above a paths or paths-ignore filter,
+  # leaves that check pending on every PR and blocks every merge: change the
+  # ruleset in the same change.
   build-test:
     runs-on: ubuntu-latest
     defaults:
@@ -24,6 +28,13 @@ jobs:
         working-directory: cli
     steps:
       - uses: actions/checkout@v7
+      # The file-size and debt-marker gates run as their own steps so that an edit to
+      # package.json's `quality` chain cannot drop them from the required check.
+      # `npm run quality` below still runs them too, for the local command.
+      - run: scripts/check-file-size.sh
+        working-directory: .
+      - run: scripts/check-todos.sh
+        working-directory: .
       # cli/codex_hook_test.go executes the production Codex hook; Phase 1's
       # explicit local hook prerequisite is Node.js >=20 (decision-0058).
       - uses: actions/setup-node@v7
@@ -34,8 +45,12 @@ jobs:
         with:
           go-version: "1.22"
           cache: false  # dependency-free since #120 (x/term retired with the TUI)
+      # The runner image ships ShellCheck (ubuntu-latest was ubuntu-24.04 in
+      # September 2026), so apt runs only when it is missing; skipping it spares the
+      # required check a mirror download. When apt does run, Acquire::Retries
+      # retries a failed package download.
       - name: Install ShellCheck
-        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+        run: command -v shellcheck >/dev/null || { sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install --yes shellcheck; }
         working-directory: .
       - run: npm ci
         working-directory: .
