@@ -104,7 +104,7 @@ footer.composition-signal { margin-top: 3rem; padding-top: .8rem; border-top: 1p
 
 <p><strong>One invariant passes through eight steps</strong> before a session sees it: the catalog entry, a <code>go:generate</code> copy into <code>cli/assets/</code>, parsing in <code>apply.go</code>, rendering by <code>trellis payload</code> into 14 reference files plus checksums, a manifest baked into <code>install.sh</code>, a <code>VERSION</code> bump that release-guard enforces, one of three delivery channels, and reconciliation against the consumer's <code>rules.toml</code>.</p>
 
-<p><strong>Decisions are the rulebook.</strong> AGENTS.md says "The method lives in <code>docs/decisions/</code>, not restated here — a decision is the current truth". Records are append-only and superseded by forward pointer, so learning a current rule can mean walking a chain such as 0011 → 0079 → 0085 → 0097. Code is coupled to the records: tests cite 53 distinct decision ids and read 23 decision files by path, and 63 of the 98 ids are cited somewhere in <code>cli/</code>, the plugin, <code>install.sh</code> or <code>.github/</code>. The corpus grew by 12 records in June, 40 in July, 14 in August and 15 in the first half of September.</p>
+<p><strong>Decisions are the rulebook.</strong> AGENTS.md says "The method lives in <code>docs/decisions/</code>, not restated here — a decision is the current truth". Records are append-only and superseded by forward pointer, so learning a current rule can mean walking a chain such as 0011 → 0079 → 0085 → 0097. Code is coupled to the records: tests name 53 of the 98 ids, mostly in comments and failure messages, and 63 of the 98 ids are cited somewhere in <code>cli/</code>, the plugin, <code>install.sh</code> or <code>.github/</code>. No test opens a decision file by path, since the decision paths in test code are fixture strings, but <code>corpus_conformance_test.go</code> looks up decision-0079, 0091 and 0044 by id in the directory it walks. The corpus grew by 12 records in June, 57 in July, 14 in August and 15 in the first half of September.</p>
 
 <p><strong>Known consumers.</strong> The only record, decision-0081, is a read-only inspection of the maintainer's machine listing this repository, math-quest and six Kodhama repositories. No record gives a count of outside installs. Claude Code cloud sessions receive the rules only when a setup script installs the plugin before launch, or through <code>install.sh</code>'s rendered <code>.claude/rules/trellis.md</code>; the project-scope <code>enabledPlugins</code> setting does not reach cloud (<code>plugins/trellis/README.md</code>).</p>
 
@@ -191,12 +191,12 @@ footer.composition-signal { margin-top: 3rem; padding-top: .8rem; border-top: 1p
       <li><code>direct:</code> AGENTS.md:29-30, "The method lives in <code>docs/decisions/</code>, not restated here — a decision is the current truth, and a summary in this file only goes stale against it."</li>
       <li><code>direct:</code> 53 of 98 records carry a supersession pointer. decision-0089's frontmatter is a "~500-word run-on clause-by-clause diff against two later records". <code>0090:160-162</code>: "That is a decision record with no decision in it".</li>
       <li><code>direct:</code> <code>decision-id-guard.sh:8-11</code>: "It happened three times … Nothing failed on any of them; a human noticed." <code>0089:44-45</code>: a renumber touched "seven files on recurrence #3".</li>
-      <li><code>direct:</code> tests cite 53 distinct decision ids and read 23 decision files by path.</li>
+      <li><code>direct:</code> tests name 53 of the 98 decision ids, mostly in comments and failure messages. No test opens a decision file by path; <code>corpus_conformance_test.go:715</code> reads decision-0079's retired-artifacts table, and <code>:1333-1353</code> pin the <code>depends_on</code> lists of decision-0091 and decision-0044.</li>
       <li><code>external:</code> PEP 1, RFC 9110, Oxide RFD 1, openfactory-core PR #80 (see Sources).</li>
       <li>The maintainer: "Should have more specs and less decisions", and the pattern "was never a choice but something that emerged".</li>
     </ul></dd>
     <dt>Rationale</dt>
-    <dd>An agent learns a current rule by reading one section instead of walking pointers. The admission rule is what stops the corpus growing back: it added 40 records in July, and four records plus about a dozen pointers on 13–14 September alone.</dd>
+    <dd>An agent learns a current rule by reading one section instead of walking pointers. The admission rule is what stops the corpus growing back: it added 57 records in July, and four records plus about a dozen pointers on 13–14 September alone.</dd>
     <dt>Downsides</dt>
     <dd>The migration is large semantic work, and a wrong "spent" call drops a live clause, so each classification needs review. It needs a sweep of the 63 decision ids cited from code and CI. It abandons the append-only-as-truth practice that decision-0015 and decision-0082 rely on. Date-and-slug names are not strictly collision-free, only unlikely to clash once records are rare.</dd>
   </dl>
@@ -227,7 +227,7 @@ disabled = ["inv-minimal-first"]</code></pre><figcaption>After: only the excepti
     </dd>
     <dt>Basis</dt>
     <dd><ul>
-      <li><code>direct:</code> the two postures' rows are byte-identical and the ~8 KB blocks differ by one sentence. <code>0033:22</code>: the posture lean is "descriptive, not enforced (nothing acts on it yet)".</li>
+      <li><code>direct:</code> the two postures' rows are byte-identical and the ~8 KB blocks differ by one sentence. <code>0033:29</code>: the posture lean is "descriptive, not enforced (nothing acts on it yet)".</li>
       <li><code>direct:</code> <code>0083:25</code>: "A single unmatched row cost all sixteen rules, every session, until a human edited the file." <code>0083:47-49</code>: the two causes of an unknown row "are indistinguishable at runtime".</li>
       <li><code>direct:</code> <code>0081:273</code>: "Six consumer repos are still on the 14-row set". <code>.trellis/rules.toml:21-22</code>: floor rows "applies regardless of this row".</li>
       <li><code>direct:</code> research-0012: switching one row off moved behaviour 95 points, so the opt-out works and is worth keeping.</li>
