@@ -13,8 +13,10 @@ execution: code
 ## Goal Capsule
 
 - **Objective:** An agent working in this repository can tell from `AGENTS.md` alone whether its change needs a new decision record and whether it owes dated notes on existing records. From then on new records are rare, and no change adds a partial-supersession chain.
-- **Means:** PR 1 of Simplify Trellis idea 1a (TRL-98) rewrites the operating method in `AGENTS.md` and the surfaces that restate it.
-- **Product authority:** the maintainer, through `trellis-simplify`, who approved these requirements on 2026-09-14. PR 2 of idea 1a (TRL-99) and idea 1b are not active scope.
+- **Means:** PR 1 of Simplify Trellis idea 1a (TRL-98) rewrites the operating method in `AGENTS.md` and the surfaces that restate it (KTD1).
+- **Product authority:** the maintainer, through `trellis-simplify`, who approved these requirements on 2026-09-14. The Product Contract's requirements win on behaviour; the Key Technical Decisions win on mechanism. PR 2 of idea 1a (TRL-99) and idea 1b are not active scope.
+- **Execution profile:** one documentation PR with no code behaviour change, built by the `simplify-1a` session and merged by the maintainer.
+- **Stop conditions:** stop and ask `trellis-simplify` before any change would touch `plugins/trellis/`, add a decision record, or edit `AGENTS.md`'s release line about when installs re-pull.
 - **Open blockers:** none.
 
 ---
@@ -130,28 +132,141 @@ This plan covers PR 1 of idea 1a (TRL-98). The rest is the current understanding
 ### Dependencies / Assumptions
 
 - No Go test reads `decision-0014`, `decision-0015`, `decision-0040` or `decision-0082` by path or pins their lines, and no file outside `docs/` cites their line numbers (grep, 2026-09-14). So PR 1's notes break no test and force no edit under `plugins/trellis/`.
-- Inside `docs/`, the records `decision-0081`, `decision-0092`, `decision-0097`, `decision-0098`, `decision-0099` and `decision-0100` cite line numbers of those four records, and so do three plans (grep, 2026-09-14). The plans stay; the live citations in the records are R10's work in PR 1.
+- Inside `docs/`, the only line citations into the records PR 1 notes (KTD3) are `decision-0081`'s citations of `decision-0040`, which that record dates to 2026-08-28 in its own header, and one citation of `decision-0082` in a plan (grep, 2026-09-14). Both are history under R10, so PR 1 corrects no citation.
 - `trellis-simplify` counts at least 153 `decision-NNNN:line` citations across the repository, some in `cli/` tests, `install.sh` and `plugins/trellis/`. A later PR whose note shifts a record cited under `plugins/trellis/` therefore edits the payload, and `AGENTS.md` makes that a release that bumps `VERSION`.
 - `cli/artifact_contract_guard_test.go` pins each rubric check's text by digest, so rewording check 7 means updating its outcome rows in the same PR.
-
-### Outstanding Questions
-
-**Deferred to planning**
-
-- The exact wording in `AGENTS.md`, and which real changes serve as the example on each side of the test.
-- How a reader tells a live citation from a dated inventory inside a record, so R10 is applied the same way by every PR.
-- The full set of records R14 reaches. Known candidates:
-  - `decision-0040` point 5, which introduced partial supersession
-  - `decision-0082` point 3, where supersession is marked by the forward pointer, including the partial form
-  - `decision-0014`'s criterion that every "significant invariant change" gets a record
-  - `decision-0015`'s open question on whether an appended block counts as an edit
-- The full set of surfaces R15 reaches, including whether `profiles/trellis-self.md`'s evidence cell "`docs/decisions/` append-only" still holds.
-- How PR 1's own dated notes cite a PR number that exists only once the PR is open.
 
 ### Sources
 
 - Ideation, idea 1: `docs/ideation/2026-09-14-repo-simplification-ideation.html` (PR #311) and the Linear document "Ideation: simplifying the Trellis repository".
 - `AGENTS.md:29-36` (operating method) and `:48-51` (the supersede, retire and record rows).
 - `decision-0081:17` (heading), `:154-164` (retirement by successor record), `:324-329` (proposed directive).
-- `decision-0082` Decision point 3; `decision-0040` Decision point 5; `decision-0092:16-17` (the 2026-09-05 ruling); `decision-0097` point 5 (plans are history); `decision-0014` Decision bullet 2; `decision-0015:125-135` (open question).
+- `decision-0082` Decision point 3; `decision-0040` Decision point 5; `decision-0092:16-17` (the 2026-09-05 ruling); `decision-0097` point 5 (plans are history); `decision-0014` Decision bullet 2; `decision-0015:117-135` (the rename-sweep rule and its open question).
 - `docs/rubrics/artifact-contract.md` check 7; `cli/corpus_conformance_test.go` check 7b.
+
+---
+
+## Planning Contract
+
+**Product Contract preservation:** requirements, Key Decisions and Acceptance Examples unchanged. Changed by planning evidence, with no scope change: the Goal Capsule gains execution profile and stop conditions; the second Dependencies bullet now states which citations exist (planning found none that PR 1 must correct); the deferred planning questions are resolved below and their list is removed.
+
+### Key Technical Decisions
+
+- KTD1. **`AGENTS.md` states the decision-record method in one block inside `## Operating method`, replacing the opening paragraph and the supersession sentence.** The rules must be readable in one place (Success Criteria), and the current paragraph at `AGENTS.md:29-31` is what reviewers read as forbidding dated notes: on #312 a Codex review took *"append-only: you supersede with a forward pointer, never edit"* as barring them. The new block says in plain words that a dated note is the only text added to a record, and that a record's original text is never rewritten except for the live line-citation corrections R10 requires. The table rows keep their shape; the supersede and record rows point at the block, and the record row keeps its id-reservation clause for PR 2. Nothing in the `## Checks and review` section changes, including the release line.
+- KTD2. **A record's notes read oldest first.** A later note goes below the notes already under the title, so the note directly under the title is always the first, and parallel PRs that both add notes conflict at one predictable place. R5 places notes directly under the title; this fixes their order among themselves.
+- KTD3. **PR 1 notes three records: `decision-0014`, `decision-0040` and `decision-0082`.** Each states a rule PR 1 changes:
+  - `decision-0014`'s second Decision bullet and its Consequence make every change to an invariant's meaning or structure a record; R1's test now decides.
+  - `decision-0040` point 5 made `superseded_in_part_by` the way to mark partial supersession; R7 and R8 retire it for new work.
+  - `decision-0082` point 3 marks partial supersession by that pointer; R8 marks it by a dated note.
+
+  Checked and left without a note:
+  - `decision-0015`: its open question on appended blocks is answered, but nothing it states becomes untrue, and a note would shift the rename-sweep rule at lines 117-121 that five live records cite.
+  - `decision-0018:142`: it restates `decision-0014` inside a dated aside and cites it by id, so a reader lands on `decision-0014`'s note.
+  - `decision-0081`: its test moves into `AGENTS.md`, but its own claims are about who may retire a record, which PR 1 does not change.
+  - `decision-0089` and `decision-0092`: their "successor record" sentences are a dated note and a quoted ruling, not rules.
+- KTD4. **R15 reaches `README.md` and rubric check 7, and nothing else outside `docs/decisions/`.** Two surfaces change:
+  - `README.md:301` and `README.md:326-331` describe this repository's own records.
+  - Rubric check 7 describes partial supersession only by `superseded_in_part_by`.
+
+  Checked and unchanged:
+  - `profiles/trellis-self.md:105`: "`docs/decisions/` append-only" still holds, because append-only guarantees a record's decisions are not re-made, not that its bytes never change (`decision-0015:117-121`), and dated notes add text without re-making anything.
+  - The catalog, `cli/assets/invariants.md`, `site/invariants.html` and the plugin reference: their "append-only decision records" signatures describe a consumer project's own ADR practice and ship to consumers.
+  - `core/invariants/trellis-invariants-v1.md`, rubric line 71 and check 7's exemption: they concern retired-id resolution and dependencies of append-only records, which still hold.
+  - Comments in `cli/` tests and the `cli/testdata/known-bad/` fixtures: they exercise existing checks.
+- KTD5. **A line citation is live unless it sits in a plan or in a dated inventory.** A dated inventory is a passage that reports what was true on a stated date: a sweep table, a self-check count, a dated note, or a whole record that dates its own citations, as `decision-0081`'s header does. `AGENTS.md` carries this test with R10's rule, so every PR applies R10 the same way.
+- KTD6. **PR 1's notes cite the PR number the repository will assign next.** The number is read from the repository just before the PR opens. If another PR takes it first, a follow-up commit on the branch corrects the three notes before review. `TRL-98` is known now.
+- KTD7. **Check 7 gains one sentence and keeps its opening words.** The sentence says new partial retirements are dated notes (`AGENTS.md`) and existing `superseded_in_part_by` entries still resolve. `cli/artifact_contract_guard_test.go` finds checks by the literal `7. **Supersede integrity.**`, so that stays. The check's digest in `cli/corpus_conformance_test.go` is updated after rows 7a-7c are re-read against the new text; they stay accurate, because the Go check still resolves existing pointers and checks nothing about notes.
+- KTD8. **No new Go test.** The admission test, the note shape and the citation rule are reviewer judgment (Scope Boundaries), and idea 4 plans to delete corpus guards, not add them. The existing suite covers what PR 1 can break: the artifact-contract guard (check 7's text), the corpus conformance tests (the three notes keep frontmatter first and sections intact), the docs-consistency tests (`AGENTS.md` and `README.md` claim no command that does not exist) and the self-apply test (`AGENTS.md` keeps its routing statements and headings).
+
+### Assumptions
+
+- The PR number read just before opening is still free when the PR opens; KTD6's follow-up commit covers the case where it is not.
+- simplify-2 and simplify-6 may add notes to records PR 1 also notes. A conflict resolves by merging `origin/main` into the branch and ordering the notes per KTD2.
+- The docs-consistency test treats `trellis` followed by a lowercase word, and a `/trellis:` skill name, in `AGENTS.md` and `README.md` as a command claim (`cli/docs_consistency_test.go:166-167`). New prose avoids both forms except for real commands.
+
+### Sequencing
+
+U1 first, because U3's notes name the `AGENTS.md` block U1 writes. U2 does not depend on either.
+
+---
+
+## Implementation Units
+
+### U1. Rewrite the decision-record method in AGENTS.md
+
+- **Goal:** `AGENTS.md` alone tells an agent whether a change needs a record, whether it owes dated notes, and how to write them.
+- **Requirements:** R1-R12; Key Decisions governing R1, R2, R3, R5, R6, R8, R9, R10, R11 and R12; KTD1, KTD5.
+- **Dependencies:** none.
+- **Files:** `AGENTS.md`.
+- **Approach:**
+  1. Replace `AGENTS.md:29-31` with the block KTD1 describes, in this order: current truth (R11, R12), the admission test with its examples and the ask-when-unsure line (R1-R3), where reasoning goes and the PR-body list (R4), and dated notes with the shape word for word, the sentence KTD1 specifies (a dated note is the only text added, and original text is never rewritten except for R10's citation corrections), the placement and order (KTD2) and the citation rule with KTD5's test (R5, R6, R9, R10).
+  2. Replace the supersession sentence at `AGENTS.md:35-36` with R7 and R8: full retirement keeps `superseded_by`, partial retirement is a dated note, and no new `superseded_in_part_by`. Keep the rest of that paragraph, about the `status` field, as it is.
+  3. Point the "supersede a record" and "record a significant choice" table rows at the block. Keep the record row's id-reservation clause and the `decision-0081` and `decision-0074` citations in the retire row.
+- **Patterns to follow:** the iron rule's "every abstract instruction carries at least one concrete example"; the existing table-row style (verb phrase, then citations).
+- **Test scenarios:**
+  - Covers AE3. An agent reading only `AGENTS.md` classifies a change to how the session-start hook reconciles `.trellis/rules.toml` as a record, and a rewording of the hook's error message as no record.
+  - Covers AE1. The same agent classifies deleting a CI path filter as no record plus dated notes, listed in the PR body.
+  - Covers AE7. The block says a note names `AGENTS.md`, code, a test or workflow, a rubric or a record, never a plan or PR body.
+  - The self-apply test still finds `# Trellis — operating method`, `## Operating method` and the six routing statements in the maintaining-instructions section.
+  - The docs-consistency test finds no `trellis <word>` or `/trellis:<name>` form that names a command the code lacks.
+- **Verification:** the diff touches only the operating-method paragraph, the supersession sentence and two table rows; the release line and `## Checks and review` are unchanged.
+
+### U2. Update README.md and rubric check 7
+
+- **Goal:** the two restatements outside `docs/decisions/` match the new method.
+- **Requirements:** R15; KTD4, KTD7.
+- **Dependencies:** none.
+- **Files:** `README.md`, `docs/rubrics/artifact-contract.md`, `cli/corpus_conformance_test.go`.
+- **Approach:**
+  1. `README.md:301`: the repo-map row describes the records without claiming supersession is only by pointer.
+  2. `README.md:326-331`: the "How we work" sentence says decisions are rare, keep their text, and are marked by dated notes or `superseded_by`, pointing to `AGENTS.md`.
+  3. Rubric check 7: add the sentence KTD7 names.
+  4. Update check 7's digest in the outcome table after re-reading rows 7a-7c.
+- **Execution note:** edit the rubric first and run the artifact-contract tests to see check 7's digest fail, then update the digest; the failing run is the evidence the pin still bites.
+- **Patterns to follow:** earlier rubric rewords that updated a check's digest with its rows in the same change (`decision-0098`, `TRL-95`).
+- **Test scenarios:**
+  - After the rubric edit and before the digest update, the artifact-contract guard fails naming rubric check 7.
+  - After the digest update, the artifact-contract guard and the corpus conformance tests pass.
+  - The docs-consistency test passes on the changed `README.md`.
+- **Verification:** check 7 still opens with `7. **Supersede integrity.**`, and rows 7a-7c are unchanged in text.
+
+### U3. Add dated notes to the three records
+
+- **Goal:** readers of `decision-0014`, `decision-0040` and `decision-0082` see which point no longer holds and where the current rule is.
+- **Requirements:** R5, R9, R10, R12, R13, R14; KTD2, KTD3, KTD6. Covers AE5.
+- **Dependencies:** U1.
+- **Files:** `docs/decisions/0014-invariants-spec-vs-decisions.md`, `docs/decisions/0040-reverse-ports-from-instance-1.md`, `docs/decisions/0082-retire-the-status-field.md`.
+- **Approach:**
+  1. Under each title heading, add one note in R5's shape: `TRL-98`, the PR number per KTD6, the point that no longer holds (KTD3), and `AGENTS.md`'s operating-method block as where the rule is stated now.
+  2. Run the line-citation search once more for the three records and apply R10 to anything live. The planning search found only history (Dependencies / Assumptions).
+- **Patterns to follow:** the note shape simplify-2 and simplify-6 use in their PRs, which R5 fixes.
+- **Test scenarios:**
+  - Covers AE5. `decision-0040`'s diff is additions only: the note and its surrounding blank lines, with point 5's text unchanged.
+  - The corpus conformance tests pass on all three records: frontmatter still opens each file, and the Context, Decision and Consequences sections are still found.
+- **Verification:** `git diff` for each record shows added lines only, and each note is a single paragraph that names one point and `AGENTS.md`.
+
+---
+
+## Verification Contract
+
+| Check | Command | Proves |
+| --- | --- | --- |
+| Build and typecheck | `go -C cli build ./... && go -C cli vet ./...` | nothing in `cli/` broke |
+| Full Go suite | `go -C cli test -count=1 ./...` | self-apply, docs-consistency and hook tests still pass |
+| Corpus conformance | `go -C cli test -count=1 -run TestCorpusConform .` | the three notes keep their records conformant |
+| Rubric pin | `go -C cli test -count=1 -run TestArtifactContract .` | check 7's new text is pinned by its updated digest |
+| Repository quality | `npm run quality` | formatting, static analysis, file size, TODO markers and the plugin smoke test |
+| Payload untouched | `git diff --stat origin/main...HEAD -- plugins/trellis`, after U1-U3 are committed | no release, no `VERSION` bump |
+| Records additive | `git diff origin/main...HEAD -- docs/decisions`, after U1-U3 are committed | added lines only |
+
+A reviewer confirms the judgement parts: AE1-AE8 can be answered from `AGENTS.md` alone.
+
+---
+
+## Definition of Done
+
+- U1, U2 and U3 are in the branch, and every command in the Verification Contract passes.
+- No file under `plugins/trellis/` changed, and no decision record was added.
+- The PR body lists `decision-0014`, `decision-0040` and `decision-0082` as the records it notes, and states that no line citation needed correcting.
+- The PR body names the maintainer's rulings it rests on and lists the calls made without asking.
+- No leftover edits from abandoned attempts remain in the diff.
