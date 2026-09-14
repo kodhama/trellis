@@ -32,7 +32,7 @@ A Go test in `cli/` applies the mechanically decidable parts of rubric checks 1�
 
 ### Problem Frame
 
-Conformance of `docs/decisions/`, `docs/research/`, `core/` and `profiles/` to `core/rubrics/artifact-contract.md` is applied today by `corpus-reviewer`, an LLM sub-agent that `AGENTS.md` asks authors to invoke before merging. Nothing runs it automatically. `cli-ci`'s paths filter does not include `decisions/` or `research/` (`.github/workflows/cli-ci.yml:31,34`), and the agent reports in prose, so a skipped or misread run leaves no trace.
+Conformance of `docs/decisions/`, `docs/research/`, `core/` and `profiles/` to `docs/rubrics/artifact-contract.md` is applied today by `corpus-reviewer`, an LLM sub-agent that `AGENTS.md` asks authors to invoke before merging. Nothing runs it automatically. `cli-ci`'s paths filter does not include `decisions/` or `research/` (`.github/workflows/cli-ci.yml:31,34`), and the agent reports in prose, so a skipped or misread run leaves no trace.
 
 The agent's reading has also drifted from the contract. TRL-60 review found the charter and the rubric disagreeing in eight places (`cli/artifact_contract_guard_test.go`, header comment). The agent has repeatedly reported `docs/decisions/0044-cross-repo-depends-on-convention.md:5` as a FAIL (the self-check in `docs/decisions/0092-a-claim-is-a-new-record-path.md`), although the rubric's check 4 accepts a `<repo>/<id>` reference on shape and registry membership alone.
 
@@ -92,7 +92,7 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
 - KTD4. **Registries are found by artifact id, not by path.** Retired ids come from the Identifiers section of the artifact whose id is `invariants-v1`, and from the §3a table of `decision-0079`. Check 8's slug coverage is not re-derived here: `TestRowSetDerivativesFollowThePin` already fails when the catalog or the invariant set differs from the pinned slug set (Check outcomes, 8a and 8d).
 - KTD5. **Finding contract.** One finding per violation, as `<path>:<line>: check <N> (<rule-id>): <detail>`. A missing section is one finding per section. A dangling supersession pointer is a check 7 finding, not a check 4 one. Findings are collected over the whole corpus first and reported per check in subtests, so `go test -v` shows PASS or FAIL for each check.
 - KTD6. **Halt policy.** The run halts only when a shared input is missing or unparseable: a corpus root that is absent or holds no artifacts, a rubric enumeration marker, a registry artifact or its table, or a catalog's entries section when a profile needs it. A problem inside one file, such as malformed frontmatter or a missing heading, is a finding, so one bad file never hides the others.
-- KTD7. **The positive control is a standalone fixture corpus on disk.** `core/fixtures/known-bad/` holds a small self-contained corpus with its own `invariants-v1`, `decision-0079`, catalog and profile. It contains seeded violations and deliberately valid constructs. The expected findings live in Go as an exact multiset keyed by file, rule id and the detail the finding names (the missing field or section, the dangling reference, the slug or the pair position), so two findings of one rule in one file are each required. This was chosen over in-memory mutations of live artifacts, because a mutation breaks whenever unrelated live text changes, and because the rubric already names `core/fixtures/` as its positive control. `core/fixtures/known-bad.md` moves into the new directory.
+- KTD7. **The positive control is a standalone fixture corpus on disk.** `cli/testdata/known-bad/` holds a small self-contained corpus with its own `invariants-v1`, `decision-0079`, catalog and profile. It contains seeded violations and deliberately valid constructs. The expected findings live in Go as an exact multiset keyed by file, rule id and the detail the finding names (the missing field or section, the dangling reference, the slug or the pair position), so two findings of one rule in one file are each required. This was chosen over in-memory mutations of live artifacts, because a mutation breaks whenever unrelated live text changes, and because the rubric already names `cli/testdata/` as its positive control. `cli/testdata/known-bad.md` moves into the new directory.
 - KTD8. **The outcome table is enforced data.** The check carries one row per rule from Check outcomes below, keyed by rule id, or by clause name for the three unnumbered rows. Each row carries one of the table's outcomes (implemented, accepts, halts, covered, dropped, guidance, no rule, retired) and its reason.
   - An implemented rule reports findings and needs at least one seeded violation in the expected set.
   - An accepts rule only accepts or exempts input and needs a deliberately valid fixture construct that yields no finding.
@@ -156,9 +156,9 @@ The maintainer accepted these outcomes on 2026-09-14, including every dropped an
 
 ```mermaid
 flowchart TB
-  RUB[core/rubrics/artifact-contract.md] -->|check 6 rows, repo registry| ENG
+  RUB[docs/rubrics/artifact-contract.md] -->|check 6 rows, repo registry| ENG
   ROOTS[corpus roots declaration] --> LOAD[loader: frontmatter, headings, typed sections]
-  FIX[core/fixtures/known-bad/] --> LOAD
+  FIX[cli/testdata/known-bad/] --> LOAD
   LOAD --> ENG[rules: checks 1-11]
   ENG --> LIVE[live test: zero findings, one subtest per check]
   ENG --> CTRL[control test: exact expected findings]
@@ -189,10 +189,10 @@ cli/
   corpus_conformance_test.go          new: roots, loader, rules, live and control tests
   corpus_conformance_typed_test.go    new, optional split for checks 8-11
   artifact_contract_guard_test.go     rewritten
-core/fixtures/
+cli/testdata/
   README.md                           rewritten
   known-bad/                          new: standalone fixture corpus
-    known-bad.md                      moved from core/fixtures/
+    known-bad.md                      moved from cli/testdata/
 docs/decisions/
   0098-artifact-conformance-is-a-ci-check.md   new
 .claude/agents/corpus-reviewer.md     deleted
@@ -230,7 +230,7 @@ These are calls made without a user present, each with its default taken. The ma
 
 ### Sources and research
 
-- `.claude/agents/corpus-reviewer.md`, `core/rubrics/artifact-contract.md`, `core/schemas/typed-artifacts.md`, `core/fixtures/README.md`
+- `.claude/agents/corpus-reviewer.md`, `docs/rubrics/artifact-contract.md`, `core/schemas/typed-artifacts.md`, `cli/testdata/README.md`
 - `cli/artifact_contract_guard_test.go`, `cli/ci_paths_guard_test.go` (read-path forms), `cli/row_set_guard_test.go`, `cli/selfapply_test.go:177-210`, `cli/docs_consistency_test.go:163-192`, `cli/apply.go` (`catalogSlugOrder`)
 - `docs/decisions/0010`, `docs/decisions/0028`, `docs/decisions/0076` (point 6), `docs/decisions/0079` (§3a), `docs/decisions/0082`, `docs/decisions/0089` (Consequences), `docs/decisions/0092` (Self-check)
 - `.github/workflows/cli-ci.yml:11-34`, `.github/workflows/decision-id-guard.yml:15-16`, `.github/workflows/repo-hygiene.yml:3-8`
@@ -250,12 +250,12 @@ These are calls made without a user present, each with its default taken. The ma
 
 **Files:**
 - Create `cli/corpus_conformance_test.go`.
-- Create fixture files for checks 1–7 under `core/fixtures/known-bad/`, and move `core/fixtures/known-bad.md` into it.
+- Create fixture files for checks 1–7 under `cli/testdata/known-bad/`, and move `cli/testdata/known-bad.md` into it.
 - Create the fixture registries there: an `invariants-v1` artifact with an Identifiers section, and a `decision-0079` artifact with a retired-artifacts table (KTD4).
-- Modify `.github/workflows/cli-ci.yml`: both `paths` lists gain `decisions/**`, `research/**`, `core/schemas/**`, `core/lexicon.md` and `core/fixtures/**`.
+- Modify `.github/workflows/cli-ci.yml`: both `paths` lists gain `decisions/**`, `research/**`, `core/schemas/**`, `core/lexicon.md` and `cli/testdata/**`.
 
 **Approach:**
-1. Declare the corpus roots per KTD2, with `core/fixtures/` outside them.
+1. Declare the corpus roots per KTD2, with `cli/testdata/` outside them.
 2. Load each root's Markdown files with line numbers, parsing per KTD10 and KTD9.
 3. Read check 6's rows and the registry list from the rubric (KTD3).
 4. Implement rules 1a–7c per Check outcomes, with findings per KTD5 and halts per KTD6.
@@ -298,7 +298,7 @@ These are calls made without a user present, each with its default taken. The ma
 
 **Files:**
 - Modify `cli/corpus_conformance_test.go`, or create `cli/corpus_conformance_typed_test.go` if the split reads better.
-- Create a fixture catalog and a fixture profile under `core/fixtures/known-bad/`.
+- Create a fixture catalog and a fixture profile under `cli/testdata/known-bad/`.
 
 **Approach:**
 1. Read catalog entries between `## Entries` and the next H2. Join each two-space field bullet with its continuation lines, strip bolding, and split combined lines on `·`.
@@ -384,13 +384,13 @@ These are calls made without a user present, each with its default taken. The ma
 
 **Dependencies:** U3, U4.
 
-**Files:** modify `core/rubrics/artifact-contract.md`, `AGENTS.md`, `core/README.md`, `core/fixtures/README.md`, `.github/workflows/repo-hygiene.yml`, `.github/workflows/decision-id-guard.yml` and `eval/experiments/annotation-vs-absence/README.md`.
+**Files:** modify `docs/rubrics/artifact-contract.md`, `AGENTS.md`, `core/README.md`, `cli/testdata/README.md`, `.github/workflows/repo-hygiene.yml`, `.github/workflows/decision-id-guard.yml` and `eval/experiments/annotation-vs-absence/README.md`.
 
 **Approach:**
 1. Rubric (A7, KTD13): the **Derived resource** paragraph names the check and the guard, keeping the `**Derived resource` and **Corpus:** markers; a short note says this repository enforces the contract with a Go test (`decision-0098`); `depends_on` gains `decision-0098`. The header blockquote, `## How it is graded` and the "applied by an agent with no runtime" criterion keep their consumer-facing agent wording, and the text of checks 1–12 is unchanged.
 2. `AGENTS.md`: the conformance bullet under "Checks and review" says conformance is CI-applied (`decision-0098`), gives the local test command, and states the two review-guidance rules (Check outcomes 5d and 10b) in one sentence each, citing rubric checks 5 and 10 (KTD11).
 3. `core/README.md`: artifact conformance runs as the check; conformance of code to its authorizing decision stays uncovered.
-4. `core/fixtures/README.md`: describes the fixture corpus and points at the expected set in Go, replacing the prose answer key.
+4. `cli/testdata/README.md`: describes the fixture corpus and points at the expected set in Go, replacing the prose answer key.
 5. `repo-hygiene.yml`: the header comment stops saying `research/` and `decisions/` are outside `cli-ci`.
 6. The eval README gains a pointer to `decision-0098` after "corpus-reviewer PASS" (A12).
 7. `decision-id-guard.yml`: the header comment stops saying `main` has no branch protection, and says instead that the guard is not among `main`'s required status checks, so a red does not block a merge (A9).

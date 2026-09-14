@@ -93,7 +93,7 @@ both plugin manifests. See Consequences for why this is not deferrable.
   `install.sh` bundle manifest → the invariant scorecard, plus the preset rows in
   `rules-a.toml` / `rules-b.toml` and this repo's own `.trellis/rules.toml` (**without a row the rule
   ships but is inactive**) — and the **contract** chain: `spec-0007`'s canonical inventory (`version`
-  2 → 3), `spec-0002` §1 check 2 + AC1, `core/rubrics/artifact-contract.md`, the `corpus-reviewer`
+  2 → 3), `spec-0002` §1 check 2 + AC1, `docs/rubrics/artifact-contract.md`, the `corpus-reviewer`
   checklist, and `profiles/trellis-self.md`. **The catalog's own derivatives note named only three of
   them** and now names the row-set chain, because the note not naming them is the mechanism by which
   `decision-0074`'s author missed four.

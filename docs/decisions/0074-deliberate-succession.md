@@ -120,7 +120,7 @@ architecture (backward) — both named above.
   inline-block sandwiches → `checksums` → `version` stamp → `install.sh` bundle manifest → the
   invariant scorecard, plus the preset rows in `rules-a.toml` / `rules-b.toml` (without a row the
   rule ships but is inactive) — and the **contract** chain: `spec-0007`'s canonical slug inventory
-  and its activation-row predicate, `spec-0002` §1 check 2 + AC1, `core/rubrics/artifact-contract.md`,
+  and its activation-row predicate, `spec-0002` §1 check 2 + AC1, `docs/rubrics/artifact-contract.md`,
   and the `corpus-reviewer` checklist. Miss the second and the gate instructs its reader to expect
   fourteen. `spec-0007` takes a `version` bump: its inventory is a testable clause.
 - **An existing curl install upgrades into a false all-clear** (trellis#241, found by the review

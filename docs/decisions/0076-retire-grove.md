@@ -58,7 +58,7 @@ date: 2026-08-27
 - **Several artifacts point at a *carrier* that is gone — not at content that is gone.**
   `spec-0001:90` states the versioning contract as *"shape only"* and delegates the semantics to
   *"the grove versioning companion, now plugin-carried … their single home, deliberately not
-  restated here."* `core/rubrics/artifact-contract.md:91` and `.claude/agents/corpus-reviewer.md`
+  restated here."* `docs/rubrics/artifact-contract.md:91` and `.claude/agents/corpus-reviewer.md`
   delegate the same way. `ac63e7c` (2026-07-22, adr-0026 D7) deleted the vendored copies in favour
   of the plugin — sound at the time — and the plugin's removal left those pointers naming a carrier
   that no longer exists. **The content is fine:** grove's charters are readable in the repo —
@@ -91,7 +91,7 @@ the single most consequential line in the change.
 **2. Grove-the-repo remains a cited source, and nothing citing it changes.** `grove/adr-00NN`
 references, `spec-0001:5`'s `depends_on`, `decision-0045:7`'s `superseded_in_part_by`, the amendment
 banners across `docs/research/` and `specs/`, and grove's entry in the recognized-repo registry
-(`spec-0001:97`, `core/rubrics/artifact-contract.md:39`) all stand. **Uninstalling a plugin is not a
+(`spec-0001:97`, `docs/rubrics/artifact-contract.md:39`) all stand. **Uninstalling a plugin is not a
 statement about a repository.** Conflating the two would have rewritten append-only history to
 record a tooling change, which `decision-0042` forbids ("no relabel — that would forge history for
 zero information gain").
@@ -133,7 +133,7 @@ entrypoint-adapter principle stand. The forward pointer goes on `spec-0006`; its
 intact, exactly as `decision-0071` handled the same spec's AC3/AC4.
 
 **5. The stale carrier-pointers in ratified artifacts are named and parked, not rewritten here.**
-`spec-0001:90` and `core/rubrics/artifact-contract.md:91` describe the companion as
+`spec-0001:90` and `docs/rubrics/artifact-contract.md:91` describe the companion as
 *plugin-carried*, which is no longer true. Both are **ratified** (the rubric is `owner: gundi`), and
 this record deliberately does not edit them: repairing an approved spec and a ratified product
 rubric under cover of a retirement PR is the move `inv-deliberate-succession` names as resolving a
@@ -200,7 +200,7 @@ forbids. Declaring it is the fix; the rule itself stands.
 ## Open questions
 
 - **Who repairs the ratified carrier-pointers, and when?** `spec-0001:90` and
-  `core/rubrics/artifact-contract.md:91` still describe the companion as *plugin-carried*. The
+  `docs/rubrics/artifact-contract.md:91` still describe the companion as *plugin-carried*. The
   content is readable at `kodhama/grove/charters/{versioning,relations}.md`, so the repair is a
   re-citation rather than a decision about where semantics belong — but it touches an approved spec
   and a ratified rubric, so it is the maintainer's call, not an agent's. **Take all four, not just
