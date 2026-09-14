@@ -45,9 +45,10 @@ jobs:
         with:
           go-version: "1.22"
           cache: false  # dependency-free since #120 (x/term retired with the TUI)
-      # The ubuntu-24.04 runner image ships ShellCheck, so apt runs only when it is
-      # missing; skipping it spares the required check a mirror download. When apt
-      # does run, Acquire::Retries retries a failed package download.
+      # The runner image ships ShellCheck (ubuntu-latest was ubuntu-24.04 in
+      # September 2026), so apt runs only when it is missing; skipping it spares the
+      # required check a mirror download. When apt does run, Acquire::Retries
+      # retries a failed package download.
       - name: Install ShellCheck
         run: command -v shellcheck >/dev/null || { sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install --yes shellcheck; }
         working-directory: .
