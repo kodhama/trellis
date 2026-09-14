@@ -134,8 +134,8 @@ const (
 	// decision-0053's "tested wording is the shipped wording" does not reach
 	// these bytes, and the reason is stronger than "a marker is not prose": the
 	// experiment assembled its tested context from the INLINE-channel files
-	// (annotation-vs-absence/run.sh:116-126) and only copied trellis-a.md to
-	// disk (:101), so renderHeader's tail was never in it. Nothing validated
+	// (annotation-vs-absence/run.sh:128-138) and only copied trellis-a.md to
+	// disk (:113), so renderHeader's tail was never in it. Nothing validated
 	// moves here anyway — the marker is appended after every sentence, none
 	// reworded. See TestCodexBootstrapBoundaryIsMachineOwned for the full
 	// citation. decision-0058's "a small, stable loaded-context sentinel" is

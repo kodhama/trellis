@@ -72,16 +72,19 @@ run_arm() {  # $1 arm (baseline|trellis)  $2 idx
   # +Trellis arm only: apply the overlay, inlined into AGENTS.md so both subagent and claude -p
   # workers see the directives (an @import wouldn't resolve for a bare subagent worker).
   # Mechanical copy of the pre-rendered payload — the manual copy path (kodhama-0007
-  # rule 2; the CLI's setup command retired in #120), posture a.
+  # rule 2; the CLI's setup command retired in #120). This arm measures what Trellis
+  # ships: the one header, the whole inline block, and a new project's rules file — a
+  # comment plus an empty [rules] table, so every rule applies (TRL-97 retired the
+  # posture presets this arm used to copy).
   if [ "$arm" = "trellis" ]; then
     local ref="$ROOT/plugins/trellis/reference"
     mkdir -p "$dir/.trellis/internal"
     cp "$ref/invariants.md" "$dir/.trellis/internal/invariants.md"
     cp "$ref/rules.md"      "$dir/.trellis/internal/rules.md"
-    cp "$ref/trellis-a.md"  "$dir/.trellis/internal/trellis.md"
+    cp "$ref/trellis.md"    "$dir/.trellis/internal/trellis.md"
     cp "$ref/version"       "$dir/.trellis/internal/version"
-    cp "$ref/rules-a.toml"  "$dir/.trellis/rules.toml"
-    { [ -s "$dir/AGENTS.md" ] && printf '\n'; cat "$ref/block-inline-a.md"; printf '\n'; } >> "$dir/AGENTS.md"
+    printf '%s\n' '# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }' '[rules]' > "$dir/.trellis/rules.toml"
+    { [ -s "$dir/AGENTS.md" ] && printf '\n'; cat "$ref/block-inline.md"; printf '\n'; } >> "$dir/AGENTS.md"
   fi
   local base="$OUTDIR/$FRAMEWORK/$(basename "$TASK" .md)/$arm-$i"
   mkdir -p "$(dirname "$base")"
