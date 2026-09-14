@@ -107,9 +107,14 @@ and CI (`decision-0075`).
   contract's rules take judgment, and the reviewer of a corpus change applies them:
   - **A coupling is not provenance** (rubric check 5, `decision-0047`): a source the artifact's
     correctness is contingent on belongs in `depends_on`, and an `informed_by` edge that is really
-    such a coupling is non-conformant.
+    such a coupling is non-conformant. *Example:* `decision-0098` keeps `decision-0082` in
+    `depends_on`, because it drops rule 5b on 0082's authority; `research-0010`'s edge to
+    `decision-0029` is provenance, so it sits in `informed_by` (TRL-57).
   - **Evidence shows the tell** (rubric check 10): a profile row's `evidence` must actually show
     the tell its verdict claims, because the check confirms only that the field is present.
+    *Example:* when `decision-0098` deleted `.claude/agents/corpus-reviewer.md`, four
+    `profiles/trellis-self.md` rows still cited it as evidence. The check passed them, since each
+    cell was non-empty; review had to re-point them.
 - **Branch names are `<category>/<slug>`** — `decision/0075-linear-tracks-the-work`, `research/…`,
   `fix/…`. Since the Linear migration, `feature/*` branches also carry the issue key
   (`feature/trl-22-…`), so **whether a branch is findable by issue number depends on its category**:
