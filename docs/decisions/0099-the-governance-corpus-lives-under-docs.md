@@ -4,6 +4,7 @@ type: decision
 depends_on: [decision-0015, decision-0092, decision-0097]
 changes: [decision-0092]
 informed_by: [decision-0005, decision-0028, decision-0040, decision-0076, decision-0082, decision-0089]
+superseded_in_part_by: [decision-0098]  # decision-0098: 2026-09-14 — ONE Consequences bullet ONLY: "The artifact contract's corpus paragraph and `corpus-reviewer`'s charter name the new paths together, because `cli/artifact_contract_guard_test.go` compares them." decision-0098 deletes the charter, and that guard now compares the rubric's corpus paragraph with corpusRoots in cli/corpus_conformance_test.go. STANDS: every Decision point, 1 to 8, every other Consequences bullet, and the Not decided here list.
 owner: agent
 date: 2026-09-14
 ---

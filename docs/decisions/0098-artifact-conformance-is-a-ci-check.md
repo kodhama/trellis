@@ -1,8 +1,8 @@
 ---
 id: decision-0098
 type: decision
-depends_on: [decision-0007, decision-0010, decision-0047, decision-0076, decision-0082, decision-0089, decision-0097, schema-typed-artifacts]  # coupling under decision-0047's test. 0010, 0076 and 0089 are the records superseded in part, and 0010's fourth Decision bullet is the authority for point 1. 0082 is why 5b is dropped, and 0047 is why 5d is judgment rather than code (point 2). schema-typed-artifacts fixes C2's three values, which point 7's framing rests on. 0007's review workflow and 0097's ce-code-review are the gatekeeper point 7 names, and ce-code-review's standards reviewer is why the guidance lives in AGENTS.md (point 2)
-changes: [decision-0010, decision-0076, decision-0089, profile-trellis-self, rubric-artifact-contract]  # the rubric is here and not in depends_on, although points 2 and 6 read its check text. This change adds decision-0098 to the rubric's depends_on, and rubric check 5 calls "an artifact both depending on its authorizing decision and named in that decision's changes:" a benign pair, not a cycle. A depends_on edge back from this record would be the cycle
+depends_on: [decision-0007, decision-0010, decision-0047, decision-0076, decision-0082, decision-0089, decision-0097, decision-0099, schema-typed-artifacts]  # coupling under decision-0047's test. 0010, 0076, 0089 and 0099 are the records superseded in part, and 0010's fourth Decision bullet is the authority for point 1. 0082 is why 5b is dropped, and 0047 is why 5d is judgment rather than code (point 2). schema-typed-artifacts fixes C2's three values, which point 7's framing rests on. 0007's review workflow and 0097's ce-code-review are the gatekeeper point 7 names, and ce-code-review's standards reviewer is why the guidance lives in AGENTS.md (point 2)
+changes: [decision-0010, decision-0076, decision-0089, decision-0099, profile-trellis-self, rubric-artifact-contract]  # the rubric is here and not in depends_on, although points 2 and 6 read its check text. This change adds decision-0098 to the rubric's depends_on, and rubric check 5 calls "an artifact both depending on its authorizing decision and named in that decision's changes:" a benign pair, not a cycle. A depends_on edge back from this record would be the cycle
 informed_by: [decision-0028, decision-0040, decision-0081, decision-0092]
 owner: agent
 date: 2026-09-14
@@ -102,7 +102,7 @@ specific rule from a specific standards file"* (`references/personas/project-sta
 Compound Engineering 3.25.0). A rule written only in the rubric would give that reviewer nothing to
 cite.
 
-**3. Three records are superseded in part, each by a clause-scoped forward pointer** in
+**3. Four records are superseded in part, each by a clause-scoped forward pointer** in
 `superseded_in_part_by` (`decision-0040`). Only frontmatter changes; no body is edited.
 
 - **`decision-0010`: Decision bullet 2, as it governs this repository's own gate.** Bullet 2 stands,
@@ -115,6 +115,12 @@ cite.
   than smuggled stands.
 - **`decision-0089`: the first clause of the Consequences sentence quoted above.** Its second clause
   stands: id allocation is a merge-queue fact, and `decision-id-guard` remains a separate check.
+- **`decision-0099`: the one Consequences bullet saying the rubric's corpus paragraph and
+  `corpus-reviewer`'s charter name the new paths together.** The charter is deleted, and
+  `cli/artifact_contract_guard_test.go` now compares the paragraph with `corpusRoots`. Every Decision
+  point of `decision-0099` and its other Consequences stand. This pointer was added after TRL-89
+  merged, following the maintainer's choice of clause-scoped pointers for the three records above,
+  as relayed by `trellis-d1`.
 
 **4. Nothing Trellis ships changes, so for now this is this repository's gate only.** Nothing under
 `plugins/trellis/` names the rubric, the fixtures or the agent, and neither does `install.sh`. The
@@ -195,10 +201,10 @@ maintainer ruled.
   conclusions still hold, because `decision-id-guard` is not a required check. This record names the
   sentence and does not supersede it.
 - **`decision-0099`'s consequence that the rubric's corpus paragraph and `corpus-reviewer`'s charter
-  "name the new paths together" no longer holds.** The charter is deleted, and
-  `cli/artifact_contract_guard_test.go` now compares the paragraph with `corpusRoots`. This record
-  names the sentence and does not supersede it.
-- **Forward pointers:** `decision-0010`, `decision-0076` and `decision-0089` each gain
+  "name the new paths together" no longer holds,** and this record supersedes that bullet in part
+  (point 3). The charter is deleted, and `cli/artifact_contract_guard_test.go` now compares the
+  paragraph with `corpusRoots`.
+- **Forward pointers:** `decision-0010`, `decision-0076`, `decision-0089` and `decision-0099` each gain
   `decision-0098` in `superseded_in_part_by`.
 - **Not decided here:** whether the rubric leaves `core/` (Open questions), whether `build-test`
   becomes a required check, and TRL-92's root fix.
@@ -220,7 +226,7 @@ maintainer ruled.
 - **What the author checked, and how:**
   - Every frontmatter reference resolves: each id was found as an `id:` line in `docs/decisions/`,
     `core/` or `profiles/`.
-  - The three pointer edits touch frontmatter only, confirmed with `git diff`. `decision-0089`'s
+  - The four pointer edits touch frontmatter only, confirmed with `git diff`. `decision-0089`'s
     sentence was copied from the file. `decision-0076` gains a frontmatter line, which shifts its
     body by one line; a search found no citation of it by line number.
   - The ruleset's required checks were read from the GitHub API on 2026-09-14, and `main`'s paths
@@ -250,6 +256,6 @@ maintainer ruled.
   its check text, so the coupling is real. The rubric also gains `decision-0098` in its own
   `depends_on` in this change, and rubric check 5 names that shape, not a two-way `depends_on`, as the
   benign pair. A reviewer who reads the back-edge as required should flag it.
-- **Supersession authority.** This record marks three records superseded in part, and its author is
+- **Supersession authority.** This record marks four records superseded in part, and its author is
   an agent. Under `decision-0092`'s reading of `decision-0081`, merging it is the maintainer's act of
   supersession, not the author's.
