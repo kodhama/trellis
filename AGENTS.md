@@ -26,14 +26,50 @@ rule you can't exemplify is probably vaporware.*
 
 ## Operating method
 
-The method lives in `docs/decisions/`, **not restated here** — a decision is the current truth, and a
-summary in this file only goes stale against it. Read the record before relying on a rule.
-`docs/decisions/` is append-only: you *supersede* with a forward pointer, never edit.
+The method lives in `docs/decisions/` and in the rules below. **A record is current truth, except for
+a point a dated note on it says no longer holds; for that point, the place the note names is current
+truth.** Read a record and its notes before relying on a rule.
+
+**A change gets a new decision record only when a wrong call would be expensive to undo, slow to
+notice, or the damage while it stands would be serious.** Any one of the three is enough. When you
+cannot tell, ask the maintainer rather than writing a record or skipping one. *Examples.* The four
+strategic forks, `decision-0001`–`0004`, get records. So does a plugin change where a wrong call
+could silently stop rules reaching consumers' sessions, such as how the session-start hook reconciles
+`.trellis/rules.toml` (`decision-0083`). An error-message, reporting, diagnostic or cosmetic plugin
+change gets none: a vendored delivery naming its own dead pointer (`decision-0095`) would get no record
+today, and nor would a move such as `decision-0099` putting the corpus under `docs/`. Both were
+recorded before this test existed.
+
+**A change without a record keeps its reasoning in its requirements doc, its plan under
+`docs/plans/` and its PR body.** The PR body lists the records the change put dated notes on, or says
+it found none.
+
+**`docs/decisions/` stays append-only: a record's decisions are never re-made or rewritten.** The only
+text added to a record is a dated note, or `superseded_by` when the record is retired in full. The only
+edits to its existing text are correcting a line citation or a note's PR number, and a rename sweep
+(`decision-0015`). When a merged change makes a point or sentence of a record untrue, the same PR adds
+one note directly under the record's title, below any notes already there:
+
+```markdown
+> **Dated note, YYYY-MM-DD — TRL-<n> (PR #<n>):** <what is no longer true, naming the point or sentence>. <where the current behaviour is stated now>.
+```
+
+A note cites its own PR's number. A note written before the PR opens uses the number the repository
+will assign next, and the same PR corrects it if another PR takes that number first.
+
+The place a note names is a file on `main` kept current in place (this file, a rubric, the code, test
+or workflow that carries the behaviour, or a newer record), never a plan or a PR body; when no such
+file states the new behaviour, the same PR states it here. The PR that adds a note also corrects every
+live line citation into that record, whether in another record, a code comment, a test or this file.
+A citation is live unless it sits in a plan or in a dated inventory: a passage that reports what was
+true on a stated date, such as a sweep table, a self-check count, a dated note, or a record that dates
+its own citations, as `decision-0081` does.
 
 **There is no `status` field** (`decision-0082`). **Merging to `main` is the acceptance:** an
 artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
-flip, ever. **Supersession is marked by the forward pointer** — `superseded_by`, or
-`superseded_in_part_by` when the remainder is live. *Artifacts predating `decision-0082` keep
+flip, ever. **A record retired in full carries `superseded_by`; a record retired in part gets a dated
+note**, whether a newer record or another change retires it. No change adds a new
+`superseded_in_part_by`; the entries already in records stay and still resolve. *Artifacts predating `decision-0082` keep
 their `status:` lines as history — several carry the maintainer's intent act in a trailing
 comment. Read them as accepted; do not add the field to anything new, and do not strip it from
 anything old.*
@@ -45,10 +81,10 @@ asked for a PR, open it. An agent still may not merge on his behalf without his 
 | Before you… | Read |
 |---|---|
 | write or change an artifact — frontmatter, per-type body sections | `decision-0082` (no `status`; the merge is the acceptance) · `decision-0042` (family lifecycle) · `decision-0037` (`owner: agent` carries *authorship*, not accountability — that stays with the maintainer) |
-| supersede a record | `decision-0082` — the forward pointer *is* the mark; `decision-0040` for the partial form |
+| supersede a record, in full or in part | the rules above — `superseded_by` for a full retirement, a dated note for a partial one |
 | retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal) · `decision-0074` |
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
-| record a significant choice | append to `docs/decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main`, on every open PR, **and** within your own diff; `decision-0089`'s CI guard fails the higher-numbered claimant, and `decision-0092` states what it counts as a claim |
+| record a significant choice | only when it meets the record test above; the record goes in `docs/decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main`, on every open PR, **and** within your own diff; `decision-0089`'s CI guard fails the higher-numbered claimant, and `decision-0092` states what it counts as a claim |
 | plan a build between a decision and the code | the **Compound Engineering** skills (`ce-brainstorm` or `ce-plan`, then `ce-work`, `ce-code-review`, `ce-commit-push-pr`) — `decision-0097`; the spec stage retired in `decision-0079`, and `specs/` with it |
 | implement or debug in an area a past fix touched | `docs/solutions/` — documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`) |
 | record a next step | `decision-0078` — name the consumer that will re-present it, or drop it |

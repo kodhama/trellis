@@ -298,7 +298,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043`. |
 | [`plugins/trellis/`](plugins/trellis/) | The **Claude Code and local Codex plugin** — `/trellis:remove`, host-isolated hooks, and the vendored payload (`reference/`). |
 | [`install.sh`](install.sh) | The **curl path** — vends the whole plugin bundle onto disk as a skills-directory plugin, and on project scope renders `.claude/rules/trellis.md`, the file that actually delivers the rules (`decision-0068`). Claude Code only. |
-| [`docs/decisions/`](docs/decisions/) | Append-only decision records. |
+| [`docs/decisions/`](docs/decisions/) | Append-only decision records, written only when a wrong call would be expensive to undo, slow to notice, or seriously damaging while it stands; later changes mark them with dated notes. |
 | [`docs/research/`](docs/research/) | Framework gate-tests + the genetics / control-theory lenses behind the design. |
 | [`profiles/`](profiles/) | Per-instance expression profiles (`trellis-self` = instance #1). |
 | [`AGENTS.md`](AGENTS.md) | The methodology we use to build Trellis (Layer B / instance #1). |
@@ -324,8 +324,10 @@ recorded in `decision-0071` — a marketplace plugin is the last released versio
 dogfoods shipped Trellis rather than the working tree.
 
 Every non-code artifact carries frontmatter, and its lifecycle is the repository's own: **merging to
-`main` is the acceptance** (`decision-0082`) — there is no status field to maintain. Decisions are
-append-only, superseded by a forward pointer rather than edited; **intent is human-gated and
+`main` is the acceptance** (`decision-0082`) — there is no status field to maintain. Decision records
+are written only when a wrong call would be expensive to undo, slow to notice, or seriously damaging
+while it stands, and are never rewritten: a later change marks what it outdates with a dated note, or
+retires a record with a forward pointer; **intent is human-gated and
 execution is independently verified** (the builder never grades itself); friction we hit becomes
 product research rather than something to route around. See
 [`AGENTS.md`](AGENTS.md).

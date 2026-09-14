@@ -10,6 +10,8 @@ ratified: 2026-07-07
 
 # 0040 — Five reverse-ports from instance #1, entering through the signature-pair door
 
+> **Dated note, 2026-09-14 — TRL-98 (PR #313):** Point 5's `superseded_in_part_by` field no longer marks a record retired in part: a partial retirement now gets a dated note like this one, and the entries already in records stay. `AGENTS.md`'s *Operating method* states the current rule.
+
 ## Context
 
 `decision-0009` names the loop: the source instance (math-quest — the project the invariants

@@ -10,6 +10,8 @@ ratified: 2026-07-01
 
 # 0014 — Invariant set: a compiled spec + change-ADRs (not a versioned, history-laden file)
 
+> **Dated note, 2026-09-14 — TRL-98 (PR #313):** The second Decision bullet's rule that a change to an invariant's meaning or structure gets a record, and the Consequence committing to one per such change, no longer decide when a record is written. `AGENTS.md`'s *Operating method* states the record test that does.
+
 ## Context
 
 Invariants are Trellis's core **architecture**, so a change to one is an architecture
