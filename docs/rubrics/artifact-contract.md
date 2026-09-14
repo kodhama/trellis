@@ -36,7 +36,7 @@ scope: trellis-meta
 > it as well.
 >
 > **This repository enforces the contract with a Go test** (`decision-0098`), which `cli-ci` runs
-> on every pull request that touches the corpus. The contract is internal to this repository, because
+> on every pull request. The contract is internal to this repository, because
 > nothing Trellis ships reads it (`decision-0098` point 4).
 
 ## Checks

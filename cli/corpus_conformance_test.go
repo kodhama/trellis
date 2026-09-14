@@ -2,7 +2,7 @@ package main
 
 // The corpus conformance check (TRL-88). It applies the mechanically decidable
 // rules of docs/rubrics/artifact-contract.md, checks 1–11, to the artifact
-// corpus on every CI run that touches it, and reports each violation as
+// corpus on every CI run, and reports each violation as
 // `<path>:<line>: check <N> (<rule>): <detail>`.
 //
 // Three tests carry it:
@@ -40,10 +40,8 @@ import (
 // corpusRoots is the one place this check names the corpus. Every rule keys on
 // an artifact's `type`, never its directory, so TRL-89's move of the corpus
 // under `docs/` changed the one line below and nothing else. The paths
-// are `../`-prefixed literals on purpose: cli/ci_paths_guard_test.go extracts
-// exactly that form, so a new root here fails that guard until cli-ci.yml's
-// paths filter selects it. A loop joining bare directory names would hide the
-// reads from it.
+// carry `../` because the test runs from cli/; corpusDisplayPath strips it when
+// a finding names a file.
 var corpusRoots = []string{
 	"../docs/decisions", "../docs/research",
 	"../core/invariants", "../docs/rubrics", "../core/schemas", "../core/catalog", "../core/lexicon.md",

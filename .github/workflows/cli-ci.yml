@@ -7,35 +7,14 @@ name: cli-ci
 # regenerate-and-diff on the vendored payload (the repo's own overlay sync-guard
 # retired with the overlay itself, decision-0071),
 # the docs-consistency check, and the staleness-hook contract.
-
-# The paths filter is a coverage contract, not a convenience. build-test is the
-# only job that runs `go test`, so EVERY file the suite reads out of the repo has
-# to be selected here — otherwise a PR touching only that file skips the one guard
-# that pins it, and nothing is ever red. Hence: the doc surfaces (site/, README,
-# install.sh, plugins/) for the docs-consistency test (decision-0025); docs/ and eval/,
-# whose files that test's repo-wide marketplace walk also reads (TRL-87, TRL-89);
-# .github/scripts/** and decision-id-guard.yml, which cli/decision_id_guard_test.go
-# executes and reads (decision-0089); core/invariants/** and profiles/**, which
-# cli/row_set_guard_test.go reads; docs/rubrics/ (under docs/**), which
-# cli/artifact_contract_guard_test.go reads to pin the rubric's corpus paths, check 4
-# forms, check 6 rows, numbered checks and per-check text digests to the conformance
-# check (TRL-60, TRL-88); core/schemas/** and core/lexicon.md, which
-# cli/corpus_conformance_test.go reads as the artifact corpus, with docs/decisions/ and
-# docs/research/ under docs/** and its positive control cli/testdata/ under cli/**, beside
-# the core/ and profiles/ paths above (TRL-88, TRL-95); .claude/**, which cli/selfapply_test.go and
-# cli/docs_consistency_test.go read; and .grove/** (retired, decision-0076), decisions/**
-# and research/** (moved under docs/, decision-0099): a PR recreating one fails cli/selfapply_test.go.
 #
-# That rule is now checked rather than described: cli/ci_paths_guard_test.go
-# extracts every repo-relative path cli/*_test.go reads and fails naming any this
-# filter does not cover (TRL-50 — decision-0028, a guard per pair). Keep the two
-# lists below identical; both are checked.
+# build-test runs on every pull request and every push to main, and is a required
+# status check on main. It runs unconditionally because the suite reads files from
+# across the repository, so a PR touching any of them has to run it.
 on:
   pull_request:
-    paths: ["cli/**", "site/**", "docs/**", "eval/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "decisions/**", "research/**", ".githooks/**", "scripts/**", "package.json", "package-lock.json", "eslint.config.mjs", ".prettierrc.json", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/schemas/**", "core/lexicon.md", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
   push:
     branches: [main]
-    paths: ["cli/**", "site/**", "docs/**", "eval/**", "README.md", "AGENTS.md", "CLAUDE.md", ".trellis/**", ".claude/**", ".grove/**", "decisions/**", "research/**", ".githooks/**", "scripts/**", "package.json", "package-lock.json", "eslint.config.mjs", ".prettierrc.json", "install.sh", "plugins/**", "core/catalog/**", "core/invariants/**", "core/schemas/**", "core/lexicon.md", "profiles/**", ".github/workflows/cli-ci.yml", ".github/scripts/**", ".github/workflows/decision-id-guard.yml"]
 
 jobs:
   build-test:
