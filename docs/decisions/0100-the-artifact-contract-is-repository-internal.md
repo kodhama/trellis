@@ -1,9 +1,9 @@
 ---
 id: decision-0100
 type: decision
-depends_on: [decision-0005, decision-0010, decision-0015, decision-0097, decision-0098, decision-0099]  # coupling under decision-0047's test. 0098 point 4 is the ruling this record carries out, and 0010 is the record it supersedes in part. 0005 is the layer split point 1 places the rubric under. 0015:117-121 is the rename-sweep rule the path-token edits to eleven records rest on. 0097 point 4 and 0099 are the docs/ exemption and the docs/ location point 4 rests on
+depends_on: [decision-0005, decision-0010, decision-0015, decision-0040, decision-0097, decision-0098, decision-0099]  # coupling under decision-0047's test. 0098 point 4 is the ruling this record carries out, and 0010 is the record it supersedes in part. 0005 is the layer split point 1 places the rubric under. 0015:117-121 is the rename-sweep rule the path-token edits to eleven records rest on. 0040 defines the superseded_in_part_by form point 2 supersedes 0010 through. 0097 point 4 and 0099 are the docs/ exemption and the docs/ location point 4 rests on
 changes: [decision-0010, invariants-v1, rubric-artifact-contract]
-informed_by: [decision-0028, decision-0040, decision-0082]
+informed_by: [decision-0028, decision-0082]
 owner: agent
 date: 2026-09-14
 ---
