@@ -46,7 +46,7 @@ Slugs carry their meaning in their name (`inv-independent-judgment` needs no reg
   copies (`cli/assets/`, `plugins/trellis/reference/`, `.trellis/invariants.md`),
   `site/invariants.html` (card badges now show slugs; group letters dropped),
   `core/lexicon.md`, `profiles/trellis-self.md`, `README.md`, `CLAUDE.md`, the plugin setup
-  skill, `core/rubrics/artifact-contract.md`, the `conformance-reviewer` agent, and the
+  skill, `docs/rubrics/artifact-contract.md`, the `conformance-reviewer` agent, and the
   **eval invariant scorecard** — `eval/scorecards/invariants.md` is a *derived resource of the
   catalog* (`decision-0028`), so it migrates like the other derivatives: its generator
   (`eval/gen-invariant-scorecard.py`) parsed entries *by the retired codes* and now parses

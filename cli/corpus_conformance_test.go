@@ -1,7 +1,7 @@
 package main
 
 // The corpus conformance check (TRL-88). It applies the mechanically decidable
-// rules of core/rubrics/artifact-contract.md, checks 1–11, to the artifact
+// rules of docs/rubrics/artifact-contract.md, checks 1–11, to the artifact
 // corpus on every CI run that touches it, and reports each violation as
 // `<path>:<line>: check <N> (<rule>): <detail>`.
 //
@@ -11,7 +11,7 @@ package main
 //     Findings are collected over the whole corpus first and reported in one
 //     subtest per numbered check, so `go test -v` shows each check pass or fail.
 //   - TestCorpusConformanceRejectsKnownBadFixture runs the same check on
-//     core/fixtures/known-bad/, a standalone corpus of seeded violations and
+//     cli/testdata/known-bad/, a standalone corpus of seeded violations and
 //     deliberately valid constructs, and requires exactly the expected findings.
 //     It calls newCorpusCheck and run itself rather than checkArtifactCorpus,
 //     because it needs the check value. A check is trusted only after it
@@ -46,16 +46,16 @@ import (
 // reads from it.
 var corpusRoots = []string{
 	"../docs/decisions", "../docs/research",
-	"../core/invariants", "../core/rubrics", "../core/schemas", "../core/catalog", "../core/lexicon.md",
+	"../core/invariants", "../docs/rubrics", "../core/schemas", "../core/catalog", "../core/lexicon.md",
 	"../profiles",
 }
 
 // knownBadRoot is the positive control, outside corpusRoots: the rubric
-// excludes core/fixtures/ from normal runs.
-const knownBadRoot = "../core/fixtures/known-bad"
+// excludes cli/testdata/ from normal runs.
+const knownBadRoot = "../cli/testdata/known-bad"
 
 // artifactContractPath is the rubric this check applies and reads data from.
-const artifactContractPath = "../core/rubrics/artifact-contract.md"
+const artifactContractPath = "../docs/rubrics/artifact-contract.md"
 
 // contractOutcome is the vocabulary of the plan's Check outcomes table.
 type contractOutcome string
@@ -157,7 +157,7 @@ var contractOutcomeTable = []contractCheckOutcomes{
 // contractClauseOutcomes records the rubric's unnumbered clauses, keyed by name.
 var contractClauseOutcomes = []contractRuleOutcome{
 	{"Honesty clause", outcomeHalts, "findings are listed per violation over the whole corpus, and a missing or unparseable shared input halts the run by name (KTD6), never a partial pass"},
-	{"How it is graded", outcomeImplemented, "one subtest per numbered check with an implemented rule, and every finding names its file, line, check and rule; the section's consumer-facing agent wording stays"},
+	{"How it is graded", outcomeImplemented, "one subtest per numbered check with an implemented rule, and every finding names its file, line, check and rule, as the section states"},
 	{"Charter: \"derive your checklist yourself\"", outcomeDropped, "an instruction to an agent; the checklist is now code pinned to the rubric, and CI runs it whoever authored the change"},
 }
 
@@ -1267,7 +1267,7 @@ func TestCorpusConformanceRejectsKnownBadFixture(t *testing.T) {
 	}
 	// One full rendering pins the `path:line: check N (rule): detail` format and
 	// the rule-to-check lookup, which the multiset above does not read.
-	const wantRendered = "core/fixtures/known-bad/known-bad.md:4: check 4 (4i): "
+	const wantRendered = "cli/testdata/known-bad/known-bad.md:4: check 4 (4i): "
 	if !slices.ContainsFunc(findings, func(f contractFinding) bool { return strings.HasPrefix(f.String(), wantRendered) }) {
 		t.Errorf("no finding renders with the prefix %q; the finding format or the rule-to-check lookup changed", wantRendered)
 	}

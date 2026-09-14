@@ -351,7 +351,7 @@ intact); it never named `plugins/trellis/README.md:9-11`, so the change would
 have shipped a live link into a deleted file; and it described the `install.sh`
 change as one manifest entry when it is one removal plus one re-hash. It also
 omitted `## Decision` and `## Consequences`, which
-`core/rubrics/artifact-contract.md:53-57` requires of every `decision`; omitted
+`docs/rubrics/artifact-contract.md:53-57` requires of every `decision`; omitted
 the `superseded_in_part_by` mechanism on all three targets; scoped the `spec-0005`
 amendment to one of its two sites; and specified a reintroduction guard that
 would have been red on its first run against this repo's own archive.

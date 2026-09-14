@@ -76,7 +76,7 @@ of which our closed enum can describe.
 - `spec-0001` §1 (`status`, `owner` rows) and §2 amended **in place** (it is revise-in-place
   current-truth; this decision is its rationale). The §2 deferred-`approved` note now cites
   the math-quest evidence instead of standing purely open.
-- `core/rubrics/artifact-contract.md` check 2 and the `conformance-reviewer` check 2 verify
+- `docs/rubrics/artifact-contract.md` check 2 and the `conformance-reviewer` check 2 verify
   `status` against the **methodology's declared lifecycle** (for this repo:
   `{draft, ratified, superseded}`) rather than a universal enum.
 - Assess/Apply (cluster 1) gain a job: capture the host's lifecycle declaration (enum +

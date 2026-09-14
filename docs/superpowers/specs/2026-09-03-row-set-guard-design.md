@@ -29,7 +29,7 @@ floors`).
 | `site/invariants.html` | 7 (meta), 167 (h1) | spelled ×2 |
 | `profiles/trellis-self.md` | 45 | digits |
 | `core/catalog/signature-catalog-v1.md` | 37 (Coverage), 444 (AC1 + class breakdown) | digits, breakdown |
-| `core/rubrics/artifact-contract.md` | 81 | spelled |
+| `docs/rubrics/artifact-contract.md` | 81 | spelled |
 | `.claude/agents/corpus-reviewer.md` | 75 | spelled |
 | `plugins/trellis/skills/remove/SKILL.md` | 44 | `N/N` (already derived, `remove_skill_test.go:179`) |
 

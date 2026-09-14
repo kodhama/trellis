@@ -40,7 +40,7 @@ produce a plan for the work at hand rather than a ratified artifact to maintain 
 `spec-*` citations, which are historical (`inv-auditable-archive`).
 
 **3. The artifact contract survives in the rubric; the typed-artifact schema moves to `core/`.**
-`core/rubrics/artifact-contract.md` derived its *checks* from `spec-0001` §3 and `spec-0002` §4,
+`docs/rubrics/artifact-contract.md` derived its *checks* from `spec-0001` §3 and `spec-0002` §4,
 and every check was already stated there in full — those citations were provenance, not content —
 so the rubric becomes the self-standing definition of the contract.
 
@@ -61,7 +61,7 @@ it.* No citing artifact is edited.
 
 | Retired id | Was | Where its content lives now |
 |---|---|---|
-| `spec-0001` | spine artifact contract | `core/rubrics/artifact-contract.md` (checks 1–7) |
+| `spec-0001` | spine artifact contract | `docs/rubrics/artifact-contract.md` (checks 1–7) |
 | `spec-0002` | catalog + profile schema and lifecycle | `core/schemas/typed-artifacts.md`; checks in the rubric (8–11) |
 | `spec-0003` | advisor delivery machinery | superseded in part by `decision-0043`/`decision-0072`; the surviving path is `install.sh` + the plugin |
 | `spec-0004` | clean exits, uninstall and remove | `plugins/trellis/skills/remove/SKILL.md` + `cli/remove_skill_test.go` |

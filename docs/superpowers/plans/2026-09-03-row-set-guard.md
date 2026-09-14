@@ -294,7 +294,7 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 		{"../profiles/trellis-self.md", "All %[1]d assessable genes"},
 		{"../core/catalog/signature-catalog-v1.md", "Covers the **%[1]d assessable invariants**"},
 		{"../core/catalog/signature-catalog-v1.md", "Covers all **%[1]d assessable** slugs (the %[4]s structural, the %[5]s remaining operating, the %[6]s floors"},
-		{"../core/rubrics/artifact-contract.md", "all %[2]s, **excluding** the two dials"},
+		{"../docs/rubrics/artifact-contract.md", "all %[2]s, **excluding** the two dials"},
 		{"../.claude/agents/corpus-reviewer.md", "all %[2]s, **excluding** the two dials"},
 		{"../plugins/trellis/skills/remove/SKILL.md", "governs it at %[1]d/%[1]d"},
 	}
@@ -317,7 +317,7 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 	docs := []string{
 		"../README.md", "../plugins/trellis/README.md", "../site/index.html", "../site/lp-content.md",
 		"../site/invariants.html", "../profiles/trellis-self.md", "../core/catalog/signature-catalog-v1.md",
-		"../core/rubrics/artifact-contract.md", "../.claude/agents/corpus-reviewer.md",
+		"../docs/rubrics/artifact-contract.md", "../.claude/agents/corpus-reviewer.md",
 		"../plugins/trellis/skills/remove/SKILL.md",
 	}
 	numAlt := `(1[0-9]|2[0-9]|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty(?:-(?:one|two|three|four|five|six|seven|eight|nine))?)`

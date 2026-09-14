@@ -19,7 +19,7 @@ date: 2026-09-14
 
 ## Context
 
-Before this change, `.claude/agents/corpus-reviewer.md` applied `core/rubrics/artifact-contract.md`
+Before this change, `.claude/agents/corpus-reviewer.md` applied `docs/rubrics/artifact-contract.md`
 to `docs/decisions/`, `docs/research/`, `core/` and `profiles/`. It was an LLM sub-agent, and `AGENTS.md` asked
 authors to invoke it before merging, the rule `decision-0076` point 6 added. Three things made that
 gate weak:
@@ -56,7 +56,7 @@ retires.**
   `TestCorpusConformsToArtifactContract` runs every rule over the live corpus, one subtest per check,
   and reports each violation as `<path>:<line>: check <N> (<rule-id>): <detail>`.
   `TestCorpusConformanceRejectsKnownBadFixture` is the positive control: it runs the same rules over
-  `core/fixtures/known-bad/` and requires exactly the expected findings, none missing and none extra.
+  `cli/testdata/known-bad/` and requires exactly the expected findings, none missing and none extra.
 - `cli/corpus_conformance_typed_test.go` holds checks 8–11, over the catalog and the profiles.
 - A shared input that is missing or unparseable halts the run by name, never a partial pass.
 - `cli/artifact_contract_guard_test.go` pins the check to the rubric. A numbered rubric check with no
@@ -173,14 +173,14 @@ maintainer ruled.
 - **Changed in the same PR (`decision-0028`):**
   - `AGENTS.md`'s conformance bullet: the CI check replaces the invoke-before-merge rule, and the
     bullet states 5d and 10b.
-  - `core/rubrics/artifact-contract.md`: the **Derived resource** paragraph, the repository note and
+  - `docs/rubrics/artifact-contract.md`: the **Derived resource** paragraph, the repository note and
     `depends_on`.
-  - `core/README.md`, and `core/fixtures/README.md`. `core/fixtures/known-bad.md` moves into
-    `core/fixtures/known-bad/`.
+  - `core/README.md`, and `cli/testdata/README.md`. `cli/testdata/known-bad.md` moves into
+    `cli/testdata/known-bad/`.
   - `profiles/trellis-self.md`: the rows citing `corpus-reviewer` as evidence, repaired under the
     profile's own repair convention.
   - `.github/workflows/cli-ci.yml`: the paths filter gains `core/schemas/**`, `core/lexicon.md` and
-    `core/fixtures/**`, and its comment names the test. `docs/**`, which `decision-0099` added,
+    `cli/testdata/**`, and its comment names the test. `docs/**`, which `decision-0099` added,
     already selects the corpus.
   - The comments in `.github/workflows/repo-hygiene.yml` and `.github/workflows/decision-id-guard.yml`.
   - `cli/selfapply_test.go` drops the charter from its bounded references.
@@ -195,7 +195,7 @@ maintainer ruled.
   check runs inside that Go suite, where `cli/ci_paths_guard_test.go` forces the filter to cover every
   path the suite reads.
 - **The new filter entries overlap TRL-92**, the broader gap: `cli/docs_consistency_test.go` walks
-  files the `cli-ci` filter does not select. TRL-92 lists `core/schemas/` and `core/fixtures/` among
+  files the `cli-ci` filter does not select. TRL-92 lists `core/schemas/` and `cli/testdata/` among
   them, and this change selects both because the conformance test reads them. TRL-92's other paths,
   and its root fix, stay open there.
 - **TRL-89's move of the corpus under `docs/` (`decision-0099`) was a one-line change in the check.**

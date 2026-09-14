@@ -177,7 +177,7 @@ composes onto them automatically. See Consequences.
 
 - **`spec-0001` §1 gains a second recognized external-ref form**, alongside `brief-§…` — built
   by a follow-on contract-author pass once this decision is `approved`, not by this decision.
-  `core/rubrics/artifact-contract.md` check 4 (and its "Open questions" note, which already
+  `docs/rubrics/artifact-contract.md` check 4 (and its "Open questions" note, which already
   named "external-ref mechanism: an allowlist prefix (v0) vs a registry artifact — revisit when
   refs multiply") gets the matching update at the same time.
 - **This is trellis's own contract, and per the maintainer's 2026-07-10 resolution it suffices

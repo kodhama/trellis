@@ -3,22 +3,22 @@ id: rubric-artifact-contract
 type: rubric
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, decision-0037, decision-0042, decision-0098, schema-typed-artifacts]
+depends_on: [invariants-v1, decision-0037, decision-0042, decision-0098, decision-0100, schema-typed-artifacts]
 owner: gundi
-scope: trellis-product
+scope: trellis-meta
 ---
 
 # Rubric — artifact-contract conformance
 
-> The checkable gate the conformance sub-agent applies to a corpus of artifacts. This rubric is the
+> The checkable gate this repository's Go conformance test applies to its corpus of artifacts. This rubric is the
 > **self-standing definition** of the artifact contract — it derived from `spec-0001` §3 and
 > `spec-0002` §4 until `decision-0079` retired the spec stage, and every check below was already
 > stated here in full. Each item is
 > **PASS / FAIL** with a *specific* reason (file + field + rule). **No vague failures, no false
 > passes.**
 >
-> **Corpus:** `docs/decisions/`, `docs/research/`, `core/invariants/`, `core/rubrics/`, **`core/schemas/`**,
-> **`core/catalog/`**, **`core/lexicon.md`**, **`profiles/`**. Exclude `core/fixtures/` unless running
+> **Corpus:** `docs/decisions/`, `docs/research/`, `core/invariants/`, `docs/rubrics/`, **`core/schemas/`**,
+> **`core/catalog/`**, **`core/lexicon.md`**, **`profiles/`**. Exclude `cli/testdata/` unless running
 > the positive control. `core/schemas/` is **checked, not merely consulted**: `decision-0079` re-homed
 > the typed-artifact schema there, and this rubric `depends_on` the id it declares
 > (`schema-typed-artifacts`, read by checks 2, 6 and 8–11) — a gate may not exempt an input its own
@@ -36,8 +36,8 @@ scope: trellis-product
 > it as well.
 >
 > **This repository enforces the contract with a Go test** (`decision-0098`), which `cli-ci` runs
-> on every pull request that touches the corpus. The sub-agent wording in this rubric describes the
-> product's form for a consumer project.
+> on every pull request that touches the corpus. The contract is internal to this repository, because
+> nothing Trellis ships reads it (`decision-0098` point 4).
 
 ## Checks
 
@@ -163,14 +163,14 @@ has failed this rubric. Missing/unparseable input → halt loudly (`floor-transp
 
 ## How it is graded
 
-The conformance sub-agent emits one report: per-check PASS/FAIL, every FAIL naming the exact
-file + field + rule. The check is **trusted only after it rejects the known-bad fixture**
-(`core/fixtures/`, the positive control).
+The Go test reports each violation as one finding, `path:line: check N (rule): detail`, and a run
+with no finding passes. The check is **trusted only after it rejects the known-bad fixture**
+(`cli/testdata/`, the positive control).
 
 ## Acceptance criteria
 
 - Every check above maps to a precise, file-level violation message (no vague output).
-- The rubric is applied by an agent **with no runtime** (`0010`).
+- The rubric is applied by `cli/corpus_conformance_test.go`, which `cli-ci` runs (`decision-0098`).
 
 ## Open questions
 

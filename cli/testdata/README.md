@@ -1,4 +1,4 @@
-# `core/fixtures/` — positive controls
+# `cli/testdata/` — positive controls
 
 Deliberately **broken** artifacts. Their job is to be **rejected**: the conformance check is
 trusted only after it flags every violation here (`rubric-artifact-contract` — *the verifier must be

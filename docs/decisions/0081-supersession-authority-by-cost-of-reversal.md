@@ -26,7 +26,7 @@ date: 2026-08-28
 > pre-trim and are off against `main`. The record is **not edited to chase them**
 > (`inv-auditable-archive`); read its quotes against the tree at `9d0675a`. Its `spec-0001` /
 > `spec-0002` citations resolve through `decision-0079`'s retired-artifacts registry, and the
-> forward edits it *recommends* to those files now land on `core/rubrics/artifact-contract.md`
+> forward edits it *recommends* to those files now land on `docs/rubrics/artifact-contract.md`
 > and `core/schemas/typed-artifacts.md`.
 
 > **What this is — and what the maintainer accepted.** Written as a proposal for the maintainer to
@@ -129,7 +129,7 @@ source's claim.
 The issue wants this to *"apply to every project he works in."* Verified against the shipped payload:
 `plugins/trellis/reference/` contains `invariants.md`, `rules.md`, `rules-a/b.toml`, the block
 sandwiches, `checksums`, `version` — **no spec, no rubric, no artifact contract**. `spec-0001` and
-`core/rubrics/artifact-contract.md` do not ship.
+`docs/rubrics/artifact-contract.md` do not ship.
 
 **Therefore any contract-layer or frontmatter-layer answer is unreachable by consumers.** A portable
 change must land in the catalog, as directive/signature/example text.
@@ -369,7 +369,7 @@ supersession beyond any check — which `inv-independent-judgment` forbids. *Ope
   **Attribution, since an earlier draft blurred it:** `decision-0074:118-125` enumerates the render
   chain through the scorecard *and* names a second, **contract** layer this list must not drop —
   `spec-0007`'s slug inventory and activation-row predicate, `spec-0002` §1 check 2 + AC1,
-  `core/rubrics/artifact-contract.md`, and the `corpus-reviewer` checklist. `site/invariants.html`
+  `docs/rubrics/artifact-contract.md`, and the `corpus-reviewer` checklist. `site/invariants.html`
   and `cli/assets/` come from `decision-0028:33-34`, not from 0074. `decision-0040:78-80` is the
   narrower worked instance, cited only for the point that a directive change reaches the
   always-loaded block. *(A directive-only change plausibly leaves the contract layer alone — it

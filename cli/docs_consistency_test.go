@@ -60,14 +60,14 @@ func docSurfacesIn(root string) ([]string, error) {
 		"specs": true, "eval": true,
 		"fixtures": true, "testdata": true,
 	}
-	// The top-level docs/ is a record root (decision-0097): planning records from
-	// superpowers and Compound Engineering, and the governance corpus in
-	// docs/decisions/ and docs/research/ (decision-0099). It is exempt because a
-	// record legitimately names artifacts that later retired — e.g. /trellis:setup
-	// before decision-0072 retired it — and a retirement must not force an edit to
-	// the record of the work that preceded it. The skip is by path, not by name, so
-	// a nested docs, decisions or research directory is still walked. It replaces
-	// the superpowers and .superpowers name skips, whose ground (decision-0085)
+	// The top-level docs/ is a record root (decision-0097 point 4): planning records, and the
+	// governance corpus in docs/decisions/, docs/research/ (decision-0099) and docs/rubrics/
+	// (decision-0100). The walk guards documents that describe the product to its users, and
+	// docs/ holds none. A record legitimately names artifacts that later retired — e.g.
+	// /trellis:setup before decision-0072 retired it — and a retirement must not force an edit
+	// to it; the artifact contract in docs/rubrics/ is repository-internal. The skip is by path,
+	// not by name, so a nested docs, decisions or research directory is still walked. It
+	// replaces the superpowers and .superpowers name skips, whose ground (decision-0085)
 	// retired with superpowers.
 	recordRoot := filepath.Join(root, "docs")
 	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}

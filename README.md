@@ -280,7 +280,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
   staleness hook) riding a **pre-rendered, checksum-manifested
   payload** (`kodhama-0007`: render once at release, writers only copy and verify), plus the
   documented **manual copy path** for any other harness. It stands on the *spine* + an
-  **independent conformance check** (`core/rubrics/artifact-contract.md`, running on this repo),
+  **independent conformance check** (`docs/rubrics/artifact-contract.md`, running on this repo),
   the expression-profile + catalog **schema** (`core/schemas/typed-artifacts.md`), the populated catalog and
   the first per-project **profile** (instance #1), and the cross-lens **lexicon**. The v0 setup **CLI** (the retired binary, unrelated to the retired setup skill) shipped first (`v0.1.0`–`v0.2.29`) and its end-user channel retired in favor of the above
   (`kodhama-0007` rule 5, `decision-0043`); the Go code survives as the release-time payload
@@ -294,7 +294,7 @@ Built in the open, dogfooded on itself from commit one. The honest state:
 | Path | What |
 |---|---|
 | [`agentic-dev-meta-layer-brief.md`](agentic-dev-meta-layer-brief.md) | The full thesis (start at §10 verdict, §11 start-here, §12 operating method). |
-| [`core/`](core/) | The shippable product: invariants, the conformance rubric, the signature catalog, the lexicon. |
+| [`core/`](core/) | The shippable product: invariants, the signature catalog, the lexicon. |
 | [`cli/`](cli/) | The **payload generator** (Go) — `trellis payload` renders the pre-built bundle + manifest at release; its tests are the CI sync-guards. Generator-only since `decision-0043`. |
 | [`plugins/trellis/`](plugins/trellis/) | The **Claude Code and local Codex plugin** — `/trellis:remove`, host-isolated hooks, and the vendored payload (`reference/`). |
 | [`install.sh`](install.sh) | The **curl path** — vends the whole plugin bundle onto disk as a skills-directory plugin, and on project scope renders `.claude/rules/trellis.md`, the file that actually delivers the rules (`decision-0068`). Claude Code only. |

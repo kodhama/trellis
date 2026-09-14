@@ -63,7 +63,7 @@ date: 2026-08-29
 ## Decision
 
 **1. `status` is retired from the trellis artifact contract.** It is removed from the required
-field set — now `core/rubrics/artifact-contract.md` check 1, `spec-0001` having retired with
+field set — now `docs/rubrics/artifact-contract.md` check 1, `spec-0001` having retired with
 `specs/` under `decision-0079`. New artifacts do not carry it. The required set becomes
 `id / type / depends_on / owner`.
 
@@ -140,9 +140,9 @@ family follows is the family's call, and no other repo is touched by this change
     without a human act. **D5 survives** as general agent behavior.
   - `decision-0040` — D5's *"keeps `status: ratified`"* clause only; partial supersession as a
     concept and the field it introduced both stand.
-- **Contract surface edited in this change:** `core/rubrics/artifact-contract.md` (checks 1, 2,
+- **Contract surface edited in this change:** `docs/rubrics/artifact-contract.md` (checks 1, 2,
   5, 7), `.claude/agents/corpus-reviewer.md` (same four), `AGENTS.md`, and
-  `core/fixtures/known-bad.md` + its README — the fixture's check-2 violation is an invalid status,
+  `cli/testdata/known-bad.md` + its README — the fixture's check-2 violation is an invalid status,
   which stops being a violation class, so the fixture is re-cut rather than left asserting a check
   that no longer exists. *(This record was authored against `spec-0001` §1/§2/§3 and
   `.grove/config.toml`; both retired underneath it — `decision-0079` deleted `specs/` and
