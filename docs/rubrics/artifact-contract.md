@@ -121,8 +121,10 @@ scope: trellis-meta
 7. **Supersede integrity.** **Supersession is identified by the forward pointer** (`decision-0082`;
    formerly by `status: superseded`): an artifact carrying `superseded_by` is superseded, and its
    entries must resolve. **Revise-in-place** docs (invariants, research, rubrics, schemas) re-point
-   to the successor. A **partially superseded** artifact stays current for its remainder and carries
-   `superseded_in_part_by`, whose entries resolve like `depends_on` (`decision-0040`). *Exemption (`inv-auditable-archive`): an
+   to the successor. A **partially superseded** artifact stays current for its remainder. A part is retired by a
+   dated note under the record's title, never by a new `superseded_in_part_by` entry (`AGENTS.md`);
+   the `superseded_in_part_by` entries already in the corpus stay, and resolve like `depends_on`
+   (`decision-0040`). *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.* *FAIL → name the offender.*

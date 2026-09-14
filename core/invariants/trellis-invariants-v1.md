@@ -17,7 +17,9 @@ ratified: 2026-06-29
 > SpecSwarm) and the **enforcement reframe** (`decision-0008`). **Ratified 2026-06-29 by the
 > maintainer** — this is now the current-truth invariant set; the spine and all machinery
 > consume *this*. It is the **compiled current-truth spec** (revise-in-place); its change
-> history and rationale live in ADRs (`decision-0014`), not inline. `invariants-v0` is superseded.
+> history and rationale live outside it, not inline (`decision-0014`): in a decision record when a
+> change meets `AGENTS.md`'s record test, otherwise in the change's plan and PR. `invariants-v0` is
+> superseded.
 
 > *Amended in place 2026-07-13 (`decision-0047` + `grove/adr-0011`; consumer-audit
 > marking-class). WHAT: `research-0002` moved out of frontmatter `depends_on` into a new
@@ -323,9 +325,10 @@ strictness and gatekeeper are choices, surfaced and recorded) is the on-thesis c
   iron rule (brief §7) applied to the set itself: *a rule you can't exemplify is probably
   vaporware.* Name the application instance where useful.
 - **This file is the compiled current-truth spec** (revise-in-place, `ratified`, shippable);
-  *significant* invariant changes are recorded as ADRs (`decision-0014`), not inline —
-  `inv-auditable-archive` applied to the set itself. It carries rationale by *reference*
-  (links to governing ADRs).
+  its changes are not narrated inline — `inv-auditable-archive` applied to the set itself. A
+  change to an invariant's meaning or structure gets a decision record only when it meets
+  `AGENTS.md`'s record test (`decision-0014`); otherwise its reasoning lives in its plan and PR.
+  It carries rationale by *reference* (links to the records and plans behind it).
 
 ## Open questions
 
