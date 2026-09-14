@@ -198,7 +198,7 @@ flowchart TB
 - **Approach:**
   1. Add `eval/**`, `decisions/**` and `research/**` to both filter lists, keeping the lists identical.
   2. Add an absence check for root `decisions/` and `research/`, modeled on the `.grove` check, whose message names `decision-0099`.
-  3. Update the filter-contract comment at `cli-ci.yml:11-28` on its existing lines, and keep line 17's `.github/scripts/**` clause (`decision-0092:208`).
+  3. Update the filter-contract comment at `cli-ci.yml:11-28` on its existing lines, and keep line 17's `.github/scripts/**` clause (`decision-0092:209`).
 - **Execution note:** write the absence check before U3, and confirm it fails naming both root folders.
 - **Patterns to follow:** `cli/selfapply_test.go:185-192` and the `.grove/**` filter entry it justifies.
 - **Test scenarios:**
