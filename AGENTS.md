@@ -78,8 +78,8 @@ its own citations, as `decision-0081` does.
 artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
 flip, ever. **A record retired in full carries `superseded_by` when a successor record retires it and a
 dated note when none does; a record retired in part gets a dated note**, whether a newer record or another
-change retires it. *Example:* `decision-0089` and `decision-0092` were retired in full by dated notes when
-the decision-id guard was deleted, because no record replaced them. No change adds a new
+change retires it. *Example:* `decision-0089` and `decision-0092` were retired in full by dated notes, because
+no record replaced them. No change adds a new
 `superseded_in_part_by`; the entries already in records stay and still resolve. *Artifacts predating `decision-0082` keep
 their `status:` lines as history — several carry the maintainer's intent act in a trailing
 comment. Read them as accepted; do not add the field to anything new, and do not strip it from
