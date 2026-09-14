@@ -44,7 +44,7 @@ than a pattern.
 Excluded, with reason: `install.sh:78` "14 rendered M1 payload" is a *file* count, a different
 quantity; the ~20 code comments in `staleness.sh` / `codex-context.mjs` are maintainer comments,
 several deliberately historical ("the hook reported `quarantined 14 row(s)`"); `eval/` scores are
-frozen runs; `decisions/`, `research/`, `docs/superpowers/` are records.
+frozen runs; `docs/decisions/`, `docs/research/`, `docs/superpowers/` are records.
 
 **Structural surfaces — most were already derived or guarded.**
 

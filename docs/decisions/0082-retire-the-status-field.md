@@ -34,7 +34,7 @@ date: 2026-08-29
 - **Empirically the working state was never used.** Before `decision-0081`, **not one** of the 73
   decisions, 8 specs or 11 research notes carried `status: draft`. The corpus had 38 `ratified`,
   31 `approved`, 4 `superseded`, and — until this session — **zero drafts**. *(Counts as measured
-  2026-08-28. At landing, and scoped the same way — `decisions/` + `research/` — the corpus is 80
+  2026-08-28. At landing, and scoped the same way — `docs/decisions/` + `docs/research/` — the corpus is 80
   decisions, 11 research notes and **no** specs, `decision-0079` having deleted them: 47
   `ratified`, 36 `approved`, 5 `superseded`, **one `gated`** — `decision-0080`, the record this
   one supersedes — and still **zero drafts**. The only `status: draft` anywhere in the repo is the
@@ -88,8 +88,8 @@ exactly where the maintainer already exercises it — the merge — instead of b
 field he must also maintain.
 
 **6. Existing artifacts keep their `status:` lines, untouched** — the exact bytes, comment included; a supersession appends `superseded_by` beside the line and does not rewrite it. All 97 of them repo-wide (99 as counted 2026-08-28, before `decision-0079` deleted `specs/`). **34 carry a
-trailing comment recording a specific maintainer intent act** (`decisions/0046`: *"the first
-decision ratified under its own rule"*; `research/0012`: *"ok to merge!"*). Those comments are the
+trailing comment recording a specific maintainer intent act** (`docs/decisions/0046`: *"the first
+decision ratified under its own rule"*; `docs/research/0012`: *"ok to merge!"*). Those comments are the
 audit trail `inv-auditable-archive` exists to protect. Stripping them would destroy real history to
 tidy a field — the field is retired **going forward**, not erased backward. Historical values read
 as "accepted"; the reader needs no lifecycle to interpret them.

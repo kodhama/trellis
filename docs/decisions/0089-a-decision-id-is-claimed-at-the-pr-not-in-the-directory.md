@@ -3,7 +3,7 @@ id: decision-0089
 type: decision
 depends_on: [decision-0078, decision-0082]
 changes: [decision-0078]
-superseded_in_part_by: [decision-0092, decision-0098]  # 2026-09-05 decision-0092 — POINT 1's RULE, which is its second sentence, both halves: it names two failure conditions where the guard has three (the third is one diff claiming an id twice), and its "newly added" claim rule is broadened to `added`, `copied` and a rename's DESTINATION id — on the rival side of the comparison as much as on this branch's. Point 1's FIRST sentence, that the check is a CI check on the pull request named `decision-id-guard`, is LIVE and untouched: 0092 never restates it and point 5, which stands, names the same script and workflow. Also superseded, within POINT 4: its headline rule ("a claim is an *added* file ... nothing else") plus the rename example ("a rename is a file that already exists"), which is true of the source path and false of the destination. STANDS within point 4, and 0092 says so rather than retiring it wholesale: modifying a record does not claim its id; `decisions/README.md` and `decisions/0089.md` are not claims; and the rationale for keeping the status filter in the script rather than the workflow's `gh --jq` expression. STANDS elsewhere: points 2, 3 (the rule — its second example's #299/#300 slip is an example and stays flagged in the note below, not corrected), 5 and 6. The dated notes of 2026-09-04 stay exactly as they are: they are the record of the interval in which the corpus knowingly disagreed with the shipped code (`inv-auditable-archive`). | decision-0098: 2026-09-14 — ONE Consequences sentence, its FIRST CLAUSE ONLY: "Artifact **conformance** stays agent-applied via `corpus-reviewer`; this check is about id allocation, which is a merge-queue fact no rubric can see." Conformance no longer stays agent-applied here: cli/corpus_conformance_test.go applies it in cli-ci, and corpus-reviewer is retired. STANDS: the sentence's second clause (id allocation is a merge-queue fact no rubric can see, so decision-id-guard remains a separate check); the rest of that bullet, including its quote of decision-0010's fourth Decision bullet, which decision-0098 rests on; and everything decision-0092 does not claim.
+superseded_in_part_by: [decision-0092, decision-0098]  # 2026-09-05 decision-0092 — POINT 1's RULE, which is its second sentence, both halves: it names two failure conditions where the guard has three (the third is one diff claiming an id twice), and its "newly added" claim rule is broadened to `added`, `copied` and a rename's DESTINATION id — on the rival side of the comparison as much as on this branch's. Point 1's FIRST sentence, that the check is a CI check on the pull request named `decision-id-guard`, is LIVE and untouched: 0092 never restates it and point 5, which stands, names the same script and workflow. Also superseded, within POINT 4: its headline rule ("a claim is an *added* file ... nothing else") plus the rename example ("a rename is a file that already exists"), which is true of the source path and false of the destination. STANDS within point 4, and 0092 says so rather than retiring it wholesale: modifying a record does not claim its id; `docs/decisions/README.md` and `docs/decisions/0089.md` are not claims; and the rationale for keeping the status filter in the script rather than the workflow's `gh --jq` expression. STANDS elsewhere: points 2, 3 (the rule — its second example's #299/#300 slip is an example and stays flagged in the note below, not corrected), 5 and 6. The dated notes of 2026-09-04 stay exactly as they are: they are the record of the interval in which the corpus knowingly disagreed with the shipped code (`inv-auditable-archive`). | decision-0098: 2026-09-14 — ONE Consequences sentence, its FIRST CLAUSE ONLY: "Artifact **conformance** stays agent-applied via `corpus-reviewer`; this check is about id allocation, which is a merge-queue fact no rubric can see." Conformance no longer stays agent-applied here: cli/corpus_conformance_test.go applies it in cli-ci, and corpus-reviewer is retired. STANDS: the sentence's second clause (id allocation is a merge-queue fact no rubric can see, so decision-id-guard remains a separate check); the rest of that bullet, including its quote of decision-0010's fourth Decision bullet, which decision-0098 rests on; and everything decision-0092 does not claim.
 informed_by: [decision-0005, decision-0010, decision-0028, decision-0077, decision-0085]
 owner: agent
 date: 2026-09-03
@@ -18,8 +18,8 @@ date: 2026-09-03
 
 ## Context
 
-**`decisions/` on `main` is not the allocation authority; the merge queue is.** Every branch that
-collided did the correct thing in isolation — list `decisions/`, take the next free number. A branch
+**`docs/decisions/` on `main` is not the allocation authority; the merge queue is.** Every branch that
+collided did the correct thing in isolation — list `docs/decisions/`, take the next free number. A branch
 cut before a sibling merges is reading a stale world correctly, and nothing in the repository told
 it so.
 
@@ -32,7 +32,7 @@ Three recurrences, each recorded at the time:
 | 3 | `decision-0086` claimed by both trellis#262 (TRL-33) and trellis#263 (TRL-29) | a coordinating session noticed; #262 renumbered to `0087` before merge |
 
 **`decision-0078` recorded #1 and #2 and armed a trigger**, at
-`decisions/0078-no-orphan-followups.md:147-156` *(TRL-40 cites it as `:146-155`; the forward pointer
+`docs/decisions/0078-no-orphan-followups.md:147-156` *(TRL-40 cites it as `:146-155`; the forward pointer
 this change adds to that record's frontmatter displaced it by one — `decision-0085`'s treatment of
 the same problem)*: *"it is dropped, on this record, because no one has
 agreed to do it; if it recurs a third time, that is the trigger to file it."* That is the rule of
@@ -52,7 +52,7 @@ check in this repository used before this one.
 
 ## Decision
 
-**1. A CI check on the pull request, `decision-id-guard`.** It fails when a `decisions/NNNN-*.md`
+**1. A CI check on the pull request, `decision-id-guard`.** It fails when a `docs/decisions/NNNN-*.md`
 file **newly added** by the branch carries an id that is already on the base branch, or that is also
 newly added by a **lower-numbered open pull request**.
 
@@ -70,16 +70,16 @@ remove. The lower-numbered PR gets a `::notice` and stays green.
 "taken" sends the reader back to the merge queue to work out who moves. Concretely, PR #300 against
 an older #299 gets:
 
-> `::error file=decisions/0089-the-newer-claim.md::decision-0089 is also claimed by open PR #299`
-> `(decisions/0089-the-older-claim.md). TIE-BREAK: the older claim wins — the lower-numbered open PR`
+> `::error file=docs/decisions/0089-the-newer-claim.md::decision-0089 is also claimed by open PR #299`
+> `(docs/decisions/0089-the-older-claim.md). TIE-BREAK: the older claim wins — the lower-numbered open PR`
 > `keeps the id, so #299 keeps decision-0089 and this PR (#300) renumbers.`
 
 and #299, against a newer #301, gets the mirror image as a notice: *"this PR (#300) keeps
 decision-0089 and #301 renumbers. Reported here, red there."*
 
-**4. A claim is an *added* file with the `decisions/NNNN-*.md` shape — nothing else.** Modifying
-`decision-0087` does not claim `0087`; a rename is a file that already exists; `decisions/README.md`
-and `decisions/0089.md` are not claims. This is why the status filter lives in the script rather
+**4. A claim is an *added* file with the `docs/decisions/NNNN-*.md` shape — nothing else.** Modifying
+`decision-0087` does not claim `0087`; a rename is a file that already exists; `docs/decisions/README.md`
+and `docs/decisions/0089.md` are not claims. This is why the status filter lives in the script rather
 than in the workflow's `gh --jq` expression: the rule has to sit in the half the tests can reach.
 
 > *Diverges in practice, 2026-09-04 — see the dated note at the top of `## Consequences`, and
@@ -111,7 +111,7 @@ record does not reopen the rule, only the example it parked.
 > - **A rename INTO a free id was invisible.** Point 4's *"a rename is a file that already exists"* is
 >   true of the **old** path and false of the **new** one: GitHub reports the destination in
 >   `filename` and the source in `previous_filename`, so `0088-old.md` → `0090-new.md` puts a file at
->   `decisions/0090-*.md`.
+>   `docs/decisions/0090-*.md`.
 > - **Two files claiming one id inside a single diff passed clean** — the base check and the rival
 >   check each compare this PR against *another* source, and nothing compared the branch against
 >   itself.
@@ -144,16 +144,16 @@ record does not reopen the rule, only the example it parked.
 >
 > One further error, left in place rather than edited: point 3's second example names **#299** as the
 > PR receiving the notice, where the script interpolates the current PR — the quoted text says
-> *"this PR (#300)"*. An example, not a rule; `decisions/` is append-only, so it is recorded here
+> *"this PR (#300)"*. An example, not a rule; `docs/decisions/` is append-only, so it is recorded here
 > instead of corrected above.
 
 - **The check is advisory, like `agent-workflow-parity`.** `main` carries no branch protection here,
   so a red does not block a merge; it replaces a human noticing. The maintainer can merge a red PR
   deliberately — for instance when he wants the *higher*-numbered PR to keep the id after all.
 
-- **It runs only on PRs that touch `decisions/`** (plus the guard's own two files, so a change to it
+- **It runs only on PRs that touch `docs/decisions/`** (plus the guard's own two files, so a change to it
   runs against itself). A branch that adds no record cannot claim an id, and the guard says so in one
-  line rather than staying mute: *"PR #N adds no `decisions/NNNN-*.md` file — no id claimed, nothing
+  line rather than staying mute: *"PR #N adds no `docs/decisions/NNNN-*.md` file — no id claimed, nothing
   to check."*
 
 - **Two ids on one branch are judged separately.** A branch adding `0088` (taken) and `0090` (free)

@@ -18,7 +18,7 @@
 
 **Tech Stack:** Node ESM (`plugins/trellis/hooks/codex-context.mjs`), Go tests (`cli/`), POSIX shell + awk (`plugins/trellis/hooks/staleness.sh`, read-only reference).
 
-**Spec:** [TRL-29](https://linear.app/kodhama/issue/TRL-29) — "The Codex hook fails closed on a self-imposed byte cap where Codex itself would degrade gracefully", reopened 2026-09-03 for this half. `decisions/0084-codex-reaches-reconciliation-parity.md` §6 carries the measurement and the corrected claim.
+**Spec:** [TRL-29](https://linear.app/kodhama/issue/TRL-29) — "The Codex hook fails closed on a self-imposed byte cap where Codex itself would degrade gracefully", reopened 2026-09-03 for this half. `docs/decisions/0084-codex-reaches-reconciliation-parity.md` §6 carries the measurement and the corrected claim.
 
 ## Global Constraints
 
@@ -33,7 +33,7 @@
 - **Every guard is mutation-proven.** Break it, watch the covering test go red with the expected symptom, restore.
 - **`install.sh` carries baked bundle-manifest hashes** — advance them for any hook edited (`cli/install_script_test.go` `TestInstallScriptBundleManifestIsCurrent` regenerates and diffs).
 - **A payload change needs a `plugins/trellis/VERSION` bump**, or no cached consumer re-pulls. Collides with the TRL-33 session; resolve to the higher number.
-- **`decisions/` is append-only, no `status:` field in new frontmatter** (`decision-0082`). Next free number is **0086** (0085 is taken).
+- **`docs/decisions/` is append-only, no `status:` field in new frontmatter** (`decision-0082`). Next free number is **0086** (0085 is taken).
 
 **Reference — the measured baseline**, real firm payload, `rules-a.toml` + N foreign rows, reproduced on `3f44620` before any change:
 
@@ -746,8 +746,8 @@ git commit -m "TRL-29: name the abbreviated-file clause, and sweep the shapes th
 ### Task 4: Record the decision, bump the payload, advance the manifest
 
 **Files:**
-- Create: `decisions/0086-<slug>.md`
-- Modify: `decisions/0084-codex-reaches-reconciliation-parity.md` — add `superseded_in_part_by: [decision-0086]`
+- Create: `docs/decisions/0086-<slug>.md`
+- Modify: `docs/decisions/0084-codex-reaches-reconciliation-parity.md` — add `superseded_in_part_by: [decision-0086]`
 - Modify: `plugins/trellis/VERSION`
 - Modify: `install.sh` — the `hooks/codex-context.mjs` manifest line
 
@@ -755,11 +755,11 @@ git commit -m "TRL-29: name the abbreviated-file clause, and sweep the shapes th
 
 - [ ] **Step 1: Write the decision record**
 
-`decisions/0086-*.md`, following `decision-0084`'s frontmatter shape **minus any `status:` field** (`decision-0082`). It must state: what changed (the trigger moved from "a reconciliation ran" to "the assembly is over budget"); the measurement, before and after; that the archive/working-set split is the invariant and how it is pinned; that the hard refusal survives as a runaway guard and **what reaching it now means**, with no reprise of the corrected "pathologically large / nothing left to degrade" claim; and that this closes TRL-29's remaining half.
+`docs/decisions/0086-*.md`, following `decision-0084`'s frontmatter shape **minus any `status:` field** (`decision-0082`). It must state: what changed (the trigger moved from "a reconciliation ran" to "the assembly is over budget"); the measurement, before and after; that the archive/working-set split is the invariant and how it is pinned; that the hard refusal survives as a runaway guard and **what reaching it now means**, with no reprise of the corrected "pathologically large / nothing left to degrade" claim; and that this closes TRL-29's remaining half.
 
 - [ ] **Step 2: Add the forward pointer to `decision-0084`**
 
-`decisions/` is append-only, so the pointer is the only edit: add `superseded_in_part_by: [decision-0086]` to its frontmatter, with a trailing comment naming exactly the part superseded — the §6 sentences describing the degradation as one-shot and gated on `mismatch !== null`. The rest of §6, and all of the record's parity content, stands.
+`docs/decisions/` is append-only, so the pointer is the only edit: add `superseded_in_part_by: [decision-0086]` to its frontmatter, with a trailing comment naming exactly the part superseded — the §6 sentences describing the degradation as one-shot and gated on `mismatch !== null`. The rest of §6, and all of the record's parity content, stands.
 
 - [ ] **Step 3: Bump the payload version**
 
@@ -773,14 +773,14 @@ Expected: PASS.
 
 - [ ] **Step 5: Run the corpus reviewer**
 
-Invoke the repo-owned `corpus-reviewer` agent (`.claude/agents/`) over `decisions/0086-*.md` and the edited `0084`. It is read-only; fix what it reports.
+Invoke the repo-owned `corpus-reviewer` agent (`.claude/agents/`) over `docs/decisions/0086-*.md` and the edited `0084`. It is read-only; fix what it reports.
 
 - [ ] **Step 6: Full suite, commit, open the PR**
 
 Run: `cd cli && go build ./... && go vet ./... && go test -count=1 ./...`
 
 ```bash
-git add decisions/ plugins/trellis/VERSION install.sh docs/superpowers/plans/
+git add docs/decisions/ plugins/trellis/VERSION install.sh docs/superpowers/plans/
 git commit -m "decision-0086: the injected copy degrades whenever the assembly is over budget"
 ```
 

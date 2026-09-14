@@ -26,11 +26,11 @@ import (
 // written down. The highest-exposure surface was among the missing:
 // hooks/staleness.sh emits slash commands straight into the consumer's session.
 //
-// The governance corpus is excluded on purpose: decisions, specs and research
-// records legitimately name artifacts that later retired, and they are
-// append-only, so a live-command check there would be permanently red. The
-// top-level docs/ is excluded on the same ground: it is the record root for
-// planning records (decision-0097).
+// The governance corpus is excluded on purpose: decision records and research
+// notes legitimately name artifacts that later retired, and they are
+// append-only, so a live-command check there would be permanently red. They
+// live under the top-level docs/ record root beside the planning records
+// (decision-0097, decision-0099), and the walk skips that root by path.
 func docSurfaces(t *testing.T) []string {
 	t.Helper()
 	out, err := docSurfacesIn(repoRoot)
@@ -57,18 +57,18 @@ func docSurfacesIn(root string) ([]string, error) {
 		// .grove dropped by decision-0076, which deleted the directory.
 		// .git moved to structuralSkip (TRL-59): it was never an editorial call.
 		".github": true, ".claude": true,
-		"decisions": true, "specs": true, "research": true, "eval": true,
+		"specs": true, "eval": true,
 		"fixtures": true, "testdata": true,
 	}
 	// The top-level docs/ is a record root (decision-0097): planning records from
-	// superpowers and Compound Engineering, and the governance corpus once TRL-89
-	// moves it there. It is exempt on the SAME ground as decisions, specs and
-	// research: a record legitimately names artifacts that later retired — e.g.
-	// /trellis:setup before decision-0072 retired it — and a retirement must not
-	// force an edit to the record of the work that preceded it. The skip is by
-	// path, not by name, so a nested directory called docs is still walked. It
-	// replaces the superpowers and .superpowers name skips, whose ground
-	// (decision-0085) retired with superpowers.
+	// superpowers and Compound Engineering, and the governance corpus in
+	// docs/decisions/ and docs/research/ (decision-0099). It is exempt because a
+	// record legitimately names artifacts that later retired — e.g. /trellis:setup
+	// before decision-0072 retired it — and a retirement must not force an edit to
+	// the record of the work that preceded it. The skip is by path, not by name, so
+	// a nested docs, decisions or research directory is still walked. It replaces
+	// the superpowers and .superpowers name skips, whose ground (decision-0085)
+	// retired with superpowers.
 	recordRoot := filepath.Join(root, "docs")
 	exts := map[string]bool{".md": true, ".html": true, ".sh": true, ".mjs": true}
 	var out []string
@@ -626,16 +626,16 @@ func marketplaceCommands(root string) (map[string][]string, error) {
 //     string is not the fix;
 //   - the root carries a .git entry too, so the rule must exempt it or the first
 //     callback skips the repository and every guard passes checking nothing;
-//   - the two walks keep DIFFERENT editorial scopes — decisions/ is in
+//   - the two walks keep DIFFERENT editorial scopes — docs/decisions/ is in
 //     marketplaceCommands's and out of docSurfacesIn's — so the tempting repair,
 //     giving walker B walker A's whole skip set, is a coverage loss and fails
 //     here. That scope is PRESERVED, not newly chosen, and it sits in tension
 //     with the reason docSurfaces gives for excluding the same corpus: records
 //     are append-only, so a live-command check over them can go permanently red.
 //     It cannot today — no governance record matches the command WITH a slug,
-//     decisions/0069's `/plugin marketplace add` being a bare mention — and if a
-//     marketplace rename ever makes one match, the answer is to exempt it then,
-//     deliberately, rather than to narrow the walk now on a guess.
+//     docs/decisions/0069's `/plugin marketplace add` being a bare mention —
+//     and if a marketplace rename ever makes one match, the answer is to exempt
+//     it then, deliberately, rather than to narrow the walk now on a guess.
 func TestGuardWalksDoNotReadOtherCheckouts(t *testing.T) {
 	root := t.TempDir()
 	write := func(rel, body string) {
@@ -668,7 +668,7 @@ func TestGuardWalksDoNotReadOtherCheckouts(t *testing.T) {
 	// This checkout's own source — the only thing either walk may read.
 	write("README.md", own)
 	// In marketplaceCommands's scope and outside docSurfacesIn's.
-	write("decisions/a-record.md", own)
+	write("docs/decisions/a-record.md", own)
 
 	// A worktree: .git is a FILE.
 	write(".claude/worktrees/agent-x/.git", "gitdir: /elsewhere/.git/worktrees/agent-x\n")
@@ -686,7 +686,7 @@ func TestGuardWalksDoNotReadOtherCheckouts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scanning the fixture for install commands: %v", err)
 	}
-	if got, want := strings.Join(keysOf(cmds), ", "), "README.md, decisions/a-record.md"; got != want {
+	if got, want := strings.Join(keysOf(cmds), ", "), "README.md, docs/decisions/a-record.md"; got != want {
 		t.Errorf("marketplaceCommands read [%s]\nwant                        [%s]\n"+
 			"an extra file is another checkout's content, which is a neighbouring branch's business and not this branch's defect (TRL-59); "+
 			"a missing one means the walk stopped reading its own tree, and a guard that reads nothing passes silently", got, want)

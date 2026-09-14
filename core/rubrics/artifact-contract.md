@@ -17,7 +17,7 @@ scope: trellis-product
 > **PASS / FAIL** with a *specific* reason (file + field + rule). **No vague failures, no false
 > passes.**
 >
-> **Corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`, **`core/schemas/`**,
+> **Corpus:** `docs/decisions/`, `docs/research/`, `core/invariants/`, `core/rubrics/`, **`core/schemas/`**,
 > **`core/catalog/`**, **`core/lexicon.md`**, **`profiles/`**. Exclude `core/fixtures/` unless running
 > the positive control. `core/schemas/` is **checked, not merely consulted**: `decision-0079` re-homed
 > the typed-artifact schema there, and this rubric `depends_on` the id it declares

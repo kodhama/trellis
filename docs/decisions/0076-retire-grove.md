@@ -21,7 +21,7 @@ date: 2026-08-27
 
 - **Grove was never adopted by a decision record.** It arrived as `fda44d9` (2026-07-08),
   *"chore: install grove as operating model (eleven roles, corpus-reviewer instance)"*. No decision
-  record in `decisions/` adopts, ratifies, or retires it — no decision title names grove at all. An
+  record in `docs/decisions/` adopts, ratifies, or retires it — no decision title names grove at all. An
   operating model for the whole repo entered as a chore commit and left the same way. That is the
   finding, and it is about this repo's discipline, not about grove.
 
@@ -50,7 +50,7 @@ date: 2026-08-27
 
 - **The citation leg is load-bearing, not decorative.** `specs/0001-spine-artifact-contract.md:5`
   carries `depends_on: […, grove/adr-0010-versioning-is-operational]` — an approved spec with a
-  frontmatter coupling edge into grove. Sharper still, `decisions/0045-artifact-versioning-kinds.md:7`
+  frontmatter coupling edge into grove. Sharper still, `docs/decisions/0045-artifact-versioning-kinds.md:7`
   reads `superseded_in_part_by: [grove/adr-0010-versioning-is-operational]`: a trellis decision is
   partly superseded **by** a grove ADR. Severing the citation leg would orphan a supersession pointer
   in an append-only record.
@@ -90,7 +90,7 @@ the single most consequential line in the change.
 
 **2. Grove-the-repo remains a cited source, and nothing citing it changes.** `grove/adr-00NN`
 references, `spec-0001:5`'s `depends_on`, `decision-0045:7`'s `superseded_in_part_by`, the amendment
-banners across `research/` and `specs/`, and grove's entry in the recognized-repo registry
+banners across `docs/research/` and `specs/`, and grove's entry in the recognized-repo registry
 (`spec-0001:97`, `core/rubrics/artifact-contract.md:39`) all stand. **Uninstalling a plugin is not a
 statement about a repository.** Conflating the two would have rewritten append-only history to
 record a tooling change, which `decision-0042` forbids ("no relabel — that would forge history for
@@ -145,8 +145,8 @@ repo-owned agent file rather than a ratified artifact, and it is a **live input 
 so leaving it naming a dead carrier would degrade every corpus check taken with it.
 
 **6. One new standing rule enters with this change, declared rather than smuggled.** `AGENTS.md`
-gains: *invoke the repo-owned `corpus-reviewer` before merging a change to `decisions/`, `specs/`,
-`research/` or `core/`.* No such obligation was written down anywhere before. It belongs with this
+gains: *invoke the repo-owned `corpus-reviewer` before merging a change to `docs/decisions/`, `specs/`,
+`docs/research/` or `core/`.* No such obligation was written down anywhere before. It belongs with this
 retirement because grove's departure removes the last trace of a chartered review fleet, and
 `decision-0010` puts artifact conformance in an agent rather than CI — so with grove gone and no CI
 check covering the contract, an unstated convention was the only thing between the corpus and no
@@ -237,7 +237,7 @@ the two edges the record originally declared were not the ones its Decision sect
 on (`decision-0047`'s coupling test). Neither was self-caught.
 
 The review returned one **FAIL** against the corpus, and it is not this change's:
-`decisions/0044-cross-repo-depends-on-convention.md:5` carries the bare unqualified
+`docs/decisions/0044-cross-repo-depends-on-convention.md:5` carries the bare unqualified
 `kodhama-0004-uniform-lifecycle`, dangling under rubric check 4. That artifact declares the gap
 itself and it predates this record by seven weeks. Named here so a green-looking review is not
 mistaken for a clean corpus.

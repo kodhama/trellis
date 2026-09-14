@@ -1,7 +1,7 @@
 package main
 
 // Tests for .github/scripts/decision-id-guard.sh — the CI guard that refuses a
-// pull request claiming an already-taken `decisions/NNNN-*.md` id (TRL-40,
+// pull request claiming an already-taken `docs/decisions/NNNN-*.md` id (TRL-40,
 // decision-0089).
 //
 // The harness shape is the repo's existing one: execute the production script as
@@ -95,24 +95,24 @@ func mustNotContain(t *testing.T, out, unwanted, why string) {
 }
 
 // The world every fixture starts from: main holds 0086 through 0088.
-const guardMainFiles = "decisions/0086-the-injected-copy-degrades.md\n" +
-	"decisions/0087-one-gateway-for-every-payload-read.md\n" +
-	"decisions/0088-the-install-render-follows-strictness.md\n" +
-	"decisions/README-not-a-decision.md"
+const guardMainFiles = "docs/decisions/0086-the-injected-copy-degrades.md\n" +
+	"docs/decisions/0087-one-gateway-for-every-payload-read.md\n" +
+	"docs/decisions/0088-the-install-render-follows-strictness.md\n" +
+	"docs/decisions/README-not-a-decision.md"
 
 // TestDecisionIDGuardFailsOnIDAlreadyOnMain — the first half of the rule. This
 // is recurrence #2 from the ticket in miniature: trellis#252 sat open claiming
 // an already-merged decision-0076 and nothing said so.
 func TestDecisionIDGuardFailsOnIDAlreadyOnMain(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"300 added decisions/0087-a-different-slug.md")
+		"300 added docs/decisions/0087-a-different-slug.md")
 
 	if code != 1 {
 		t.Errorf("an id already on main must be red; exit %d\n%s", code, out)
 	}
-	mustContain(t, out, "::error file=decisions/0087-a-different-slug.md::",
+	mustContain(t, out, "::error file=docs/decisions/0087-a-different-slug.md::",
 		"the error must be annotated onto the offending file")
-	mustContain(t, out, "decision-0087 is already on main as decisions/0087-one-gateway-for-every-payload-read.md",
+	mustContain(t, out, "decision-0087 is already on main as docs/decisions/0087-one-gateway-for-every-payload-read.md",
 		"the error must name the id AND the file that holds it, so the reader does not have to look")
 }
 
@@ -121,15 +121,15 @@ func TestDecisionIDGuardFailsOnIDAlreadyOnMain(t *testing.T) {
 // own output, so both are asserted here rather than left to the PR body.
 func TestDecisionIDGuardFailsOnLowerNumberedOpenPR(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"299 added decisions/0089-the-older-claim.md\n"+
-			"300 added decisions/0089-the-newer-claim.md")
+		"299 added docs/decisions/0089-the-older-claim.md\n"+
+			"300 added docs/decisions/0089-the-newer-claim.md")
 
 	if code != 1 {
 		t.Errorf("a lower-numbered open PR holding the same id must be red; exit %d\n%s", code, out)
 	}
-	mustContain(t, out, "::error file=decisions/0089-the-newer-claim.md::",
+	mustContain(t, out, "::error file=docs/decisions/0089-the-newer-claim.md::",
 		"the error belongs on this PR's file, not the rival's")
-	mustContain(t, out, "open PR #299 (decisions/0089-the-older-claim.md)",
+	mustContain(t, out, "open PR #299 (docs/decisions/0089-the-older-claim.md)",
 		"the losing PR must be told which PR holds the id and where")
 	mustContain(t, out, "the older claim wins",
 		"the check must state the tie-break rule in its own output")
@@ -143,17 +143,17 @@ func TestDecisionIDGuardFailsOnLowerNumberedOpenPR(t *testing.T) {
 // other branch has to hear about it.
 func TestDecisionIDGuardReportsHigherNumberedOpenPR(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"300 added decisions/0089-the-older-claim.md\n"+
-			"301 added decisions/0089-the-newer-claim.md")
+		"300 added docs/decisions/0089-the-older-claim.md\n"+
+			"301 added docs/decisions/0089-the-newer-claim.md")
 
 	if code != 0 {
 		t.Errorf("the lower-numbered PR keeps the id and must stay green; exit %d\n%s", code, out)
 	}
 	mustNotContain(t, out, "::error",
 		"a higher-numbered rival is reported, never failed")
-	mustContain(t, out, "::notice file=decisions/0089-the-older-claim.md::",
+	mustContain(t, out, "::notice file=docs/decisions/0089-the-older-claim.md::",
 		"the winning PR is still told the collision exists")
-	mustContain(t, out, "open PR #301 (decisions/0089-the-newer-claim.md)",
+	mustContain(t, out, "open PR #301 (docs/decisions/0089-the-newer-claim.md)",
 		"the notice must name the rival PR and its file")
 	mustContain(t, out, "the older claim wins",
 		"the notice must state the same tie-break rule the error does")
@@ -167,14 +167,14 @@ func TestDecisionIDGuardReportsHigherNumberedOpenPR(t *testing.T) {
 func TestDecisionIDGuardSilentWithNoNewDecision(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
 		"300 added cli/decision_id_guard_test.go\n"+
-			"299 added decisions/0089-someone-elses.md")
+			"299 added docs/decisions/0089-someone-elses.md")
 
 	if code != 0 {
 		t.Errorf("a PR that adds no decision record must be green; exit %d\n%s", code, out)
 	}
 	mustNotContain(t, out, "::error", "nothing was claimed, so nothing can collide")
 	mustNotContain(t, out, "::notice", "nothing was claimed, so nothing to report")
-	mustContain(t, out, "adds no decisions/NNNN-*.md file",
+	mustContain(t, out, "adds no docs/decisions/NNNN-*.md file",
 		"a silent green should still say why it had nothing to do")
 }
 
@@ -183,17 +183,17 @@ func TestDecisionIDGuardSilentWithNoNewDecision(t *testing.T) {
 // otherwise the remedy the guard prints ("renumber") is ambiguous.
 func TestDecisionIDGuardFailsOnlyTheCollidingID(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"300 added decisions/0088-collides-with-main.md\n"+
-			"300 added decisions/0090-perfectly-free.md")
+		"300 added docs/decisions/0088-collides-with-main.md\n"+
+			"300 added docs/decisions/0090-perfectly-free.md")
 
 	if code != 1 {
 		t.Errorf("one colliding id out of two is still red; exit %d\n%s", code, out)
 	}
-	mustContain(t, out, "::error file=decisions/0088-collides-with-main.md::",
+	mustContain(t, out, "::error file=docs/decisions/0088-collides-with-main.md::",
 		"the taken id must be the one flagged")
-	mustNotContain(t, out, "::error file=decisions/0090-perfectly-free.md::",
+	mustNotContain(t, out, "::error file=docs/decisions/0090-perfectly-free.md::",
 		"the free id must not be flagged")
-	mustContain(t, out, "decision-0090 (decisions/0090-perfectly-free.md) — free.",
+	mustContain(t, out, "decision-0090 (docs/decisions/0090-perfectly-free.md) — free.",
 		"the free id must be reported clear, so the author knows which one to move")
 }
 
@@ -205,16 +205,16 @@ func TestDecisionIDGuardFailsOnlyTheCollidingID(t *testing.T) {
 // TestDecisionIDGuardTreatsRenameDestinationAsAClaim.
 func TestDecisionIDGuardIgnoresNonAddedFiles(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"300 modified decisions/0087-one-gateway-for-every-payload-read.md\n"+
-			"300 removed decisions/0086-the-injected-copy-degrades.md\n"+
-			"300 changed decisions/0088-the-install-render-follows-strictness.md\n"+
-			"299 added decisions/0089-the-older-claim.md")
+		"300 modified docs/decisions/0087-one-gateway-for-every-payload-read.md\n"+
+			"300 removed docs/decisions/0086-the-injected-copy-degrades.md\n"+
+			"300 changed docs/decisions/0088-the-install-render-follows-strictness.md\n"+
+			"299 added docs/decisions/0089-the-older-claim.md")
 
 	if code != 0 {
 		t.Errorf("modified/removed/changed decision files are not claims; exit %d\n%s", code, out)
 	}
 	mustNotContain(t, out, "::error", "no file was put at a new decision path")
-	mustContain(t, out, "adds no decisions/NNNN-*.md file",
+	mustContain(t, out, "adds no docs/decisions/NNNN-*.md file",
 		"the guard should say it found no claim")
 }
 
@@ -229,15 +229,15 @@ func TestDecisionIDGuardIgnoresNonAddedFiles(t *testing.T) {
 // `previous_filename`, which is the fourth field of a GUARD_PR_FILES row.
 func TestDecisionIDGuardTreatsRenameDestinationAsAClaim(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"299 added decisions/0090-the-older-claim.md\n"+
-			"300 renamed decisions/0090-new.md decisions/0086-old.md")
+		"299 added docs/decisions/0090-the-older-claim.md\n"+
+			"300 renamed docs/decisions/0090-new.md docs/decisions/0086-old.md")
 
 	if code != 1 {
 		t.Errorf("a rename INTO a new decision id is a claim and must collide; exit %d\n%s", code, out)
 	}
-	mustContain(t, out, "::error file=decisions/0090-new.md::",
+	mustContain(t, out, "::error file=docs/decisions/0090-new.md::",
 		"the error belongs on the destination path, which is what claims the id")
-	mustContain(t, out, "open PR #299 (decisions/0090-the-older-claim.md)",
+	mustContain(t, out, "open PR #299 (docs/decisions/0090-the-older-claim.md)",
 		"the rival holding the id must still be named")
 }
 
@@ -249,13 +249,13 @@ func TestDecisionIDGuardTreatsRenameDestinationAsAClaim(t *testing.T) {
 // base branch by definition.
 func TestDecisionIDGuardIgnoresSlugOnlyRename(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"300 renamed decisions/0087-a-better-slug.md decisions/0087-one-gateway-for-every-payload-read.md")
+		"300 renamed docs/decisions/0087-a-better-slug.md docs/decisions/0087-one-gateway-for-every-payload-read.md")
 
 	if code != 0 {
 		t.Errorf("a rename keeping its own id claims nothing; exit %d\n%s", code, out)
 	}
 	mustNotContain(t, out, "::error", "the record already held 0087")
-	mustContain(t, out, "adds no decisions/NNNN-*.md file",
+	mustContain(t, out, "adds no docs/decisions/NNNN-*.md file",
 		"nothing was claimed, so there is nothing to report")
 }
 
@@ -266,33 +266,33 @@ func TestDecisionIDGuardIgnoresSlugOnlyRename(t *testing.T) {
 // branch and the author picks which one moves.
 func TestDecisionIDGuardFailsOnDuplicateIDWithinOnePR(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"300 added decisions/0090-a.md\n"+
-			"300 added decisions/0090-b.md")
+		"300 added docs/decisions/0090-a.md\n"+
+			"300 added docs/decisions/0090-b.md")
 
 	if code != 1 {
 		t.Errorf("one id under two filenames in one PR must be red; exit %d\n%s", code, out)
 	}
 	mustContain(t, out, "adds two files claiming decision-0090",
 		"the error must say what is wrong")
-	mustContain(t, out, "decisions/0090-a.md decisions/0090-b.md",
+	mustContain(t, out, "docs/decisions/0090-a.md docs/decisions/0090-b.md",
 		"both colliding files must be named — the author has to pick one to move")
 	mustNotContain(t, out, "— free.",
 		"an id claimed twice is not free; saying so would contradict the error")
 }
 
-// TestDecisionIDGuardIgnoresNonDecisionFilenames — `decisions/` holds more than
+// TestDecisionIDGuardIgnoresNonDecisionFilenames — `docs/decisions/` holds more than
 // numbered records, and a four-digit prefix is the whole claim shape. Flagging
 // a note in that directory would make the guard noise.
 func TestDecisionIDGuardIgnoresNonDecisionFilenames(t *testing.T) {
 	out, code := runGuard(t, "300", guardMainFiles,
-		"300 added decisions/README.md\n"+
-			"300 added decisions/0089.md\n"+
-			"300 added decisions/089-three-digits.md")
+		"300 added docs/decisions/README.md\n"+
+			"300 added docs/decisions/0089.md\n"+
+			"300 added docs/decisions/089-three-digits.md")
 
 	if code != 0 {
-		t.Errorf("nothing here has the decisions/NNNN-*.md shape; exit %d\n%s", code, out)
+		t.Errorf("nothing here has the docs/decisions/NNNN-*.md shape; exit %d\n%s", code, out)
 	}
-	mustContain(t, out, "adds no decisions/NNNN-*.md file",
+	mustContain(t, out, "adds no docs/decisions/NNNN-*.md file",
 		"none of these is a claim")
 }
 
@@ -301,7 +301,7 @@ func TestDecisionIDGuardIgnoresNonDecisionFilenames(t *testing.T) {
 // undefined; exit 2 (could not run) rather than 0 (clean).
 func TestDecisionIDGuardRequiresItsPRNumber(t *testing.T) {
 	out, code := runGuard(t, "", guardMainFiles,
-		"300 added decisions/0087-a-different-slug.md")
+		"300 added docs/decisions/0087-a-different-slug.md")
 
 	if code != 2 {
 		t.Errorf("a missing PR number is an inability to run, not a pass; exit %d\n%s", code, out)
@@ -333,7 +333,7 @@ func TestDecisionIDGuardFailsClosedOnProcessingError(t *testing.T) {
 		"GUARD_BASE_REF=main",
 		"GUARD_MAIN_FILES=" + guardMainFiles,
 		// An id already on main: were awk working, this would be exit 1.
-		"GUARD_PR_FILES=300 added decisions/0087-a-different-slug.md",
+		"GUARD_PR_FILES=300 added docs/decisions/0087-a-different-slug.md",
 	}
 	out, err := cmd.CombinedOutput()
 	code := 0
@@ -351,7 +351,7 @@ func TestDecisionIDGuardFailsClosedOnProcessingError(t *testing.T) {
 	if code != 2 {
 		t.Errorf("a processing failure is exit 2 (could not run), not %d\n%s", code, out)
 	}
-	mustNotContain(t, string(out), "adds no decisions/NNNN-*.md file",
+	mustNotContain(t, string(out), "adds no docs/decisions/NNNN-*.md file",
 		"the empty result of a failed awk must not be reported as 'nothing claimed'")
 }
 
@@ -362,15 +362,15 @@ func TestDecisionIDGuardFailsClosedOnProcessingError(t *testing.T) {
 // with more fields than its status allows is now a refusal, not a pass.
 func TestDecisionIDGuardRefusesAPathWithASpace(t *testing.T) {
 	for _, tc := range []struct{ name, prFiles string }{
-		{"added", "300 added decisions/0088 old.md"},
-		{"rename destination", "300 renamed decisions/0090 new.md decisions/0086-old.md"},
+		{"added", "300 added docs/decisions/0088 old.md"},
+		{"rename destination", "300 renamed docs/decisions/0090 new.md docs/decisions/0086-old.md"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out, code := runGuard(t, "300", guardMainFiles, tc.prFiles)
 			if code != 2 {
 				t.Errorf("an unparseable row must refuse (exit 2), not pass; exit %d\n%s", code, out)
 			}
-			mustNotContain(t, out, "adds no decisions/NNNN-*.md file",
+			mustNotContain(t, out, "adds no docs/decisions/NNNN-*.md file",
 				"a row it cannot parse must never be reported as 'nothing claimed'")
 			mustContain(t, out, "unparseable row for PR #300",
 				"the refusal must name the row it could not read")
@@ -385,18 +385,18 @@ func TestDecisionIDGuardRefusesAPathWithASpace(t *testing.T) {
 // fires on one `docs/my notes.md` in one unrelated PR and aborts the guard for
 // EVERY pull request in the repository — including ones touching no decision
 // file at all. That is a repo-wide CI outage triggered by somebody naming a
-// file, traded against a hole nobody has hit. A path outside decisions/ cannot
+// file, traded against a hole nobody has hit. A path outside docs/decisions/ cannot
 // become a claim, so its shape is not this check's business.
 func TestDecisionIDGuardToleratesSpacesOutsideDecisions(t *testing.T) {
 	t.Run("this PR claims a free id", func(t *testing.T) {
 		out, code := runGuard(t, "300", guardMainFiles,
 			"299 added docs/my notes.md\n"+
-				"300 added decisions/0091-fine.md")
+				"300 added docs/decisions/0091-fine.md")
 
 		if code != 0 {
-			t.Errorf("a spaced path in ANOTHER PR, outside decisions/, must not abort this one; exit %d\n%s", code, out)
+			t.Errorf("a spaced path in ANOTHER PR, outside docs/decisions/, must not abort this one; exit %d\n%s", code, out)
 		}
-		mustContain(t, out, "decision-0091 (decisions/0091-fine.md) — free.",
+		mustContain(t, out, "decision-0091 (docs/decisions/0091-fine.md) — free.",
 			"the real claim must still be judged")
 	})
 
@@ -408,33 +408,33 @@ func TestDecisionIDGuardToleratesSpacesOutsideDecisions(t *testing.T) {
 		if code != 0 {
 			t.Errorf("a PR claiming nothing must not be failed by another PR's filename; exit %d\n%s", code, out)
 		}
-		mustContain(t, out, "adds no decisions/NNNN-*.md file",
+		mustContain(t, out, "adds no docs/decisions/NNNN-*.md file",
 			"nothing was claimed, so the guard has nothing to do")
 	})
 
-	t.Run("a spaced rename outside decisions/", func(t *testing.T) {
+	t.Run("a spaced rename outside docs/decisions/", func(t *testing.T) {
 		out, code := runGuard(t, "300", guardMainFiles,
 			"299 renamed docs/new name.md docs/old name.md\n"+
-				"300 added decisions/0091-fine.md")
+				"300 added docs/decisions/0091-fine.md")
 
 		if code != 0 {
-			t.Errorf("a spaced rename outside decisions/ is not this check's business; exit %d\n%s", code, out)
+			t.Errorf("a spaced rename outside docs/decisions/ is not this check's business; exit %d\n%s", code, out)
 		}
 	})
 
-	// The first fix scoped the refusal to `decisions/*`, which closed the
-	// outage for paths OUTSIDE the directory and left it open one directory in.
-	// `decisions/` holds non-record files too, so a spaced one there aborted
-	// every PR in the repo exactly as `docs/my notes.md` had.
-	t.Run("a spaced NON-RECORD file inside decisions/", func(t *testing.T) {
+	// Scoping the refusal to `docs/decisions/*` closes the outage for paths
+	// OUTSIDE the directory and leaves it open one directory in: `docs/decisions/`
+	// holds non-record files too, so a spaced one there would abort every PR in
+	// the repo exactly as `docs/my notes.md` would.
+	t.Run("a spaced NON-RECORD file inside docs/decisions/", func(t *testing.T) {
 		out, code := runGuard(t, "300", guardMainFiles,
-			"299 added decisions/notes on ids.md\n"+
-				"300 added decisions/0091-fine.md")
+			"299 added docs/decisions/notes on ids.md\n"+
+				"300 added docs/decisions/0091-fine.md")
 
 		if code != 0 {
-			t.Errorf("a spaced non-record file in decisions/ cannot become a claim and must not abort; exit %d\n%s", code, out)
+			t.Errorf("a spaced non-record file in docs/decisions/ cannot become a claim and must not abort; exit %d\n%s", code, out)
 		}
-		mustContain(t, out, "decision-0091 (decisions/0091-fine.md) — free.",
+		mustContain(t, out, "decision-0091 (docs/decisions/0091-fine.md) — free.",
 			"the real claim must still be judged")
 	})
 }
@@ -448,20 +448,20 @@ func TestDecisionIDGuardToleratesSpacesOutsideDecisions(t *testing.T) {
 func TestDecisionIDGuardCopiedRowCarriesAPreviousFilename(t *testing.T) {
 	t.Run("a copy claims its destination id", func(t *testing.T) {
 		out, code := runGuard(t, "300", guardMainFiles,
-			"300 copied decisions/0090-new.md decisions/0086-the-injected-copy-degrades.md")
+			"300 copied docs/decisions/0090-new.md docs/decisions/0086-the-injected-copy-degrades.md")
 
 		if code != 0 {
 			t.Errorf("a well-formed copy row must be judged, not refused; exit %d\n%s", code, out)
 		}
 		mustNotContain(t, out, "cannot be read as a claim",
 			"the row is well-formed; refusing it as unparseable is a false statement about it")
-		mustContain(t, out, "decision-0090 (decisions/0090-new.md) — free.",
+		mustContain(t, out, "decision-0090 (docs/decisions/0090-new.md) — free.",
 			"a copy puts a new file at a new path, so it claims that id")
 	})
 
 	t.Run("a copy onto a taken id still collides", func(t *testing.T) {
 		out, code := runGuard(t, "300", guardMainFiles,
-			"300 copied decisions/0087-a-copy.md decisions/0086-the-injected-copy-degrades.md")
+			"300 copied docs/decisions/0087-a-copy.md docs/decisions/0086-the-injected-copy-degrades.md")
 
 		if code != 1 {
 			t.Errorf("a copy onto an id already on the base branch must be red; exit %d\n%s", code, out)
@@ -484,11 +484,11 @@ func TestDecisionIDGuardCopiedRowCarriesAPreviousFilename(t *testing.T) {
 // identically to the fixture shape.
 func TestDecisionIDGuardHandlesProductionRowShape(t *testing.T) {
 	// Trailing spaces are deliberate — this is what `gh api --jq` emits.
-	production := "300 removed decisions/0088-old.md \n" +
-		"300 added decisions/0088-new.md "
-	fixture := "300 removed decisions/0088-old.md\n" +
-		"300 added decisions/0088-new.md"
-	base := "decisions/0088-old.md"
+	production := "300 removed docs/decisions/0088-old.md \n" +
+		"300 added docs/decisions/0088-new.md "
+	fixture := "300 removed docs/decisions/0088-old.md\n" +
+		"300 added docs/decisions/0088-new.md"
+	base := "docs/decisions/0088-old.md"
 
 	outProd, codeProd := runGuard(t, "300", base, production)
 	outFix, codeFix := runGuard(t, "300", base, fixture)
@@ -510,9 +510,9 @@ func TestDecisionIDGuardHandlesProductionRowShape(t *testing.T) {
 // reasoning lived only in a source comment the reader never sees.
 func TestDecisionIDGuardExplainsAnIDThisPRIsVacating(t *testing.T) {
 	out, code := runGuard(t, "300",
-		"decisions/0088-old.md\ndecisions/0087-y.md",
-		"300 renamed decisions/0091-x.md decisions/0088-old.md\n"+
-			"300 renamed decisions/0088-z.md decisions/0087-y.md")
+		"docs/decisions/0088-old.md\ndocs/decisions/0087-y.md",
+		"300 renamed docs/decisions/0091-x.md docs/decisions/0088-old.md\n"+
+			"300 renamed docs/decisions/0088-z.md docs/decisions/0087-y.md")
 
 	if code != 1 {
 		t.Errorf("an id on the base branch is taken even when this PR is vacating it; exit %d\n%s", code, out)
@@ -521,7 +521,7 @@ func TestDecisionIDGuardExplainsAnIDThisPRIsVacating(t *testing.T) {
 		"the error must explain why a file this PR is moving still blocks the id")
 	mustContain(t, out, "a branch cannot free an id for its own use",
 		"the reason has to be in the message, not only in a source comment")
-	mustContain(t, out, "decision-0091 (decisions/0091-x.md) — free.",
+	mustContain(t, out, "decision-0091 (docs/decisions/0091-x.md) — free.",
 		"the other rename claims a free id and must not be dragged red with it")
 }
 
@@ -611,5 +611,87 @@ func TestDecisionIDGuardWorkflowRunsTheScript(t *testing.T) {
 	// A permissions grant, not a mention of one.
 	if !regexp.MustCompile(`(?m)^[ \t]+pull-requests:[ \t]+read[ \t]*$`).MatchString(body) {
 		t.Error("decision-id-guard.yml no longer grants `pull-requests: read`; reading sibling PRs is the whole point")
+	}
+}
+
+// TestDecisionIDGuardRootPathClaimsNothing — the guard reads docs/decisions/ and
+// nothing else (decision-0099). A record added at the old root
+// `decisions/NNNN-*.md` path claims nothing, even when its id is already on the
+// base branch: a record at the root is caught by the root-absence check in
+// cli/selfapply_test.go (TestSharedProjectInstructionEntrypoints), not by this
+// guard, and a second prefix here would be a permanent rule kept for one move.
+func TestDecisionIDGuardRootPathClaimsNothing(t *testing.T) {
+	out, code := runGuard(t, "300", guardMainFiles,
+		"300 added decisions/0087-z.md")
+
+	if code != 0 {
+		t.Errorf("a record at the old root path is not a claim, even on an id the base holds; exit %d\n%s", code, out)
+	}
+	mustNotContain(t, out, "::error", "a root path claims nothing, so nothing can collide")
+	mustNotContain(t, out, "PR #300 claims:", "the guard must not read an id from a root path")
+	mustContain(t, out, "adds no docs/decisions/NNNN-*.md file",
+		"the guard should say it found no claim at the one path it reads")
+}
+
+// decisionIDGuardClaimDir is the directory the guard reads ids from: the prefix
+// of decision_id's `case` arm. The base-branch listing and the workflow trigger
+// must name the same directory, and the two tests below hold them to it
+// (decision-0028's pair, on the path decision-0099 moved).
+func decisionIDGuardClaimDir(t *testing.T, script string) string {
+	t.Helper()
+	// Anchored so a comment naming the pattern is not the arm.
+	m := regexp.MustCompile(`(?m)^[ \t]*([^#\s]*/)\[0-9\]\[0-9\]\[0-9\]\[0-9\]-\*\.md\)`).FindStringSubmatch(script)
+	if m == nil {
+		t.Fatal("decision_id's claim pattern (`<dir>/[0-9][0-9][0-9][0-9]-*.md)`) is missing from the guard script")
+	}
+	return m[1]
+}
+
+// TestDecisionIDGuardListsTheBaseAtItsClaimPath — every fixture injects
+// GUARD_MAIN_FILES, so no behavioural test reaches the live `git ls-tree` that
+// lists the base branch. Pointed at any other directory, it lists nothing, every
+// id reads as free on the base, and the suite stays green.
+func TestDecisionIDGuardListsTheBaseAtItsClaimPath(t *testing.T) {
+	b, err := os.ReadFile(decisionIDGuardPath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(b)
+	dir := decisionIDGuardClaimDir(t, src)
+
+	// A command, not a mention: the script's header names `git ls-tree` in a
+	// comment.
+	listings := regexp.MustCompile(`(?m)^[^#\n]*\bgit ls-tree\b[^\n]*`).FindAllString(src, -1)
+	if len(listings) == 0 {
+		t.Fatal("the guard no longer lists the base branch with `git ls-tree`")
+	}
+	pathspec := regexp.MustCompile(`[ \t]--[ \t]+(\S+)`)
+	for _, line := range listings {
+		if m := pathspec.FindStringSubmatch(line); m == nil || m[1] != dir {
+			t.Errorf("the base-branch listing must read %s, the directory the claim pattern reads ids from; got %q",
+				dir, strings.TrimSpace(line))
+		}
+	}
+}
+
+// TestDecisionIDGuardWorkflowTriggersOnTheClaimPath — the workflow's `paths:`
+// filter decides whether the guard runs at all. A pull request adding a record
+// outside it never starts the job, and a job that never starts shows no red.
+// Anchored to a list item for the reason `runsIt` is: the workflow's comments
+// name the directory too.
+func TestDecisionIDGuardWorkflowTriggersOnTheClaimPath(t *testing.T) {
+	b, err := os.ReadFile(decisionIDGuardPath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := decisionIDGuardClaimDir(t, string(b))
+
+	wf, err := os.ReadFile("../.github/workflows/decision-id-guard.yml")
+	if err != nil {
+		t.Fatalf("the guard's workflow is missing: %v", err)
+	}
+	trigger := regexp.MustCompile(`(?m)^[ \t]+-[ \t]+"` + regexp.QuoteMeta(dir+"**") + `"[ \t]*$`)
+	if !trigger.MatchString(string(wf)) {
+		t.Errorf("decision-id-guard.yml has no `- \"%s**\"` paths entry; a pull request adding a record there would never run the guard", dir)
 	}
 }

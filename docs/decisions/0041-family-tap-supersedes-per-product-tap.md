@@ -46,7 +46,7 @@ via a fine-grained PAT, `curl … | sh` as the no-Homebrew fallback) are unaffec
 
 ## Consequences
 
-- `decisions/0032-homebrew-distribution.md` gets `status: superseded` and a forward pointer to
+- `docs/decisions/0032-homebrew-distribution.md` gets `status: superseded` and a forward pointer to
   this decision — its content is untouched (append-only; the reasoning it recorded was correct
   for its time).
 - Any future kodhama-family product adding a tap formula reads `kodhama-0001-family-delivery`

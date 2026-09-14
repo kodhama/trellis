@@ -131,5 +131,5 @@ Each new assertion here is verified the same way.
 |---|---|
 | A decision record | Supersedes `decision-0083`'s Claude-only scoping; the four "parity is owed" annotations become history and need their forward pointer |
 | `plugins/trellis/VERSION` bump | Payload change is a release; without it no cached consumer re-pulls |
-| `corpus-reviewer` before merge | Required for `decisions/` changes |
-| Close out the four parity annotations | Four dated notes on the predecessor branch say parity is owed and name TRL-30. Once this lands they describe history, not an open debt. **Do not edit or delete them** — `decisions/` is append-only and the planning docs are historical records. Add a second dated line beside each saying the debt was paid and naming the new decision record, so a reader arriving at the "owed" note is not left believing it still stands |
+| `corpus-reviewer` before merge | Required for `docs/decisions/` changes |
+| Close out the four parity annotations | Four dated notes on the predecessor branch say parity is owed and name TRL-30. Once this lands they describe history, not an open debt. **Do not edit or delete them** — `docs/decisions/` is append-only and the planning docs are historical records. Add a second dated line beside each saying the debt was paid and naming the new decision record, so a reader arriving at the "owed" note is not left believing it still stands |

@@ -31,7 +31,7 @@ eval/experiments/<name>/
 The single-task shape above is the default; a **suite-shaped** experiment carries pools
 instead (`tasks/`, `fixtures/`, `scorecards/`, its own `prompts/`) and says so in its
 card — `does-trellis-help` is the instance. Each experiment pairs with a `research-` note
-in `research/` carrying the design, statistics, and decision rule — the directory is the
+in `docs/research/` carrying the design, statistics, and decision rule — the directory is the
 machinery, the note is the contract.
 
 ## The shared substrate (use it, don't fork it)

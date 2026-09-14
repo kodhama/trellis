@@ -479,8 +479,8 @@ mandate writes keeps them in full."
 ### Task 5: Record the decision and ship the payload
 
 **Files:**
-- Create: `decisions/0084-codex-reaches-reconciliation-parity.md`
-- Modify: `decisions/0083-rules-toml-reconciles-itself.md` (frontmatter forward pointer only)
+- Create: `docs/decisions/0084-codex-reaches-reconciliation-parity.md`
+- Modify: `docs/decisions/0083-rules-toml-reconciles-itself.md` (frontmatter forward pointer only)
 - Modify: `plugins/trellis/VERSION`, and the four parity annotations
 - Modify: `README.md`, `plugins/trellis/README.md` if they scope reconciliation to Claude
 
@@ -489,7 +489,7 @@ mandate writes keeps them in full."
 
 - [ ] **Step 1: Write the decision record**
 
-Create `decisions/0084-codex-reaches-reconciliation-parity.md`. **No `status:` field** (`decision-0082`); `depends_on: [decision-0083]`; `owner: agent`; `date: 2026-08-30`. It must cover:
+Create `docs/decisions/0084-codex-reaches-reconciliation-parity.md`. **No `status:` field** (`decision-0082`); `depends_on: [decision-0083]`; `owner: agent`; `date: 2026-08-30`. It must cover:
 
 1. **What changed** — the classifier split, and precisely which conditions still fail closed. Name the permissive-direction risk explicitly.
 2. **Why Codex moved on `strictness` rather than the reconciler writing the key** — fixing the divergence at its root repairs every existing partial file, not only newly reconciled ones, and keeps the reconciler from inventing configuration.
@@ -518,12 +518,12 @@ superseded_in_part_by: [decision-0084]  # 2026-08-30 — the Claude-only scoping
 - [ ] **Step 5: Run the suite and the corpus reviewer**
 
 Run: `cd cli && go build ./... && go vet ./... && go test ./...`
-Expected: PASS. Then invoke the repo-owned `corpus-reviewer` subagent against `decisions/`. Two pre-existing violations (`decisions/0044:5`, `research/0010:5`) are known and out of scope; anything else is yours to fix.
+Expected: PASS. Then invoke the repo-owned `corpus-reviewer` subagent against `docs/decisions/`. Two pre-existing violations (`docs/decisions/0044:5`, `docs/research/0010:5`) are known and out of scope; anything else is yours to fix.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add decisions/ plugins/trellis/VERSION README.md plugins/trellis/README.md docs/superpowers/
+git add docs/decisions/ plugins/trellis/VERSION README.md plugins/trellis/README.md docs/superpowers/
 git commit -m "decision-0084: Codex reaches reconciliation parity"
 ```
 

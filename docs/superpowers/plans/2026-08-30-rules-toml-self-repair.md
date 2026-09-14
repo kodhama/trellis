@@ -496,8 +496,8 @@ row and cite a payload that ships it. rules.md was already loaded here."
 ### Task 4: Record the decision and ship the payload
 
 **Files:**
-- Create: `decisions/0083-rules-toml-reconciles-itself.md`
-- Modify: `decisions/0072-retire-the-setup-skill.md` (frontmatter forward pointer only)
+- Create: `docs/decisions/0083-rules-toml-reconciles-itself.md`
+- Modify: `docs/decisions/0072-retire-the-setup-skill.md` (frontmatter forward pointer only)
 - Modify: `plugins/trellis/VERSION`, `README.md:204-215`, `plugins/trellis/README.md`
 
 **Interfaces:**
@@ -506,7 +506,7 @@ row and cite a payload that ships it. rules.md was already loaded here."
 
 - [ ] **Step 1: Write the decision record**
 
-Create `decisions/0083-rules-toml-reconciles-itself.md`. Frontmatter carries **no `status` field** (`decision-0082`); `depends_on: [decision-0051, decision-0070, decision-0072, decision-0074]`; `owner: agent`; `date: 2026-08-30`. The body must cover, each with its evidence:
+Create `docs/decisions/0083-rules-toml-reconciles-itself.md`. Frontmatter carries **no `status` field** (`decision-0082`); `depends_on: [decision-0051, decision-0070, decision-0072, decision-0074]`; `owner: agent`; `date: 2026-08-30`. The body must cover, each with its evidence:
 
 1. **What changed** — reconciliation replaces refusal; the three resolutions.
 2. **Why quarantine and not deletion** — TRL-27's live case, where the remedy would have deleted `inv-no-orphan-followups`, a ratified row, to match a 0.5.0 plugin. Name that the two causes are indistinguishable at runtime in config-only mode.
@@ -517,7 +517,7 @@ Create `decisions/0083-rules-toml-reconciles-itself.md`. Frontmatter carries **n
 
 - [ ] **Step 2: Add the forward pointer to decision-0072**
 
-`decisions/` is append-only — add the pointer to frontmatter, change no prose:
+`docs/decisions/` is append-only — add the pointer to frontmatter, change no prose:
 
 ```yaml
 superseded_in_part_by: [decision-0083]  # 2026-08-30 — the confirm-first row-repair remedy only (D2's three shapes and the reseed gate). The retirement of /trellis:setup, D1 and D3-D5, all stand.
@@ -534,12 +534,12 @@ In `README.md:204-215` and the plugin README, add the quarantine convention besi
 Run: `cd cli && go test ./... && go build ./... && go vet ./...`
 Expected: PASS. `TestDocsClaimOnlyRealCommands` and the payload guards are the ones most likely to catch a missed surface.
 
-Then invoke the repo-owned `corpus-reviewer` subagent (`.claude/agents/`) against `decisions/`. It is read-only and reports; fix what it finds and re-run.
+Then invoke the repo-owned `corpus-reviewer` subagent (`.claude/agents/`) against `docs/decisions/`. It is read-only and reports; fix what it finds and re-run.
 
 - [ ] **Step 5: Commit and open the PR**
 
 ```bash
-git add decisions/ plugins/trellis/VERSION README.md plugins/trellis/README.md
+git add docs/decisions/ plugins/trellis/VERSION README.md plugins/trellis/README.md
 git commit -m "decision-0083: rules.toml reconciles itself; the repair is reported, not gated"
 git push -u origin feature/trl-20-rules-toml-self-repair
 gh pr create --title "TRL-20: rules.toml reconciles itself instead of blacking out delivery" --body "$(cat <<'EOF'

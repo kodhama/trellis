@@ -188,6 +188,18 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	if _, err := os.Stat(filepath.Join("..", ".grove")); !os.IsNotExist(err) {
 		t.Error(".grove/ exists — decision-0076 retired grove and deleted it; its return means configuration for an uninstalled plugin is back in the tree")
 	}
+	// decision-0099: the governance corpus lives under docs/. A root decisions/ or
+	// research/ is outside the docs/ record-root exemption and outside the
+	// decision-id guard, which reads docs/decisions/ only — so a merge that resolves
+	// git's directory-rename conflict toward the old path, or a branch cut before
+	// the move, would land a record no check sees. Written as two literal reads so
+	// cli/ci_paths_guard_test.go holds cli-ci's filter to both directories.
+	if _, err := os.Stat(filepath.Join("..", "decisions")); !os.IsNotExist(err) {
+		t.Error("decisions/ exists at the repository root — decision-0099 moved the records to docs/decisions/; one here is invisible to the decision-id guard")
+	}
+	if _, err := os.Stat(filepath.Join("..", "research")); !os.IsNotExist(err) {
+		t.Error("research/ exists at the repository root — decision-0099 moved the notes to docs/research/")
+	}
 	// decision-0076: the retirement is undone by one line of committed config.
 	// `.claude/settings.json` enables plugins on clone (f9d0347 committed grove's
 	// entry precisely "so a fresh clone has a fleet"), and the kodhama marketplace
