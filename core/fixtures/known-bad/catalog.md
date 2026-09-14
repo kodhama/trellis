@@ -105,6 +105,49 @@ This line belongs to no entry.
   - class: `trellis-design`  ·  mechanizable: `true`  ·  intent_locus: `false`
   - default_C1: `default-on-but-skippable`  ·  default_C2: `independent-agent`
 
+- **`inv-empty-why`**
+  - what: an entry whose `why` field carries no value, rule 8b.
+  - directive: Give the reason.
+  - why:
+  - signature: a field with nothing after its key.
+  - honored:
+    - *(docs)* a rule states its goal.
+    - *(code)* a comment states its reason.
+  - violated:
+    - *(docs)* a rule states no goal.
+    - *(code)* a comment states no reason.
+  - class: `methodology`  ·  mechanizable: `true`  ·  intent_locus: `false`
+  - default_C1: `enforced`  ·  default_C2: `human`
+
+- **`inv-twice`**
+  - what: an entry that carries `class` twice, rule 8b.
+  - directive: State each field once.
+  - why: two values leave the reader to pick one.
+  - signature: a repeated field.
+  - honored:
+    - *(docs)* a field appears once.
+    - *(CI)* a config key is set once.
+  - violated:
+    - *(docs)* a field appears twice.
+    - *(CI)* a config key is set twice.
+  - class: `methodology`
+  - class: `trellis-design`  ·  mechanizable: `false`  ·  intent_locus: `false`
+  - default_C1: `enforced`  ·  default_C2: `human`
+
+- **`inv-untagged`**
+  - what: an entry whose examples carry no tag, rule 8c.
+  - directive: Tag each example with its situation.
+  - why: an untagged pair cannot be matched.
+  - signature: examples with no `*(tag)*`.
+  - honored:
+    - the first honored example.
+    - the second honored example.
+  - violated:
+    - the first violated example.
+    - the second violated example.
+  - class: `trellis-design`  ·  mechanizable: `true`  ·  intent_locus: `false`
+  - default_C1: `enforced`  ·  default_C2: `human`
+
 ## Acceptance criteria
 
 - `inv-good` and `inv-gate` yield no finding; each seeded entry yields the finding its `what` names.

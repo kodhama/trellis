@@ -1155,47 +1155,59 @@ func TestCorpusConformsToArtifactContract(t *testing.T) {
 }
 
 // expectedContractFinding is one entry of the control test's expected multiset:
-// a file under knownBadRoot, a rule id, and the subject the finding names.
+// a file under knownBadRoot, a rule id, the subject the finding names, and the
+// line it points at.
 type expectedContractFinding struct {
 	file, rule, subject string
+	line                int
 }
 
 // knownBadExpected is every finding the check must report on the fixture
 // corpus, and nothing else. Two findings of one rule in one file are two
-// entries.
+// entries. A rule with several ways to fail seeds each of them, and each entry
+// carries its line, so a finding sent to the wrong line fails here.
 var knownBadExpected = []expectedContractFinding{
-	{"known-bad.md", "1b", "owner"},
-	{"known-bad.md", "4i", "decision-9999"},
-	{"known-bad.md", "6a", "Acceptance criteria"},
-	{"known-bad.md", "6a", "Open questions"},
-	{"known-bad.md", "7a", "decision-9998"},
-	{"no-frontmatter.md", "1a", "frontmatter"},
-	{"unterminated-frontmatter.md", "1a", "closing ---"},
-	{"malformed-frontmatter-line.md", "1a", "this line is not a key and a value"},
-	{"repeated-and-empty-fields.md", "1b", "owner"},
-	{"repeated-and-empty-fields.md", "1b", "type"},
-	{"scalar-depends-on.md", "1c", "depends_on"},
-	{"unknown-type.md", "2a", "memo"},
-	{"bad-scope.md", "2b", "trellis-core"},
-	{"duplicate-id-b.md", "3", "decision-0300"},
-	{"dangling-refs.md", "4i", "notarepo/x"},
-	{"dangling-refs.md", "4i", "brief-§"},
-	{"dangling-refs.md", "4i", "spec-0009"},
-	{"informed-by.md", "4h", "decision-0001@v1"},
-	{"informed-by.md", "4g", "research-9999"},
-	{"decision-state-heading.md", "6a", "Decision"},
-	{"suffixed-and-fenced-headings.md", "6a", "Consequences"},
-	{"dangling-partial-supersession.md", "7b", "decision-9997"},
-	{"stale-note.md", "7c", "decision-0100"},
-	{"catalog.md", "8b", "This line belongs to no entry."},
-	{"catalog.md", "8b", "inv-no-why why"},
-	{"catalog.md", "8b", "inv-no-c2 default_C2"},
-	{"catalog.md", "8c", "inv-one-pair pairs"},
-	{"catalog.md", "8c", "inv-misaligned pair 2"},
-	{"profile.md", "9", "inv-unknown"},
-	{"profile.md", "10a", "inv-no-why evidence"},
-	{"profile.md", "10a", "inv-no-c2 confidence"},
-	{"profile.md", "11", "inv-gate"},
+	{"known-bad.md", "1b", "owner", 1},
+	{"known-bad.md", "4i", "decision-9999", 4},
+	{"known-bad.md", "6a", "Acceptance criteria", 3},
+	{"known-bad.md", "6a", "Open questions", 3},
+	{"known-bad.md", "7a", "decision-9998", 5},
+	{"no-frontmatter.md", "1a", "frontmatter", 1},
+	{"unterminated-frontmatter.md", "1a", "closing ---", 1},
+	{"malformed-frontmatter-line.md", "1a", "this line is not a key and a value", 6},
+	{"repeated-and-empty-fields.md", "1b", "owner", 6},
+	{"repeated-and-empty-fields.md", "1b", "type", 3},
+	{"scalar-depends-on.md", "1c", "depends_on", 4},
+	{"malformed-list.md", "1c", "depends_on", 4},
+	{"collection-id.md", "1c", "id", 2},
+	{"repeated-relation.md", "1c", "superseded_in_part_by", 6},
+	{"unknown-type.md", "2a", "memo", 3},
+	{"bad-scope.md", "2b", "trellis-core", 6},
+	{"duplicate-id-b.md", "3", "decision-0300", 2},
+	{"dangling-refs.md", "4i", "notarepo/x", 4},
+	{"dangling-refs.md", "4i", "brief-§", 4},
+	{"dangling-refs.md", "4i", "spec-0009", 4},
+	{"informed-by.md", "4h", "decision-0001@v1", 5},
+	{"informed-by.md", "4h", "research-9998@v1", 5},
+	{"informed-by.md", "4g", "research-9999", 5},
+	{"decision-state-heading.md", "6a", "Decision", 3},
+	{"suffixed-and-fenced-headings.md", "6a", "Consequences", 3},
+	{"dangling-partial-supersession.md", "7b", "decision-9997", 6},
+	{"stale-note.md", "7c", "decision-0100", 4},
+	{"catalog.md", "8b", "This line belongs to no entry.", 53},
+	{"catalog.md", "8b", "inv-no-why why", 55},
+	{"catalog.md", "8b", "inv-no-c2 default_C2", 68},
+	{"catalog.md", "8b", "inv-empty-why why", 108},
+	{"catalog.md", "8b", "inv-twice class", 122},
+	{"catalog.md", "8c", "inv-one-pair pairs", 82},
+	{"catalog.md", "8c", "inv-misaligned pair 2", 104},
+	{"catalog.md", "8c", "inv-untagged pair 1", 146},
+	{"catalog.md", "8c", "inv-untagged pair 2", 147},
+	{"profile.md", "9", "inv-unknown", 28},
+	{"profile.md", "10a", "inv-no-why evidence", 26},
+	{"profile.md", "10a", "inv-no-c2 confidence", 27},
+	{"profile.md", "11", "inv-gate", 23},
+	{"unreadable-profile-table.md", "11", "column c2", 20},
 }
 
 // acceptedContractConstruct is a deliberately valid fixture construct for an
@@ -1232,7 +1244,7 @@ func TestCorpusConformanceRejectsKnownBadFixture(t *testing.T) {
 
 	got := map[expectedContractFinding][]contractFinding{}
 	for _, f := range findings {
-		k := expectedContractFinding{strings.TrimPrefix(f.path, fixturePrefix), f.rule, f.subject}
+		k := expectedContractFinding{strings.TrimPrefix(f.path, fixturePrefix), f.rule, f.subject, f.line}
 		got[k] = append(got[k], f)
 	}
 	want := map[expectedContractFinding]int{}
@@ -1241,7 +1253,7 @@ func TestCorpusConformanceRejectsKnownBadFixture(t *testing.T) {
 	}
 	for _, e := range knownBadExpected {
 		if n := len(got[e]); n < want[e] {
-			t.Errorf("missing expected finding: %s rule %s naming %q (want %d, got %d) — the rule no longer reports its seeded violation", e.file, e.rule, e.subject, want[e], n)
+			t.Errorf("missing expected finding: %s:%d rule %s naming %q (want %d, got %d) — the rule no longer reports its seeded violation, or reports it on another line", e.file, e.line, e.rule, e.subject, want[e], n)
 			want[e] = n // report each shortfall once
 		}
 	}
@@ -1249,6 +1261,12 @@ func TestCorpusConformanceRejectsKnownBadFixture(t *testing.T) {
 		for i := want[k]; i < len(fs); i++ {
 			t.Errorf("unexpected finding: %s — the fixture corpus seeds no such violation; the rule over-reports, or the expected set is stale", fs[i])
 		}
+	}
+	// One full rendering pins the `path:line: check N (rule): detail` format and
+	// the rule-to-check lookup, which the multiset above does not read.
+	const wantRendered = "core/fixtures/known-bad/known-bad.md:4: check 4 (4i): "
+	if !slices.ContainsFunc(findings, func(f contractFinding) bool { return strings.HasPrefix(f.String(), wantRendered) }) {
+		t.Errorf("no finding renders with the prefix %q; the finding format or the rule-to-check lookup changed", wantRendered)
 	}
 
 	idx := contractRuleIndex()
