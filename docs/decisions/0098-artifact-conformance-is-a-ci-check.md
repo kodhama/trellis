@@ -17,6 +17,8 @@ date: 2026-09-14
 
 # 0098 — Artifact conformance here is a CI check, and `corpus-reviewer` retires
 
+> **Dated note, 2026-09-14 — TRL-96 (PR #<n>):** Four statements no longer hold: point 1's "that touches a corpus path, the rubric, the fixtures or the check itself", point 5's "does not block a merge" and "`build-test`, the job that runs the check, is not among them", and the Consequences' "`cli/ci_paths_guard_test.go` forces the filter to cover every path the suite reads" and "the `cli-ci` filter mirror it, and guards pin both". `cli-ci` has no path filter, that guard is deleted, and `build-test` runs on every pull request as a required check on `main`, as `.github/workflows/cli-ci.yml` and `AGENTS.md`'s conformance bullet state.
+
 ## Context
 
 Before this change, `.claude/agents/corpus-reviewer.md` applied `docs/rubrics/artifact-contract.md`

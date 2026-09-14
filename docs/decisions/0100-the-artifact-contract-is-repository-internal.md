@@ -19,6 +19,8 @@ date: 2026-09-14
 
 # 0100 — The artifact contract is repository-internal
 
+> **Dated note, 2026-09-14 — TRL-96 (PR #<n>):** The Consequences' "`cli-ci` no longer selects them" no longer holds, because `cli-ci` has no path filter, and their citation `decision-0098:133-134` now reads `decision-0098:135-136` after that record's own dated note. `.github/workflows/cli-ci.yml` states the current triggers; nothing reads `core/rubrics/` or `core/fixtures/`, so a branch that recreates them still lands unchecked.
+
 ## Context
 
 TRL-95 moved the rubric from `core/rubrics/artifact-contract.md` to `docs/rubrics/artifact-contract.md`

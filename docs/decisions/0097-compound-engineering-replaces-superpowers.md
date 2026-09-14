@@ -10,6 +10,8 @@ date: 2026-09-13
 
 # 0097 — Compound Engineering replaces superpowers here; its artifacts live under `docs/`
 
+> **Dated note, 2026-09-14 — TRL-96 (PR #<n>):** Point 4's "`cli-ci`'s path filter keeps `docs/**` for it" no longer holds, because `cli-ci` has no path filter and runs `build-test` on every pull request. `.github/workflows/cli-ci.yml` states the current triggers.
+
 ## Context
 
 `TRL-22` adopted the superpowers plugin as this repository's working method. `decision-0079` §1
