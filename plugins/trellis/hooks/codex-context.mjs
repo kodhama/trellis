@@ -28,6 +28,15 @@ const SENTINEL = "<!-- trellis:rules-loaded -->";
 // ~10,000-byte-equivalent default, so this hook still never triggers Codex's
 // own spill path either — it only stops refusing at a limit nobody imposed.
 const MAX_CONTEXT_BYTES = 9500;
+// The read bound for the PROJECT's .trellis/rules.toml alone (TRL-97). Every
+// payload read stays bounded by MAX_CONTEXT_BYTES because each payload file is
+// delivered whole. The project file is echoed only up to RULES_ECHO_MAX_BYTES
+// and is otherwise only classified, so the context budget is the wrong bound
+// for reading it: held at 9500 B, a file between that and staleness.sh's own
+// 32768 B budget was refused here and governed there. One MiB is a runaway
+// guard, roughly nine hundred times the largest consumer file known on
+// 2026-09-14.
+const MAX_PROJECT_CONFIG_BYTES = 1024 * 1024;
 // The project always owns its rows. The three payload files come from the
 // vendored overlay when one exists, and from the plugin's own payload when it
 // does not (decision-0065: the plugin path vendors nothing). Vendored projects
@@ -259,12 +268,17 @@ function nearestOverlay(cwd, boundary) {
 //
 //   options.emptyError   the failure class to report for a zero-byte read
 //   options.emptyIsValid true when empty is a supported state for this file
+//   options.maxBytes     the read bound, MAX_CONTEXT_BYTES unless the caller
+//                        states its own in its own source
 //
 // Every existing failure class is preserved byte for byte: the callers pass the
 // classes their post-checks already produced, so this is a structural change
 // with no behaviour change. TestEveryReadRequiredStatesWhatEmptyMeans holds it.
+// `size` is the byte count read, which is what a byte threshold compares; the
+// decoded string's length is not, once a file holds non-ASCII text.
 function readRequired(projectRoot, relativePath, options = {}) {
   const absolute = path.join(projectRoot, relativePath);
+  const maxBytes = options.maxBytes ?? MAX_CONTEXT_BYTES;
   let stat;
   try {
     stat = fs.statSync(absolute);
@@ -273,7 +287,7 @@ function readRequired(projectRoot, relativePath, options = {}) {
     return { error: "unreadable-file" };
   }
   if (!stat.isFile()) return { error: "unreadable-file" };
-  if (stat.size > MAX_CONTEXT_BYTES) {
+  if (stat.size > maxBytes) {
     return { label: "assembled-context", error: "context-over-budget" };
   }
   let descriptor;
@@ -282,25 +296,25 @@ function readRequired(projectRoot, relativePath, options = {}) {
     descriptor = fs.openSync(absolute, "r");
     const openedStat = fs.fstatSync(descriptor);
     if (!openedStat.isFile()) return { error: "unreadable-file" };
-    if (openedStat.size > MAX_CONTEXT_BYTES) {
+    if (openedStat.size > maxBytes) {
       return { label: "assembled-context", error: "context-over-budget" };
     }
 
-    const buffer = Buffer.alloc(MAX_CONTEXT_BYTES + 1);
+    const buffer = Buffer.alloc(maxBytes + 1);
     let total = 0;
     while (total < buffer.length) {
       const count = fs.readSync(descriptor, buffer, total, buffer.length - total, null);
       if (count === 0) break;
       total += count;
     }
-    if (total > MAX_CONTEXT_BYTES) {
+    if (total > maxBytes) {
       return { label: "assembled-context", error: "context-over-budget" };
     }
     const value = buffer.subarray(0, total).toString("utf8");
     if (value.length === 0 && options.emptyIsValid !== true) {
       return { error: options.emptyError ?? "empty-file" };
     }
-    return { value };
+    return { value, size: total };
   } catch {
     return { error: "unreadable-file" };
   } finally {
@@ -314,575 +328,272 @@ function readRequired(projectRoot, relativePath, options = {}) {
   }
 }
 
-function parseQuotedTomlString(source) {
-  if (source.startsWith("'")) {
-    const end = source.indexOf("'", 1);
-    if (end < 0 || !/^[ \t]*(?:#.*)?$/u.test(source.slice(end + 1))) return null;
-    const value = source.slice(1, end);
-    for (const character of value) {
-      const codePoint = character.codePointAt(0);
-      if ((codePoint < 0x20 && codePoint !== 0x09) || codePoint === 0x7f) {
-        return null;
-      }
-    }
-    return value;
-  }
-  if (!source.startsWith('"')) return null;
-
-  let value = "";
-  for (let index = 1; index < source.length; index += 1) {
-    const character = source[index];
-    if (character === '"') {
-      return /^[ \t]*(?:#.*)?$/u.test(source.slice(index + 1)) ? value : null;
-    }
-    if (character !== "\\") {
-      const codePoint = character.codePointAt(0);
-      if ((codePoint < 0x20 && codePoint !== 0x09) || codePoint === 0x7f) {
-        return null;
-      }
-      value += character;
-      continue;
-    }
-
-    index += 1;
-    if (index >= source.length) return null;
-    const escape = source[index];
-    const simpleEscapes = {
-      b: "\b",
-      t: "\t",
-      n: "\n",
-      f: "\f",
-      r: "\r",
-      '"': '"',
-      "\\": "\\",
-    };
-    if (Object.hasOwn(simpleEscapes, escape)) {
-      value += simpleEscapes[escape];
-      continue;
-    }
-    if (escape !== "u" && escape !== "U") return null;
-
-    const digits = escape === "u" ? 4 : 8;
-    const hex = source.slice(index + 1, index + 1 + digits);
-    if (hex.length !== digits || !/^[0-9A-Fa-f]+$/u.test(hex)) return null;
-    const codePoint = Number.parseInt(hex, 16);
-    if (codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) {
-      return null;
-    }
-    value += String.fromCodePoint(codePoint);
-    index += digits;
-  }
-  return null;
-}
-
-// This deliberately parses only Trellis's declared rules.toml schema, not an
-// approximation that silently accepts unknown TOML. It supports the two TOML
-// string forms used by consumer edits (basic and literal), and rejects duplicate
-// keys, sections, and rows deterministically.
+// KTD3's one row-classification contract (TRL-97). staleness.sh implements the
+// same contract in awk, and TestBothHostsClassifyRulesRowsIdentically runs both
+// hooks on one table, so a line class the two read differently is a red test
+// rather than two hosts governing one project differently.
 //
-// slugs is the set the payload actually ships (see slugsFromRules below), passed
-// in rather than closed over. A hardcoded list here could not be repaired by a
-// plugin upgrade, and a stale one made a quarantine reason false: the agent would
-// quarantine a live row and cite a payload that ships it.
+// Only a row set `active = false` has any effect. Nothing here refuses the file:
+// a bad entry costs that entry and is reported, never the session, because
+// over-governance the session announces beats under-governance nobody sees
+// (decision-0083 §5). The classes, in the order they are tested:
 //
-// Returns `{ rows, mismatch }` on any file this parser can make sense of, or
-// `null` only for a genuine syntax fault — a malformed row (including one not
-// shaped `(inv|floor)-...`, the same prefix reconcileRows requires — see the
-// row regex below), an unknown top-level key, a duplicate top-level key or
-// section, or a `strictness` that is present but neither "firm" nor
-// "adaptive". `mismatch` is null when every row's slug matched exactly once;
-// otherwise it names the three ways a row can fail to match the slug set —
-// missing, unknown, duplicate — and the caller reconciles rather than
-// refusing (staleness.sh's TRL-20 fix, now mirrored here). This used to be a
-// pass/fail gate (`return null` on any of those three, PLUS a missing
-// `[rules]` table entirely); the classifier split is what lets a single bad
-// row — or a table that never existed — stop costing the other fifteen.
-function parseRulesToml(source, slugs) {
-  const slugSet = new Set(slugs);
-  const topLevel = new Map();
-  const rows = new Map();
-  const unknown = [];
-  const duplicate = [];
-  let rulesSectionSeen = false;
-  let inRules = false;
-
-  for (const rawLine of source.split(/\r?\n/u)) {
-    const line = rawLine.replace(/^[ \t]+|[ \t]+$/gu, "");
-    if (line === "" || line.startsWith("#")) continue;
-
-    const section = line.match(/^\[([^\]]+)\][ \t]*(?:#.*)?$/u);
-    if (section) {
-      if (section[1] !== "rules" || rulesSectionSeen) return null;
-      rulesSectionSeen = true;
-      inRules = true;
-      continue;
-    }
-
-    if (!inRules) {
-      const assignment = line.match(/^([A-Za-z_][A-Za-z0-9_-]*)[ \t]*=[ \t]*(.*)$/u);
-      // `governed` is skipped, not parsed. decision-0070 D5 gave it meaning, and
-      // the opt-out is handled far earlier by a raw-text match that never reaches
-      // this parser. But leaving it OFF the accepted set made `governed = true` —
-      // the natural way to reverse an opt-out without deleting the line — a fatal
-      // `invalid-rules` on Codex while Claude governed normally: measured, 12
-      // rules vs 0. A key one host acts on and the other rejects is worse than a
-      // key neither knows.
-      if (assignment && assignment[1] === "governed") {
-        // Skipped, but only for the two values it can legally hold. `governed =
-        // falsehood` must reach the reject path below and surface as
-        // invalid-rules — skipping every value would make a typo look like a
-        // deliberate setting, which is exactly how `falsehood` came to silently
-        // disable every rule before the raw-text match was anchored.
-        if (/^(true|false)[ \t]*(#.*)?$/.test(assignment[2].trim())) {
-          continue;
-        }
-        return null;
-      }
-      if (
-        !assignment ||
-        (assignment[1] !== "seeded_from" && assignment[1] !== "strictness") ||
-        topLevel.has(assignment[1])
-      ) {
-        return null;
-      }
-      const value = parseQuotedTomlString(assignment[2]);
-      if (value === null) return null;
-      topLevel.set(assignment[1], value);
-      continue;
-    }
-
-    // A malformed row is still a genuine syntax fault and stays fatal — only
-    // the SLUG-SET checks (duplicate, unknown) move from `return null` to
-    // collection, so the scan continues and every row still gets classified.
-    //
-    // The prefix is `(?:inv|floor)-`, not the wider `[a-z][a-z-]*` this used
-    // to accept: reconcileRows' own row-detection (`rowLead`, below) has
-    // always been prefix-narrow, matching staleness.sh's awk, which has no
-    // other way to tell a row from a top-level key (no state tracking; a bare
-    // `[a-z][a-z-]*` would also match `strictness`). A row shaped like
-    // `bogus-rule = { active = true }` used to be classified `unknown` here
-    // and then trigger reconciliation, but reconcileRows' narrower regex
-    // never recognised it as a row to quarantine — measured: context
-    // delivered, zero quarantine notes, the row passed through uncommented,
-    // so the mismatch never cleared and the hook re-reconciled every session
-    // to no effect. Narrowing this regex to match reconcileRows exactly is
-    // what makes the two agree: such a line is now a malformed row (fails
-    // closed), not a silently no-op "unknown" one.
-    const row = line.match(
-      /^((?:inv|floor)-[a-z-]+)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#.*)?$/u,
-    );
-    if (!row) return null;
-    if (rows.has(row[1])) {
-      duplicate.push(row[1]);
-      continue;
-    }
-    if (!slugSet.has(row[1])) {
-      unknown.push(row[1]);
-      continue;
-    }
-    rows.set(row[1], row[2] === "true");
-  }
-
-  // A missing strictness is no longer fatal (it used to fold into the same
-  // `rows.size !== slugs.length` style all-or-nothing check this function
-  // replaces): left unset here, it is the caller's job to default it — which
-  // codex-context.mjs's posture selection already does (`strictness !== "firm"`
-  // falls to adaptive), matching staleness.sh:558-560's `case "$strictness" in
-  // firm) ... ; *) ... ;; esac`. A strictness that IS present but invalid still
-  // fails closed: a typo must not silently pick a posture.
-  const strictness = topLevel.get("strictness");
-  if (strictness !== undefined && strictness !== "firm" && strictness !== "adaptive") {
-    return null;
-  }
-
-  // `!rulesSectionSeen` used to be fatal too (fix round 1 correction — the
-  // brief said keep it fatal, and that was the controller's error, not a
-  // reading of the code). A rules.toml with no `[rules]` table at all is not
-  // a syntax fault: it is a slug set that is entirely missing, reconcilable
-  // like any other slug-set mismatch. A hand-written partial file carrying
-  // only `strictness = "firm"` is the canonical shape — staleness.sh repairs
-  // it into a full `[rules]` table plus all sixteen rows, and this must reach
-  // the same repair rather than refusing the file outright. No special-casing
-  // is needed to get there: `rows` is simply empty when `[rules]` was never
-  // seen (the loop never entered the row-matching branch), which already
-  // makes every slug "missing" below — and it is what makes reconcileRows'
-  // own `if (!hasRules)` insertion below reachable at all.
-
-  const missing = slugs.filter((slug) => !rows.has(slug));
-  const mismatch =
-    missing.length === 0 && unknown.length === 0 && duplicate.length === 0
-      ? null
-      : { missing, unknown, duplicate };
-  return { rows, mismatch };
-}
-
-// reconcileRows mirrors staleness.sh's reconciliation awk block byte-for-byte in
-// its provenance strings (both hosts govern from the same rules.toml, so an agent
-// reading the repair notice must see identical wording regardless of which host
-// wrote it). Quarantine, never delete: an unknown or duplicate row is commented
-// out with a dated note rather than dropped, so nothing a project chose is ever
-// lost, and a payload upgrade that later re-recognises the slug is a one-line
-// uncomment. Missing rows are appended, defaulted to `active = true`, under one
-// shared header comment rather than one note per row (Ruling 6, TRL-20 task 3 —
-// per-row notes on a firm, all-sixteen-missing file blew Codex's own
-// MAX_CONTEXT_BYTES and reintroduced the blackout this exists to remove).
+//   blank, or `#` after trimming   nothing
+//   `[rules]` header               opens the table; a second one continues it, warned
+//   any other `[` header           warned once; every line under it is ignored silently
+//   above every header             a row lead is a row outside [rules], warned;
+//                                  strictness and seeded_from are silent; governed is
+//                                  silent only as a first `governed = true`; any other
+//                                  key or line is warned
+//   under [rules]                  a row switches its rule off only when it is the
+//                                  first row for a shipped, non-floor slug and says
+//                                  false; anything else is ignored, and warned unless
+//                                  it is a first `true` row
 //
-// `stamp` is the installed payload's own version stamp (`payload@<hash>`, no
-// trailing newline) — what the note calls "not in <stamp>" / "missing from
-// <stamp>". `today` is the caller's `YYYY-MM-DD` for the same reason
-// staleness.sh takes one `date +%Y-%m-%d` call up front rather than one per row:
-// every note in a single reconciliation shares one date.
-// The two provenance strings, as ONE source of truth for the writer below
-// (quarantineNote/addedHeader) and the reader under it (stripPersistedProvenance).
-// A pattern written out by hand next to a string built by hand is two statements
-// of the same text, and they drift silently: the writer's wording changes, the
-// reader keeps matching yesterday's, and the degradation quietly stops degrading
-// — which is TRL-29 again, arrived at from the other side. Deriving both from one
-// template makes that drift impossible rather than merely tested for.
+// Whitespace is ASCII space and tab only, as on the other host under LC_ALL=C,
+// so an NBSP-indented row is malformed on both. Lines split on LF with one
+// trailing CR stripped and a line-1 BOM removed; a CR-only file is one line.
 //
-// staleness.sh:862 and staleness.sh:933 carry the identical text: both hosts
-// write into one .trellis/rules.toml, so a file repaired on Claude must strip on
-// Codex. TestBothHostsReconcileIdentically keeps those two writers in step;
-// these templates keep this side's reader in step with this side's writer.
-const QUARANTINE_NOTE_TEMPLATE =
-  "  # quarantined {date}: not in {stamp}. If a newer Trellis" +
-  " release ships this slug, update the Trellis plugin and uncomment this row.";
-const ADDED_HEADER_TEMPLATE = "# added {count} row(s) below on {date} (missing from {stamp})";
+// `slugs` is the set the payload ships (slugsFromRules below), passed in rather
+// than hardcoded so a plugin upgrade can repair it; floors are its `floor-` half.
+const ROW_PATTERN =
+  /^((?:inv|floor)-[a-z-]+)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*\}(?:[ \t]*#[\s\S]*)?$/u;
+const ROW_LEAD_PATTERN = /^((?:inv|floor)-[a-z-]+)[ \t]*=/u;
+const BARE_KEY_PATTERN = /^([A-Za-z0-9_-]+)[ \t]*=[ \t]*([\s\S]*)$/u;
+const RULES_HEADER_PATTERN = /^\[[ \t]*rules[ \t]*\](?:[ \t]*#[\s\S]*)?$/u;
+// One token and an optional comment. Anything else a `governed` line holds is
+// not `true`, so it is warned rather than read.
+const GOVERNED_VALUE_PATTERN = /^([^ \t]*)[ \t]*(?:#[\s\S]*)?$/u;
 
-function fillTemplate(template, values) {
-  return template.replace(/\{(\w+)\}/gu, (_match, key) => values[key]);
-}
-
-// A template's literal segments, regex-escaped, rejoined by a same-line
-// wildcard: the pattern matches what the template WROTE on any date, against any
-// payload stamp, for any count. `[^\n]*` rather than `.` so a placeholder can
-// never swallow a line boundary — an over-greedy pattern here would strip a
-// consumer's own lines, and quarantine never deletes.
-function templatePattern(template, wrap) {
-  const body = template
-    .split(/\{\w+\}/u)
-    .map((literal) => literal.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"))
-    .join("[^\\n]*");
-  return new RegExp(wrap(body), "u");
-}
-
-// quarantineNote/addedHeader are the two provenance strings reconcileRows
-// glues onto a row (or a block of rows) it could not match to the payload's
-// slug set. Filled from the templates above, so the `withProvenance`
-// branches below (the ordinary call and TRL-29's degraded one, immediately
-// after) can never drift from each other about what "with provenance" means.
-function quarantineNote(today, stamp) {
-  return fillTemplate(QUARANTINE_NOTE_TEMPLATE, { date: today, stamp });
-}
-function addedHeader(count, today, stamp) {
-  return fillTemplate(ADDED_HEADER_TEMPLATE, { count, date: today, stamp });
-}
-
-// A quarantine note is a SUFFIX on a commented-out row; an added-rows header is
-// a whole line of its own. Anchored accordingly. Both tolerate a trailing `\r`
-// (a CRLF file split on "\n" keeps it) via lookahead rather than by consuming
-// it, so a stripped line keeps the line ending the rest of the file uses.
-const QUARANTINE_NOTE_PATTERN = templatePattern(
-  QUARANTINE_NOTE_TEMPLATE,
-  (body) => `(?:${body})[ \\t]*(?=\\r?$)`,
-);
-const ADDED_HEADER_PATTERN = templatePattern(
-  ADDED_HEADER_TEMPLATE,
-  (body) => `^[ \\t]*(?:${body})[ \\t]*\\r?$`,
-);
-
-// TRL-29. The degradation `decision-0084` §6 built drops provenance this hook is
-// about to WRITE. This drops provenance an earlier session already wrote into the
-// file — the other half, and the half whose absence made the degradation
-// one-shot. A session that follows a repair has no mismatch, so it generates no
-// provenance and has nothing to leave off; the file's persisted comments were the
-// only thing left to give up, and the gate above them never opened.
-//
-// Only Trellis's own two forms come off. A comment the PROJECT wrote is the
-// project's content and stays: this is a byte-budget concession on Trellis's own
-// bookkeeping, not a licence to abbreviate a consumer's file.
-//
-// Touches nothing on disk (`decision-0070` D4) and no row's VALUE: a quarantined
-// row keeps its commented-out line verbatim and loses only the note appended to
-// it, which is exactly the shape reconcileRows produces with
-// `withProvenance = false`. Quarantine still never deletes.
-function stripPersistedProvenance(source) {
-  const kept = [];
-  for (const line of source.split("\n")) {
-    if (ADDED_HEADER_PATTERN.test(line)) continue;
-    kept.push(line.replace(QUARANTINE_NOTE_PATTERN, ""));
-  }
-  return kept.join("\n");
-}
-
-// `withProvenance = false` is TRL-29's degradation path: same rows, same
-// quarantine/addition DECISIONS (so `added`/`quarantined` — and therefore
-// governance — are identical either way), but the explanatory comment text
-// (quarantineNote/addedHeader) is left off entirely, not reconstructed
-// elsewhere — see repairMandate's own comment for why the mandate does not
-// try to hand that literal wording back to the agent either. Called only
-// when the full-provenance assembly below did not fit MAX_CONTEXT_BYTES.
-function reconcileRows(source, slugs, stamp, today, withProvenance = true) {
-  const want = new Set(slugs);
-  const note = withProvenance ? quarantineNote(today, stamp) : "";
-
-  // Mirrors parseRulesToml's own newline handling: `\r?\n` consumes a CRLF pair
-  // as one delimiter, so a raw line here never carries a trailing `\r`. Both
-  // functions read the same source string and must agree on what a "line" is.
-  //
-  // A genuinely empty source (0 bytes) is the one case that split() cannot
-  // model directly: "".split(/\r?\n/u) returns [""], one phantom empty-string
-  // "line" that corresponds to no real line in a 0-byte file. awk has no such
-  // artifact — an empty input file is 0 records, not 1 — so unguarded this
-  // pushed a spurious leading blank line into the reconciled text ahead of
-  // `[rules]`, present on Codex and absent from staleness.sh's output for the
-  // identical empty-file fixture (found by Task 2's cross-host conformance
-  // guard, TestBothHostsReconcileIdentically, "empty file"). Every other
-  // shape (a lone "\n", any nonempty source with or without a trailing
-  // newline) already matches awk via hadTrailingNewline below; only the
-  // zero-byte case needs the explicit override.
-  const hadTrailingNewline = /\r?\n$/u.test(source);
-  const rawLines = source.length === 0 ? [] : source.split(/\r?\n/u);
-  if (hadTrailingNewline) rawLines.pop(); // a terminal newline is not an extra blank record — matches awk's own line semantics
-
-  const rulesHeader = /^[ \t]*\[rules\][ \t]*(?:#.*)?$/u;
-  const rowLead = /^[ \t]*(?:inv|floor)-[a-z-]+[ \t]*=/u;
-
+function classifyRules(source, slugs) {
+  const shipped = new Set(slugs);
+  const offSet = new Set();
   const seen = new Set();
-  let hasRules = false;
-  let quarantined = 0;
-  const out = [];
+  const named = new Set();
+  const entries = [];
+  let section = "top";
+  let rulesOpened = false;
+  let governedSeen = false;
 
-  for (const line of rawLines) {
-    if (rulesHeader.test(line)) hasRules = true;
+  // An ignored row that sets a shipped slug false is always named, once per
+  // slug (KTD4): the model reads that row verbatim in the file, and silence
+  // about it would read as the rule being off.
+  const note = (line, kind, name, shippedFalse = false) => {
+    const alwaysNamed = shippedFalse && !named.has(name);
+    if (alwaysNamed) named.add(name);
+    entries.push({ line, kind, name, alwaysNamed });
+  };
 
-    if (rowLead.test(line)) {
-      // The slug is the row's first whitespace-delimited field, trimmed to its
-      // leading [a-z-]+ run — mirrors the awk's `row = $1; sub(/[^a-z-].*$/, ""
-      // , row)` exactly, so a row with no space before `=` still classifies
-      // correctly.
-      const field = line.replace(/^[ \t]+/u, "").match(/^\S+/u)?.[0] ?? "";
-      const slug = field.match(/^[a-z-]+/u)?.[0] ?? field;
-      if (!want.has(slug) || seen.has(slug)) {
-        out.push(`# ${line}${note}`);
-        quarantined += 1;
-        continue;
+  source
+    .replace(/^\uFEFF/u, "")
+    .split("\n")
+    .forEach((raw, index) => {
+      const lineNo = index + 1;
+      const line = raw.replace(/\r$/u, "").replace(/^[ \t]+|[ \t]+$/gu, "");
+      if (line === "" || line.startsWith("#")) return;
+
+      if (line.startsWith("[")) {
+        if (RULES_HEADER_PATTERN.test(line)) {
+          if (rulesOpened) note(lineNo, "rules-again");
+          rulesOpened = true;
+          section = "rules";
+        } else {
+          section = "other";
+          note(lineNo, "other-table");
+        }
+        return;
+      }
+      if (section === "other") return;
+
+      const row = line.match(ROW_PATTERN);
+      const key = line.match(BARE_KEY_PATTERN);
+      const shippedFalse = row !== null && row[2] === "false" && shipped.has(row[1]);
+
+      if (section === "top") {
+        const lead = line.match(ROW_LEAD_PATTERN);
+        if (lead !== null) {
+          note(lineNo, "row-above-rules", lead[1], shippedFalse);
+        } else if (key === null) {
+          note(lineNo, "top-level-line");
+        } else if (key[1] === "governed") {
+          // The opt-out read above already exited on the one shape that opts
+          // out, so any `governed` line reaching here did not, unless it is the
+          // first and says `true`.
+          const value = key[2].match(GOVERNED_VALUE_PATTERN);
+          if (governedSeen || value === null || value[1] !== "true") note(lineNo, "governed");
+          governedSeen = true;
+        } else if (key[1] !== "strictness" && key[1] !== "seeded_from") {
+          note(lineNo, "unknown-key", key[1]);
+        }
+        return;
+      }
+
+      if (row === null) {
+        if (key !== null && key[1] === "governed") note(lineNo, "governed");
+        else note(lineNo, "malformed-row", key === null ? undefined : key[1]);
+        return;
+      }
+      const [, slug, value] = row;
+      if (seen.has(slug)) {
+        note(lineNo, "duplicate-row", slug, shippedFalse);
+        return;
       }
       seen.add(slug);
-      out.push(line);
-      continue;
+      if (value === "true") return;
+      if (!shipped.has(slug)) note(lineNo, "unknown-slug", slug);
+      else if (slug.startsWith("floor-")) note(lineNo, "floor-row", slug, true);
+      else offSet.add(slug);
+    });
+
+  return { off: slugs.filter((slug) => offSet.has(slug)), entries };
+}
+
+// The warnings both hooks deliver, and their bound (KTD4). staleness.sh carries
+// the same texts as printf format literals inside its payload block, so none of
+// them may hold an apostrophe, a backslash, or a percent sign beyond the value
+// it substitutes. None quotes the raw line: a warning names the line number and
+// a slug, a key, or only the kind of entry, so non-ASCII bytes in a project file
+// cannot make the two hosts word one differently.
+//
+// No text here asks the agent to change .trellis/rules.toml. Nothing reconciles
+// the file any more, so nothing needs writing back, and the destructive- and
+// deletion-instruction guards scan this function's literals
+// (codexPayloadFunctions, cli/plugin_hook_test.go).
+//
+// Every entry marked alwaysNamed is named. Of the rest, the first
+// OTHER_WARNINGS_NAMED are named and the others counted, and a name taken from
+// the file is cut at WARNING_NAME_MAX bytes, so a runaway file cannot turn its
+// warnings into the context.
+const OTHER_WARNINGS_NAMED = 5;
+const WARNING_NAME_MAX = 40;
+
+function ruleWarnings(entries) {
+  const warnings = [];
+  let named = 0;
+  let counted = 0;
+  for (const entry of entries) {
+    if (!entry.alwaysNamed) {
+      if (named === OTHER_WARNINGS_NAMED) {
+        counted += 1;
+        continue;
+      }
+      named += 1;
     }
-
-    out.push(line);
-  }
-
-  const missing = slugs.filter((slug) => !seen.has(slug));
-  if (missing.length > 0) {
-    if (!hasRules) {
-      out.push("[rules]");
-      hasRules = true;
+    const name =
+      entry.name !== undefined && entry.name.length > WARNING_NAME_MAX
+        ? `${entry.name.slice(0, WARNING_NAME_MAX)}...`
+        : entry.name;
+    const at = `Trellis warning: line ${entry.line} of .trellis/rules.toml `;
+    switch (entry.kind) {
+      case "nul-byte":
+        warnings.push(
+          "Trellis warning: .trellis/rules.toml contains a NUL byte, so none of its rows take effect and it is not shown; every rule applies.",
+        );
+        break;
+      case "unknown-slug":
+        warnings.push(
+          `${at}sets ${name} to active = false, but this plugin ships no rule by that name, so the row is ignored; another plugin version may ship it.`,
+        );
+        break;
+      case "floor-row":
+        warnings.push(
+          `${at}sets the floor rule ${name} to active = false, but floor rules cannot be switched off, so the row is ignored and the rule applies.`,
+        );
+        break;
+      case "duplicate-row":
+        warnings.push(
+          `${at}is a later row for ${name}, so it is ignored; the first row for a rule decides.`,
+        );
+        break;
+      case "row-above-rules":
+        warnings.push(
+          `${at}is a row for ${name} above the [rules] table, so it is ignored; rows count only under [rules].`,
+        );
+        break;
+      case "rules-again":
+        warnings.push(`${at}opens [rules] a second time; the rows under it still count.`);
+        break;
+      case "other-table":
+        warnings.push(`${at}opens a table other than [rules], so every line under it is ignored.`);
+        break;
+      case "governed":
+        warnings.push(
+          `${at}sets governed but does not opt out; only one governed = false line, above every table, opts a project out, so this project stays governed.`,
+        );
+        break;
+      case "unknown-key":
+        warnings.push(
+          `${at}sets ${name}, which is not a key this file defines, so it is ignored and switches no rule off; a row under [rules] such as slug = { active = false } switches a rule off.`,
+        );
+        break;
+      case "top-level-line":
+        warnings.push(
+          `${at}is not an entry this file defines, so it is ignored and switches no rule off.`,
+        );
+        break;
+      default:
+        warnings.push(
+          name === undefined
+            ? `${at}is a malformed row, so it is ignored and switches no rule off.`
+            : `${at}is a malformed row naming ${name}, so it is ignored and switches no rule off; any rule it names still applies.`,
+        );
     }
-    if (withProvenance) out.push(addedHeader(missing.length, today, stamp));
-    for (const slug of missing) out.push(`${slug} = { active = true }`);
   }
-
-  return { text: `${out.join("\n")}\n`, added: missing.length, quarantined };
-}
-
-// mismatchReport mirrors staleness.sh's own $slug_report text (its awk block,
-// staleness.sh:640-655): which slugs were missing, unknown, or duplicate —
-// the WHICH an agent needs alongside repairMandate's HOW MUCH
-// (added/quarantined counts). mismatch is never null when this is called
-// (repairMandate only runs on the `mismatch !== null` branch), and
-// parseRulesToml only ever returns a non-null mismatch when at least one of
-// these three arrays is non-empty, so the result is never "".
-function mismatchReport(mismatch) {
-  const parts = [];
-  if (mismatch.missing.length > 0) parts.push(`missing: ${mismatch.missing.join(" ")}`);
-  if (mismatch.unknown.length > 0) parts.push(`unknown: ${mismatch.unknown.join(" ")}`);
-  if (mismatch.duplicate.length > 0) parts.push(`duplicate: ${mismatch.duplicate.join(" ")}`);
-  return parts.join("; ");
-}
-
-// mismatchCounts is mismatchReport's TRL-29 degraded counterpart (over-budget
-// branch, below): the same three categories, by COUNT rather than naming
-// every slug. At sixteen quarantined rows (worst case) mismatchReport alone
-// names all thirty-two slugs — and every one of them is already visible,
-// named, in the row block above (a quarantined row keeps its slug on a
-// commented-out line; an added row is `slug = { active = true }`) — so
-// repeating the full list here is reporting redundant enough with what
-// already governs to give way alongside the provenance comments, freeing the
-// bytes an announcement of the omission itself needs.
-function mismatchCounts(mismatch) {
-  const parts = [];
-  if (mismatch.missing.length > 0) parts.push(`${mismatch.missing.length} missing`);
-  if (mismatch.unknown.length > 0) parts.push(`${mismatch.unknown.length} unknown`);
-  if (mismatch.duplicate.length > 0) parts.push(`${mismatch.duplicate.length} duplicate`);
-  return parts.join(", ");
-}
-
-// repairMandate is TRL-30 task 3 (decision-0083 host parity): the Claude hook
-// (staleness.sh) does not just reconcile a mismatch in memory, it tells the
-// agent to write the repaired file back and report what changed — this hook
-// used to stop at "computed in memory," delivering the reconciled rows with
-// no instruction attached. Text below is the Claude mandate's substance.
-//
-// Carries no stale-plugin remedy of its own (fix round 1): that used to live
-// here as its own sentence, but .trellis/rules.toml is one file read by both
-// hosts, and reconcileRows' own quarantine note — INSIDE the row block this
-// mandate follows — already carries a host-neutral "update the Trellis
-// plugin and uncomment this row" remedy per quarantined line. A second,
-// differently-worded remedy sentence here was redundant at best and, before
-// this fix, actively contradicted that note (naming a Claude-only command a
-// Codex agent cannot run).
-//
-// Safe to leave ungated (no floor-intent-gate confirmation), for the same
-// reason the Claude mandate is: reconcileRows only ever comments a row out or
-// appends one, so nothing this text instructs the agent to write is
-// destructive. That argument is enforced by construction, not just argued in
-// this comment — cli/plugin_hook_test.go's TestEveryDeletionInstructionIsGated
-// and TestEveryDestructiveInstructionIsGated scan this function's literal
-// strings alongside staleness.sh's own payload assembly, specifically because
-// this is the first place codex-context.mjs puts an agent-facing instruction
-// into the Codex payload. No deletion verb may ever appear here.
-//
-// This hook still never writes .trellis/rules.toml itself (decision-0070 D4,
-// pinned behaviourally by codexReconciledRows in cli/codex_hook_test.go) —
-// the mandate only tells the agent to.
-// `degraded` (TRL-29, boolean) is set only by the over-budget branch below,
-// once the provenance-free reassembly is what actually fits. "The rows
-// above" is then the abbreviated working set the degraded assembly injected,
-// not the reconciled file's own text — the write instruction must say so
-// explicitly, so the FILE this mandate has the agent write still ends up
-// with full provenance even though the session's own injected context did
-// not carry it. Letting this collapse back to "write exactly the rows shown
-// above" is the one failure this whole task exists to close: the file would
-// silently lose the provenance the design rests on, even though nothing else
-// changed.
-//
-// Deliberately does not reproduce quarantineNote/addedHeader's own literal
-// wording here, nor spell out today/stamp again (stamp is already in the
-// footer below, "Trellis hook loaded installed overlay: <stamp>"): the
-// over-budget caller also passes mismatchCounts' compact form instead of
-// mismatchReport's full one for the same reason — at sixteen quarantined
-// rows (worst case) mismatchReport alone names all thirty-two slugs, and a
-// fixed verbatim recipe added on top of THAT pushed the assembled context
-// back over MAX_CONTEXT_BYTES on its own — see
-// TestCodexDegradesRatherThanRefusingOverBudget and its byte accounting in
-// task-4-report.md. A session already over budget cannot also afford asking
-// for the exact template text back; "the full-provenance version, not the
-// abbreviated rows above" is the instruction the byte budget can carry.
-//
-// `compact` (review of #263, PRRT_kwDOTIeCVc6eu78z) is the last tier before
-// the runaway guard: the same mandate as one paragraph, 571 B where the
-// degraded form is 928 B. It exists because the degraded mandate is 156 B
-// LONGER than the full one for a single-slug mismatch while the strip it
-// accompanies frees 150 B per row — so at one foreign row the "degraded"
-// assembly was bigger than the full one, and a body that fit on its own was
-// refused for the mandate's bytes. Every load-bearing clause survives the
-// compaction — the counts, "the rows above govern", the degraded marker
-// sentence, "not the abbreviated ones shown above", the no-loss property, and
-// "row by row" — because each is pinned by a test and each is a thing the
-// agent must know to write the file correctly; only the explanatory prose
-// around them is what a session this short of bytes gives up. Lives inside
-// this function rather than beside it so codexPayloadAssembly's scan for
-// ungated deletion verbs covers it with no list to keep in step.
-function repairMandate(mismatchText, repairSummary, degraded, compact) {
-  if (degraded && compact) {
-    return (
-      "\nRule activation was reconciled this session: .trellis/rules.toml did not match the rules this payload ships " +
-      `(${mismatchText}; ${repairSummary}), and the rows above govern. ` +
-      "Provenance was omitted above to fit the context budget. " +
-      "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above: " +
-      "a row the payload does not ship stays in the file, commented out with its reason and the date, and every project value is kept verbatim. " +
-      "Tell the user what you reconciled, row by row, before doing substantive work.\n"
+  if (counted > 0) {
+    warnings.push(
+      `Trellis warning: ignored entries in .trellis/rules.toml beyond those named above: ${counted}. None of them switches a rule off.`,
     );
   }
-  const writeInstruction = degraded
-    ? "Provenance was omitted above to fit the context budget and remains in full in the file this mandate instructs writing next. " +
-      "Write .trellis/rules.toml with the full-provenance version of these rows, not the abbreviated ones shown above, so the file matches what governs. "
-    : "Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. ";
-  // The no-loss sentence has to describe what the reader can SEE. On the
-  // degraded path the rows above carry no reason and no date — saying they do
-  // would contradict the very lines under it and invite the agent to copy the
-  // abbreviated rows back as if they were already complete. Same guarantee,
-  // stated as the property of the file being written rather than of the rows
-  // shown. Note also that `today` reaches the degraded context nowhere at all
-  // (the date lives only inside quarantineNote/addedHeader, which this path
-  // drops): the agent supplies its own date for the notes it writes. That is
-  // deliberate and harmless — the notes are comments, never re-parsed by
-  // either hook, so a date that differs by a day changes no decision and
-  // costs no idempotency; spending budget to carry the date back would.
-  const noLoss = degraded
-    ? "Nothing is lost by this: in the file you write, a row the payload does not ship keeps its line, commented out with its reason and the date, and every value the project chose is preserved verbatim. "
-    : "Nothing is lost by this: a row the payload does not ship is commented out with its reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. ";
-  return (
-    "\n## Rule activation was reconciled this session\n\n" +
-    `This project's .trellis/rules.toml did not match the rules this payload ships (${mismatchText}). ` +
-    "The rows above are the reconciled set and are what governs this session; the file on disk still differs. " +
-    `Reconciliation: ${repairSummary}.\n\n` +
-    writeInstruction +
-    noLoss +
-    "Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent.\n"
-  );
+  return warnings;
 }
 
-// provenanceOmittedNotice is repairMandate's counterpart on the path where there
-// is nothing to repair (TRL-29). The file already matches the payload's slug set;
-// what does not fit is the provenance the file itself carries from an EARLIER
-// repair, and dropping it from the injected copy is the whole of what this
-// session did.
+// T (KTD12). A file of at most this many bytes is echoed verbatim under the
+// framing; a larger one is replaced by one line, and the computed sentence still
+// states which rules it switches off. staleness.sh shares the value, and the
+// parity table pins both hosts to it. Chosen so every known consumer file
+// (1.1-1.2 KB on 2026-09-14) is echoed, as research-0012's row form measured;
+// the context it leaves room for is recorded with the TRL-97 decision.
+const RULES_ECHO_MAX_BYTES = 1500;
+
+// activationSection builds what follows the rules prose on both branches (KTD1,
+// KTD7): the heading, the computed sentence, the file or the too-large line, and
+// the warnings, one blank line apart. The sentence is what tells the model the
+// effective result, so it stays right where the file still shows a row this hook
+// ignored, and under a vendored overlay whose frozen text applies a rule only
+// when its row says `active = true`.
 //
-// It shares repairMandate's degraded marker sentence verbatim — one sentence,
-// two callers — because "the injected copy was abbreviated" is one fact however
-// the session arrived at it, and cli/codex_hook_test.go's codexDegradedMarker
-// matches on exactly that sentence to tell a degraded response from a full one.
-// Two wordings would leave that helper silently half-blind, and
-// codexReconciledRows would then compare a degraded Codex row block against a
-// full-provenance Claude one and blame host parity for it.
-//
-// It carries NO write instruction, and must not grow one. The mandate has to say
-// "the full-provenance version, not the abbreviated ones shown above" because it
-// is asking for a write at all; here nothing asked for one, the file on disk is
-// already correct, and the only thing an instruction could achieve is the exact
-// failure this branch exists to prevent — an agent helpfully rewriting
-// .trellis/rules.toml from an abbreviated copy and losing the provenance for
-// good. TestCodexDegradesOnASecondSessionOverBudget asserts the string
-// "Write .trellis/rules.toml" never appears on this path.
-//
-// Scanned by TestEveryDeletionInstructionIsGated and
-// TestEveryDestructiveInstructionIsGated alongside repairMandate (see
-// codexPayloadAssembly in cli/plugin_hook_test.go, which names both functions):
-// this is agent-facing text in the Codex payload, so the same "no deletion verb
-// reaches the agent" argument has to cover it.
-//
-// `compact` is the one-line tier (review of #263, PRRT_kwDOTIeCVc6eu78z): 129 B
-// where the full notice is 414 B. One persisted quarantine note frees 150 B when
-// its text comes off, so with the full notice appended unconditionally the
-// "degraded" assembly was 264 B LARGER than the full one at a single note, and
-// a body that fit on its own was refused for the notice's bytes. The line keeps
-// the degraded marker sentence verbatim (codexDegradedMarker keys on it) and the
-// one fact the agent needs — the file has it all and needs no repair — and
-// nothing else. The 129 B are the residual window the over-budget branch below
-// cannot close without going silent: a body that fits alone but not alongside
-// this line is still refused, loudly, rather than injected with no word that it
-// was abbreviated.
-function provenanceOmittedNotice(compact) {
-  if (compact) {
-    return "\nProvenance was omitted above to fit the context budget; .trellis/rules.toml keeps it in full and needs no repair this session.\n";
+// A file holding a NUL byte is not classified (KTD5). It is not text both hosts
+// split into the same lines, so none of its rows takes effect, it is not echoed,
+// and one warning says why. The `governed = false` read runs before this, so an
+// opted-out file with a NUL byte still loads nothing.
+function activationSection(rulesToml, sizeBytes, slugs) {
+  const nulByte = rulesToml.includes("\u0000");
+  const { off, entries } = nulByte
+    ? { off: [], entries: [{ kind: "nul-byte", alwaysNamed: true }] }
+    : classifyRules(rulesToml, slugs);
+  const sentence =
+    off.length === 0
+      ? "The project file .trellis/rules.toml switches no rule off, so every rule above applies."
+      : `The project file .trellis/rules.toml switches these rules off: ${off.join(", ")}. Every other rule above applies.`;
+  let segment = "";
+  if (nulByte) {
+    segment = "";
+  } else if (sizeBytes > RULES_ECHO_MAX_BYTES) {
+    segment = `The project file is larger than ${RULES_ECHO_MAX_BYTES} bytes, so it is not shown here; the sentence above names every rule it switches off.\n`;
+  } else if (rulesToml !== "") {
+    segment = rulesToml.endsWith("\n") ? rulesToml : `${rulesToml}\n`;
   }
-  return (
-    "\n## Provenance comments were left out of the rows above\n\n" +
-    "Provenance was omitted above to fit the context budget and remains in full in .trellis/rules.toml, which matches the rules this payload ships and needs no repair this session. " +
-    "The rows above are what governs; the file on disk is the archive of why each row reads the way it does. " +
-    "Read that file directly if you need a quarantined row's reason or its date.\n"
-  );
+  const warnings = ruleWarnings(entries);
+  const parts = [`${sentence}\n`];
+  if (segment !== "") parts.push(segment);
+  if (warnings.length > 0) parts.push(`${warnings.join("\n")}\n`);
+  return { text: `## Project rule activation\n\n${parts.join("\n")}`, warnings };
 }
 
 // The slugs the payload actually ships, read from the same rules.md the Claude
 // hook validates against (staleness.sh's own `want[]` scan uses the identical
 // trailing-backtick anchor). A hardcoded list here could not be repaired by a
-// plugin upgrade, and a stale one made a quarantine reason false.
+// plugin upgrade.
 function slugsFromRules(rulesMd) {
   const found = [];
   for (const line of rulesMd.split(/\r?\n/u)) {
@@ -890,23 +601,6 @@ function slugsFromRules(rulesMd) {
     if (m) found.push(m[1]);
   }
   return found;
-}
-
-// Local calendar date, YYYY-MM-DD — must match staleness.sh's `date
-// +%Y-%m-%d`, which reads the process's LOCAL timezone. `Date`'s un-prefixed
-// accessors (getFullYear/getMonth/getDate) are local-time; `toISOString` is
-// always UTC and disagreed with the shell by |UTC offset| hours a day on any
-// non-UTC machine. Measured at 2026-08-30T05:30:00Z:
-// `TZ=America/Los_Angeles date +%Y-%m-%d` says 2026-08-29,
-// `toISOString().slice(0, 10)` said 2026-08-30. Task 2 compares the two
-// hosts' reconciled output byte-for-byte; left as UTC, that comparison would
-// have gone red for |offset| hours a day on any non-UTC machine and green on
-// UTC CI — a mismatch that reads as flake, not as what it is.
-function localToday(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 let input;
@@ -951,25 +645,24 @@ if (projectRoot === null) {
   process.exit(0);
 }
 
-// The rows are read first: they carry the posture that selects which prose
-// variant the plugin payload should supply.
 // emptyIsValid, and this is the ONE read in this file that gets it. A
-// zero-byte .trellis/rules.toml is a PROJECT file, not payload: the supported
-// hand-written-partial shape, which parseRulesToml reconciles into the full row
-// set exactly as an intentionally sparse file is reconciled. Refusing it would
-// be the over-correction — the same failure direction as the CRLF and
-// unreadable-preset blackouts the Claude hook shipped and had to withdraw.
+// zero-byte .trellis/rules.toml is a PROJECT file, not payload, and it means
+// every rule applies (TRL-97). Refusing it would be the over-correction — the
+// same failure direction as the CRLF and unreadable-preset blackouts the Claude
+// hook shipped and had to withdraw. maxBytes, and this is also the one read
+// with its own bound: see MAX_PROJECT_CONFIG_BYTES.
 const configResult = readRequired(projectRoot, PROJECT_CONFIG, {
   emptyIsValid: true,
+  maxBytes: MAX_PROJECT_CONFIG_BYTES,
 });
 // decision-0070 D5. A project that declares `governed = false` is not governed —
 // on EITHER host. Checked here, before the rules are parsed or assembled, for the
 // same reason the Claude hook checks it before every delivery path: an opt-out
 // that only one host honours is not an opt-out. Matched on the raw text rather
-// than through the row parser, because the parser deliberately understands only
-// the declared rules schema and would reject an unknown top-level key.
-// Read the file directly rather than reusing configResult: that path is gated on
-// MAX_CONTEXT_BYTES, so an oversized rules.toml made this check unreachable and
+// than through the classifier, because the opt-out has to be settled before
+// anything else reads the file, whatever else the file holds.
+// Read the file directly rather than reusing configResult: that path is bounded
+// (it was once MAX_CONTEXT_BYTES), so an oversized rules.toml made this check unreachable and
 // Codex then told the model to go load the overlay — in a project that had
 // declared itself ungoverned. An opt-out must not have a size limit.
 //
@@ -983,14 +676,14 @@ try {
   // under `[rules]` is not a top-level key and must not opt out — D5 defines it
   // as top-level, and a raw multiline match honoured it anywhere in the file, so
   // a misplaced line silently disabled all sixteen rules instead of reaching
-  // parseRulesToml and surfacing as invalid-rules.
+  // the classifier, which warns that it does not opt out.
   const raw = fs
     .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
     .replace(/^\uFEFF/, "")
     .split(/^[ \t\v\f]*\[/m)[0];
   // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
   // read as an opt-out on both hosts and silently disabled every rule —
-  // a typo is supposed to fail loudly as invalid-rules, not govern nothing.
+  // a typo is supposed to be reported as one, not govern nothing.
   // ASCII horizontal whitespace only, matching the shell's `[[:space:]]` under
   // the C locale. `\s` and `[^\S...]` accept NBSP; POSIX `[[:space:]]` under
   // C.UTF-8 does not — so an NBSP-indented opt-out was honoured on Codex and not
@@ -1017,15 +710,13 @@ const rulesToml = configResult.value;
 // the plugin's payload. Absent -> plugin-native. Using a file as the
 // discriminator would turn a half-deleted overlay into a silent mode switch.
 const vendored = existingDirectory(path.join(projectRoot, ".trellis", "internal"));
-// Both TOML string forms. parseRulesToml below accepts literal strings, so
-// matching only the basic form served a firm project the adaptive posture
-// without saying so.
-const posture = /^\s*strictness\s*=\s*(?:"firm"|'firm')\s*(?:#.*)?$/mu.test(rulesToml) ? "a" : "b";
+// One header ships on the plugin-native branch (TRL-97): `strictness` selects
+// nothing, and every project receives the By default posture sentence.
 const sources = vendored
   ? { root: projectRoot, ...VENDORED_PAYLOAD }
   : {
       root: pluginRoot,
-      prose: `reference/trellis-${posture}.md`,
+      prose: "reference/trellis.md",
       rules: "reference/rules.md",
       version: "reference/version",
     };
@@ -1078,7 +769,7 @@ if (!/^payload@[0-9a-f]{12}\n?$/u.test(version)) {
 // sources.prose, not a hardcoded path. This named .trellis/internal/trellis.md
 // on BOTH branches, so on the plugin-native path it reported a failure against
 // a file that was never read — the file actually read is
-// reference/trellis-{a,b}.md. Same class of defect as every message this
+// reference/trellis.md. Same class of defect as every message this
 // change set corrects: right diagnosis, wrong file named. On the vendored
 // branch sources.prose IS that path, so nothing the tests assert moves.
 if (trellis.split("@rules.md").length - 1 !== 1) {
@@ -1141,7 +832,7 @@ const repointedInvariants = `\`${pluginInvariants}\``;
 // at all. A dead pointer is a broken lead; no pointer is a governance loss.
 //
 // What a missing copy earns instead is a REPORT, carried at the end of this
-// file on the systemMessage channel the floor-row warning already uses. Not a
+// file on the systemMessage channel the rules.toml warnings also use. Not a
 // fail(): invariants.md is consulted on demand, never injected, and
 // decision-0093:1 rules that failing a session closed over such a file trades
 // a dead pointer for no governance at all. The context still delivers whole.
@@ -1396,9 +1087,9 @@ if (sources.root === pluginRoot) {
 // BEFORE it is trusted enough to derive a slug set from it — moved ahead of
 // that derivation for exactly this reason. Deriving first and validating after
 // meant a broken rules.md (no sentinel, a truncated one, or a doubled one)
-// yielded an empty or malformed slug set, parseRulesToml then failed on the
-// PROJECT's .trellis/rules.toml, and the reported label blamed the project's
-// config for a defect that was actually in the plugin's own payload.
+// yielded an empty or malformed slug set, the PROJECT's .trellis/rules.toml was
+// then judged against it, and the report blamed the project's config for a
+// defect that was actually in the plugin's own payload.
 if (rules.split(SENTINEL).length - 1 !== 1 || !rules.endsWith(`${SENTINEL}\n`)) {
   // sources.rules, for the same reason as sources.prose above: hardcoded, this
   // named the vendored path on the plugin-native branch too, where the file
@@ -1407,216 +1098,44 @@ if (rules.split(SENTINEL).length - 1 !== 1 || !rules.endsWith(`${SENTINEL}\n`)) 
   process.exit(0);
 }
 // Derived from the payload actually resolved above (vendored or plugin-native,
-// whichever `sources` picked), not a hardcoded list — this is the row set a
-// payload upgrade CAN repair, and it is what the row-count/row-membership
-// checks inside parseRulesToml validate against.
-//
-// De-duplicated: parseRulesToml checks membership through a Set (slugSet) but
-// checks completeness against slugs.length/slugs.some, so a rules.md that ever
-// tagged one slug twice would make rows.size !== slugs.length permanently true
-// — every Codex project would read .trellis/rules.toml: invalid-rules while
-// Claude (whose want[] is already a set) kept governing normally from the same
-// file. Not reachable with the current payload (every tag occurs exactly
-// once), but it is the same blame-the-consumer mislabel this task exists to
-// close, so the array is deduplicated at the source rather than trusted to
-// stay duplicate-free forever.
+// whichever `sources` picked), not a hardcoded list — this is the slug set a
+// payload upgrade CAN repair, and it is what the classifier finds unknown slugs
+// and floors against. De-duplicated at the source, so a rules.md that ever
+// tagged one slug twice cannot make the computed sentence name a rule twice.
 const slugs = [...new Set(slugsFromRules(rules))];
 // An EMPTY derived set is the Codex twin of staleness.sh's
 // `no-slugs-in-payload` refusal, and it needs its own branch for the same
 // reason: nothing downstream can tell it apart from a satisfied one. The
 // sentinel gate above proves rules.md is well-formed, not that it TAGS any
 // slug — a payload whose rule lines lost their trailing backticked slug keeps
-// its sentinel and yields []. parseRulesToml then ACCEPTS a config carrying
-// `strictness` plus an empty `[rules]` table, because both completeness checks
-// pass vacuously (rows.size 0 === slugs.length 0, and slugs.some() over an
-// empty array is false), and this hook emits a successful "loaded installed
-// overlay" response with no activation rows in it at all: a silent governance
-// blackout at exit 0 — the fail-loud invariant inverted, on the host where the
-// blackout is hardest to notice because the response looks like success.
-// Rejected here, before anything consumes `slugs` — including the floor-row
-// warning below, which would also have nothing to filter.
+// its sentinel and yields []. Against an empty set every row names an unknown
+// slug, nothing is switched off, and this hook would emit a successful "loaded
+// installed overlay" response about rules the model cannot identify: a silent
+// governance blackout at exit 0, on the host where the blackout is hardest to
+// notice because the response looks like success. Rejected here, before
+// anything consumes `slugs`.
 if (slugs.length === 0) {
   fail(sources.rules, "no-slugs-in-payload");
   process.exit(0);
 }
-const parsed = parseRulesToml(rulesToml, slugs);
-if (parsed === null) {
-  fail(PROJECT_CONFIG, "invalid-rules");
-  process.exit(0);
-}
-const { rows, mismatch } = parsed;
 
 const stamp = version.endsWith("\n") ? version.slice(0, -1) : version;
-// Reconcile rather than refuse (TRL-20, mirroring staleness.sh): a missing,
-// unknown or duplicate row used to fail the whole file closed, so one bad row
-// cost all sixteen rules every session until a human edited it by hand. The
-// rows the payload ships are still the authority; what changes is that an
-// unmatched row is quarantined instead of blocking delivery. `rows` (used below
-// for the false-floor check) is unaffected either way: it already carries only
-// the recognised, first-occurrence rows parseRulesToml collected.
-// Captured once, before either reconcileRows call below, so the ordinary
-// assembly and a possible TRL-29 degraded re-assembly (over-budget branch,
-// below) never disagree about "today" across a midnight boundary — both
-// reconcileRows calls, and the degraded mandate's recipe, must cite the same
-// date reconcileRows actually used when it decided what to quarantine or add.
-const today = localToday();
-let effectiveRulesToml = rulesToml;
-// repairMandateText stays "" on the no-mismatch path (below), so a session
-// that reconciled nothing gets no mandate — matching staleness.sh, which only
-// prints its own "## Rule activation was reconciled this session" section
-// when $reconciled is non-empty.
-let repairMandateText = "";
-if (mismatch !== null) {
-  const reconciled = reconcileRows(rulesToml, slugs, stamp, today);
-  effectiveRulesToml = reconciled.text;
-  // `reconciled.added`/`.quarantined` describe THIS call only, against the
-  // file as it stands right now — never a running total. reconcileRows' row
-  // regex matches only an uncommented `(inv|floor)-... =` line, so an
-  // already-quarantined or already-added row from an earlier session is
-  // invisible to these counters; re-reconciling an already-repaired file
-  // reports 0/0, not yesterday's counts restated on top of today's. Mirrors
-  // staleness.sh's own fix for exactly this defect (staleness.sh:953-963, the
-  // `#trellis-reconcile-counts` trailer and its "the SPOKEN summary was not"
-  // note — grep that phrase, not the line number) — do not derive this from
-  // text length or any other count that could see stale provenance.
-  const repairSummary = `added ${reconciled.added} row(s); quarantined ${reconciled.quarantined} row(s)`;
-  repairMandateText = repairMandate(mismatchReport(mismatch), repairSummary);
-}
-// Factored out so the over-budget branch below can re-run it against a
-// provenance-free reassembly without duplicating the footer/spacing rules —
-// the two assemblies must differ ONLY in effectiveRulesToml/repairMandateText,
-// never in how they are joined.
-const buildContext = (rulesTomlText, mandateText) =>
-  trellis.replace("@rules.md", rules) +
-  "\n" +
-  rulesTomlText +
-  (rulesTomlText.endsWith("\n") ? "" : "\n") +
-  mandateText +
-  // Cosmetic parity, fix round 1: staleness.sh's footer printf always opens
-  // with its own leading "\n" (staleness.sh:1131), so on the Claude side a
-  // blank line separates the mandate's last sentence from "Delivered by...".
-  // Scoped to the mandate-present branch only — the no-mismatch path (empty
-  // mandateText) is pre-existing behaviour this task did not touch and is
-  // left as is.
-  (mandateText === "" ? "" : "\n") +
+// One assembly for both branches (KTD7). The prose ends with the header's
+// end marker and its newline, so the blank line before the heading is the one
+// staleness.sh prints too.
+const section = activationSection(rulesToml, configResult.size, slugs);
+const context =
+  `${trellis.replace("@rules.md", rules)}\n${section.text}\n` +
   `Trellis hook loaded installed overlay: ${stamp}\n`;
 
-let context = buildContext(effectiveRulesToml, repairMandateText);
-
+// The runaway guard, and nothing more. The file is echoed only up to
+// RULES_ECHO_MAX_BYTES and the warnings are bounded, so what reaches this is a
+// payload that has outgrown the budget on its own, or a project file built to
+// carry every bounded warning at once beside a file of nearly that size. TRL-29's
+// degradation retired with the provenance it degraded (TRL-97).
 if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
-  // TRL-29: refusing outright here used to be a self-inflicted blackout —
-  // Codex's own documented behaviour on oversized hook output is to spill,
-  // not reject (MAX_CONTEXT_BYTES' own comment, above), so failing closed was
-  // strictly worse than the host's own degradation.
-  //
-  // What degrades is the INJECTED COPY, never the file: the file is the
-  // archive, the injection is the working set. Both kinds of provenance give
-  // way here —
-  //
-  //   * provenance this session would GENERATE (reconcileRows' own notes,
-  //     left off by `withProvenance = false`), and
-  //   * provenance the file ALREADY CARRIES from an earlier repair
-  //     (stripPersistedProvenance).
-  //
-  // The second used to be unreachable, and that is what TRL-29 was reopened
-  // for. This whole branch was gated on `mismatch !== null`, so it ran only in
-  // a session that had something to reconcile — and the session AFTER a repair
-  // has no mismatch, generates no provenance, and never had its persisted
-  // provenance offered up, so the refusal below fired instead. Permanently,
-  // because nothing about that file changes again. Measured against the real
-  // firm payload (rules-a.toml + N foreign rows), reproduced on 3f44620: at
-  // N >= 9 session 1 degraded and delivered (9174 B), the file its mandate
-  // produced was 2861 B, and session 2 refused with `context-over-budget`
-  // while staleness.sh governed happily from the identical bytes (9833 B).
-  // A 2.8 KB file Trellis itself told the agent to write is not pathological,
-  // and its quarantine comments were exactly what was left to drop: the gate,
-  // not a shortage of material, was what stopped it.
-  //
-  // So the trigger is the budget, which is what this branch was always about.
-  // The gate below now only chooses which ANNOUNCEMENTS the session can carry.
-  //
-  // And the announcement is itself budgeted (review of #263,
-  // PRRT_kwDOTIeCVc6eu78z). The first shape of this branch appended one fixed
-  // announcement to the stripped body and let the runaway guard measure the
-  // sum — so a body that fit on its own was refused for the announcement's
-  // bytes. Measured: the full notice costs 414 B and the degraded mandate 156 B
-  // more than the full mandate it replaces at one foreign slug (the full form
-  // names every slug, the degraded one counts them, so the gap narrows by a
-  // slug's length per row), while stripping frees 150 B per quarantined row.
-  // At one or two persisted notes the "degraded" assembly
-  // was therefore LARGER than the full one it stood in for, and the strip
-  // could never rescue anything; above that, a window of 414 B (or 156 B) of
-  // fitting bodies was still refused. The reviewer's fixture — firm preset,
-  // one persisted note, a valid 1450 B project comment — assembled to 9517 B
-  // in full, 9367 B stripped, and was refused at 9781 B with the notice on.
-  //
-  // Now each path lists its announcements from most to least informative and
-  // the first assembly that fits is what ships. The guard fires only when the
-  // body will not fit alongside the SHORTEST honest announcement — the
-  // residual is that line's own length (129 B on the no-mismatch path, 571 B
-  // on the mismatch path), and it is not closed to zero on purpose: doing so
-  // would mean injecting an abbreviated copy with no word that it was
-  // abbreviated, or a reconciliation with no mandate to write it back, and a
-  // loud refusal is better than either of those quiet ones.
-  const stripped = stripPersistedProvenance(rulesToml);
-  let body;
-  let announcements;
-  if (mismatch !== null) {
-    // Reconciled from the STRIPPED source, not the raw one. A file can carry
-    // persisted provenance AND a fresh mismatch at once, and leaving the
-    // persisted half on would degrade that session strictly less than the same
-    // file with nothing to reconcile — the same permanent blackout, one step
-    // to the left. Safe because reconcileRows classifies from uncommented
-    // `(inv|floor)-... =` rows only: removing comment text changes no
-    // quarantine or addition decision and neither count, so `added` /
-    // `quarantined` — and therefore what governs — are identical either way.
-    const bare = reconcileRows(stripped, slugs, stamp, today, false);
-    const repairSummary = `added ${bare.added} row(s); quarantined ${bare.quarantined} row(s)`;
-    const counts = mismatchCounts(mismatch);
-    body = bare.text;
-    announcements = [
-      repairMandate(counts, repairSummary, true),
-      repairMandate(counts, repairSummary, true, true),
-    ];
-  } else {
-    // Nothing to reconcile, so no mandate and no write instruction at all —
-    // see provenanceOmittedNotice for why an instruction here would be the
-    // failure rather than the fix. effectiveRulesToml was the file verbatim on
-    // this path; what is injected now is the file minus Trellis's own
-    // bookkeeping, and nothing else.
-    body = stripped;
-    announcements = [provenanceOmittedNotice(false), provenanceOmittedNotice(true)];
-  }
-  context = null;
-  for (const announcement of announcements) {
-    const candidate = buildContext(body, announcement);
-    if (Buffer.byteLength(candidate, "utf8") <= MAX_CONTEXT_BYTES) {
-      context = candidate;
-      break;
-    }
-  }
-  if (context === null) {
-    // The runaway guard, and nothing more. Reached only when a context with NO
-    // Trellis provenance left in it — neither generated nor persisted — will
-    // not fit alongside even the one-line announcement that it was
-    // abbreviated. Measured against the real firm payload: a quarantined row
-    // costs the injected copy 42 B once its note is off, against 192 B with
-    // it, and the refusal first appears at THIRTY-SEVEN quarantined rows
-    // where it used to appear at nine (thirty before the announcement was
-    // budgeted). It is a byte budget, not a row count — a longer slug reaches
-    // it sooner — so treat thirty-seven as the measured order of magnitude,
-    // not a threshold to test against.
-    //
-    // Deliberately NOT described as a state with "nothing left to degrade".
-    // An earlier draft of this comment, and of decision-0084, said exactly
-    // that; it was measurably false, and the limitation it concealed is what
-    // TRL-29 was reopened for. What is left to degrade at this point is the
-    // CONSUMER's own content — their comments, their row set — and
-    // abbreviating that is not a call this hook may make on its own. So it
-    // stops here, loudly, at exit 0.
-    fail("assembled-context", "context-over-budget");
-    process.exit(0);
-  }
+  fail("assembled-context", "context-over-budget");
+  process.exit(0);
 }
 
 const response = {
@@ -1633,7 +1152,7 @@ const response = {
 const warnings = [];
 // TRL-69, decided at the repoint above. The pointer was rewritten to a file
 // that cannot be read, which makes this a half-installed plugin payload. Said
-// on the channel fail() and the floor warning already use, rather than left
+// on the channel fail() and the rules.toml warnings already use, rather than left
 // for whoever opens the pointer to meet as an unexplained missing read.
 //
 // "no readable", not "no": this must never turn a permissions fault into a
@@ -1732,19 +1251,12 @@ if (ownOverlayInvariantsDefect !== "") {
       "Putting a readable invariants.md at that overlay path is the likely fix.",
   );
 }
-// Floors are the `floor-` half of the same derived slug set, not a second
-// hardcoded pair — the prefix is the product's own classification (matched the
-// same way everywhere else this file and staleness.sh distinguish inv- from
-// floor-), so a payload that ever ships a third floor picks it up here too.
-const falseFloors = slugs
-  .filter((slug) => slug.startsWith("floor-") && rows.get(slug) === false)
-  .sort();
-if (falseFloors.length > 0) {
-  warnings.push(
-    "Trellis warning: floor rows set active = false are overridden-by-floor and remain active: " +
-      `${falseFloors.join(", ")}.`,
-  );
-}
+// The rules.toml warnings, mirrored from the context (KTD4). They are already
+// inside `context`, where the budget measures them; they are repeated here
+// because nothing in this repository establishes whether Codex puts
+// systemMessage in front of the model, and the context is what it certainly
+// reads. The floor-row warning that used to be assembled here is one of them.
+warnings.push(...section.warnings);
 if (warnings.length > 0) {
   response.systemMessage = warnings.join(" ");
 }

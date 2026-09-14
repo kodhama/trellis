@@ -47,7 +47,7 @@ import (
 )
 
 // invariantsToken is the unresolved placeholder as it ships inside
-// reference/trellis-{a,b}.md. Backticked because that is how the prose carries
+// reference/trellis.md. Backticked because that is how the prose carries
 // it and how both hooks match it — an unbackticked search would also hit this
 // file's own prose in a grep, and more importantly would not prove the
 // substitution replaced the whole delivered span.
@@ -77,18 +77,24 @@ func writeDualHostPluginRoot(t *testing.T) string {
 	return root
 }
 
+// configOnlyProjectRules is the file writeConfigOnlyProject writes: the sparse
+// shape TRL-97 ships, holding one row with an effect, so a delivery that echoes
+// the project's rows can be told from one that echoes nothing. It replaced a
+// copy of the retired rules-a.toml preset.
+const configOnlyProjectRules = "[rules]\ninv-minimal-first = { active = false }\n"
+
+// configOnlyProjectRow is that row's slug, for asserting the rows arrived.
+const configOnlyProjectRow = "inv-minimal-first"
+
 // writeConfigOnlyProject is the decision-0065 shape: rules.toml and no
-// .trellis/internal/. The .git directory writePluginNativeProject supplies is
-// needed because codex-context.mjs bounds its overlay search at the nearest git
-// boundary; staleness.sh does not need it and does not mind it.
-//
-// The firm posture is this helper's own choice, not a property of the shape —
-// TRL-55 lifted the body into writePluginNativeProject so a test can pick the
-// other one. Every caller here wants a posture it does not care about, so they
-// keep asking for the shape and letting it default.
+// .trellis/internal/. The .git directory is needed because codex-context.mjs
+// bounds its overlay search at the nearest git boundary; staleness.sh does not
+// need it and does not mind it.
 func writeConfigOnlyProject(t *testing.T) string {
 	t.Helper()
-	return writePluginNativeProject(t, "a")
+	project := newGitProject(t)
+	writeFileT(t, filepath.Join(project, ".trellis", "rules.toml"), configOnlyProjectRules)
+	return project
 }
 
 // codexContextFor runs codex-context.mjs and returns the injected context. It
@@ -217,7 +223,7 @@ func TestCodexLeavesAVendoredInvariantsPointerAlone(t *testing.T) {
 	// a fixture without it would be arguing for a pointer into thin air.
 	if err := os.WriteFile(
 		filepath.Join(project, ".trellis", "internal", "invariants.md"),
-		[]byte(payloadFiles()["invariants.md"]), 0o644); err != nil {
+		[]byte(payloadFile(t, "invariants.md")), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -311,7 +317,7 @@ func overlayOwnCopyShapes() []struct {
 	}{{
 		name:  "a healthy overlay copy",
 		why:   "",
-		write: func(t *testing.T, target string) { writeFileT(t, target, payloadFiles()["invariants.md"]) },
+		write: func(t *testing.T, target string) { writeFileT(t, target, payloadFile(t, "invariants.md")) },
 	}, {
 		name:  "a zero-byte overlay copy",
 		why:   "is empty",
@@ -331,7 +337,7 @@ func overlayOwnCopyShapes() []struct {
 			if os.Geteuid() == 0 {
 				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
 			}
-			writeFileT(t, target, payloadFiles()["invariants.md"])
+			writeFileT(t, target, payloadFile(t, "invariants.md"))
 			if err := os.Chmod(target, 0o000); err != nil {
 				t.Fatal(err)
 			}
@@ -586,7 +592,7 @@ func TestNoDeliveryChannelShipsTheUnresolvedPointer(t *testing.T) {
 	channels := map[string]string{
 		"staleness.sh (Claude, plugin path)":            claudeContextFor(t, pluginRoot, project),
 		"codex-context.mjs (Codex, plugin path)":        codexContextFor(t, pluginRoot, project),
-		"reference/block-inline-tail.md (inline block)": payloadFiles()["block-inline-tail.md"],
+		"reference/block-inline-tail.md (inline block)": payloadFile(t, "block-inline-tail.md"),
 	}
 	for name, delivered := range channels {
 		if strings.Contains(delivered, invariantsToken) {
@@ -1296,7 +1302,7 @@ func TestBothHostsReportAMissingInvariantsTarget(t *testing.T) {
 				// is consulted on demand and never injected, and
 				// decision-0093:1 rules that failing a session closed over such
 				// a file trades a dead pointer for no governance at all.
-				if !strings.Contains(host.context, rulesLoadedSentinel) || !deliveredRow(host.context, "floor-intent-gate") {
+				if !strings.Contains(host.context, rulesLoadedSentinel) || !deliveredRow(host.context, configOnlyProjectRow) {
 					t.Errorf("%s did not deliver a complete governed context; a broken consulted reference must not cost the session its rules (decision-0093:1):\n%s", host.name, host.context)
 				}
 				// The pointer moves either way. This is the assertion the
@@ -1335,7 +1341,7 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 			}
 
 			context := claudeContextFor(t, pluginRoot, project)
-			if !strings.Contains(context, rulesLoadedSentinel) || !deliveredRow(context, "floor-intent-gate") {
+			if !strings.Contains(context, rulesLoadedSentinel) || !deliveredRow(context, configOnlyProjectRow) {
 				t.Fatalf("the rules must still be delivered whole; only the consulted reference is broken (decision-0093:1):\n%s", context)
 			}
 			if got := pointerIn(t, context); got != target {
@@ -1455,7 +1461,7 @@ func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	if strings.Contains(broken, "TRELLIS_RULES_NOT_LOADED") {
 		t.Fatalf("deleting a CONSULTED reference refused the session — a dead pointer traded for no governance at all (decision-0093:1), and the budget is the only thing that changed:\n%s", broken)
 	}
-	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, "floor-intent-gate") {
+	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, configOnlyProjectRow) {
 		t.Errorf("the rules and rows must survive a missing consulted reference:\n%s", broken)
 	}
 	if !strings.Contains(broken, invariantsReportLead+target) {
