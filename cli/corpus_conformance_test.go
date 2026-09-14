@@ -157,7 +157,7 @@ var contractOutcomeTable = []contractCheckOutcomes{
 // contractClauseOutcomes records the rubric's unnumbered clauses, keyed by name.
 var contractClauseOutcomes = []contractRuleOutcome{
 	{"Honesty clause", outcomeHalts, "findings are listed per violation over the whole corpus, and a missing or unparseable shared input halts the run by name (KTD6), never a partial pass"},
-	{"How it is graded", outcomeImplemented, "one subtest per numbered check with an implemented rule, and every finding names its file, line, check and rule; the section's consumer-facing agent wording stays"},
+	{"How it is graded", outcomeImplemented, "one subtest per numbered check with an implemented rule, and every finding names its file, line, check and rule, as the section states"},
 	{"Charter: \"derive your checklist yourself\"", outcomeDropped, "an instruction to an agent; the checklist is now code pinned to the rubric, and CI runs it whoever authored the change"},
 }
 
