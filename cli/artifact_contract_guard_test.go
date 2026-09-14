@@ -722,9 +722,8 @@ func TestArtifactContractGuardComparisonsFail(t *testing.T) {
 	}{
 		{"corpus: a path the rubric names and corpusRoots does not read",
 			contractCorpusProblems(paragraph+" `templates/`", corpusRoots, fixtureRoot), 1, []string{`"templates/"`}},
-		// The seeded root carries no `../` prefix: cli/ci_paths_guard_test.go reads
-		// a `../` literal as a repository read, and contractRootSpelling spells
-		// both forms alike.
+		// The seeded root carries no `../` prefix; contractRootSpelling spells both
+		// forms alike.
 		{"corpus: a root corpusRoots reads and the rubric does not name",
 			contractCorpusProblems(paragraph, append(append([]string{}, corpusRoots...), "templates"), fixtureRoot), 1, []string{`"templates/"`}},
 		{"corpus: a quoted path the extraction cannot read",
