@@ -6,7 +6,7 @@ depends_on: [decision-0001, invariants-v1]
 owner: gundi
 date: 2026-06-29
 ratified: 2026-06-29
-superseded_in_part_by: [decision-0065]
+superseded_in_part_by: [decision-0065, decision-0098]  # decision-0098: 2026-09-14 — Decision bullet 2 ONLY, and only as it governs this repository's own gate: "The artifact-contract "validator" is a **conformance sub-agent applying a rubric**, failing loudly (B3 / D1) — **not** a program." Here conformance is applied by a Go test, cli/corpus_conformance_test.go, which cli-ci runs, and the corpus-reviewer sub-agent is retired. STANDS: bullet 2 as it describes Trellis's product for a consumer project, provisionally, while decision-0098's open question on whether the rubric leaves core/ is unanswered; bullets 1 and 3; and bullet 4, "Any deterministic helper a project wants for hard CI gating is written in the target project's own stack", which is the authority decision-0098 rests on. ANSWERED, NOT SUPERSEDED: Open question 2, how the conformance sub-agent is invoked in CI without a runtime, is answered for this repository only: it is not invoked, because a test in the repository's own stack replaced it. decision-0065's amendment is the note under the title and is untouched.
 ---
 
 # 0010 — Trellis imposes no runtime; it ships as agent instructions (CLI is optional support)
