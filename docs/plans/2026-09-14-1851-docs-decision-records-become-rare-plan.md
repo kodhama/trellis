@@ -31,7 +31,7 @@ execution: code
 
 `AGENTS.md:29-31` makes the records the method's home: *"a decision is the current truth"*, `docs/decisions/` is append-only, and you *"supersede with a forward pointer, never edit."* Changing any rule a record states therefore means writing a successor record and a pointer. The maintainer's ruling of 2026-09-05 made that explicit: *"Factual corrections get dated notes. Rule divergences get successors"* (`decision-0092:16-17`).
 
-The corpus now holds 98 records and about 150,000 words. By the ideation's count, 53 records carry a supersession pointer, 47 of them partial. `decision-0089`'s pointer comment alone is a clause-by-clause diff of about 500 words (`decision-0089:6`). Forty records were added in July and fifteen in the first half of September. Of the 15 records added between 2026-08-31 and 2026-09-13, eight record a plugin behaviour change and landed in the same commit as a `plugins/trellis/VERSION` bump. The maintainer's reading: *"Should have more specs and less decisions."*
+The corpus now holds 98 records and about 150,000 words. By the ideation's count, 53 records carry a supersession pointer, 47 of them partial. `decision-0089`'s pointer comment alone is a clause-by-clause diff of about 500 words (`decision-0089:6`). Fifty-seven records were added in July and fifteen in the first half of September. Of the 15 records added between 2026-08-31 and 2026-09-13, eight record a plugin behaviour change and landed in the same commit as a `plugins/trellis/VERSION` bump. The maintainer's reading: *"Should have more specs and less decisions."*
 
 `decision-0081` does not remove the successor record. It scales **who** may retire a record by cost of reversal, but it still retires by writing a successor record (`decision-0081:154-164`), and its heading reads *"(proposal, not a decision)"*.
 
@@ -115,7 +115,7 @@ This plan covers PR 1 of idea 1a (TRL-98). The rest is the current understanding
 
 - A fresh agent session can tell from `AGENTS.md` alone whether its change needs a new record and whether it owes dated notes, where some changes need both and some neither, without opening `decision-0040`, `decision-0081` or `decision-0082`. Finding the records a note is due on, and the citations into them, still means searching the repository.
 - No PR merged after PR 1 adds a `superseded_in_part_by` entry.
-- PR 1 stays reviewable on a phone: `AGENTS.md`, `README.md`, the rubric text R15 reaches, a few one-paragraph notes, and the citation corrections they force.
+- PR 1 stays reviewable on a phone: `AGENTS.md`, `README.md`, the rubric text R15 reaches, a few one-paragraph notes, and any citation corrections they force.
 
 ### Scope Boundaries
 
