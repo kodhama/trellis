@@ -13,7 +13,7 @@ import (
 )
 
 // decision-0028 clause 2: a guard per source/derivative pair. The rubric
-// core/rubrics/artifact-contract.md is the artifact contract; the corpus
+// docs/rubrics/artifact-contract.md is the artifact contract; the corpus
 // conformance check in cli/corpus_conformance_test.go is the code that applies
 // it (TRL-88). This guard holds the two together.
 //
@@ -730,7 +730,7 @@ func TestArtifactContractGuardComparisonsFail(t *testing.T) {
 		{"corpus: a quoted path the extraction cannot read",
 			contractCorpusProblems(paragraph+" `core/plans`", corpusRoots, fixtureRoot), 1, []string{`"core/plans"`}},
 		{"corpus: a paragraph that names no path",
-			contractCorpusProblems("no paths here", corpusRoots, fixtureRoot), 2 + len(corpusRoots), []string{"names no path", `"docs/decisions/"`, `"core/fixtures/"`}},
+			contractCorpusProblems("no paths here", corpusRoots, fixtureRoot), 2 + len(corpusRoots), []string{"names no path", `"docs/decisions/"`, `"cli/testdata/"`}},
 
 		{"check 4: a row whose leading text changed",
 			contractRefFormProblems(withRow(0, "an existing artifact `id` in any corpus"), contractOutcomeTable, contractRefFormLeads),

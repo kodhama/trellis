@@ -17,8 +17,8 @@ scope: trellis-product
 > **PASS / FAIL** with a *specific* reason (file + field + rule). **No vague failures, no false
 > passes.**
 >
-> **Corpus:** `docs/decisions/`, `docs/research/`, `core/invariants/`, `core/rubrics/`, **`core/schemas/`**,
-> **`core/catalog/`**, **`core/lexicon.md`**, **`profiles/`**. Exclude `core/fixtures/` unless running
+> **Corpus:** `docs/decisions/`, `docs/research/`, `core/invariants/`, `docs/rubrics/`, **`core/schemas/`**,
+> **`core/catalog/`**, **`core/lexicon.md`**, **`profiles/`**. Exclude `cli/testdata/` unless running
 > the positive control. `core/schemas/` is **checked, not merely consulted**: `decision-0079` re-homed
 > the typed-artifact schema there, and this rubric `depends_on` the id it declares
 > (`schema-typed-artifacts`, read by checks 2, 6 and 8–11) — a gate may not exempt an input its own
@@ -165,7 +165,7 @@ has failed this rubric. Missing/unparseable input → halt loudly (`floor-transp
 
 The conformance sub-agent emits one report: per-check PASS/FAIL, every FAIL naming the exact
 file + field + rule. The check is **trusted only after it rejects the known-bad fixture**
-(`core/fixtures/`, the positive control).
+(`cli/testdata/`, the positive control).
 
 ## Acceptance criteria
 
