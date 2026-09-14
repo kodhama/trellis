@@ -16,6 +16,9 @@ execution: code
 - **Means:** delete `cli-ci`'s path filter, the guard that polices it and `repo-hygiene.yml`, and have `build-test` replace `hygiene` as the required check, an edit `trellis-simplify` makes with the maintainer (R8).
 - **Product authority:** the maintainer's answers of 2026-09-14 on TRL-96 and on TRL-98's dated-note rule, relayed by `trellis-simplify` (Key Decisions). Linear TRL-96 in the Simplify Trellis project, idea 6 of the ideation. The project's other ideas are not active scope here.
 - **Open blockers:** none.
+- **Stop conditions:** ask `trellis-simplify` before a change that alters consumer-visible behaviour or the approved design, before resolving a merge conflict that needs judgment about another idea, and before changing a profile verdict, C1, C2 or confidence value rather than its evidence.
+- **Execution profile:** deletions and prose. Proof is the Go suite and the conformance tests staying green, and the pull request's own CI showing `build-test` running with `hygiene` pending (AE3).
+- **Who finishes:** `simplify-6` implements, reviews and opens a ready-for-review pull request. `trellis-simplify` swaps the required check with the maintainer, who merges.
 
 ---
 
@@ -72,7 +75,7 @@ Removing the filter costs CI time on pull requests that skip `build-test` today.
 - **Swap the check, then merge at once.** (session-settled: user-approved — chosen over two pull requests or an edit before the pull request opens: the only open pull request, #311, already runs `build-test`, so the swap blocks nothing.) Governs R8.
 - **No decision record.** Every path the records say must run `build-test` still runs it, and the one statement that becomes false left the requirement to a repository setting. (session-settled: user-approved — chosen over `decision-0103` with `superseded_in_part_by` pointers on `decision-0098` and `decision-0099`: TRL-98 decides how out-of-date records are marked.) Governs R10, R13.
 - **Each out-of-date record gets one dated note under its title.** The note says what no longer holds and where the current behaviour is stated, and the record's body stays as written. (session-settled: user-directed — chosen over a successor record or a forward pointer: the maintainer's rule on TRL-98 for a change that writes no record.) Governs R10.
-- **The `decision-0100` note also corrects its line citation into `decision-0098`.** The `decision-0098` note moves that record's body down two lines, which would leave `decision-0100`'s citation `decision-0098:133-134` pointing at the wrong text, and the note is the one place in `decision-0100` this change writes. Governs R10.
+- **The `decision-0100` note also corrects its line citation into `decision-0098`.** The `decision-0098` note moves that record's body down two lines, which would leave `decision-0100`'s citation `decision-0098:133-134` pointing at the wrong text, and the note is the one place in `decision-0100` this change writes. The maintainer confirmed on 2026-09-14 that a pull request adding a note corrects the live line citations into that record. Governs R10.
 - **No guard against a filter coming back.** With no filter there is nothing left to drift, and adding one back is a visible workflow edit. (session-settled: user-approved — chosen over a few-line check that fails on a re-added filter: the project retires guards whose subject is gone.) Governs R4, R12.
 - **The absence tests for retired directories stay.** They guard the retirements in `decision-0076` and `decision-0099` point 3, not the filter, and retiring guards in general is idea 4's work. Governs R6.
 
@@ -130,7 +133,7 @@ Text left as written because it describes past work: the plans under `docs/plans
 
 **Deferred to Planning**
 
-- The exact rewording of each site under Sources, including how much of `cli-ci.yml`'s header comment survives.
+- The exact rewording of each site under Sources, including how much of `cli-ci.yml`'s header comment survives. KTD1, KTD4 and KTD7 settle the intent; the words are written in U1 and U3.
 
 ### Sources
 
@@ -140,3 +143,144 @@ Text left as written because it describes past work: the plans under `docs/plans
 - Kept as is: `cli/codex_hook_test.go:1251-1268` reads `cli-ci.yml` for its Node version and `go test` line, not the filter. The `../` literals in `corpusRoots` stay, because `loadCorpus` stats them from `cli/` (`cli/corpus_conformance_test.go:437`).
 - Ruleset: `gh api repos/kodhama/trellis/rulesets/18526979`, read 2026-09-14. No bypass actors. Required contexts: `release-guard`, `Analyze (go)`, `Analyze (javascript)`, `hygiene`.
 - GitHub docs: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks (a skipped required workflow's checks *"stay in a 'Pending' state and block merging"*) and https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows (`pull_request`).
+
+---
+
+## Planning Contract
+
+Product Contract preservation: two additions during planning, no scope change. The `decision-0100` Key Decision gains the maintainer's 2026-09-14 confirmation that a note corrects the live line citations into its record, and Outstanding Questions points at KTD1, KTD4, KTD7, U1 and U3.
+
+### Key Technical Decisions
+
+- KTD1. **`cli-ci.yml` loses both `paths:` lists and the header paragraphs that describe them.** The opening paragraph, which says what `build-test` runs and why, stays. The two paragraphs that call the filter a coverage contract and name the guard go, because they describe nothing that remains. Governs R1, R2.
+- KTD2. **The guard and the filter assertion are deleted outright, not rewritten.** `cli/ci_paths_guard_test.go` has no identifier another file uses, and the block in `cli/selfapply_test.go` that reads `cli-ci.yml` exists only to check filter entries. Nothing replaces either, per the Key Decision against a filter guard. Governs R4, R5.
+- KTD3. **The `../` literals in `corpusRoots` and the unprefixed seed root in `cli/artifact_contract_guard_test.go` keep their code; only their comments change.** `loadCorpus` stats the roots from `cli/`, so the prefix is a real path, and `contractRootSpelling` spells both forms alike, so the seed needs no prefix. The guard was one reason for each form, never the only one. Governs R6.
+- KTD4. **`profiles/trellis-self.md` is repaired under its own convention: a fifth dated repair note in the header, and the affected rows repaired in place.** The fourth repair note's "runs on every PR touching the corpus" (`profiles/trellis-self.md:54`) stays as written, because repair notes are dated history; the fifth repair note corrects it. Row `inv-gate-at-handover` quotes the old `AGENTS.md` sentence and rests `default-on-but-skippable` on "none blocks a merge". After this change the check does block a merge, so the row re-argues from the gate itself: independent review fires by default and does not block, and the check is supporting evidence only (`decision-0098` point 7). No verdict, C1, C2 or confidence value changes. Governs R9.
+- KTD5. **The pull request number in the notes is predicted, then confirmed.** Just before opening the pull request, the implementer reads the repository's highest issue or pull request number and writes the next number into the four notes. After opening, the implementer confirms the number and pushes a correction commit if another pull request took it. The alternative, opening with a placeholder and always pushing a second commit, runs CI and the automated review twice on every path. Governs R10.
+- KTD6. **No failing test is written first.** The approved design adds no check (R4), so there is no new behaviour for a test to pin. Proof is the suite and the conformance tests staying green after the deletions, a local mutation check that the kept absence tests still fail (U2), and the pull request's own CI (AE3).
+- KTD7. **`AGENTS.md` keeps its conformance bullet's structure and changes two clauses.** "on every PR that touches them" becomes "on every PR", and the "not a required status check … a signal, not a merge block" sentence becomes one saying `build-test` is required on `main`, so a red blocks the merge. The two judgment rules under the bullet do not change. Governs R9.
+
+### High-Level Technical Design
+
+The merge lifecycle crosses three actors and a repository setting, and its order is the one thing that can strand the pull request.
+
+```mermaid
+flowchart TB
+  A[U1-U3 committed; predicted PR number written into the notes, U4] --> B[Push and open the PR, ready for review]
+  B --> C{PR number matches the prediction?}
+  C -->|no| D[Push a commit correcting the four notes]
+  C -->|yes| E[CI: build-test, release-guard and Analyze report; hygiene waits for a status]
+  D --> E
+  E --> F[Review and repair rounds; maintainer's thumbs-up]
+  F --> G[trellis-simplify and the maintainer: ruleset main protection, remove hygiene, add build-test]
+  G --> H[Merge]
+  H --> I[Later PRs: build-test runs on every one and is required]
+```
+
+### Assumptions
+
+- The local `npm run quality` cannot run in full here: ShellCheck is not installed and `node_modules` is absent. `npm ci` restores the JavaScript checks, Go 1.27.1 satisfies staticcheck, and `lint:shell` runs only in CI. The pull request body says so.
+- The ruleset accepts `build-test` as a required context, since the job has passed in this repository within the past seven days. `trellis-simplify` performs the edit, so a refusal surfaces there.
+- `simplify-1a` and `simplify-2` may merge first and touch `AGENTS.md` or `profiles/trellis-self.md`. A conflict is resolved by merging `origin/main` into this branch. A conflict that needs judgment about another idea's design goes to `trellis-simplify` (Stop conditions).
+- Editing an existing record does not claim a decision id: the decision-id guard counts added, copied and renamed record paths only (`decision-0092`, `decision-0099` point 2).
+
+### Sequencing
+
+U1, U2 and U3 are independent and can land in any order. U4 comes last, because its pull request number is read just before the pull request opens (KTD5).
+
+---
+
+## Implementation Units
+
+### U1. Run cli-ci on every pull request and retire repo-hygiene.yml
+
+- **Goal:** `build-test` runs on every pull request and every push to `main`, and the separate hygiene workflow is gone.
+- **Requirements:** R1, R2, R3; KTD1.
+- **Dependencies:** none.
+- **Files:** `.github/workflows/cli-ci.yml` (modify), `.github/workflows/repo-hygiene.yml` (delete).
+- **Approach:**
+  1. Remove the `paths:` line under `pull_request` and under `push`, keeping `branches: [main]` on `push`.
+  2. Keep the opening header paragraph and remove the two paragraphs about the path filter and its guard (KTD1).
+  3. Delete `repo-hygiene.yml`. Leave the job steps untouched (R2).
+- **Patterns to follow:** `codeql.yml`'s unfiltered `pull_request` and `push` triggers.
+- **Test expectation:** none -- workflow configuration. `cli/codex_hook_test.go` still reads `cli-ci.yml` for its Node version and `go test` line and must keep passing. AE3 is proven on the pull request's CI; AE1 holds only after the ruleset swap and the merge.
+- **Verification:** `cli-ci.yml` contains no `paths` key, and the full `cli` suite passes.
+
+### U2. Retire the path guard and the filter assertions
+
+- **Goal:** No test reads or polices a `cli-ci` path filter, and the kept tests explain themselves without it.
+- **Requirements:** R4, R5, R6; KTD2, KTD3, KTD6.
+- **Dependencies:** none.
+- **Files:** `cli/ci_paths_guard_test.go` (delete); `cli/selfapply_test.go`, `cli/corpus_conformance_test.go`, `cli/artifact_contract_guard_test.go` (modify).
+- **Approach:**
+  1. Delete `cli/ci_paths_guard_test.go`.
+  2. In `cli/selfapply_test.go`, delete the block that reads `cli-ci.yml` and checks its trigger sections, and reword the comment above the root `decisions/` and `research/` absence checks so it no longer cites the guard or the filter.
+  3. In `cli/corpus_conformance_test.go`, drop "that touches it" from the header comment and replace the `corpusRoots` comment's guard sentence with the path reason (KTD3).
+  4. In `cli/artifact_contract_guard_test.go`, keep only the `contractRootSpelling` reason in the seeded-root comment.
+- **Execution note:** Confirm the kept absence tests still bite: create an empty root `decisions/` locally, see the self-apply test fail, then remove it.
+- **Patterns to follow:** `cli/selfapply_test.go`'s header, which records a guard deleted with its subject (`decision-0071`).
+- **Test scenarios:**
+  - Covers AE4. With an empty `decisions/` directory at the repository root, the self-apply test fails naming `decision-0099`; after removing it, the test passes.
+  - With an empty `.grove/` directory at the root, the self-apply test fails naming `decision-0076`.
+  - The full `cli` suite passes with `cli/ci_paths_guard_test.go` deleted, and staticcheck, run by `npm run quality`, reports no unused code.
+  - `gofmt -l cli/` lists nothing.
+- **Verification:** `git grep` finds no `ci_paths_guard` or `ciPathFilter` identifier under `cli/`, and build, vet and test pass.
+
+### U3. Correct the live text that calls build-test path-scoped or advisory
+
+- **Goal:** Every live instruction, product note and profile row states that `build-test` runs on every pull request and blocks a merge when red.
+- **Requirements:** R9; KTD4, KTD7.
+- **Dependencies:** none. The profile row quoting `AGENTS.md` takes KTD7's wording, so write `AGENTS.md` first within this unit.
+- **Files:** `AGENTS.md`, `docs/rubrics/artifact-contract.md`, `core/README.md`, `cli/README.md`, `profiles/trellis-self.md` (modify).
+- **Approach:**
+  1. `AGENTS.md`: the conformance bullet's two clauses (KTD7).
+  2. `docs/rubrics/artifact-contract.md`: the repository note says `cli-ci` runs the Go test on every pull request. The Corpus paragraph and the check text stay untouched, since the artifact-contract guard pins them.
+  3. `core/README.md`: "on every PR that touches it" becomes "on every PR".
+  4. `cli/README.md`: CI runs build, vet and test on every PR, still pointing at `cli-ci.yml`.
+  5. `profiles/trellis-self.md`: add the fifth dated repair note (2026-09-14, TRL-96) and extend the header's repair dates. Repair Delivery and rows `inv-gate-at-handover`, `inv-independent-judgment` and `inv-bounded-context` in place (KTD4).
+- **Patterns to follow:** the fourth repair note in `profiles/trellis-self.md`: what changed, which rows, and "No verdict, C1, C2 or confidence value changed."
+- **Test scenarios:**
+  - `TestCorpusConform` and `TestArtifactContract` pass with the rubric and profile edits.
+  - The `inv-gate-at-handover` row's quotation of `AGENTS.md` matches the new sentence character for character.
+- **Verification:** each site under Sources reads as R9 requires, except `profiles/trellis-self.md:54`, which sits in the fourth repair note that KTD4 keeps as dated history and which the fifth repair note corrects. No row's verdict, C1, C2 or confidence cell changed.
+
+### U4. Add the dated notes to decisions 0097 to 0100
+
+- **Goal:** Each record this change makes out of date carries one note saying what no longer holds and where the current behaviour is stated.
+- **Requirements:** R10, R13; KTD5.
+- **Dependencies:** U1, U2, U3 committed, since the pull request number is read just before the pull request opens.
+- **Files:** `docs/decisions/0097-compound-engineering-replaces-superpowers.md`, `docs/decisions/0098-artifact-conformance-is-a-ci-check.md`, `docs/decisions/0099-the-governance-corpus-lives-under-docs.md`, `docs/decisions/0100-the-artifact-contract-is-repository-internal.md` (modify).
+- **Approach:**
+  1. Read the next pull request number (KTD5).
+  2. Insert each note from Dated Notes, verbatim with that number, as one line directly under the title heading, followed by a blank line.
+  3. Confirm `decision-0098:135-136` holds the sentence the `decision-0100` note cites.
+  4. After the pull request opens, confirm its number matches, or push the correction.
+- **Test scenarios:**
+  - `TestCorpusConform` and `TestArtifactContract` pass with the four notes.
+  - Each record's diff adds exactly two lines and deletes none.
+- **Verification:** the notes' pull request number equals the opened pull request's number.
+
+---
+
+## Verification Contract
+
+| Gate | Command or evidence | Proves |
+|---|---|---|
+| Go build and vet | `cd cli && go build ./... && go vet ./...` | U2 left no dangling code |
+| Go suite | `cd cli && go test -count=1 ./...` | U1 to U4 keep every test green, `codex_hook_test.go` included |
+| Conformance | `cd cli && go test -count=1 -run 'TestCorpusConform\|TestArtifactContract' .` | U3 and U4's corpus edits conform |
+| Absence tests | a temporary root `decisions/` or `.grove/` fails the self-apply test | R6, AE4 |
+| Formatting | `gofmt -l cli/` is empty | U2 |
+| Quality bar | `npm ci && npm run quality`, with `lint:shell` left to CI | R2's checks still pass |
+| Retired names | `git grep` for `ci_paths_guard`, `repo-hygiene` and a `cli-ci` path filter, excluding `docs/decisions/`, `docs/plans/` and `docs/ideation/` | Success Criteria |
+| Pull request CI | `build-test` green, `hygiene` waiting for a status | AE3, R1 |
+
+---
+
+## Definition of Done
+
+- R1 to R13 hold, and the Success Criteria are met.
+- Every unit's Verification passes, and the Verification Contract's gates are green or, for `lint:shell`, named in the pull request body as CI-only.
+- The pull request is open and ready for review, titled `TRL-96: …`. Its body carries the ruleset edit (R7), the four dated notes with the maintainer's TRL-98 ruling of 2026-09-14 as their authority, the text left as written, `Closes TRL-92` with the dropped guard criterion (R12), and the calls made without asking.
+- The pull request number in the four notes matches the opened pull request.
+- No experimental or abandoned code remains in the diff.
