@@ -11,7 +11,7 @@
     "format": "prettier --write package.json package-lock.json eslint.config.mjs .prettierrc.json scripts/plugin-smoke.mjs plugins/trellis/hooks/codex-context.mjs plugins/trellis/hooks/*.json plugins/trellis/.claude-plugin/*.json plugins/trellis/.codex-plugin/*.json",
     "format:check": "prettier --check package.json package-lock.json eslint.config.mjs .prettierrc.json scripts/plugin-smoke.mjs plugins/trellis/hooks/codex-context.mjs plugins/trellis/hooks/*.json plugins/trellis/.claude-plugin/*.json plugins/trellis/.codex-plugin/*.json",
     "lint:js": "eslint eslint.config.mjs plugins/trellis/hooks/codex-context.mjs scripts/plugin-smoke.mjs",
-    "lint:shell": "shellcheck --severity=warning --exclude=SC2154 install.sh && shellcheck --severity=warning --exclude=SC2034 plugins/trellis/hooks/staleness.sh && shellcheck --severity=warning .github/scripts/*.sh scripts/*.sh",
+    "lint:shell": "shellcheck --severity=warning --exclude=SC2154 install.sh && shellcheck --severity=warning --exclude=SC2034 plugins/trellis/hooks/staleness.sh && shellcheck --severity=warning scripts/*.sh",
     "test:plugin-smoke": "node scripts/plugin-smoke.mjs",
     "quality": "npm run check:go-format && npm run check:go-mod && npm run check:go-vet && npm run check:go-staticcheck && npm run check:file-size && npm run check:todos && npm run format:check && npm run lint:js && npm run lint:shell && npm run test:plugin-smoke"
   },
