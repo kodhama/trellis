@@ -159,22 +159,45 @@ func parseCatalogEntries(a *corpusArtifact) (entries []*parsedCatalogEntry, stra
 	return entries, strays, true
 }
 
+// canonicalCatalogID is the one signature-catalog the corpus may hold
+// (schema-typed-artifacts §1: one, shipped). The id is versioned, so a v1 and a
+// v2 side by side would revisit rule 8e.
+const canonicalCatalogID = "signature-catalog-v1"
+
 // checkTypedArtifacts applies checks 8–11. They apply only when a
-// signature-catalog or an expression-profile is in the corpus.
+// signature-catalog or an expression-profile is in the corpus. Rule 8e: the
+// corpus holds one signature-catalog, canonicalCatalogID. Any other is a
+// finding, and profiles resolve through the canonical catalog alone, so a
+// second catalog cannot supply the entry that hides a rule 11 breach.
 func (c *corpusCheck) checkTypedArtifacts() error {
-	var profiles []*corpusArtifact
+	var profiles, catalogs []*corpusArtifact
 	for _, a := range c.arts {
-		if a.scalarValue("type") == "expression-profile" {
+		switch a.scalarValue("type") {
+		case "expression-profile":
 			profiles = append(profiles, a)
+		case "signature-catalog":
+			catalogs = append(catalogs, a)
 		}
 	}
+	canonical := c.artifactByID(canonicalCatalogID)
+	if canonical != nil && canonical.scalarValue("type") != "signature-catalog" {
+		canonical = nil
+	}
+	if canonical == nil && len(profiles)+len(catalogs) > 0 {
+		// The canonical catalog is a shared input: checks 8–11 read it alone.
+		return fmt.Errorf("no signature-catalog declares `%s`, and checks 8–11 read that catalog alone: a profile resolved through any other would pass on the wrong entries (rule 8e)", canonicalCatalogID)
+	}
 	entries := map[string]*parsedCatalogEntry{}
-	for _, a := range c.arts {
-		if a.scalarValue("type") != "signature-catalog" {
-			continue
+	for _, a := range catalogs {
+		if a != canonical {
+			line := a.typeLine()
+			if f, ok := a.first("id"); ok {
+				line = f.line
+			}
+			c.report(a, line, "8e", a.scalarValue("id"), "the corpus holds %d signature catalogs, and exactly one, `%s`, is allowed; no profile resolves through this one", len(catalogs), canonicalCatalogID)
 		}
 		es, strays, ok := parseCatalogEntries(a)
-		if !ok && len(profiles) > 0 {
+		if !ok && a == canonical && len(profiles) > 0 {
 			// A shared input: without the entries no gene resolves and no
 			// intent_locus is read, so checks 9 and 11 would pass on nothing.
 			return fmt.Errorf("%s is a signature-catalog with no `## Entries` section, and %s needs its entries to resolve gene slugs and read intent_locus (checks 9 and 11)", a.path, profiles[0].path)
@@ -188,7 +211,7 @@ func (c *corpusCheck) checkTypedArtifacts() error {
 		for _, e := range es {
 			c.checkCatalogFields(a, e)
 			c.checkCatalogPairs(a, e)
-			if entries[e.slug] == nil {
+			if a == canonical && entries[e.slug] == nil {
 				entries[e.slug] = e
 			}
 		}

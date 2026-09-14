@@ -137,6 +137,7 @@ var contractOutcomeTable = []contractCheckOutcomes{
 		{"8b", outcomeImplemented, "each catalog entry carries the ten fields, read through `·`-joined lines, wrapped lines and bolding"},
 		{"8c", outcomeImplemented, "`honored` and `violated` form at least two pairs, equal in number, whose tags match position by position, compared exactly"},
 		{"8d", outcomeCovered, "covered by TestRowSetDerivativesFollowThePin: a dial entry reads there as an extra slug"},
+		{"8e", outcomeImplemented, "the corpus holds one signature-catalog, `signature-catalog-v1` (`schema-typed-artifacts` §1: one, shipped): any other signature-catalog is a finding and no profile resolves through it, and a corpus holding a profile or a catalog without `signature-catalog-v1` halts. Ruled by the maintainer on #309; the id is versioned, so a v1 and v2 side by side would revisit this rule"},
 	}},
 	{9, "6903f339c3624c8d", []contractRuleOutcome{
 		{"9", outcomeImplemented, "every profile slug resolves to a signature-catalog entry"},
@@ -1203,6 +1204,7 @@ var knownBadExpected = []expectedContractFinding{
 	{"catalog.md", "8c", "inv-misaligned pair 2", 104},
 	{"catalog.md", "8c", "inv-untagged pair 1", 146},
 	{"catalog.md", "8c", "inv-untagged pair 2", 147},
+	{"catalog-shadow.md", "8e", "signature-catalog-shadow", 2},
 	{"profile.md", "9", "inv-unknown", 28},
 	{"profile.md", "10a", "inv-no-why evidence", 26},
 	{"profile.md", "10a", "inv-no-c2 confidence", 27},
@@ -1446,10 +1448,10 @@ func TestCorpusConformanceHaltsOnMissingInput(t *testing.T) {
 			rewriteFixtureT(t, filepath.Join(dir, "catalog.md"), "## Entries", "## Items")
 			return []string{dir}
 		}, "<dir>/catalog.md is a signature-catalog with no `## Entries` section"},
-		{"no signature-catalog while a profile needs one", func(t *testing.T, dir string) []string {
+		{"no signature-catalog-v1 while a profile needs one", func(t *testing.T, dir string) []string {
 			removeFileT(t, filepath.Join(dir, "catalog.md"))
 			return []string{dir}
-		}, "<dir>/profile.md needs signature-catalog entries"},
+		}, "no signature-catalog declares `signature-catalog-v1`"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
