@@ -17,7 +17,7 @@ date: 2026-08-29
 > `profiles/` with no authoring contract. Only cross-references were retargeted at their
 > surviving homes; every field rule below is the ratified text.
 >
-> The **conformance checks** that read this schema live in `core/rubrics/artifact-contract.md`
+> The **conformance checks** that read this schema live in `docs/rubrics/artifact-contract.md`
 > (checks 8–11) — they were `spec-0002` §4 and were already carried there in full.
 
 ## 1. The signature-catalog schema (`trellis-product`, one, shipped)
