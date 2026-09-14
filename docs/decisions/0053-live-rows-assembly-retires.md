@@ -25,6 +25,8 @@ date: 2026-07-20
 > read time and the tested wording is still the shipped wording; only the
 > carrier moves from an import to a session-start injection.
 
+> **Dated note, 2026-09-15 — TRL-97 (PR #315):** Point 2's authority header, under which rules apply "**only** where `rules.toml` marks the row `active = true`", no longer ships on the plugin-native path: a rule applies unless its row says `active = false`, in a reworded sentence that replaces `research-0012`'s tested wording, so the forward pointer's "the tested wording is still the shipped wording" no longer holds there. The shipped inline block no longer carries rows below the rules. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+
 ## Context
 
 - **The evidence (`research-0012`, batch 1 — REPEATS=20, all gates valid, zero

@@ -19,7 +19,7 @@ date: 2026-09-03
 > first; nothing else in this record moved.
 >
 > **`decision-0078` recorded this same mechanism and armed a trigger on it**
-> (`docs/decisions/0078-no-orphan-followups.md:147-156`): *"nothing catches two branches claiming one
+> (`docs/decisions/0078-no-orphan-followups.md:149-158`): *"nothing catches two branches claiming one
 > id… if it recurs a third time, that is the trigger to file it."* The two it counted were
 > `0077` and trellis#252's `0076`. **This is the third**, so the trigger has fired and the
 > obligation is discharged rather than noted: filed as
@@ -29,6 +29,8 @@ date: 2026-09-03
 > own claim of `0087` was re-checked against that guard after `main` was merged in, and is clean.*
 
 # 0087 — one gateway for every payload read; a defect class closed by construction, not by patch twelve
+
+> **Dated note, 2026-09-15 — TRL-97 (PR #315):** Point 3's "one file that is *both*", `.trellis/rules.toml` when `rows_are_default=yes` repoints `$toml` at the payload's own preset, no longer exists: the preset retires, and a vendored bundle with no project file delivers every rule without reading any rows. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 
@@ -58,7 +60,7 @@ against a deliberately broken input, one file at a time, as they thought of it.
 **Some were the inverse** — a guard that over-corrected and refused a *healthy* payload. An
 unreadable `reference/rules-b.toml` was reported as payload incoherence while `rules.md` and the
 project's rows were both perfectly well (`decision-0083` records the general property at
-`:115-116`; the specific fix is in the hook). A CRLF-terminated `rules.md` was reported as
+`:117-118`; the specific fix is in the hook). A CRLF-terminated `rules.md` was reported as
 truncated — **that one is recorded in the hook rather than in either decision**, at
 `plugins/trellis/hooks/staleness.sh:826-829` (*"an exact ASCII comparison fails — reporting
 `not-last` and blacking out a COMPLETE, CORRECT payload"*), and pinned by

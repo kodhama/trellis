@@ -19,6 +19,8 @@ date: 2026-08-19
 
 # 0074 — `inv-deliberate-succession`: the boundary with what came before is decided, not drifted through
 
+> **Dated note, 2026-09-15 — TRL-97 (PR #315):** The Consequences' render chain no longer includes "the preset rows in `rules-a.toml` / `rules-b.toml` (without a row the rule ships but is inactive)": both presets retire, and a rule with no row applies. So the next bullet's re-run no longer delivers the new rule inactive. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+
 > **Decided: mint it.** The maintainer settled this on 2026-08-22, having taken it through a
 > separate session first: *"I already decided it's a 15th one."*
 >
