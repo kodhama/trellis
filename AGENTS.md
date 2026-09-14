@@ -100,9 +100,8 @@ and CI (`decision-0075`).
   though `reference/version`, which hashes `reference/` only, never moved.
 - **Artifact conformance is CI-applied** (`decision-0098`). A Go test checks the corpus that
   `docs/rubrics/artifact-contract.md` names (`docs/decisions/`, `docs/research/`, `docs/rubrics/`, `profiles/` and the `core/`
-  artifacts listed there) against that rubric, in `cli-ci`'s `build-test` job on every PR that
-  touches them. `build-test` is not a required status check on
-  `main`, so a red is a signal, not a merge block. Run it locally with
+  artifacts listed there) against that rubric, in `cli-ci`'s `build-test` job on every PR.
+  `build-test` is a required status check on `main`, so a red blocks the merge. Run it locally with
   `cd cli && go test -count=1 -run 'TestCorpusConform|TestArtifactContract' .`. Two of the
   contract's rules take judgment, and the reviewer of a corpus change applies them:
   - **A coupling is not provenance** (rubric check 5, `decision-0047`): a source the artifact's

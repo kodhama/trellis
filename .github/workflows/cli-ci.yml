@@ -9,8 +9,8 @@ name: cli-ci
 # the docs-consistency check, and the staleness-hook contract.
 #
 # build-test runs on every pull request and every push to main, and is a required
-# status check on main. It takes no paths filter: the suite reads files from across
-# the repository, so a PR touching any of them has to run it.
+# status check on main. It runs unconditionally because the suite reads files from
+# across the repository, so a PR touching any of them has to run it.
 on:
   pull_request:
   push:

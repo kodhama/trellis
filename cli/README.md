@@ -23,8 +23,7 @@ go build ./...
 go test ./...
 ```
 
-Dependency-free. CI runs `go build` / `go vet` / `go test` on every PR touching `cli/`, `docs/`,
-`plugins/`, or the catalog (`.github/workflows/cli-ci.yml`).
+Dependency-free. CI runs `go build` / `go vet` / `go test` on every PR (`.github/workflows/cli-ci.yml`).
 
 ## Regenerating the payload
 
