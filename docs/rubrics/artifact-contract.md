@@ -3,7 +3,7 @@ id: rubric-artifact-contract
 type: rubric
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, decision-0037, decision-0042, decision-0098, schema-typed-artifacts]
+depends_on: [invariants-v1, decision-0037, decision-0042, decision-0098, decision-0100, schema-typed-artifacts]
 owner: gundi
 scope: trellis-meta
 ---
