@@ -12,8 +12,9 @@ name: Decision id guard
 # (`cli/decision_id_guard_test.go`) executes against fixtures, offline. Inline
 # YAML would be untestable.
 #
-# Advisory, like `agent-workflow-parity`: `main` carries no branch protection
-# here, so a red does not block a merge. It replaces a human noticing.
+# Advisory, like `agent-workflow-parity`: this guard is not among `main`'s
+# required status checks, so a red does not block a merge. It replaces a human
+# noticing.
 
 on:
   pull_request:

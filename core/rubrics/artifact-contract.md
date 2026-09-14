@@ -3,7 +3,7 @@ id: rubric-artifact-contract
 type: rubric
 status: ratified
 ratified: 2026-07-03
-depends_on: [invariants-v1, decision-0037, decision-0042, schema-typed-artifacts]
+depends_on: [invariants-v1, decision-0037, decision-0042, decision-0098, schema-typed-artifacts]
 owner: gundi
 scope: trellis-product
 ---
@@ -24,14 +24,20 @@ scope: trellis-product
 > (`schema-typed-artifacts`, read by checks 2, 6 and 8–11) — a gate may not exempt an input its own
 > checks read.
 >
-> **Derived resource (`decision-0028` clause 1):** `.claude/agents/corpus-reviewer.md`, the charter
-> that applies this rubric. Move it in the same change. `cli/artifact_contract_guard_test.go` is
-> the clause-2 guard: it pins this pair's three enumerations — check 4's accepted forms, check 6's
-> per-type sections, and the corpus paragraph above. It finds each one by **matching literal text
-> from this file** — a check's opening words, and the bold Corpus label — so rewording one of
-> those fails the guard until the test is updated with the new wording. It pins the rows of those
-> three lists and **not the prose**, which has carried a normative rule here before: reconcile
-> that by hand.
+> **Derived resource (`decision-0028` clause 1):** `cli/corpus_conformance_test.go`, with
+> `cli/corpus_conformance_typed_test.go` for checks 8–11, is the resource that applies this rubric
+> in this repository. Move it in the same change. `cli/artifact_contract_guard_test.go` is the
+> clause-2 guard. It pins the corpus paragraph above against the check's corpus roots, check 4's
+> rows against the accepted forms the check implements, check 6's rows against the per-type
+> sections the check reads, and every numbered check's text through a digest that check's outcome
+> rows carry. Rewording a check therefore fails the guard until its outcome rows are re-reviewed in
+> the same change. The guard finds the corpus paragraph and checks 4–7 by **matching literal text
+> from this file** — the bold Corpus label and a check's opening words — so rewording those fails
+> it as well.
+>
+> **This repository enforces the contract with a Go test** (`decision-0098`), which `cli-ci` runs
+> on every pull request that touches the corpus. The sub-agent wording in this rubric describes the
+> product's form for a consumer project.
 
 ## Checks
 

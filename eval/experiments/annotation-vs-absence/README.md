@@ -38,10 +38,11 @@ extend that arm), keys the amend branch on the leak CI's **upper bound** (equiva
 reports the clean row-only contrast (control − annotation), and **excludes** rather than
 counts: worker-failed runs, `n-a` verdicts, unparsed scores — each reported.
 
-**Status: designed, reviewed (corpus-reviewer PASS; spec-adversary NEEDS-REVISION →
-findings applied; workflow code review → findings applied), smoke-tested end-to-end with
-stubbed agents; awaiting the human-launched run.** Results will be committed under
-`runs/` with the aggregate output and the verdict recorded back into `research-0012`.
+**Status: designed, reviewed (corpus-reviewer PASS, an agent since retired by `decision-0098`;
+spec-adversary NEEDS-REVISION → findings applied; workflow code review → findings applied),
+smoke-tested end-to-end with stubbed agents; awaiting the human-launched run.** Results will be
+committed under `runs/` with the aggregate output and the verdict recorded back into
+`research-0012`.
 
 Notes: the authority header + inlined rows exist only in this runner — eval-local
 hypothetical product content; the shipped payload carries neither. The absence-arm

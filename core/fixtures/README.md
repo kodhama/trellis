@@ -6,21 +6,19 @@ demonstrably able to fail*, the B3 positive-control lesson logged from our CI ep
 
 **Excluded from normal corpus runs** — they are test data, not real artifacts.
 
-## Answer key — `known-bad.md`
+## The fixture corpus — `known-bad/`
 
-The check, run against `known-bad.md`, **must report all four:**
-1. **Check 1** — missing required field `owner`.
-2. **Check 4** — dangling `depends_on: [decision-9999]` (no such artifact).
-3. **Check 6** — `type: spec` but missing `## Acceptance criteria` / `## Open questions`.
-4. **Check 7** — dangling `superseded_by: [decision-9998]` (no such artifact). Since
-   `decision-0082`, supersession is identified by the **pointer** rather than a status value, so the
-   pointer's entries must resolve — this is the positive control for that trigger.
+The positive control is the fixture corpus under `known-bad/`. It is self-contained: it carries its
+own `invariants-v1`, `decision-0079`, catalog and profile, so the check needs nothing from the live
+corpus to run over it. Most files seed violations. A few are deliberately valid constructs that must
+yield no finding, such as the accepted reference forms in `valid-refs.md`. `known-bad.md`, the
+original four-violation fixture, is one file among them.
 
-A run that *passes* `known-bad.md`, or reports vague/￼incomplete findings, **fails the check
-itself.** (Check 3 — id uniqueness — is exercised against the live corpus, where collisions can actually
-occur. There is no separate check-5 case to exercise: since `decision-0082`, directional flow for
-trellis-self *is* the check-4 resolution test, which the dangling `depends_on` above already covers.)
+## Answer key
 
-**The fixture carries no `status` field, and a run that asks for one is itself wrong**
-(`decision-0082` retired it). The slot that used to hold an invalid-`status` violation now holds the
-check-7 case above — the fixture must test four *live* rules, not three live ones and a fossil.
+The answer key is code, not prose (`decision-0098`): the exact expected-findings set in
+`TestCorpusConformanceRejectsKnownBadFixture`, in `cli/corpus_conformance_test.go`. That test runs
+the check over `known-bad/` and fails on any expected finding that is missing and on any finding the
+set does not name. It also fails when an implemented rule has no seeded violation here, so deleting
+a rule's logic turns it red. A violation seeded here without its entry in the set fails the test,
+and so does an entry with no violation behind it.

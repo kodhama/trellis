@@ -14,7 +14,8 @@ Contents:
 The conformance **sub-agent** that applies these has **no home in this repo right now**
 (`decision-0076`). It ran as the plugin-carried `grove:conformance-reviewer` until grove was
 retired, and the vendored `.claude/agents/` copy had already been dropped before that
-(`grove/adr-0026` D1). What still runs is the repo-owned `corpus-reviewer`, which covers
-**artifact-contract** conformance; conformance of code to its authorizing decision is currently
-uncovered (the spec stage it used to check against retired with `decision-0079`). The
-product home is `core/agents/`, which the delivery slice (`0012`) will package and install.
+(`grove/adr-0026` D1). In this repository, **artifact-contract** conformance runs as a Go test,
+`cli/corpus_conformance_test.go`, on every PR that touches the corpus (`decision-0098`);
+conformance of code to its authorizing decision is currently uncovered (the spec stage it used to
+check against retired with `decision-0079`). The product home is `core/agents/`, which the delivery
+slice (`0012`) will package and install.
