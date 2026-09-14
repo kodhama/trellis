@@ -15,5 +15,5 @@ retired, and the vendored `.claude/agents/` copy had already been dropped before
 (`grove/adr-0026` D1). Its product home is `core/agents/`, which the delivery slice (`0012`) will
 package and install. The **artifact contract** is not part of the product: it lives at
 `docs/rubrics/artifact-contract.md`, and `cli/corpus_conformance_test.go` applies it to this
-repository's corpus on every PR that touches it (`decision-0098`). Conformance of code to its
+repository's corpus on every PR (`decision-0098`). Conformance of code to its
 authorizing decision is currently uncovered (the spec stage it used to check against retired with `decision-0079`).

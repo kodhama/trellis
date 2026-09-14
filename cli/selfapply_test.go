@@ -192,8 +192,7 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	// research/ is outside the docs/ record-root exemption and outside the
 	// decision-id guard, which reads docs/decisions/ only — so a merge that resolves
 	// git's directory-rename conflict toward the old path, or a branch cut before
-	// the move, would land a record no check sees. Written as two literal reads so
-	// cli/ci_paths_guard_test.go holds cli-ci's filter to both directories.
+	// the move, would land a record no check sees.
 	if _, err := os.Stat(filepath.Join("..", "decisions")); !os.IsNotExist(err) {
 		t.Error("decisions/ exists at the repository root — decision-0099 moved the records to docs/decisions/; one here is invisible to the decision-id guard")
 	}
@@ -227,24 +226,6 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	} {
 		if !strings.Contains(readme, adapterReference) {
 			t.Errorf("README.md must retain Claude-adapter-specific reference %q", adapterReference)
-		}
-	}
-
-	workflow := readRepoFile(".github/workflows/cli-ci.yml")
-	pullRequestStart := strings.Index(workflow, "  pull_request:\n")
-	pushStart := strings.Index(workflow, "  push:\n")
-	jobsStart := strings.Index(workflow, "\njobs:\n")
-	if pullRequestStart < 0 || pushStart <= pullRequestStart || jobsStart <= pushStart {
-		t.Fatal("cli-ci must retain distinct pull_request and push trigger sections before jobs")
-	}
-	pullRequestTrigger := workflow[pullRequestStart:pushStart]
-	pushTrigger := workflow[pushStart:jobsStart]
-	for _, path := range []string{`"AGENTS.md"`, `"CLAUDE.md"`, `".trellis/**"`} {
-		if !strings.Contains(pullRequestTrigger, path) {
-			t.Errorf("cli-ci pull-request path filter is missing %s", path)
-		}
-		if !strings.Contains(pushTrigger, path) {
-			t.Errorf("cli-ci main-push path filter is missing %s", path)
 		}
 	}
 }
