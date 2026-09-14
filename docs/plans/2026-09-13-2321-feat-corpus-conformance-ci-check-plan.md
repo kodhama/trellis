@@ -32,9 +32,9 @@ A Go test in `cli/` applies the mechanically decidable parts of rubric checks 1�
 
 ### Problem Frame
 
-Conformance of `decisions/`, `research/`, `core/` and `profiles/` to `core/rubrics/artifact-contract.md` is applied today by `corpus-reviewer`, an LLM sub-agent that `AGENTS.md` asks authors to invoke before merging. Nothing runs it automatically. `cli-ci`'s paths filter does not include `decisions/` or `research/` (`.github/workflows/cli-ci.yml:31,34`), and the agent reports in prose, so a skipped or misread run leaves no trace.
+Conformance of `docs/decisions/`, `docs/research/`, `core/` and `profiles/` to `core/rubrics/artifact-contract.md` is applied today by `corpus-reviewer`, an LLM sub-agent that `AGENTS.md` asks authors to invoke before merging. Nothing runs it automatically. `cli-ci`'s paths filter does not include `decisions/` or `research/` (`.github/workflows/cli-ci.yml:31,34`), and the agent reports in prose, so a skipped or misread run leaves no trace.
 
-The agent's reading has also drifted from the contract. TRL-60 review found the charter and the rubric disagreeing in eight places (`cli/artifact_contract_guard_test.go`, header comment). The agent has repeatedly reported `decisions/0044-cross-repo-depends-on-convention.md:5` as a FAIL (the self-check in `decisions/0092-a-claim-is-a-new-record-path.md`), although the rubric's check 4 accepts a `<repo>/<id>` reference on shape and registry membership alone.
+The agent's reading has also drifted from the contract. TRL-60 review found the charter and the rubric disagreeing in eight places (`cli/artifact_contract_guard_test.go`, header comment). The agent has repeatedly reported `docs/decisions/0044-cross-repo-depends-on-convention.md:5` as a FAIL (the self-check in `docs/decisions/0092-a-claim-is-a-new-record-path.md`), although the rubric's check 4 accepts a `<repo>/<id>` reference on shape and registry membership alone.
 
 The maintainer decided on 2026-09-13 to move the checks into a deterministic script that runs in CI, and to retire the agent (TRL-88).
 
@@ -76,7 +76,7 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
 - Nothing under `plugins/trellis/` changes, and `plugins/trellis/VERSION` does not move.
 - Repository settings are not changed. The check runs on every corpus PR but does not block a merge, because `build-test` is not among `main`'s required status checks (A9).
 - The text of rubric checks 1–12 is not reworded, and the rubric stays in `core/`. Only its **Derived resource** paragraph, a short repository note and its `depends_on` change (KTD13).
-- Historical mentions of `corpus-reviewer` stay as written: append-only decisions, `research/0012`'s `status:` comment, the plans and specs under `docs/superpowers/`, and the dated repair notes in `profiles/trellis-self.md`.
+- Historical mentions of `corpus-reviewer` stay as written: append-only decisions, `docs/research/0012`'s `status:` comment, the plans and specs under `docs/superpowers/`, and the dated repair notes in `profiles/trellis-self.md`.
 - `.github/workflows/claude-code-review.yml` is not edited (A11).
 - No type registry is built for check 2's centrally declared scope (A4).
 
@@ -99,7 +99,7 @@ The maintainer decided on 2026-09-13 to move the checks into a deterministic scr
   - The halts row is proven by the halt scenarios in U1 and U2.
   - Each numbered check's rows also carry a digest of that check's normalized rubric text, so an edit anywhere in a check, prose included, fails the guard until its rows and rule code are re-reviewed in the same PR.
   - The guard fails when a numbered rubric check (1–12) has no row or its digest no longer matches. The control test fails when an implemented rule has no expected finding or an accepts rule has no valid construct.
-- KTD9. **Heading match.** A required section is an H2 whose text, compared case-insensitively, is the section name alone or the name followed by ` (`. Fenced code blocks are skipped. The rule accepts `## Decision (direction — draft, for future reasoning)` in `decisions/0008` and `## Consequences (execution — downstream, deferred)` in `decisions/0047`, and it rejects `## Decision state`.
+- KTD9. **Heading match.** A required section is an H2 whose text, compared case-insensitively, is the section name alone or the name followed by ` (`. Fenced code blocks are skipped. The rule accepts `## Decision (direction — draft, for future reasoning)` in `docs/decisions/0008` and `## Consequences (execution — downstream, deferred)` in `docs/decisions/0047`, and it rejects `## Decision state`.
 - KTD10. **Frontmatter parsing is line-based.** Every corpus frontmatter line is a single-line `key: value`. A flow-list value ends at its closing `]`, and the rest of the line is a comment that may contain brackets, colons and pipes. Keys the rubric does not type are not validated; `supersedes: invariants-v0` is a scalar and passes.
 - KTD11. **Review guidance is stated in `AGENTS.md`, citing the rubric.** The two guidance rules (5d and 10b) are already prose inside rubric checks 5 and 10. The conformance bullet in `AGENTS.md` states each in one sentence and cites its rubric check. `ce-code-review`'s project-standards reviewer grades changed files against the root `AGENTS.md` and must cite a rule from a standards file, so the rule is written there rather than pointed at (A11). Outcome rows 5d and 10b name that bullet as the guidance home, so KTD8's digest on checks 5 and 10 forces the pair to be re-reviewed together (`decision-0028`). (session-settled: user-approved — chosen over a review-guidance section in the rubric: the named reviewer cites only rules written in its standards files)
 - KTD12. **Supersession scope.** `decision-0098` supersedes, in part: `decision-0010`'s second Decision bullet as it applies to this repository's own gate; `decision-0076` point 6's standing rule; and `decision-0089`'s Consequences sentence "Artifact **conformance** stays agent-applied via `corpus-reviewer`". Each record gains a clause-scoped forward pointer. (session-settled: user-directed — chosen over superseding `decision-0010` alone: all three records state the agent-applied gate as current truth)
@@ -193,7 +193,7 @@ core/fixtures/
   README.md                           rewritten
   known-bad/                          new: standalone fixture corpus
     known-bad.md                      moved from core/fixtures/
-decisions/
+docs/decisions/
   0098-artifact-conformance-is-a-ci-check.md   new
 .claude/agents/corpus-reviewer.md     deleted
 ```
@@ -211,7 +211,7 @@ These are calls made without a user present, each with its default taken. The ma
 - A7. Settled by the maintainer on 2026-09-14: the rubric changes only its **Derived resource** paragraph and gains a short note that this repository enforces the contract with a Go test. Its header blockquote, `## How it is graded` and the "applied by an agent with no runtime" criterion keep their consumer-facing agent wording. Adding `decision-0098` to its `depends_on` follows from that note citing the record (`decision-0047`).
 - A8. Settled by the maintainer on 2026-09-14: the four profile rows keep `confidence: verified` on re-argued evidence. `inv-bounded-context` is re-argued from `depends_on` declared on every artifact (now checked in CI) and from the single payload-read gateway and pinned read budget (`decision-0087`, `decision-0090`), quoted from source in U6. Gatekeeper framing per KTD14.
 - A9. The check does not block a merge. `main`'s ruleset requires the status checks `release-guard`, `Analyze (go)`, `Analyze (javascript)` and `hygiene`, and `build-test`, the job that runs the check, is not among them. `decision-0098` and the PR body say so. U5 corrects the stale comment at `.github/workflows/decision-id-guard.yml:15-16`, which says `main` has no branch protection.
-- A10. The agent's past FAILs on `decisions/0044:5` and `research/0010:5` become passes. `decision-0098` names both rather than special-casing them.
+- A10. The agent's past FAILs on `docs/decisions/0044:5` and `docs/research/0010:5` become passes. `decision-0098` names both rather than special-casing them.
 - A11. Whether `/code-review:code-review` in `.github/workflows/claude-code-review.yml` reads `AGENTS.md` is unverified, so KTD11 rests on `ce-code-review` alone.
 - A12. `eval/experiments/annotation-vs-absence/README.md:41` keeps its historical "corpus-reviewer PASS" and gains a pointer to `decision-0098`.
 - A13. The `boundedReferences` entry in `cli/selfapply_test.go` is removed without adding an absence assertion, since nothing reinstalls the file.
@@ -232,7 +232,7 @@ These are calls made without a user present, each with its default taken. The ma
 
 - `.claude/agents/corpus-reviewer.md`, `core/rubrics/artifact-contract.md`, `core/schemas/typed-artifacts.md`, `core/fixtures/README.md`
 - `cli/artifact_contract_guard_test.go`, `cli/ci_paths_guard_test.go` (read-path forms), `cli/row_set_guard_test.go`, `cli/selfapply_test.go:177-210`, `cli/docs_consistency_test.go:163-192`, `cli/apply.go` (`catalogSlugOrder`)
-- `decisions/0010`, `decisions/0028`, `decisions/0076` (point 6), `decisions/0079` (§3a), `decisions/0082`, `decisions/0089` (Consequences), `decisions/0092` (Self-check)
+- `docs/decisions/0010`, `docs/decisions/0028`, `docs/decisions/0076` (point 6), `docs/decisions/0079` (§3a), `docs/decisions/0082`, `docs/decisions/0089` (Consequences), `docs/decisions/0092` (Self-check)
 - `.github/workflows/cli-ci.yml:11-34`, `.github/workflows/decision-id-guard.yml:15-16`, `.github/workflows/repo-hygiene.yml:3-8`
 - No `docs/solutions/` learnings and no Compound Packs exist in this repository.
 
@@ -267,10 +267,10 @@ These are calls made without a user present, each with its default taken. The ma
 
 **Test scenarios:**
 - The live corpus yields zero findings, and every per-check subtest passes.
-- `decisions/0091`'s `depends_on` line, whose trailing comment contains brackets, colons and pipes, parses to the list before the comment.
+- `docs/decisions/0091`'s `depends_on` line, whose trailing comment contains brackets, colons and pipes, parses to the list before the comment.
 - `supersedes: invariants-v0` and a legacy `status: approved  # …` line produce no finding.
-- `spec-0007@v1` in `decisions/0060` resolves through `decision-0079`'s registry after the pin is stripped.
-- `kodhama/kodhama-0004-uniform-lifecycle` in `decisions/0044` passes.
+- `spec-0007@v1` in `docs/decisions/0060` resolves through `decision-0079`'s registry after the pin is stripped.
+- `kodhama/kodhama-0004-uniform-lifecycle` in `docs/decisions/0044` passes.
 - Fixture with no frontmatter yields 1a.
 - `known-bad.md` yields 1b (`owner`), 4a (`decision-9999`), two 6a findings (`Acceptance criteria`, `Open questions`) and 7a (`decision-9998`).
 - Fixture whose `depends_on` is a scalar yields 1c.
@@ -331,16 +331,16 @@ These are calls made without a user present, each with its default taken. The ma
 **Dependencies:** U1, U2. The record names the files they create, and their live run checks it.
 
 **Files:**
-- Create `decisions/0098-artifact-conformance-is-a-ci-check.md`.
-- Modify the frontmatter of `decisions/0010-no-runtime-agent-instructions.md`, `decisions/0076-retire-grove.md` and `decisions/0089-a-decision-id-is-claimed-at-the-pr-not-in-the-directory.md`.
+- Create `docs/decisions/0098-artifact-conformance-is-a-ci-check.md`.
+- Modify the frontmatter of `docs/decisions/0010-no-runtime-agent-instructions.md`, `docs/decisions/0076-retire-grove.md` and `docs/decisions/0089-a-decision-id-is-claimed-at-the-pr-not-in-the-directory.md`.
 
 **Approach:**
 1. Write frontmatter in `decision-0097`'s shape: `id`, `type: decision`, `depends_on`, `informed_by` for provenance only (`decision-0047`), `changes` for the corpus artifacts it edits, `owner: agent`, `date`, and no `status`.
 2. Use the sections Context, Decision, Consequences, Open questions and Self-check. Open questions carries the maintainer's question whether the artifact-contract rubric should leave `core/` (A6).
 3. The Decision states: the check replaces the agent for this repository's gate; each dropped row of Check outcomes with its reason, and the two guidance rows; the supersession scope (KTD12); that no shipped surface changes (A6); that the check runs on every corpus PR but does not block a merge (A9); and that the two past FAILs now pass (A10).
-4. Append the forward pointers with clause-scoped comments, keeping each record's existing comment text. `decisions/0068` shows the `|`-separated form.
+4. Append the forward pointers with clause-scoped comments, keeping each record's existing comment text. `docs/decisions/0068` shows the `|`-separated form.
 
-**Patterns to follow:** `decisions/0097-compound-engineering-replaces-superpowers.md`, `decisions/0082-retire-the-status-field.md`, and the `superseded_in_part_by` comments in `decisions/0079` and `decisions/0068`.
+**Patterns to follow:** `docs/decisions/0097-compound-engineering-replaces-superpowers.md`, `docs/decisions/0082-retire-the-status-field.md`, and the `superseded_in_part_by` comments in `docs/decisions/0079` and `docs/decisions/0068`.
 
 **Test expectation:** none new. U1's live run must stay at zero findings with the record and pointers in place.
 
@@ -420,7 +420,7 @@ These are calls made without a user present, each with its default taken. The ma
 
 **Test expectation:** none new. The live check (checks 9–11 on the profile) and the row-set guard must pass.
 
-**Verification:** every quoted line was opened against its source, and the live test passes. A repository-wide search for `corpus-reviewer` finds only history: append-only decisions, `research/0012`, `docs/superpowers/`, the eval pointer, the profile's dated repair notes and re-argument notes, `decision-0098` and this plan.
+**Verification:** every quoted line was opened against its source, and the live test passes. A repository-wide search for `corpus-reviewer` finds only history: append-only decisions, `docs/research/0012`, `docs/superpowers/`, the eval pointer, the profile's dated repair notes and re-argument notes, `decision-0098` and this plan.
 
 ---
 

@@ -38,14 +38,14 @@ import (
 )
 
 // corpusRoots is the one place this check names the corpus. Every rule keys on
-// an artifact's `type`, never its directory, so moving `decisions/` and
-// `research/` (TRL-89) changes the one line below and nothing else. The paths
+// an artifact's `type`, never its directory, so TRL-89's move of the corpus
+// under `docs/` changed the one line below and nothing else. The paths
 // are `../`-prefixed literals on purpose: cli/ci_paths_guard_test.go extracts
 // exactly that form, so a new root here fails that guard until cli-ci.yml's
 // paths filter selects it. A loop joining bare directory names would hide the
 // reads from it.
 var corpusRoots = []string{
-	"../decisions", "../research",
+	"../docs/decisions", "../docs/research",
 	"../core/invariants", "../core/rubrics", "../core/schemas", "../core/catalog", "../core/lexicon.md",
 	"../profiles",
 }

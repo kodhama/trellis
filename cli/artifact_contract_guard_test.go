@@ -730,7 +730,7 @@ func TestArtifactContractGuardComparisonsFail(t *testing.T) {
 		{"corpus: a quoted path the extraction cannot read",
 			contractCorpusProblems(paragraph+" `core/plans`", corpusRoots, fixtureRoot), 1, []string{`"core/plans"`}},
 		{"corpus: a paragraph that names no path",
-			contractCorpusProblems("no paths here", corpusRoots, fixtureRoot), 2 + len(corpusRoots), []string{"names no path", `"decisions/"`, `"core/fixtures/"`}},
+			contractCorpusProblems("no paths here", corpusRoots, fixtureRoot), 2 + len(corpusRoots), []string{"names no path", `"docs/decisions/"`, `"core/fixtures/"`}},
 
 		{"check 4: a row whose leading text changed",
 			contractRefFormProblems(withRow(0, "an existing artifact `id` in any corpus"), contractOutcomeTable, contractRefFormLeads),

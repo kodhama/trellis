@@ -20,12 +20,13 @@ date: 2026-09-14
 ## Context
 
 Before this change, `.claude/agents/corpus-reviewer.md` applied `core/rubrics/artifact-contract.md`
-to `decisions/`, `research/`, `core/` and `profiles/`. It was an LLM sub-agent, and `AGENTS.md` asked
+to `docs/decisions/`, `docs/research/`, `core/` and `profiles/`. It was an LLM sub-agent, and `AGENTS.md` asked
 authors to invoke it before merging, the rule `decision-0076` point 6 added. Three things made that
 gate weak:
 
-- **Nothing ran it.** It ran when an author remembered to. `cli-ci`'s paths filter on `main` selects
-  neither `decisions/**` nor `research/**`, so a decision-only PR did not run the Go suite either.
+- **Nothing ran it.** It ran when an author remembered to. Until `decision-0099` moved the corpus
+  under `docs/`, `cli-ci`'s paths filter on `main` selected neither `decisions/**` nor `research/**`,
+  so a decision-only PR did not run the Go suite either.
 - **Its report left no trace.** The agent reported in prose, to the session that invoked it. The PR
   carried no record of a run beyond what an author chose to write in a self-check.
 - **Its reading drifted from the rubric.** The TRL-60 review found the charter and the rubric
@@ -37,7 +38,7 @@ Three records state the agent-applied gate as current truth:
 - `decision-0010`, Decision bullet 2: *"The artifact-contract "validator" is a **conformance
   sub-agent applying a rubric**, failing loudly (B3 / D1) — **not** a program."*
 - `decision-0076`, point 6: *"invoke the repo-owned `corpus-reviewer` before merging a change to
-  `decisions/`, `specs/`, `research/` or `core/`."*
+  `docs/decisions/`, `specs/`, `docs/research/` or `core/`."*
 - `decision-0089`, Consequences: *"Artifact **conformance** stays agent-applied via
   `corpus-reviewer`; this check is about id allocation, which is a merge-queue fact no rubric can
   see."*
@@ -133,15 +134,15 @@ decided here.
 **6. Two verdicts `corpus-reviewer` recorded as failures now pass, and the check has no exemption
 for either.**
 
-- **`decisions/0044-cross-repo-depends-on-convention.md:5`** carries
+- **`docs/decisions/0044-cross-repo-depends-on-convention.md:5`** carries
   `kodhama/kodhama-0004-uniform-lifecycle`. Check 4 accepts a `<repo>/<id>` entry on shape and
   registry membership, and `kodhama` is in the rubric's registry list. The FAIL repeated in
   `decision-0092`'s self-check, after `decision-0076`, `decision-0088` and `decision-0090`, was
   against the earlier bare `kodhama-0004-uniform-lifecycle`, which matched no accepted form. That
   verdict was right when it was given. TRL-51 (#282) qualified the entry on 2026-09-06, the day after
   `decision-0092` merged.
-- **`research/0010-agent-instruction-file-landscape.md`** carries `informed_by: [decision-0029]`. The
-  plan `docs/superpowers/plans/2026-08-30-codex-reconciliation-parity.md` listed `research/0010:5` as
+- **`docs/research/0010-agent-instruction-file-landscape.md`** carries `informed_by: [decision-0029]`. The
+  plan `docs/superpowers/plans/2026-08-30-codex-reconciliation-parity.md` listed `docs/research/0010:5` as
   a known pre-existing violation. On that date line 5 read `depends_on: [decision-0029]`. The plan
   does not say which check failed, but `decision-0029` exists, so it was not a dangling reference.
   The likelier reading is the edge's kind, which TRL-57 (#285) named in its title on 2026-09-06:
@@ -167,31 +168,36 @@ maintainer ruled.
     `core/fixtures/known-bad/`.
   - `profiles/trellis-self.md`: the rows citing `corpus-reviewer` as evidence, repaired under the
     profile's own repair convention.
-  - `.github/workflows/cli-ci.yml`: the paths filter gains `decisions/**`, `research/**`,
-    `core/schemas/**`, `core/lexicon.md` and `core/fixtures/**`, and its comment names the test.
+  - `.github/workflows/cli-ci.yml`: the paths filter gains `core/schemas/**`, `core/lexicon.md` and
+    `core/fixtures/**`, and its comment names the test. `docs/**`, which `decision-0099` added,
+    already selects the corpus.
   - The comments in `.github/workflows/repo-hygiene.yml` and `.github/workflows/decision-id-guard.yml`.
   - `cli/selfapply_test.go` drops the charter from its bounded references.
   - `eval/experiments/annotation-vs-absence/README.md` keeps its historical "corpus-reviewer PASS"
     and gains a pointer to this record.
   - `.claude/agents/corpus-reviewer.md` is deleted.
 - **Historical mentions of `corpus-reviewer` stay as written**: the append-only decisions,
-  `research/0012`'s `status:` comment, the plans under `docs/superpowers/`, and the dated repair
+  `docs/research/0012`'s `status:` comment, the plans under `docs/superpowers/`, and the dated repair
   notes in `profiles/trellis-self.md`.
-- **A decision-only PR now runs the whole `build-test` job**: `npm ci`, ShellCheck, `npm run quality`
-  with staticcheck, then Go build, vet, test and the coverage floor. That is the cost of running the
-  check inside the Go suite, where `cli/ci_paths_guard_test.go` forces the filter to cover every path
-  the suite reads.
+- **A record-only PR runs the whole `build-test` job**, as it has since `decision-0099`: `npm ci`,
+  ShellCheck, `npm run quality` with staticcheck, then Go build, vet, test and the coverage floor. The
+  check runs inside that Go suite, where `cli/ci_paths_guard_test.go` forces the filter to cover every
+  path the suite reads.
 - **The new filter entries overlap TRL-92**, the broader gap: `cli/docs_consistency_test.go` walks
   files the `cli-ci` filter does not select. TRL-92 lists `core/schemas/` and `core/fixtures/` among
   them, and this change selects both because the conformance test reads them. TRL-92's other paths,
   and its root fix, stay open there.
-- **Moving `decisions/` and `research/` (TRL-89) is a one-line change in the check.** The corpus is
-  named once, in `corpusRoots`. The rubric's **Corpus:** paragraph and the `cli-ci` filter mirror
-  it, and guards pin both.
+- **TRL-89's move of the corpus under `docs/` (`decision-0099`) was a one-line change in the check.**
+  The corpus is named once, in `corpusRoots`, which now reads `docs/decisions/` and `docs/research/`.
+  The rubric's **Corpus:** paragraph and the `cli-ci` filter mirror it, and guards pin both.
 - **`decision-0089`'s "`main` carries no branch protection here" is out of date**, and so was the
   same line in `decision-id-guard.yml`, which this change corrects. `main` now has a ruleset. Both
   conclusions still hold, because `decision-id-guard` is not a required check. This record names the
   sentence and does not supersede it.
+- **`decision-0099`'s consequence that the rubric's corpus paragraph and `corpus-reviewer`'s charter
+  "name the new paths together" no longer holds.** The charter is deleted, and
+  `cli/artifact_contract_guard_test.go` now compares the paragraph with `corpusRoots`. This record
+  names the sentence and does not supersede it.
 - **Forward pointers:** `decision-0010`, `decision-0076` and `decision-0089` each gain
   `decision-0098` in `superseded_in_part_by`.
 - **Not decided here:** whether the rubric leaves `core/` (Open questions), whether `build-test`
@@ -212,7 +218,7 @@ maintainer ruled.
   Opus 5. Independent review follows: `ce-code-review` on the branch, and `decision-0007`'s automated
   review on the PR. This record does not rule itself correct.
 - **What the author checked, and how:**
-  - Every frontmatter reference resolves: each id was found as an `id:` line in `decisions/`,
+  - Every frontmatter reference resolves: each id was found as an `id:` line in `docs/decisions/`,
     `core/` or `profiles/`.
   - The three pointer edits touch frontmatter only, confirmed with `git diff`. `decision-0089`'s
     sentence was copied from the file. `decision-0076` gains a frontmatter line, which shifts its
@@ -225,11 +231,17 @@ maintainer ruled.
     non-test Go sources for the rubric, fixture and agent paths.
   - Point 6's history comes from `git log -p` on both files.
   - The id was unclaimed: on 2026-09-14 no pull request was open, and no ref carried a
-    `decisions/0098-*` file.
+    `decisions/0098-*` file. Re-checked after TRL-89 merged, with `main` at `2581691`: `main` holds
+    `docs/decisions/0097-*` and `docs/decisions/0099-*` and no `0098`, and #309 was the only open
+    pull request.
 - **Checked by the orchestrating session, not the author:** the Go suite, including the live
   conformance run that reads this record, passed on the integrated tree (`go test -count=1 ./...`),
   and point 1's description of the guard was read against the rewritten
   `cli/artifact_contract_guard_test.go`. CI runs the suite again on the pull request.
+- **After TRL-89 merged,** this branch merged `origin/main` without a rebase, took this record to
+  `docs/decisions/`, pointed `corpusRoots` at `docs/decisions/` and `docs/research/`, and swept this
+  record's own path citations (`decision-0015:117-121`). Two mentions keep the old path because
+  they describe a past state: the pre-move filter in Context and the id check of 2026-09-14.
 - **Point 6 corrects the plan it came from.** The plan framed both verdicts as the agent's reading
   drifting from the rubric. Git history does not support that for either entry: both were changed
   at source on 2026-09-06, and every recorded verdict on them predates the change. The drift evidence
