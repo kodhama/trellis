@@ -41,7 +41,8 @@ today, and nor would a move such as `decision-0099` putting the corpus under `do
 recorded before this test existed.
 
 **A new record is named `docs/decisions/YYYY-MM-DD-<slug>.md`, and its `id` is `decision-` followed
-by that filename's stem.** The date is the day the record is written, and the slug is lowercase words
+by that filename's stem.** The date is the day the file is first created; it stays fixed when the record
+is revised or merges later, and it matches the record's frontmatter `date:`. The slug is lowercase words
 and digits joined by single hyphens, as the numbered records' slugs are. *Example:*
 `docs/decisions/2026-09-20-rules-toml-is-optional.md` has `id: decision-2026-09-20-rules-toml-is-optional`.
 Records `0001` to `0100` keep their numbers. No id is reserved and no check guards the name: two pull
@@ -77,7 +78,8 @@ its own citations, as `decision-0081` does.
 artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
 flip, ever. **A record retired in full carries `superseded_by` when a successor record retires it and a
 dated note when none does; a record retired in part gets a dated note**, whether a newer record or another
-change retires it. No change adds a new
+change retires it. *Example:* `decision-0089` and `decision-0092` were retired in full by dated notes when
+the decision-id guard was deleted, because no record replaced them. No change adds a new
 `superseded_in_part_by`; the entries already in records stay and still resolve. *Artifacts predating `decision-0082` keep
 their `status:` lines as history — several carry the maintainer's intent act in a trailing
 comment. Read them as accepted; do not add the field to anything new, and do not strip it from
