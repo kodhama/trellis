@@ -328,15 +328,23 @@ func parseProfileRows(a *corpusArtifact) ([]profileRow, []profileProblem) {
 		return nil, []profileProblem{{start, "9", "table", "the `## Profile` section holds no table, so no gene slug in it can be resolved"}}
 	}
 	t := tables[0]
-	col := map[string]int{}
+	col, count := map[string]int{}, map[string]int{}
 	for j, h := range t.header {
-		col[strings.ToLower(cellValue(h))] = j
+		name := strings.ToLower(cellValue(h))
+		col[name] = j
+		count[name]++
 	}
 	var problems []profileProblem
 	for _, c := range profileColumns {
-		if _, ok := col[c.name]; !ok {
+		switch n := count[c.name]; {
+		case n == 0:
 			problems = append(problems, profileProblem{t.index + 1, c.rule, "column " + c.name,
 				"the `## Profile` table has no `" + c.name + "` column, so rule " + c.rule + " cannot be applied to any row"})
+		case n > 1:
+			// A repeated column would be read as its last copy, so a `none` in an
+			// earlier `C2` or a dangling slug in an earlier `slug` would pass unseen.
+			problems = append(problems, profileProblem{t.index + 1, c.rule, "duplicate column " + c.name,
+				fmt.Sprintf("the `## Profile` table has %d `%s` columns, so rule %s cannot tell which one a row means", n, c.name, c.rule)})
 		}
 	}
 	if len(problems) > 0 {

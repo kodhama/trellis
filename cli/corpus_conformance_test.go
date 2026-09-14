@@ -1210,6 +1210,7 @@ var knownBadExpected = []expectedContractFinding{
 	{"profile.md", "10a", "inv-no-c2 confidence", 27},
 	{"profile.md", "11", "inv-gate", 23},
 	{"unreadable-profile-table.md", "11", "column c2", 20},
+	{"duplicated-profile-column.md", "11", "duplicate column c2", 21},
 }
 
 // acceptedContractConstruct is a deliberately valid fixture construct for an
