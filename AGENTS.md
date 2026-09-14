@@ -12,7 +12,7 @@
 
 > **Which layer is this? (`decision-0005`.)** **Trellis-core** — the shippable product —
 > lives in `core/`. **The methodology used to build Trellis** is the repo root: this file,
-> `decisions/` and `research/`. *This file is Layer B — instance #1, the first methodology
+> `docs/decisions/` and `docs/research/`. *This file is Layer B — instance #1, the first methodology
 > Trellis supervises — not Trellis's product agent-instructions.*
 
 ## The iron rule (most important design constraint)
@@ -26,9 +26,9 @@ rule you can't exemplify is probably vaporware.*
 
 ## Operating method
 
-The method lives in `decisions/`, **not restated here** — a decision is the current truth, and a
+The method lives in `docs/decisions/`, **not restated here** — a decision is the current truth, and a
 summary in this file only goes stale against it. Read the record before relying on a rule.
-`decisions/` is append-only: you *supersede* with a forward pointer, never edit.
+`docs/decisions/` is append-only: you *supersede* with a forward pointer, never edit.
 
 **There is no `status` field** (`decision-0082`). **Merging to `main` is the acceptance:** an
 artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
@@ -48,7 +48,7 @@ asked for a PR, open it. An agent still may not merge on his behalf without his 
 | supersede a record | `decision-0082` — the forward pointer *is* the mark; `decision-0040` for the partial form |
 | retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal) · `decision-0074` |
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
-| record a significant choice | append to `decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main`, on every open PR, **and** within your own diff; `decision-0089`'s CI guard fails the higher-numbered claimant, and `decision-0092` states what it counts as a claim |
+| record a significant choice | append to `docs/decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main`, on every open PR, **and** within your own diff; `decision-0089`'s CI guard fails the higher-numbered claimant, and `decision-0092` states what it counts as a claim |
 | plan a build between a decision and the code | the **Compound Engineering** skills (`ce-brainstorm` or `ce-plan`, then `ce-work`, `ce-code-review`, `ce-commit-push-pr`) — `decision-0097`; the spec stage retired in `decision-0079`, and `specs/` with it |
 | implement or debug in an area a past fix touched | `docs/solutions/` — documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`) |
 | record a next step | `decision-0078` — name the consumer that will re-present it, or drop it |
@@ -100,7 +100,7 @@ and CI (`decision-0075`).
   though `reference/version`, which hashes `reference/` only, never moved.
 - **Artifact conformance is agent-applied, not CI-applied** (`decision-0010` — the contract and
   its conformance check ship as agent instructions with no runtime). Invoke the repo-owned
-  `corpus-reviewer` (`.claude/agents/`) before merging a change to `decisions/`, `research/`
+  `corpus-reviewer` (`.claude/agents/`) before merging a change to `docs/decisions/`, `docs/research/`
   or `core/`. It checks the corpus against `core/rubrics/artifact-contract.md`, and is
   read-only by charter — it reports, never fixes.
 - **Branch names are `<category>/<slug>`** — `decision/0075-linear-tracks-the-work`, `research/…`,

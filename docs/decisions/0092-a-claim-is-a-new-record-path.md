@@ -1,6 +1,7 @@
 ---
 id: decision-0092
 type: decision
+superseded_in_part_by: [decision-0099]  # 2026-09-14 decision-0099 — TWO clauses, both the guard's path: point 1's claim path (a claim is now a file at a docs/decisions/NNNN-*.md path, a root decisions/ path claims nothing, and the guard reads the base branch's ids from docs/decisions/ only) and point 4's exit-2 condition for a record path containing a space, which now reads docs/decisions/. This record's text already names docs/decisions/ because the rename sweep (decision-0015:117-121) rewrote it; the pointer records that the guard changed, not a correction. STANDS: every other rule in points 1-5 — added, copied and a rename's destination claim; three failure conditions; a rename does not release its source id; exit 2 for every other could-not-run cause point 4 lists; and point 5's account of what of decision-0089 stands.
 depends_on: [decision-0081, decision-0089]
 changes: [decision-0089]
 informed_by: [decision-0028, decision-0040, decision-0078, decision-0082, decision-0085]
@@ -36,7 +37,7 @@ so each rule here names the test that pins it.
 
 `decision-0089:55-57` (`:54-56` before this change adds a frontmatter line):
 
-> **1. A CI check on the pull request, `decision-id-guard`.** It fails when a `decisions/NNNN-*.md`
+> **1. A CI check on the pull request, `decision-id-guard`.** It fails when a `docs/decisions/NNNN-*.md`
 > file **newly added** by the branch carries an id that is already on the base branch, or that is also
 > newly added by a **lower-numbered open pull request**.
 
@@ -63,7 +64,7 @@ code path, not off a test — no fixture exercises a rival whose claim is a rena
 | "A claim is an *added* file … **nothing else**" | **false** — `copied` and a rename destination claim too | script `:233-243` |
 | "a rename is a file that already exists" | **false** of the destination path, which is what claims | script `:235-240` |
 | "Modifying `decision-0087` does not claim `0087`" | **stands** | script `:241`; `…IgnoresNonAddedFiles` |
-| "`decisions/README.md` and `decisions/0089.md` are not claims" | **stands** | script `:78-86`; `…IgnoresNonDecisionFilenames` |
+| "`docs/decisions/README.md` and `docs/decisions/0089.md` are not claims" | **stands** | script `:78-86`; `…IgnoresNonDecisionFilenames` |
 | "the status filter lives in the script rather than in the workflow's `gh --jq` expression" | **stands** | the workflow passes env and one `run:` line; the filter is at script `:233-243` |
 
 **Both existing summaries of this point are wrong, in opposite directions.** The marker at
@@ -85,7 +86,7 @@ here because a reader of `decision-0089` alone would have no way to reach it.
 
 ## Decision
 
-**1. A claim is a file the pull request puts at a `decisions/NNNN-*.md` path it does not already
+**1. A claim is a file the pull request puts at a `docs/decisions/NNNN-*.md` path it does not already
 occupy.** `added` and `copied` claim; `renamed` claims its **destination** id when that differs from
 its source. `modified`, `removed`, `changed`, anything else, and a slug-only rename claim nothing.
 Concretely: `0088-old.md` → `0090-new.md` claims `0090`; `0087-one-gateway.md` →
@@ -96,7 +97,7 @@ record on the base branch.
 lower-numbered open pull request; and **two files in one diff claiming one id**. The third takes no
 tie-break — both files are on one branch and the author picks which moves:
 
-> `::error::PR #300 adds two files claiming decision-0090: decisions/0090-a.md decisions/0090-b.md — one id, one record. Renumber one of them.`
+> `::error::PR #300 adds two files claiming decision-0090: docs/decisions/0090-a.md docs/decisions/0090-b.md — one id, one record. Renumber one of them.`
 
 **3. A rename claims its destination and does not release its source.** The id a record is moving
 *off* stays taken until the pull request merges; handing it to a second branch on the strength of an
@@ -106,7 +107,7 @@ the reasoning in a source comment: *"a branch cannot free an id for its own use"
 
 **4. Not-a-collision is not the same as green.** Exit 0 is clean (a `::notice` is still 0), exit 1 is
 a collision, **exit 2 is "could not run"** — a missing `GUARD_PR_NUMBER`, an unfetchable base branch,
-an unreadable PR list, any failing processing step, or a `decisions/NNNN…` path containing a space
+an unreadable PR list, any failing processing step, or a `docs/decisions/NNNN…` path containing a space
 that whitespace-splitting would otherwise silence into "no claim". This is `sh`, not bash, so
 `pipefail` is unavailable and every step's status is checked instead. **An internal failure must
 never read as "no id claimed, nothing to check."**
@@ -115,7 +116,7 @@ never read as "no id claimed, nothing to check."**
 is **point 1's first sentence**, that the check is a CI check on the pull request named
 `decision-id-guard`: nothing above restates it, point 5 independently names the same script and
 workflow, and it remains true. What point 1 loses is its **second sentence**, the rule. Within
-point 4: modifying a record does not claim its id, `decisions/README.md` and `decisions/0089.md` are
+point 4: modifying a record does not claim its id, `docs/decisions/README.md` and `docs/decisions/0089.md` are
 not claims, and the status filter belongs in the script because the tests can only reach that half.
 The forward pointer added to `decision-0089` carries this scope, and nothing wider.
 
@@ -187,7 +188,7 @@ The forward pointer added to `decision-0089` carries this scope, and nothing wid
   unique, all seven of its frontmatter references resolving, the required sections, and the
   clause-level scope of the pointer on `decision-0089` — and it independently confirmed the
   post-change line cites at `:55-57` and `:80-83`. Its one FAIL is
-  `decisions/0044-cross-repo-depends-on-convention.md:5`'s `kodhama-0004-uniform-lifecycle`, the
+  `docs/decisions/0044-cross-repo-depends-on-convention.md:5`'s `kodhama-0004-uniform-lifecycle`, the
   dangling entry that record discloses about itself and that `decision-0076`, `decision-0088` and
   `decision-0090` each recorded before this one; it predates this branch by seven weeks and is
   untouched by it. Repeated here so a clean change is not read as a clean corpus.
@@ -209,7 +210,7 @@ The forward pointer added to `decision-0089` carries this scope, and nothing wid
   | the derivative this change updates | 1 | `AGENTS.md:51` |
 
   **Nothing outside `AGENTS.md:51` restates point 1's rule or a superseded clause of point 4.** *An
-  earlier draft of this bullet said "four sites", from a sweep over `decisions/`, `research/`,
+  earlier draft of this bullet said "four sites", from a sweep over `docs/decisions/`, `docs/research/`,
   `core/`, `profiles/`, `docs/` and the two root instruction files — scoped to the corpus while the
   sentence claimed the repository, so `.github/` and `cli/` went unswept. Its replacement then
   double-counted two test lines as fixtures. Both corrected against a re-run before merge; the

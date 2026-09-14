@@ -14,7 +14,7 @@ date: 2026-08-31
 ## Context
 
 `decision-0079` retired the `spec-*` artifact stage and deleted `specs/`. Its Consequences section
-also closed a question it had raised, at `decisions/0079-retire-the-spec-stage.md:105-107`
+also closed a question it had raised, at `docs/decisions/0079-retire-the-spec-stage.md:105-107`
 *(line numbers as of this record; the frontmatter pointer this change adds displaced them by one)*:
 
 > **No orphan follow-ups (`decision-0078`).** This record parks nothing. The one question it
@@ -128,6 +128,6 @@ prescient. Five such notes already sit on this branch's own spec and plan, and t
 - **The maintainer's words are quoted rather than paraphrased**, because the whole defect being
   corrected is a paraphrase that widened.
 - **`decision-0081`'s cost-of-reversal framing applies and is cited honestly** — that record calls
-  itself *"(proposal, not a decision)"* at `decisions/0081-supersession-authority-by-cost-of-reversal.md:17`. Under it, correcting an over-wide
+  itself *"(proposal, not a decision)"* at `docs/decisions/0081-supersession-authority-by-cost-of-reversal.md:17`. Under it, correcting an over-wide
   record before anything depends on it is cheap; leaving it costs a further reviewer objection on
   every subsequent change that uses the tooling.

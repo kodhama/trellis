@@ -14,7 +14,7 @@ ratified: 2026-07-01
 
 Invariants are Trellis's core **architecture**, so a change to one is an architecture
 *decision* — the natural fit is an **ADR** (append-only, context/decision/consequences),
-which reuses our existing `decisions/` infrastructure and beats the alternatives (git history
+which reuses our existing `docs/decisions/` infrastructure and beats the alternatives (git history
 isn't first-class/auditable; a plain changelog records *what* but not *why*; versioned files
 proliferate). But the invariant file had been mixing **current truth** (the invariants) with
 **change-history** (the `Changes from v0→v1` table, the amendment log) — which *violates our

@@ -1,6 +1,6 @@
 ---
 name: corpus-reviewer
-description: Checks the artifact corpus against the Trellis artifact contract (core/rubrics/artifact-contract.md) and fails loudly. Read-only — reports, never fixes. Use to validate that decisions/research + core/ artifacts conform, or to run the positive-control fixture.
+description: Checks the artifact corpus against the Trellis artifact contract (core/rubrics/artifact-contract.md) and fails loudly. Read-only — reports, never fixes. Use to validate that docs/decisions/ + docs/research/ + core/ artifacts conform, or to run the positive-control fixture.
 tools: Read, Grep, Glob
 ---
 
@@ -19,7 +19,7 @@ checks, 1–7 plus the typed-artifact checks 8–11) and `core/schemas/typed-art
 field schema those typed checks read). Do **not** accept a checklist
 from whoever produced the artifacts. Then check the target corpus.
 
-**Default corpus:** `decisions/`, `research/`, `core/invariants/`, `core/rubrics/`, `core/schemas/`,
+**Default corpus:** `docs/decisions/`, `docs/research/`, `core/invariants/`, `core/rubrics/`, `core/schemas/`,
 `core/catalog/`, `core/lexicon.md`, `profiles/`. **Exclude** `core/fixtures/` (deliberately-broken
 test data) unless explicitly asked to run the positive control against it. `core/schemas/` is
 **checked, not merely consulted** — the field schema you read above for checks 8–11 is itself a

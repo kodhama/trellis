@@ -20,7 +20,7 @@ eight specs were written under it (`spec-0001`–`spec-0008`). Two things have c
 - **The stage stopped paying for itself.** Of the eight, one is fully superseded (`spec-0008`)
   and four carry `superseded_in_part_by` amendments longer than the clauses they amend —
   `spec-0005`'s single frontmatter comment runs to ~1,400 words. The specs had become a second
-  place to maintain what `decisions/` already records, which is the duplication
+  place to maintain what `docs/decisions/` already records, which is the duplication
   `decision-0028` exists to prevent.
 - **A planning layer now arrives from outside.** The maintainer has adopted the **superpowers**
   plugin, whose `brainstorming` / `writing-plans` / `executing-plans` skills occupy the slot the
@@ -36,7 +36,7 @@ process layers it no longer runs.
 record. Planning between a decision and the build is done with the superpowers skills, which
 produce a plan for the work at hand rather than a ratified artifact to maintain afterwards.
 
-**2. `decisions/` and `research/` are unaffected.** They remain append-only and keep their
+**2. `docs/decisions/` and `docs/research/` are unaffected.** They remain append-only and keep their
 `spec-*` citations, which are historical (`inv-auditable-archive`).
 
 **3. The artifact contract survives in the rubric; the typed-artifact schema moves to `core/`.**
@@ -84,7 +84,7 @@ contract to meet.
 **6. `grove/adr-*` citations stay untouched.** `decision-0076` warned that grove-the-repo
 citations are load-bearing and named `spec-0001`'s dependency on `grove/adr-0010` as one of two
 anchors. Deleting `specs/` removes that anchor; the other — `decision-0045` superseded in part
-by `grove/adr-0010` — is a `decisions/` record and survives, so the rule and its example still
+by `grove/adr-0010` — is a `docs/decisions/` record and survives, so the rule and its example still
 stand.
 
 ## Consequences

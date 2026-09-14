@@ -27,7 +27,7 @@ are also explicitly "needs data" per the maintainer.
 The invariant set stays `draft` and is **validated by research before ratification**, not
 ratified by assertion. The research runs in **three steps**:
 
-- **Step 0 — Target identification** *(done → `research/0001-target-landscape.md`)*. Deep
+- **Step 0 — Target identification** *(done → `docs/research/0001-target-landscape.md`)*. Deep
   research to find the AI-agentic-dev methodologies worth testing and rank a shortlist.
   Seeds incl. spec-kit, BMAD, Agent OS, Kiro, OpenSpec, spec-swarm; discover others. Non-AI
   methods (Shape Up, Scrum, RUP) included as **controls only** — first to cut if scope must

@@ -153,7 +153,7 @@ consumers into silent double delivery. Lowering the count is not the mirror of r
   have left the artifact D1 elevates as the count's home carrying the very error this record
   corrects, which is the defect `inv-graph-maintenance` names. An automated reviewer on `#271` found
   it after the corpus half was already fixed. That comment now also carries D1 and D2 themselves, so
-  the rule is legible at the point where it fires rather than only in `decisions/`.
+  the rule is legible at the point where it fires rather than only in `docs/decisions/`.
 - **The pair-guards are a separate and untouched obligation** (`decision-0028`). Both copied
   parsers are pinned to the hook's by name; a read that copies hook logic still owes a guard,
   whether or not it owes a record.

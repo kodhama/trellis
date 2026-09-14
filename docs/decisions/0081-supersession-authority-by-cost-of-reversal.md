@@ -187,7 +187,7 @@ already ratified, and it removes the blocking wait — which is the thing the ev
 
 ### Recommendation 1 (issue Q1) — Extend `inv-deliberate-succession`; do **not** mint a 16th slug
 
-The repo's own minting rubric, quoted verbatim at `decisions/0040-reverse-ports-from-instance-1.md:27-29`:
+The repo's own minting rubric, quoted verbatim at `docs/decisions/0040-reverse-ports-from-instance-1.md:27-29`:
 
 > the set stays at 14 (minimal-first, and the same rubric that retired `inv-reference-relationship`:
 > **no new mechanism → no new invariant**).

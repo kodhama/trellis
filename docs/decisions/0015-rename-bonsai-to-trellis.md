@@ -81,7 +81,7 @@ artifact `id`s (`invariants-v1`, `decision-*`, `research-*`) carry no product na
 > both stay legible.
 >
 > **The genuine historical set is named here so the sweep cannot swallow it:** this record itself
-> (filename and body — it *is* the record of the rename); `research/0008`, whose §Part 2 declares
+> (filename and body — it *is* the record of the rename); `docs/research/0008`, whose §Part 2 declares
 > its own "Bonsai" mentions load-bearing as the subject of its analysis; merged PR titles #1, #10
 > and #31; and git history. Issue **comments** are also exempt — they are dated utterances by a
 > person, not specification, and are not rewritten. Follow-up (a) is now **done** (the working
@@ -97,7 +97,7 @@ artifact `id`s (`invariants-v1`, `decision-*`, `research-*`) carry no product na
 >    sentence in the source. `invariants-v1` declares itself *"the compiled current-truth spec
 >    (revise-in-place)"* — so a citation of it tracks it, and the fixed text is the accurate
 >    citation; anyone wanting the 2026-07-01 wording cites a git rev. Had the quoted source been a
->    `decisions/` record, the opposite would hold: append-only text never moves, so the quote pins.
+>    `docs/decisions/` record, the opposite would hold: append-only text never moves, so the quote pins.
 
 ---
 
@@ -107,7 +107,7 @@ artifact `id`s (`invariants-v1`, `decision-*`, `research-*`) carry no product na
 > Rule 2 in place, which was itself the mistake the open question below is about.)**
 >
 > **Rule 2 was wrong, and it was wrong on its axis, not merely its wording.** It said a quotation of
-> a `decisions/` record pins, "because append-only text never moves." The first attempt at this
+> a `docs/decisions/` record pins, "because append-only text never moves." The first attempt at this
 > correction replaced that with a substance-versus-identifier split: reasoning pins, titles and
 > filenames track. **That was also wrong.** Commit `3f27a29` rewrote the product name inside
 > substantive prose across **eight ratified decision records** — `decisions/0001`, `0002`, `0003`,
@@ -118,7 +118,7 @@ artifact `id`s (`invariants-v1`, `decision-*`, `research-*`) carry no product na
 > heading, filename, slug, or body prose — in **every** artifact class, append-only records
 > included. Append-only guarantees that a record's *decisions are not re-made*; it has never
 > guaranteed its *bytes* are immutable under a global rename. So **a quotation containing a renamed
-> token tracks its source, everywhere.** There is no `decisions/`-versus-revise-in-place split. #22
+> token tracks its source, everywhere.** There is no `docs/decisions/`-versus-revise-in-place split. #22
 > and #26 were the same case all along, and Rule 2's original distinction described a boundary that
 > does not exist.
 >

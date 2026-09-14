@@ -11,7 +11,7 @@ import path from "node:path";
 
 const SENTINEL = "<!-- trellis:rules-loaded -->";
 // 8000 (this constant's prior value) had no recorded rationale — it entered in
-// commit 3490555 with none, and "8000" appears nowhere in decisions/, research/
+// commit 3490555 with none, and "8000" appears nowhere in docs/decisions/, docs/research/
 // or core/. Investigated for Ruling 6 (TRL-20 task 3, fix round 1): Codex's own
 // default per-hook-message limit is documented at
 // https://learn.chatgpt.com/docs/hooks as roughly 2,500 TOKENS, not bytes, and

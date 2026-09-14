@@ -32,7 +32,7 @@ is. All three mismatch kinds self-correct; the loudness is what gets engineered.
 ## Maintainer decisions (settled in brainstorming, 2026-08-30)
 
 1. **The agent reconciles; the hook stays read-only.** `decision-0070` D4's *"The hook never
-   writes"* (`decisions/0070-...:122`, pinned at `cli/plugin_hook_test.go:1516`) is **untouched**.
+   writes"* (`docs/decisions/0070-...:122`, pinned at `cli/plugin_hook_test.go:1516`) is **untouched**.
    What changes is the hook's *message*: advisory-and-gated becomes imperative-and-reported.
 2. **`unknown:` rows are quarantined, never deleted** — commented out with dated provenance.
 3. **`missing:` rows are added `active = true`.**
@@ -156,7 +156,7 @@ where a regression hides; each edit is justified in the decision record, not don
 | Decision record, superseding `decision-0072` in part | The confirm-first remedy is replaced; `AGENTS.md` requires the forward pointer |
 | `plugins/trellis/VERSION` bump | Payload change is a release; without it no cached consumer re-pulls (`cli/assets/invariants.md:65`). PR **#245** is adding the guard — do not re-file |
 | Prose sweep: `README.md:204-215`, `plugins/trellis/README.md` | Quarantine is new user-visible state in a consumer-owned file |
-| `corpus-reviewer` before merge | Repo-owned agent; required for `decisions/` changes |
+| `corpus-reviewer` before merge | Repo-owned agent; required for `docs/decisions/` changes |
 
 `/trellis:remove` needs **no** change — it deletes `.trellis/` wholesale, quarantined rows included.
 
