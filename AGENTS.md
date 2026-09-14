@@ -40,12 +40,20 @@ change gets none: a vendored delivery naming its own dead pointer (`decision-009
 today, and nor would a move such as `decision-0099` putting the corpus under `docs/`. Both were
 recorded before this test existed.
 
+**A new record is named `docs/decisions/YYYY-MM-DD-<slug>.md`, and its `id` is `decision-` followed
+by that filename's stem.** The date is the day the record is written, and the slug is lowercase words
+and digits joined by single hyphens, as the numbered records' slugs are. *Example:*
+`docs/decisions/2026-09-20-rules-toml-is-optional.md` has `id: decision-2026-09-20-rules-toml-is-optional`.
+Records `0001` to `0100` keep their numbers. No id is reserved and no check guards the name: two pull
+requests adding the same path conflict at merge, so git stops the second, and a guard was needed only
+while numbered ids let differently named files claim one number.
+
 **A change without a record keeps its reasoning in its requirements doc, its plan under
 `docs/plans/` and its PR body.** The PR body lists the records the change put dated notes on, or says
 it found none.
 
 **`docs/decisions/` stays append-only: a record's decisions are never re-made or rewritten.** The only
-text added to a record is a dated note, or `superseded_by` when the record is retired in full. The only
+text added to a record is a dated note, or `superseded_by` when a successor record retires it in full. The only
 edits to its existing text are correcting a line citation or a note's PR number, and a rename sweep
 (`decision-0015`). When a merged change makes a point or sentence of a record untrue, the same PR adds
 one note directly under the record's title, below any notes already there:
@@ -67,8 +75,9 @@ its own citations, as `decision-0081` does.
 
 **There is no `status` field** (`decision-0082`). **Merging to `main` is the acceptance:** an
 artifact on `main` is current truth and may be consumed; one not yet merged may not. Nothing to
-flip, ever. **A record retired in full carries `superseded_by`; a record retired in part gets a dated
-note**, whether a newer record or another change retires it. No change adds a new
+flip, ever. **A record retired in full carries `superseded_by` when a successor record retires it and a
+dated note when none does; a record retired in part gets a dated note**, whether a newer record or another
+change retires it. No change adds a new
 `superseded_in_part_by`; the entries already in records stay and still resolve. *Artifacts predating `decision-0082` keep
 their `status:` lines as history — several carry the maintainer's intent act in a trailing
 comment. Read them as accepted; do not add the field to anything new, and do not strip it from
@@ -81,10 +90,10 @@ asked for a PR, open it. An agent still may not merge on his behalf without his 
 | Before you… | Read |
 |---|---|
 | write or change an artifact — frontmatter, per-type body sections | `decision-0082` (no `status`; the merge is the acceptance) · `decision-0042` (family lifecycle) · `decision-0037` (`owner: agent` carries *authorship*, not accountability — that stays with the maintainer) |
-| supersede a record, in full or in part | the rules above — `superseded_by` for a full retirement, a dated note for a partial one |
+| supersede a record, in full or in part | the rules above — `superseded_by` for a full retirement by a successor record, a dated note for a partial retirement or for a full one with no successor |
 | retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal) · `decision-0074` |
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
-| record a significant choice | only when it meets the record test above; the record goes in `docs/decisions/` — the four strategic forks are `0001–0004`. The id must be free on `main`, on every open PR, **and** within your own diff; `decision-0089`'s CI guard fails the higher-numbered claimant, and `decision-0092` states what it counts as a claim |
+| record a significant choice | only when it meets the record test above, named by date and slug as the naming rule above says — the four strategic forks are `0001–0004` |
 | plan a build between a decision and the code | the **Compound Engineering** skills (`ce-brainstorm` or `ce-plan`, then `ce-work`, `ce-code-review`, `ce-commit-push-pr`) — `decision-0097`; the spec stage retired in `decision-0079`, and `specs/` with it |
 | implement or debug in an area a past fix touched | `docs/solutions/` — documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`) |
 | record a next step | `decision-0078` — name the consumer that will re-present it, or drop it |
