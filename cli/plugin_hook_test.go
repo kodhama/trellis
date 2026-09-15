@@ -68,6 +68,19 @@ func TestStalenessHook(t *testing.T) {
 		}
 	}
 
+	// runHook executes the hook in proj against the plugin at root.
+	runHook := func(t *testing.T, proj, root string) string {
+		t.Helper()
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+root)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
 	// run executes the hook in a fresh project dir; stampRel names where the stamp
 	// file is written (".trellis/internal/version", the legacy ".trellis/version",
 	// or "" for no overlay at all).
@@ -98,14 +111,7 @@ func TestStalenessHook(t *testing.T) {
 				}
 			}
 		}
-		cmd := exec.Command(hook)
-		cmd.Dir = proj
-		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
-		}
-		return strings.TrimSpace(string(out))
+		return runHook(t, proj, pluginRoot)
 	}
 
 	nudge := func(t *testing.T, out string) string {
@@ -283,17 +289,6 @@ func TestStalenessHook(t *testing.T) {
 			}
 			return p
 		}
-		hookOut := func(t *testing.T, proj, root string) string {
-			t.Helper()
-			cmd := exec.Command(hook)
-			cmd.Dir = proj
-			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+root)
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("hook exited non-zero (%v): %s", err, out)
-			}
-			return strings.TrimSpace(string(out))
-		}
 		noCanary := func(t *testing.T, out string) {
 			t.Helper()
 			if strings.Contains(out, "CANARYTOKEN") {
@@ -305,7 +300,7 @@ func TestStalenessHook(t *testing.T) {
 			proj := t.TempDir()
 			p := link(t, proj, ".trellis/internal/version")
 			writeVendoredPayload(t, filepath.Dir(p))
-			out := hookOut(t, proj, pluginRoot)
+			out := runHook(t, proj, pluginRoot)
 			noCanary(t, out)
 			if msg := nudge(t, out); !strings.Contains(msg, "may be stale") || !strings.Contains(msg, current) {
 				t.Errorf("the stale nudge must still fire and name the plugin's own stamp:\n%s", msg)
@@ -315,7 +310,7 @@ func TestStalenessHook(t *testing.T) {
 			proj := t.TempDir()
 			p := link(t, proj, ".trellis/internal/version")
 			writeVendoredPayload(t, filepath.Dir(p))
-			out := hookOut(t, proj, t.TempDir())
+			out := runHook(t, proj, t.TempDir())
 			noCanary(t, out)
 			if ctx := nudgeContext(t, out); !strings.Contains(ctx, "TRELLIS_STALENESS_UNKNOWN") {
 				t.Errorf("staleness that cannot be checked must still be said:\n%s", ctx)
@@ -324,7 +319,7 @@ func TestStalenessHook(t *testing.T) {
 		t.Run("a linked legacy stamp still draws the migration nudge", func(t *testing.T) {
 			proj := t.TempDir()
 			link(t, proj, ".trellis/version")
-			out := hookOut(t, proj, pluginRoot)
+			out := runHook(t, proj, pluginRoot)
 			noCanary(t, out)
 			if ctx := nudge(t, out); !strings.Contains(ctx, "predates the .trellis/internal/ layout") || !strings.Contains(ctx, current) {
 				t.Errorf("the legacy migration nudge must still fire and name the plugin's own stamp:\n%s", ctx)
