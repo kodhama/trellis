@@ -259,6 +259,94 @@ func TestStalenessHook(t *testing.T) {
 			t.Errorf("a legacy overlay still governs the session — this is a migration nudge, not a blackout:\n%s", ctx)
 		}
 	})
+	// TRL-101. A project's stamp file is the project's own, and a repository can
+	// commit it as a symbolic link to any file the user can read. The hook quoted
+	// that file's first line in its staleness messages, so a link to a
+	// credentials file put the credential into the session's context. A first
+	// line is quoted only when it has a stamp's shape; every other one must reach
+	// no output at all, whichever message the hook sends.
+	t.Run("a stamp that is not a version is never quoted", func(t *testing.T) {
+		const canary = "https://user:CANARYTOKEN@github.com"
+		// link writes the canary outside the project and links the stamp path to it.
+		link := func(t *testing.T, proj, rel string) string {
+			t.Helper()
+			target := filepath.Join(t.TempDir(), "git-credentials")
+			if err := os.WriteFile(target, []byte(canary+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p := filepath.Join(proj, filepath.FromSlash(rel))
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, p); err != nil {
+				t.Fatal(err)
+			}
+			return p
+		}
+		hookOut := func(t *testing.T, proj, root string) string {
+			t.Helper()
+			cmd := exec.Command(hook)
+			cmd.Dir = proj
+			cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+root)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("hook exited non-zero (%v): %s", err, out)
+			}
+			return strings.TrimSpace(string(out))
+		}
+		noCanary := func(t *testing.T, out string) {
+			t.Helper()
+			if strings.Contains(out, "CANARYTOKEN") {
+				t.Errorf("the first line of the file the stamp links to reached the hook's output:\n%s", out)
+			}
+		}
+
+		t.Run("a linked overlay stamp still draws the stale nudge", func(t *testing.T) {
+			proj := t.TempDir()
+			p := link(t, proj, ".trellis/internal/version")
+			writeVendoredPayload(t, filepath.Dir(p))
+			out := hookOut(t, proj, pluginRoot)
+			noCanary(t, out)
+			if msg := nudge(t, out); !strings.Contains(msg, "may be stale") || !strings.Contains(msg, current) {
+				t.Errorf("the stale nudge must still fire and name the plugin's own stamp:\n%s", msg)
+			}
+		})
+		t.Run("a linked overlay stamp beside an unreadable plugin stamp", func(t *testing.T) {
+			proj := t.TempDir()
+			p := link(t, proj, ".trellis/internal/version")
+			writeVendoredPayload(t, filepath.Dir(p))
+			out := hookOut(t, proj, t.TempDir())
+			noCanary(t, out)
+			if ctx := nudgeContext(t, out); !strings.Contains(ctx, "TRELLIS_STALENESS_UNKNOWN") {
+				t.Errorf("staleness that cannot be checked must still be said:\n%s", ctx)
+			}
+		})
+		t.Run("a linked legacy stamp still draws the migration nudge", func(t *testing.T) {
+			proj := t.TempDir()
+			link(t, proj, ".trellis/version")
+			out := hookOut(t, proj, pluginRoot)
+			noCanary(t, out)
+			if ctx := nudge(t, out); !strings.Contains(ctx, "predates the .trellis/internal/ layout") || !strings.Contains(ctx, current) {
+				t.Errorf("the legacy migration nudge must still fire and name the plugin's own stamp:\n%s", ctx)
+			}
+		})
+		t.Run("a stamp file holding the same text is not quoted either", func(t *testing.T) {
+			noCanary(t, run(t, ".trellis/internal/version", canary))
+			noCanary(t, run(t, ".trellis/version", canary))
+		})
+		// The other direction: every stamp shape an install ever wrote is still
+		// quoted, so the fix cannot pass by quoting nothing.
+		t.Run("stamps of every shape an install wrote are still quoted", func(t *testing.T) {
+			if msg := nudge(t, run(t, ".trellis/internal/version", "payload@000000000000")); !strings.Contains(msg, "payload@000000000000") {
+				t.Errorf("a payload stamp must be quoted:\n%s", msg)
+			}
+			for _, stamp := range []string{"payload@000000000000", "plugin@0000000", "0.2.16"} {
+				if msg := nudge(t, run(t, ".trellis/version", stamp)); !strings.Contains(msg, "("+stamp+";") {
+					t.Errorf("the legacy stamp %q must be quoted:\n%s", stamp, msg)
+				}
+			}
+		})
+	})
 	// INVERTED by TRL-34, which this subtest pinned: it required SILENCE when the
 	// hook could not read the installed plugin's own reference/version, so the
 	// staleness warning this hook exists to produce was withheld with no signal
