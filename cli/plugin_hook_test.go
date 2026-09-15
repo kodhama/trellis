@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -68,6 +69,19 @@ func TestStalenessHook(t *testing.T) {
 		}
 	}
 
+	// runHook executes the hook in proj against the plugin at root.
+	runHook := func(t *testing.T, proj, root string) string {
+		t.Helper()
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+root)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
 	// run executes the hook in a fresh project dir; stampRel names where the stamp
 	// file is written (".trellis/internal/version", the legacy ".trellis/version",
 	// or "" for no overlay at all).
@@ -98,14 +112,7 @@ func TestStalenessHook(t *testing.T) {
 				}
 			}
 		}
-		cmd := exec.Command(hook)
-		cmd.Dir = proj
-		cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+proj, "CLAUDE_PLUGIN_ROOT="+pluginRoot)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("hook exited non-zero (%v) — a hook must never fail the session: %s", err, out)
-		}
-		return strings.TrimSpace(string(out))
+		return runHook(t, proj, pluginRoot)
 	}
 
 	nudge := func(t *testing.T, out string) string {
@@ -284,6 +291,127 @@ func TestStalenessHook(t *testing.T) {
 		if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
 			t.Errorf("a legacy overlay still governs the session — this is a migration nudge, not a blackout:\n%s", ctx)
 		}
+	})
+	// TRL-101. A project's stamp file is the project's own, and a repository can
+	// commit it as a symbolic link to any file the user can read. The hook quoted
+	// that file's first line in its staleness messages, so a link to a
+	// credentials file put the credential into the session's context. A first
+	// line is quoted only when it has a stamp's shape; every other one must reach
+	// no output at all, whichever message the hook sends.
+	t.Run("a stamp that is not a version is never quoted", func(t *testing.T) {
+		const canary = "https://user:CANARYTOKEN@github.com"
+		// link writes the canary outside the project and links the stamp path to it.
+		link := func(t *testing.T, proj, rel string) string {
+			t.Helper()
+			target := filepath.Join(t.TempDir(), "git-credentials")
+			if err := os.WriteFile(target, []byte(canary+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p := filepath.Join(proj, filepath.FromSlash(rel))
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, p); err != nil {
+				t.Fatal(err)
+			}
+			return p
+		}
+		noCanary := func(t *testing.T, out string) {
+			t.Helper()
+			if strings.Contains(out, "CANARYTOKEN") {
+				t.Errorf("the first line of the file the stamp links to reached the hook's output:\n%s", out)
+			}
+		}
+
+		t.Run("a linked overlay stamp still draws the stale nudge", func(t *testing.T) {
+			proj := t.TempDir()
+			p := link(t, proj, ".trellis/internal/version")
+			writeVendoredPayload(t, filepath.Dir(p))
+			out := runHook(t, proj, pluginRoot)
+			noCanary(t, out)
+			if msg := nudge(t, out); !strings.Contains(msg, "may be stale") || !strings.Contains(msg, current) {
+				t.Errorf("the stale nudge must still fire and name the plugin's own stamp:\n%s", msg)
+			}
+		})
+		t.Run("a linked overlay stamp beside an unreadable plugin stamp", func(t *testing.T) {
+			proj := t.TempDir()
+			p := link(t, proj, ".trellis/internal/version")
+			writeVendoredPayload(t, filepath.Dir(p))
+			out := runHook(t, proj, t.TempDir())
+			noCanary(t, out)
+			if ctx := nudgeContext(t, out); !strings.Contains(ctx, "TRELLIS_STALENESS_UNKNOWN") {
+				t.Errorf("staleness that cannot be checked must still be said:\n%s", ctx)
+			}
+		})
+		t.Run("a linked legacy stamp still draws the migration nudge", func(t *testing.T) {
+			proj := t.TempDir()
+			link(t, proj, ".trellis/version")
+			out := runHook(t, proj, pluginRoot)
+			noCanary(t, out)
+			if ctx := nudge(t, out); !strings.Contains(ctx, "predates the .trellis/internal/ layout") || !strings.Contains(ctx, current) {
+				t.Errorf("the legacy migration nudge must still fire and name the plugin's own stamp:\n%s", ctx)
+			}
+		})
+		t.Run("a stamp file holding the same text is not quoted either", func(t *testing.T) {
+			noCanary(t, run(t, ".trellis/internal/version", canary))
+			noCanary(t, run(t, ".trellis/version", canary))
+		})
+		// Lines just outside each accepted shape. Each starts like a stamp an
+		// install wrote, so only the inner checks keep it out of the output; a
+		// check reduced to its prefix patterns fails here. marker is the text
+		// that must not reach the output.
+		t.Run("near misses are not quoted", func(t *testing.T) {
+			for i, tc := range []struct{ line, marker string }{
+				{"payload@CANARYTOKEN", "CANARYTOKEN"},
+				{"payload@deadbeefCANARY", "CANARY"},
+				{"payload@abc:CANARY", "CANARY"},
+				{"plugin@abc123:CANARY", "CANARY"},
+				{"plugin@unknownCANARY", "CANARY"},
+				{"payload@ deadbeefcafe", "deadbeefcafe"},
+				{"payload@" + strings.Repeat("a", 65), strings.Repeat("a", 65)},
+				{"1..2.3", "1..2.3"},
+				{"1.2.3.", "1.2.3."},
+				{"1.2.3.4", "1.2.3.4"},
+				{"10.20.30.40", "10.20.30.40"},
+				{"v1.2", "v1.2"},
+				{"1.2.3CANARY", "CANARY"},
+				{"1.2.3-CANARY", "CANARY"},
+				{"1.2." + strings.Repeat("3", 29), strings.Repeat("3", 29)},
+			} {
+				// Named by index, not by the line: t.TempDir() puts the subtest name
+				// in the project path, which the legacy nudge prints, so a name
+				// holding the marker would match the path rather than a quote.
+				t.Run("case "+strconv.Itoa(i), func(t *testing.T) {
+					ctx := nudge(t, run(t, ".trellis/version", tc.line))
+					if strings.Contains(ctx, tc.marker) {
+						t.Errorf("a line that is not a stamp reached the legacy nudge: %q\n%s", tc.line, ctx)
+					}
+				})
+			}
+			if msg := nudge(t, run(t, ".trellis/internal/version", "payload@ deadbeefcafe")); strings.Contains(msg, "deadbeefcafe") {
+				t.Errorf("a stamp with whitespace inside it reached the stale nudge:\n%s", msg)
+			}
+		})
+		// A range such as a-f follows the locale's collation, and under a UTF-8
+		// locale it admitted an accented letter as hex.
+		t.Run("an accented letter is not hex under a UTF-8 locale", func(t *testing.T) {
+			t.Setenv("LC_ALL", "en_US.UTF-8")
+			if ctx := nudge(t, run(t, ".trellis/version", "payload@café")); strings.Contains(ctx, "payload@caf") {
+				t.Errorf("an accented stamp reached the legacy nudge:\n%s", ctx)
+			}
+		})
+		// The other direction: every stamp shape an install ever wrote is still
+		// quoted, so the fix cannot pass by quoting nothing.
+		t.Run("stamps of every shape an install wrote are still quoted", func(t *testing.T) {
+			if msg := nudge(t, run(t, ".trellis/internal/version", "payload@000000000000")); !strings.Contains(msg, "payload@000000000000") {
+				t.Errorf("a payload stamp must be quoted:\n%s", msg)
+			}
+			for _, stamp := range []string{"payload@000000000000", "plugin@0000000", "plugin@unknown", "0.2.16", "v0.2.16", "0.0.0-dev"} {
+				if msg := nudge(t, run(t, ".trellis/version", stamp)); !strings.Contains(msg, "("+stamp+";") {
+					t.Errorf("the legacy stamp %q must be quoted:\n%s", stamp, msg)
+				}
+			}
+		})
 	})
 	// INVERTED by TRL-34, which this subtest pinned: it required SILENCE when the
 	// hook could not read the installed plugin's own reference/version, so the

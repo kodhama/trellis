@@ -478,6 +478,36 @@ if [ -n "$inline_file" ] && [ -f "$root/.claude/rules/trellis.md" ]; then
   exit 0
 fi
 
+# TRL-101. True when $1 has the shape of a stamp some Trellis install wrote:
+# payload@ or plugin@ followed by lowercase hex, the retired setup skill's
+# fallback plugin@unknown (decision-0039), or a three-part version as the CLI wrote it
+# (a release's v0.2.16, a dev build's 0.0.0-dev, a bare 0.2.16). A project's
+# stamp file is the project's own, and a repository can commit it as a symbolic
+# link to any file the user can read, so a first line of any other shape is never
+# quoted back into the session's context. The character lists are spelled out
+# rather than written as ranges: a range such as a-f follows the locale's
+# collation, and under a UTF-8 locale it admitted accented letters. The Codex
+# hook already refuses every stamp but payload@<12 hex> and names none.
+stamp_shaped() {
+  case "$1" in
+    plugin@unknown) return 0 ;;
+    payload@?* | plugin@?*)
+      case "${1#*@}" in *[!0123456789abcdef]*) return 1 ;; esac
+      [ "${#1}" -le 72 ]
+      return
+      ;;
+  esac
+  set -- "${1#v}"
+  set -- "${1%-dev}"
+  case "$1" in
+    *.*.*.* | .* | *. | *..*) return 1 ;;
+    ?*.?*.?*) ;;
+    *) return 1 ;;
+  esac
+  case "$1" in *[!0123456789.]*) return 1 ;; esac
+  [ "${#1}" -le 32 ]
+}
+
 if [ -d "$internal" ]; then
   # THE VENDORED OVERLAY IS PAYLOAD TOO — the same bundle files, copied into
   # the consumer's tree — so all three go through the same gateway, in one
@@ -501,29 +531,44 @@ if [ -d "$internal" ]; then
   # different things about the same broken overlay depending on which file was
   # broken; a reader gains nothing from that and the remedy is identical.
   overlay=""
+  overlay_line=""
   for f in version trellis.md rules.md; do
     if ! payload_read "$internal/$f"; then
       emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f $payload_why, so the managed block's imports cannot load the rules and this hook cannot tell which rules the surviving files represent. The hook will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
       exit 0
     fi
-    [ "$f" = version ] && overlay="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
+    # TRL-101: overlay_line is the first line with only surrounding whitespace
+    # trimmed. The quote decision reads it, because overlay has every whitespace
+    # character deleted, which once made a line such as "payload@ deadbeefcafe"
+    # look like a stamp.
+    if [ "$f" = version ]; then
+      overlay="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
+      overlay_line="$(printf '%s\n' "$payload_text" | head -n1 | LC_ALL=C sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    fi
   done
   # A non-empty file can still hold nothing but whitespace on its first line.
   [ -n "$overlay" ] || {
     emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/version carries no stamp on its first line, so this hook cannot tell which rules the surviving files represent and will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
     exit 0
   }
+  # TRL-101: the stamp is quoted only when it has a stamp's shape.
+  overlay_said="stamp is $overlay"
+  overlay_named=" ($overlay)"
+  if ! stamp_shaped "$overlay_line"; then
+    overlay_said="holds no recognisable version stamp (its first line is not quoted here)"
+    overlay_named=""
+  fi
   # TRL-34. This was `[ -n "$current" ] || exit 0` — silent. The overlay is
   # intact and the session IS governed by it, so this is NOT a
   # TRELLIS_RULES_NOT_LOADED: reusing the blackout marker here would be the
   # over-correction this change is as concerned with as the silence. What is
   # withheld is a WARNING, and the fix is to say so.
   if [ -z "$current" ]; then
-    emit "TRELLIS_STALENESS_UNKNOWN — this session is governed by the vendored overlay at .trellis/internal/, and that is intact. What this hook could NOT do is check whether the overlay is stale: the installed Trellis plugin's own version stamp ($ref) $stamp_defect, so there is nothing to compare this project's stamp ($overlay) against. Nothing is wrong with this project and no rules are missing. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix."
+    emit "TRELLIS_STALENESS_UNKNOWN — this session is governed by the vendored overlay at .trellis/internal/, and that is intact. What this hook could NOT do is check whether the overlay is stale: the installed Trellis plugin's own version stamp ($ref) $stamp_defect, so there is nothing to compare this project's stamp$overlay_named against. Nothing is wrong with this project and no rules are missing. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix."
     exit 0
   fi
   if [ "$overlay" != "$current" ]; then
-    emit "Trellis overlay may be stale: this project's .trellis/internal/version stamp is $overlay, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Until then this session is governed by the vendored copy."
+    emit "Trellis overlay may be stale: this project's .trellis/internal/version $overlay_said, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Until then this session is governed by the vendored copy."
   fi
   exit 0
 fi
@@ -536,12 +581,19 @@ if [ -f "$legacy" ]; then
   # withheld a migration nudge that was correct either way; the two literals
   # below say what could not be read instead of vanishing.
   overlay=""
-  payload_read "$legacy" && overlay="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
+  overlay_line=""
+  if payload_read "$legacy"; then
+    overlay="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
+    overlay_line="$(printf '%s\n' "$payload_text" | head -n1 | LC_ALL=C sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  fi
   if [ -z "$overlay" ] || [ -z "$current" ]; then
     emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version. This hook could not read both stamps, so it cannot say how far behind this overlay is — but the LAYOUT itself is the stale part and the migration below is correct regardless. To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\`. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
     exit 0
   fi
-  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version ($overlay; the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\`. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
+  # TRL-101: the stamp is quoted only when it has a stamp's shape.
+  legacy_named="$overlay; "
+  stamp_shaped "$overlay_line" || legacy_named="its first line is not a version stamp and is not quoted; "
+  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version (${legacy_named}the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\`. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
   exit 0
 fi
 
