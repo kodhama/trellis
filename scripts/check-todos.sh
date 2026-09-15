@@ -10,10 +10,10 @@ hits=$(git ls-files '*.go' '*.mjs' '*.js' '*.cjs' '*.sh' '*.yml' '*.yaml' |
   grep -v '^eval/' |
   grep -v '^scripts/check-todos.sh$' |
   xargs grep -nE 'TODO|FIXME' 2>/dev/null |
-  grep -vE '(TODO|FIXME)\((TRL-[0-9]+|#[0-9]+|decision-[0-9]+|decision-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*)\)' || true)
+  grep -vE '(TODO|FIXME)\((TRL-[0-9]+|#[0-9]+|decision-[0-9]+)\)' || true)
 
 if [ -n "$hits" ]; then
-  echo "TODO/FIXME without a tracker reference (write TODO(TRL-123), TODO(#45), TODO(decision-0042), or TODO(decision-2026-09-20-rules-toml-is-optional)):" >&2
+  echo "TODO/FIXME without a tracker reference (write TODO(TRL-123), TODO(#45), or TODO(decision-0042)):" >&2
   echo "$hits" >&2
   exit 1
 fi

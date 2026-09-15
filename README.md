@@ -347,8 +347,7 @@ npm run quality
 [staticcheck](https://staticcheck.dev/) over the CLI (pinned via `go run`, so no install step);
 formats and lints the plugin's JavaScript and JSON; runs ShellCheck over the maintained shell
 entrypoints; enforces a 500 KB ceiling on tracked files; requires every TODO/FIXME in source to
-name its tracker (`TODO(TRL-123)`, `TODO(#45)`, `TODO(decision-0042)`, or a date-and-slug record's
-`TODO(decision-2026-09-20-rules-toml-is-optional)`); and starts both host
+name its tracker (`TODO(TRL-123)`, `TODO(#45)`, or `TODO(decision-0042)`); and starts both host
 hooks against a temporary healthy project. It does not use live credentials, network services, or
 your current `.trellis/` state. On a machine without Go, leave the full gate to CI; it runs the same
 command.
