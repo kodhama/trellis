@@ -201,7 +201,9 @@ sed -n -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
 **No @import support (e.g. AGENTS.md)** — append the SELF-CONTAINED inline block instead. It
 embeds the rules and takes NO `.trellis/internal/` copies: the block plus
 `.trellis/rules.toml` is the whole install, and copying the overlay beside it would deliver the
-rules twice.
+rules twice. The shipped block switches no rule off: if your `.trellis/rules.toml` already has an
+`active = false` row, build the block with those rows as described below instead of appending
+this one.
 
 ```sh
 # the block must start at column 0 of its own line: guard against a file

@@ -95,7 +95,11 @@ json_escape() {
   # below) would make the JSON string invalid — a form feed in rules.toml did
   # exactly that. A config file has no business carrying one, so replace rather
   # than emit nothing: a stray byte degrades the payload, not the session.
-  tr '\001-\010\013\014\016-\037' '    ' | awk '
+  # Both tools run in the C locale so they work on bytes. In a UTF-8 locale a
+  # byte that is not valid UTF-8, such as a Latin-1 comment in rules.toml, made
+  # tr stop mid-stream, and everything after it (the rest of the file, every
+  # warning, the footer) was silently cut from otherwise valid JSON.
+  LC_ALL=C tr '\001-\010\013\014\016-\037' '    ' | LC_ALL=C awk '
     BEGIN { ORS = "" }
     {
       gsub(/\\/, "\\\\")

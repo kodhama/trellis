@@ -19,7 +19,7 @@ package main
 // VENDORED project's `.trellis/internal/invariants.md` is a real file: the
 // retired setup skill copied it there (its SKILL.md at 2f6a21a:121,
 // `cp "${CLAUDE_PLUGIN_ROOT}/reference/invariants.md" .trellis/internal/invariants.md`),
-// and decision-0051:75-78 specifies it as part of the trellis-authoritative
+// and decision-0051:77-80 specifies it as part of the trellis-authoritative
 // half of the overlay. plugins/trellis/README.md:27 then binds the delivery:
 // "Where a vendored `.trellis/internal/` still exists it remains
 // authoritative ... the plugin's `reference/` files stay installation sources

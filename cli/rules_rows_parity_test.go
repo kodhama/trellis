@@ -169,10 +169,14 @@ func (c rulesRowsCase) expectedSegment() string {
 	case segmentNone:
 		return ""
 	}
-	if c.toml == "" || strings.HasSuffix(c.toml, "\n") {
-		return c.toml
+	// The hook output is decoded as JSON, which turns every byte that is not
+	// valid UTF-8 into U+FFFD, one per byte; converting through runes does the
+	// same, and leaves a valid file unchanged.
+	file := string([]rune(c.toml))
+	if file == "" || strings.HasSuffix(file, "\n") {
+		return file
 	}
-	return c.toml + "\n"
+	return file + "\n"
 }
 
 // expectedRegion is everything between the heading's blank line and the host's
@@ -380,6 +384,14 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		toml:     optOut + "\x00\n",
 		segment:  segmentNone,
 		warnings: []string{warnNulByte()},
+	}, {
+		// A byte that is not valid UTF-8 costs nothing either: under a UTF-8 locale
+		// the Claude hook's JSON escaping once stopped at it and dropped the rest of
+		// the file, every warning and the footer.
+		name:     "a Latin-1 byte in a comment keeps the whole section",
+		toml:     "# Cr\xe9\xe9 par l'\xe9quipe\n[rules]\nfloor-intent-gate = { active = false }\ninv-minimal-first = { active = false }\n",
+		off:      []string{"inv-minimal-first"},
+		warnings: []string{warnFloorRow(3, "floor-intent-gate")},
 	}, {
 		name: "twelve malformed rows name five and count the rest",
 		toml: "[rules]\n" + strings.Repeat("{ active = false }\n", 12),
@@ -605,18 +617,11 @@ func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRules
 		if n := len(r.context); n > codexContextCap {
 			t.Errorf("codex: the context is %d bytes, over MAX_CONTEXT_BYTES (%d)", n, codexContextCap)
 		}
-		// KTD4: the warnings are mirrored to systemMessage, in the same order.
-		at := 0
-		for _, w := range c.warnings {
-			i := strings.Index(r.systemMessage[at:], w)
-			if i < 0 {
-				t.Errorf("codex: systemMessage does not carry %q after position %d:\n%s", w, at, r.systemMessage)
-				break
-			}
-			at += i + len(w)
-		}
-		if len(c.warnings) == 0 && strings.Contains(r.systemMessage, ".trellis/rules.toml") {
-			t.Errorf("codex: a file with nothing to warn about drew a systemMessage about it:\n%s", r.systemMessage)
+		// KTD4: the warnings are mirrored to systemMessage, in the same order and
+		// nothing else: the plugin root here is complete, so no invariants report
+		// shares the message, and an extra or repeated warning is a failure.
+		if wantMessage := strings.Join(c.warnings, " "); r.systemMessage != wantMessage {
+			t.Errorf("codex: systemMessage\n got: %q\nwant: %q", r.systemMessage, wantMessage)
 		}
 	}
 }
