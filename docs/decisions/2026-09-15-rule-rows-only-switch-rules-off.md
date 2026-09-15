@@ -72,7 +72,11 @@ row from `true` to `false` moved the rate from 95% to 0%.
    bytes that would enter the context: its bytes as read, and on Codex, which decodes it as UTF-8, a
    byte that is not valid UTF-8 counts as the three bytes of the replacement character that stands in
    for it. Otherwise one line says they are too large to show. Then come the warnings. A symlinked `.trellis/rules.toml`, or one under
-   a symlinked `.trellis`, is read and classified, so its opt-outs apply and the sentence names them.
+   a symlinked `.trellis`, is read and classified by the hooks, so its opt-outs apply and the sentence
+   names them. The Codex bootstrap's no-hook fallback does not read a linked file at all, because it
+   cannot apply the file's rows without reading them into the agent's context: there the file
+   switches no rule off, every rule applies, and the agent says the file is a link. A hook's
+   activation section counts as loaded, so the fallback never reads a file a hook withheld.
    But none of its contents is shown: one line says so, and its warnings are a count with no text taken
    from the file. The computed sentence is untested wording; `research-0012` measured the rows
    themselves, which the session still sees. The sentence exists so the session gets the effective
@@ -120,6 +124,11 @@ row from `true` to `false` moved the rate from 95% to 0%.
   measured, one holding only `[rules]` and one holding a single `false` row. The cached 0.6.0
   `staleness.sh` refuses such a file and loads no rules. The hooks of 0.7.0 to 0.23.x keep its `false`
   rows but reconcile the file and ask for the rows to be written back.
+- On the Codex bootstrap's no-hook fallback, a project that declined Trellis through a symlinked rules
+  file is still governed: the fallback does not read a linked file, so it never sees the
+  `governed = false` inside it. Reaching this takes an older or hand-copied fallback block, since no
+  install writes that block today, together with a linked rules file and a decline. A filtered read for
+  that one line was judged not worth another instruction.
 - A renamed rule's opt-out lapses: the old slug's row draws the unknown-slug warning, and the new slug
   applies until the project adds a row for it.
 - The Codex context, measured with this change, is 7021 B for an empty file and 8164 B for this

@@ -719,18 +719,26 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 	//                                   TestEveryDeletionInstructionIsGated (both read
 	//                                   only the two hook files), so a write instruction
 	//                                   landing here would be ungated
-	//   "check whether it or `.trellis` is a symbolic link", "repeat nothing read from it",
-	//   "give its ignored entries only as a count" and
-	//   "for a file reached through a symbolic link, tell them only how many"
-	//                                   both hooks classify a linked file and show
-	//                                   nothing from it (TRL-97 Q5); without these the
-	//                                   fallback's own report of ignored rows would
-	//                                   quote the file the link points at
+	//   "check whether it or `.trellis` is a symbolic link", "If either is, do not read it at all",
+	//   "the file switches no rule off, every rule applies" and
+	//   "tell the user it is a symbolic link and was not read"
+	//                                   a committed link can point at any file the
+	//                                   user can read, and the fallback cannot apply
+	//                                   a file's rows without reading them into the
+	//                                   agent's context, so on this path a linked
+	//                                   file is not read at all (TRL-97, the
+	//                                   maintainer's answer to code review round 3)
+	//   "a native hook's `## Project rule activation` section"
+	//                                   a hook that withholds a linked or oversized
+	//                                   file still delivers its activation section;
+	//                                   without this the table's second branch sends
+	//                                   the agent to read the file the hook withheld
 	for _, required := range []string{
 		"check whether it or `.trellis` is a symbolic link",
-		"repeat nothing read from it",
-		"give its ignored entries only as a count",
-		"for a file reached through a symbolic link, tell them only how many",
+		"If either is, do not read it at all",
+		"the file switches no rule off, every rule applies",
+		"tell the user it is a symbolic link and was not read",
+		"a native hook's `## Project rule activation` section",
 		"A single top-level `governed = false` is an opt-out, not a row set",
 		"no rule applies including the two floor rules",
 		"Only a row whose boolean is `false` switches its rule off",
