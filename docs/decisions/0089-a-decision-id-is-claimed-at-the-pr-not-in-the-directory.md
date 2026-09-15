@@ -16,6 +16,8 @@ date: 2026-09-03
 
 # 0089 — a decision id is claimed at the pull request, not in the directory
 
+> **Dated note, 2026-09-14 — TRL-99 (PR #315):** The whole decision no longer holds: the `decision-id-guard` check, its tie-break, its output and its claim rule were deleted, and a new record is named by date and slug, so no id is claimed. `AGENTS.md`'s *Operating method* states how a record is named and why no check replaces this one.
+
 ## Context
 
 **`docs/decisions/` on `main` is not the allocation authority; the merge queue is.** Every branch that

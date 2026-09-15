@@ -84,7 +84,7 @@ and `docs/` holds none. The rubric is repository-internal, so `TestDocsClaimOnly
     `cli/testdata/README.md` and `profiles/trellis-self.md` take the new paths, and `README.md`'s repo
     map stops listing the rubric under `core/`.
   - Eleven records and four planning records take the new path token, per `decision-0015:117-121`.
-    `decision-0098:133-134`, which describe this move, keep the old paths.
+    `decision-0098:137-138`, which describe this move, keep the old paths.
   - `decision-0010`'s forward pointer, `core/invariants/trellis-invariants-v1.md:148` and the comment in
     `cli/docs_consistency_test.go` change as points 2 to 4 state.
 - **No payload change**, so `plugins/trellis/VERSION` does not move.
