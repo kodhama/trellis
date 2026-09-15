@@ -86,7 +86,8 @@ row from `true` to `false` moved the rate from 95% to 0%.
    Codex and 32768 B on Claude, stay as guards against a runaway payload. No project file within the
    1 MiB read bound can reach them, because the shared limit in point 4 and the warning cap in point 3
    bound what the file adds. On Codex that holds while the plugin's own path, which the context names
-   once, stays under about 420 bytes; the installed Codex plugin path measured 56 bytes.
+   once, stays within 400 bytes, a bound the parity test pins; the installed Codex plugin path measured
+   56 bytes.
 6. **One header ships, and no preset.** `trellis.md` carries the "By default" sentence for every
    project. `rules-a.toml`, `rules-b.toml`, `trellis-a.md`, `trellis-b.md` and the per-posture inline
    blocks retire. The shipped inline block carries no rows section; a project with opt-outs builds the

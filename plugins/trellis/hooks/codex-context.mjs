@@ -615,13 +615,13 @@ function ruleWarnings(entries, symlink) {
 // trailing newline so one more is supplied. Measured on 2026-09-15 on a 74-byte
 // plugin root, that context is 9153 bytes, 347 under MAX_CONTEXT_BYTES; the
 // too-large branch peaks at 8869 (the too-large line beside five of the longest
-// warning at seven-digit line numbers and a count line). 1900 left 247, under
-// the 250 bytes held back for a longer plugin root path, which appears once in
-// the prose, so 1800 is the largest round value that keeps that margin. It is
-// below the 2.5 KB first approved, and every consumer file known on 2026-09-14
-// (1.1-1.2 KB) is still shown beside a few warnings.
+// warning at seven-digit line numbers and a count line). The plugin root path
+// appears once in the prose, so the echoed case fits a root of up to 421 bytes;
+// at 1900 it fitted only 321, so 1800 is the largest round value that fits a
+// 400-byte root. It is below the 2.5 KB first approved, and every consumer file
+// known on 2026-09-14 (1.1-1.2 KB) is still shown beside a few warnings.
 // TestBothHostsClassifyRulesRowsIdentically builds both largest sections and
-// fails when either leaves less than 250 bytes.
+// fails when either would not fit a 400-byte plugin root.
 const RULES_ECHO_MAX_BYTES = 1800;
 
 // activationSection builds what follows the rules prose on both branches (KTD1,

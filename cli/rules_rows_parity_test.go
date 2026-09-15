@@ -46,8 +46,8 @@ import (
 // RULES_ECHO_MAX_BYTES, staleness.sh rules_echo_max). The file is echoed
 // verbatim only when its bytes plus the bytes of its rendered warning block fit
 // B; otherwise the too-large line stands in for it. Measured so the largest
-// section either branch can build leaves codexContextMargin under
-// codexContextCap (the two "largest" rows below).
+// section either branch can build fits codexContextCap on a plugin root of
+// codexPluginRootMaxBytes (the two "largest" rows below).
 const rulesShowMaxBytes = 1800
 
 // rulesReadMaxBytes is the read bound both hooks put on the project file
@@ -59,10 +59,12 @@ const rulesReadMaxBytes = 1024 * 1024
 // than read from the hook so a changed cap is a visible edit here.
 const codexContextCap = 9500
 
-// codexContextMargin is the headroom the largest section must leave under
-// codexContextCap on this suite's own plugin root, for an install whose plugin
-// root path, repointed into the prose, is longer.
-const codexContextMargin = 250
+// codexPluginRootMaxBytes is the longest plugin root path the largest section
+// must still fit under codexContextCap. The root enters the Codex context once
+// per repointed invariants pointer, so the check is measured from the context
+// against this suite's own root, whose length varies by runner, rather than
+// against a fixed margin. The decision record states the same bound.
+const codexPluginRootMaxBytes = 400
 
 const activationHeading = "## Project rule activation"
 
@@ -232,7 +234,8 @@ type rulesRowsCase struct {
 	// output, the Codex systemMessage included.
 	absent []string
 	// largest marks a row built to the largest section its branch can deliver:
-	// the Codex context must leave codexContextMargin under the cap.
+	// the Codex context must fit the cap on a plugin root of
+	// codexPluginRootMaxBytes.
 	largest bool
 	// decodedOverB marks an echoed file that fits B as read but not as decoded.
 	// Codex decodes the file as UTF-8, so each byte that is not valid UTF-8
@@ -520,11 +523,20 @@ func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRules
 			t.Errorf("codex: the context is %d bytes, over MAX_CONTEXT_BYTES (%d)", n, codexContextCap)
 		}
 		// Q1: no project file can cost a Codex session its rules, and the largest
-		// section the bound allows leaves room for a longer plugin root.
+		// section the bound allows still fits on a plugin root of
+		// codexPluginRootMaxBytes. The root is read back from the repointed
+		// invariants pointer, and every byte it grows by is charged once per time
+		// the context names it.
 		if c.largest {
-			t.Logf("codex: the largest section of this kind assembles a %d-byte context, %d under MAX_CONTEXT_BYTES", n, codexContextCap-n)
-			if codexContextCap-n < codexContextMargin {
-				t.Errorf("codex: the largest section leaves %d bytes under MAX_CONTEXT_BYTES, less than the %d-byte margin a longer plugin root needs", codexContextCap-n, codexContextMargin)
+			m := regexp.MustCompile("`([^`]+)/reference/invariants\\.md`").FindStringSubmatch(r.context)
+			if m == nil {
+				t.Fatalf("codex: the context names no repointed invariants pointer to measure the plugin root by:\n%s", r.context)
+			}
+			root := m[1]
+			fits := len(root) + (codexContextCap-n)/strings.Count(r.context, root)
+			t.Logf("codex: the largest section of this kind assembles a %d-byte context on a %d-byte plugin root, so it fits a plugin root of up to %d bytes", n, len(root), fits)
+			if fits < codexPluginRootMaxBytes {
+				t.Errorf("codex: the largest section fits a plugin root of only %d bytes, under the %d bytes the decision record promises", fits, codexPluginRootMaxBytes)
 			}
 		}
 		// KTD4: the warnings are mirrored to systemMessage, in the same order and
