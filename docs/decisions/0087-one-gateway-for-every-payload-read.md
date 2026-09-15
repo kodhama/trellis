@@ -30,6 +30,8 @@ date: 2026-09-03
 
 # 0087 — one gateway for every payload read; a defect class closed by construction, not by patch twelve
 
+> **Dated note, 2026-09-14 — TRL-99 (PR #315):** The provenance's "whose CI guard now fails the higher-numbered claimant at the PR" no longer holds: that guard was deleted, and a new record is named by date and slug, so no id is claimed. `AGENTS.md`'s *Operating method* states how a record is named now.
+
 ## Context
 
 `decision-0083` and `decision-0084` shipped a run of fixes that shared one shape:

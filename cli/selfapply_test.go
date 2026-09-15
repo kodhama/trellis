@@ -189,12 +189,12 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 		t.Error(".grove/ exists — decision-0076 retired grove and deleted it; its return means configuration for an uninstalled plugin is back in the tree")
 	}
 	// decision-0099: the governance corpus lives under docs/. A root decisions/ or
-	// research/ is outside the docs/ record-root exemption and outside the
-	// decision-id guard, which reads docs/decisions/ only — so a merge that resolves
-	// git's directory-rename conflict toward the old path, or a branch cut before
-	// the move, would land a record no check sees.
+	// research/ is outside the docs/ record-root exemption and outside corpusRoots,
+	// which the conformance tests read from docs/decisions/ and docs/research/ — so a
+	// merge that resolves git's directory-rename conflict toward the old path, or a
+	// branch cut before the move, would land a record no check sees.
 	if _, err := os.Stat(filepath.Join("..", "decisions")); !os.IsNotExist(err) {
-		t.Error("decisions/ exists at the repository root — decision-0099 moved the records to docs/decisions/; one here is invisible to the decision-id guard")
+		t.Error("decisions/ exists at the repository root — decision-0099 moved the records to docs/decisions/; a record here is outside the corpus the conformance tests check")
 	}
 	if _, err := os.Stat(filepath.Join("..", "research")); !os.IsNotExist(err) {
 		t.Error("research/ exists at the repository root — decision-0099 moved the notes to docs/research/")

@@ -124,7 +124,9 @@ scope: trellis-meta
    to the successor. A **partially superseded** artifact stays current for its remainder. A part is retired by a
    dated note under the record's title, never by a new `superseded_in_part_by` entry (`AGENTS.md`);
    the `superseded_in_part_by` entries already in the corpus stay, and resolve like `depends_on`
-   (`decision-0040`). *Exemption (`inv-auditable-archive`): an
+   (`decision-0040`). A record retired in full with no successor record carries a dated note under its
+   title instead of `superseded_by` (`AGENTS.md`); the pointer check cannot see that retirement, so the
+   reviewer confirms no non-`decision` artifact `depends_on` such a record. *Exemption (`inv-auditable-archive`): an
    **append-only** `decision` may keep a dependency on the version current at its ratification
    (historical, not current-truth); a successor referencing its predecessor for diffing is also
    exempt.* *FAIL → name the offender.*
