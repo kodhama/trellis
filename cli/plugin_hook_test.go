@@ -329,13 +329,54 @@ func TestStalenessHook(t *testing.T) {
 			noCanary(t, run(t, ".trellis/internal/version", canary))
 			noCanary(t, run(t, ".trellis/version", canary))
 		})
+		// Lines just outside each accepted shape. Each starts like a stamp an
+		// install wrote, so only the inner checks keep it out of the output; a
+		// check reduced to its prefix patterns fails here. marker is the text
+		// that must not reach the output.
+		t.Run("near misses are not quoted", func(t *testing.T) {
+			for _, tc := range []struct{ line, marker string }{
+				{"payload@CANARYTOKEN", "CANARYTOKEN"},
+				{"payload@deadbeefCANARY", "CANARY"},
+				{"payload@abc:CANARY", "CANARY"},
+				{"plugin@abc123:CANARY", "CANARY"},
+				{"plugin@unknownCANARY", "CANARY"},
+				{"payload@ deadbeefcafe", "deadbeefcafe"},
+				{"payload@" + strings.Repeat("a", 65), strings.Repeat("a", 65)},
+				{"1..2.3", "1..2.3"},
+				{"1.2.3.", "1.2.3."},
+				{"1.2.3.4", "1.2.3.4"},
+				{"10.20.30.40", "10.20.30.40"},
+				{"v1.2", "v1.2"},
+				{"1.2.3CANARY", "CANARY"},
+				{"1.2.3-CANARY", "CANARY"},
+				{"1.2." + strings.Repeat("3", 29), strings.Repeat("3", 29)},
+			} {
+				t.Run(tc.line, func(t *testing.T) {
+					ctx := nudge(t, run(t, ".trellis/version", tc.line))
+					if strings.Contains(ctx, tc.marker) {
+						t.Errorf("a line that is not a stamp reached the legacy nudge: %q\n%s", tc.line, ctx)
+					}
+				})
+			}
+			if msg := nudge(t, run(t, ".trellis/internal/version", "payload@ deadbeefcafe")); strings.Contains(msg, "deadbeefcafe") {
+				t.Errorf("a stamp with whitespace inside it reached the stale nudge:\n%s", msg)
+			}
+		})
+		// A range such as a-f follows the locale's collation, and under a UTF-8
+		// locale it admitted an accented letter as hex.
+		t.Run("an accented letter is not hex under a UTF-8 locale", func(t *testing.T) {
+			t.Setenv("LC_ALL", "en_US.UTF-8")
+			if ctx := nudge(t, run(t, ".trellis/version", "payload@café")); strings.Contains(ctx, "payload@caf") {
+				t.Errorf("an accented stamp reached the legacy nudge:\n%s", ctx)
+			}
+		})
 		// The other direction: every stamp shape an install ever wrote is still
 		// quoted, so the fix cannot pass by quoting nothing.
 		t.Run("stamps of every shape an install wrote are still quoted", func(t *testing.T) {
 			if msg := nudge(t, run(t, ".trellis/internal/version", "payload@000000000000")); !strings.Contains(msg, "payload@000000000000") {
 				t.Errorf("a payload stamp must be quoted:\n%s", msg)
 			}
-			for _, stamp := range []string{"payload@000000000000", "plugin@0000000", "0.2.16"} {
+			for _, stamp := range []string{"payload@000000000000", "plugin@0000000", "plugin@unknown", "0.2.16", "v0.2.16", "0.0.0-dev"} {
 				if msg := nudge(t, run(t, ".trellis/version", stamp)); !strings.Contains(msg, "("+stamp+";") {
 					t.Errorf("the legacy stamp %q must be quoted:\n%s", stamp, msg)
 				}
