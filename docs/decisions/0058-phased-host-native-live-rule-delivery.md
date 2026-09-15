@@ -15,6 +15,8 @@ superseded_in_part_by: [decision-0065, decision-0071]  # 2026-08-01 decision-007
 > 1's `.trellis/internal/` source to vendored projects. Phases 1-3 and the
 > unclaimed-surface warning stand unchanged.
 
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** Point 6's explicit "apply preset" operation, which would "replace the rows, strictness, and `seeded_from` provenance with the conductor or author-adapt seed", has nothing left to apply: no preset ships and both keys are ignored. Point 7's requirement that `rules.toml` pass "strictness, complete-known-row, and floor validation" no longer holds: a rule with no row applies, and a bad entry is ignored with a warning while the file's other rows keep their effect. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+
 > **Human direction (2026-07-24).** The maintainer rejected refresh-time rule
 > activation and asked for a progressive rollout: keep Claude's working import
 > delivery, begin with the locally proven Codex hook path, validate other Codex

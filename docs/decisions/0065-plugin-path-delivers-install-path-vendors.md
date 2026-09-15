@@ -82,7 +82,7 @@ hook fires under `claude -p` and its injection reaches the model, measured. What
 survives of the objection is narrower: a bare subagent is not a session, and
 plugin provisioning in an ephemeral container is a separate problem.
 
-`decision-0051:192-195` records that *"the per-session hook variant was considered
+`decision-0051:200-201` records that *"the per-session hook variant was considered
 and rejected"* because *"no reader exists"*. A reader exists now — this hook is
 it.
 
@@ -166,14 +166,14 @@ the sharpest defect in it: 0058 is `approved` (maintainer intent act 2026-07-24)
 and its phase table governs precisely this act. Both an independent adversary and
 the repository's own Codex reviewer raised it separately.
 
-0058 does not forbid this change. Its phase 4 (`:123`) **conditionally authorises**
+0058 does not forbid this change. Its phase 4 (`:131`) **conditionally authorises**
 it:
 
 > | 4 | Other hosts, including any Claude hook replacement | A host-native proof at
 > least as strong as Phase 1; remove or disable the old transport in the same
 > change so rules still arrive once |
 
-and `:188-189` sets the boundary condition:
+and `:196-197` sets the boundary condition:
 
 > The Claude import may eventually be replaced by a verified Claude hook, but
 > **never while both paths would inject the full rule payload.**
@@ -198,12 +198,12 @@ tested, not asserted.
 Setup and refresh retain the managed import block in `CLAUDE.md`"* — is
 superseded, which is exactly the "remove or disable the old transport" phase 4
 contemplates. Its rule 1's *"from `.trellis/internal/`"* narrows to vendored
-projects. Its `:182-183` claim that `.trellis/internal/` "remains useful rather
+projects. Its `:190-191` claim that `.trellis/internal/` "remains useful rather
 than vestigial" holds only for those projects.
 
 **What 0058 keeps.** Phases 1–3 stand untouched: this decision claims nothing
 about Codex resume, clear, compact, subagents, desktop, IDE, headless or cloud,
-and `:186-187`'s warning that those are "named next experiments, not fine print"
+and `:194-195`'s warning that those are "named next experiments, not fine print"
 applies to the Claude hook exactly as written. `startup` and `resume` are
 measured; nothing else is.
 

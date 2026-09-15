@@ -137,7 +137,7 @@ narrows to the consented steps and §5 reports the skipped artifact as retained.
 
 **Why the rendered file goes FIRST, not third.** A project mid-migration can hold
 both delivery paths at once — a managed block plus `.trellis/internal/`, and a
-rendered file. The rendered file has one shape — `install.sh`'s render: it embeds the posture
+rendered file. The rendered file has one shape — `install.sh`'s render: it embeds the rules
 header and the full rules body, and **imports** its activation rows from `.trellis/rules.toml`.
 The property this ordering guarantees is narrow and load-bearing: **no
 interruption window strands an always-loaded governing file whose imported activation rows are

@@ -126,7 +126,7 @@ const (
 	// Claude side, where the STALENESS HOOK had matched the invariants sentence,
 	// the posture note and the activation heading; one legitimate reword flipped
 	// the predicate, and every fresh install got a permanent false "not governed"
-	// warning with the suite green throughout. install.sh:962-967 is where that
+	// warning with the suite green throughout. install.sh:888-893 is where that
 	// history is recorded — the script PRINTS the markers, it never matched the
 	// prose itself. A marker the writer owns cannot drift out from under its
 	// reader; payload prose can.
@@ -134,8 +134,8 @@ const (
 	// decision-0053's "tested wording is the shipped wording" does not reach
 	// these bytes, and the reason is stronger than "a marker is not prose": the
 	// experiment assembled its tested context from the INLINE-channel files
-	// (annotation-vs-absence/run.sh:116-126) and only copied trellis-a.md to
-	// disk (:101), so renderHeader's tail was never in it. Nothing validated
+	// (annotation-vs-absence/run.sh:128-138) and only copied trellis-a.md to
+	// disk (:113), so renderHeader's tail was never in it. Nothing validated
 	// moves here anyway — the marker is appended after every sentence, none
 	// reworded. See TestCodexBootstrapBoundaryIsMachineOwned for the full
 	// citation. decision-0058's "a small, stable loaded-context sentinel" is
@@ -145,26 +145,19 @@ const (
 	trellisProseCompleteMarker = "<!-- trellis:prose-complete -->"
 )
 
-// strengthLine turns the profile's C1 lean into a plain-language instruction the host
-// agent can act on — no jargon (decision-0034).
-func strengthLine(c1 string) string {
-	switch c1 {
-	case "enforced":
-		return "**Firmly** — treat these as hard requirements. Follow them as written; don't skip or soften one without the human's explicit say-so."
-	case "expressed":
-		return "**As guidance** — keep these front of mind and lean toward them; they are the intent, not hard gates."
-	default: // default-on-but-skippable
-		return "**By default** — follow them unless you have a clear, specific reason not to, and when you deviate say so out loud rather than doing it silently."
-	}
-}
+// defaultPostureLine is the one posture sentence every project receives (TRL-97): how
+// strictly to follow the rules, as a plain-language instruction the host agent can
+// act on — no jargon (decision-0034). The "Firmly" and "As guidance" lines retired
+// with the posture presets, and a project's `strictness` key no longer selects one.
+const defaultPostureLine = "**By default** — follow them unless you have a clear, specific reason not to, and when you deviate say so out loud rather than doing it silently."
 
 // governanceHeader is the imperative framing shared by the CLAUDE.md header and the
 // inline (AGENTS.md) block: what this is, that the agent must follow it, and how
 // strictly — self-contained, no Trellis-internal codes (decision-0034).
-func governanceHeader(p Profile) string {
+func governanceHeader() string {
 	return "# How to work in this project\n\n" +
 		"You are working in a project that follows **Trellis** — a small, load-bearing set of working rules on top of the project's own process. **Follow the rules below as you work here.** They add guardrails; they don't replace this project's own instructions.\n\n" +
-		"**How strictly to follow them:** " + strengthLine(p.C1Lean) + "\n"
+		"**How strictly to follow them:** " + defaultPostureLine + "\n"
 }
 
 // invariantsTrigger is the always-on pointer at the full reference, phrased as a
@@ -185,64 +178,60 @@ const invariantsTrigger = "If a rule seems ambiguous, or in tension with this pr
 // would move a pointer nothing in decision-0073 orders moved.
 const inlineInvariantsTrigger = "If a rule seems ambiguous, or in tension with this project's own instructions, read its entry — the description and with/without examples — in the shipped Trellis reference: `reference/invariants.md` in the installed plugin, or `plugins/trellis/reference/invariants.md` at github.com/kodhama/trellis — before deviating."
 
-// The readout's top matter (decision-0053 point 2): the authority header — the
-// eval-tested AUTHORITY_HEADER of research-0012, verbatim except one word adapted
-// for the channel split ("inlined" → "loaded": the inline block inlines the rows
-// below the rules; the import block loads them below the rules via the managed
-// block's @.trellis/rules.toml import) — then the heading, then the live-rows
-// preamble (research-0012's header_arm_readout transform, same one-word
-// adaptation). The tested wording is the shipped wording (decision-0053 context;
-// trellis#170 watch-out). The absence-era assembly preamble and the "(Generated
-// from your `rules.toml` …)" footer retired with decision-0053 points 4+5 — no
-// shipped text claims refresh-time semantics for rows, and nothing closes the
-// readout below its last rule.
+// The readout's top matter (decision-0053 point 2): the authority header, then the
+// heading, then the preamble. The header began as research-0012's eval-tested
+// AUTHORITY_HEADER, one word adapted for the channel split ("inlined" → "loaded").
+// TRL-97 rewords it to the opt-out-only activation rule (KTD2): a rule applies
+// unless a row for it says `active = false`, so a rule with no row applies; the two floor
+// rules always apply while the project is governed; and nothing else in the file
+// changes which rules apply, which covers an inert `strictness` without naming it.
+// The tested "does not apply in this project — do not follow it" sentence, the one
+// that carried a switched-off rule's measured effect, stays verbatim. The rule is
+// stated here once: the preamble points back at it rather than restating it. Neither
+// line claims any longer that the rows always sit below the rules, because the
+// inline block stopped inlining them. The absence-era assembly preamble and the
+// "(Generated from your `rules.toml` …)" footer retired with decision-0053 points
+// 4+5 — no shipped text claims refresh-time semantics for rows, and nothing closes
+// the readout below its last rule.
 const (
-	rulesAuthorityHeader = "**Rule activation is governed by `.trellis/rules.toml` (its rows are loaded below the rules):** apply each rule below ONLY if its row says `active = true`. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rows apply regardless of their row value.\n"
+	rulesAuthorityHeader = "**Rule activation is governed by `.trellis/rules.toml` (its rows, when loaded, appear below the rules):** apply each rule below unless a row for it says `active = false`; a rule with no row applies. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rules always apply while the project is governed, whatever their row says. Nothing else in `.trellis/rules.toml` changes which rules apply.\n"
 	rulesReadoutHeader   = rulesAuthorityHeader +
 		"\n## The rules — do these\n\n" +
-		"Each rule below ends with its row's slug. Whether a rule applies is governed by its row in `.trellis/rules.toml` (see the authority note above; the rows are loaded below the rules). Each is a rule to follow, then the ✗ failure it prevents:\n\n"
+		"Each rule below ends with its row's slug. Whether a rule applies follows the authority note above. Each is a rule to follow, then the ✗ failure it prevents:\n\n"
 )
 
-// The inline managed block: the rows-inlined sandwich (decision-0053 point 2,
-// inline channel) — head + the complete readout + the rows section + tail, exactly
-// the experiment's annotation/control-arm shape (research-0012 run.sh's overlay
-// build), now the shipped shape. The shipped block-inline-<p>.md is the seed-state
-// instance; on refresh an inline install rebuilds the rows section from the
-// consumer's actual rules.toml (its general update cadence — row edits themselves
-// take effect at read time). The head carries the posture's strictness line; the
-// tail is posture-independent, so one tail file ships.
+// The inline managed block: head + the complete readout + tail (decision-0053 point
+// 2, inline channel). Until TRL-97 a rows section carrying a posture's rules.toml
+// seed sat between the readout and the tail — the experiment's annotation/control-arm
+// sandwich (research-0012 run.sh's overlay build). It retired with the seeds: a rule
+// with no row applies, so nothing needs seeding, and the managed inline shape is
+// retired for new installs. A block already pasted into a project keeps its frozen
+// text and its rows. One head, one tail and one whole block ship.
 
 // renderInlineBlockHead is everything above the readout: the begin marker and the
-// governance header (the one per-posture part).
-func renderInlineBlockHead(p Profile) string {
-	return trellisBegin + "\n" + governanceHeader(p) + "\n"
+// governance header.
+func renderInlineBlockHead() string {
+	return trellisBegin + "\n" + governanceHeader() + "\n"
 }
 
-// renderInlineBlockTail is everything below the rows section: the invariants
-// trigger with the live-rows closing sentence (research-0012's header_arm_tail
-// wording — the last thing the model reads must not claim refresh-time row
-// semantics, decision-0053 point 4), and the end marker.
+// renderInlineBlockTail is everything below the readout: the invariants trigger
+// with the live-rows closing sentence (research-0012's header_arm_tail wording —
+// the last thing the model reads must not claim refresh-time row semantics,
+// decision-0053 point 4), and the end marker. With no rows inlined, the sentence
+// sends the reader to the rows in the project's own `.trellis/rules.toml`.
 func renderInlineBlockTail() string {
 	return "\n" + inlineInvariantsTrigger + " Rule activation follows the rows in `.trellis/rules.toml` directly (see the authority note above).\n" +
 		trellisEnd
 }
 
-// renderRowsSection wraps a rules.toml's content as the inline block's rows section
-// — byte-for-byte the wrapper the experiment tested (research-0012 run.sh's
-// sandwich printf). The argument is whichever rules.toml governs the install: the
-// posture seed at render time, the consumer's actual file on a refresh re-paste.
-func renderRowsSection(toml string) string {
-	return "\n## Active rows (`.trellis/rules.toml`)\n\n```toml\n" + toml + "```\n"
-}
-
 // renderInlineBlock is the M1 footprint for instruction files WITHOUT @import support
-// (e.g. AGENTS.md): the whole thing is inlined and self-contained — the seed-state
-// instance of the head + readout + rows + tail sandwich (decision-0053 point 2).
-// The reasoning + examples live in the shipped reference (invariants.md in the
-// plugin/payload — the tail points there, decision-0073); the block stands on
-// its own with no .trellis/internal/ beside it.
-func renderInlineBlock(p Profile) string {
-	return renderInlineBlockHead(p) + renderRulesReadout() + renderRowsSection(renderRulesToml(p)) + renderInlineBlockTail()
+// (e.g. AGENTS.md): the whole thing is inlined and self-contained — head + readout +
+// tail (decision-0053 point 2, narrowed by TRL-97). The reasoning + examples live in
+// the shipped reference (invariants.md in the plugin/payload — the tail points
+// there, decision-0073); the block stands on its own with no .trellis/internal/
+// beside it.
+func renderInlineBlock() string {
+	return renderInlineBlockHead() + renderRulesReadout() + renderInlineBlockTail()
 }
 
 // renderClaudeBlock is the minimal CLAUDE.md footprint: a human-readable line plus
@@ -262,26 +251,44 @@ func renderClaudeBlock() string {
 // renderCodexBootstrap is the small AGENTS.md receipt/fallback installed by the
 // Codex host branch (spec-0007@v1 R11-R16). It deliberately contains no rule
 // prose, activation values, generated readout, or posture-specific content.
-// The slug inventory is names-only: it is the canonical set the agent reconciles
-// a loaded rules.toml AGAINST, not a completeness predicate the file must satisfy.
-// That distinction is the whole of TRL-31. Until then this prose required every
-// canonical slug exactly once and told the agent to say "Trellis was not loaded"
-// otherwise — while both hooks had already stopped refusing a mismatched slug set
-// and started reconciling it (decision-0083 for Claude, decision-0084 for Codex).
-// On the fallback path, where no hook runs, the agent IS the reconciler, so it was
-// being told to refuse a file the hook beside it would repair. What still fails
-// closed is unchanged and deliberately narrow: absent or unreadable inputs, and a
-// genuine syntax fault (decision-0084 section 1 — parseRulesToml returns null only
-// for those). The bootstrap reconciles for the session and reports; it does NOT
-// carry the hooks' write-the-file mandate, which stays with the hosts that emit it.
+// The slug inventory is names-only: it is the canonical set by which the agent
+// tells a shipped slug from an unknown one, not a completeness predicate the file
+// must satisfy. TRL-31 drew that distinction when both hooks reconciled a
+// mismatched slug set (decision-0083, decision-0084); TRL-97 retired reconciliation,
+// and item 2 moved with it. On the fallback path no hook runs, so the agent
+// classifies the rows itself and must classify them as the hooks do: only a row set
+// to false switches a rule off, any one false row is enough whatever the other rows
+// for that rule say, a rule with no row applies, and an entry the format
+// does not define is ignored without costing the file. What still fails closed is
+// deliberately narrow: the generated files' own checks, and a rules.toml that is
+// absent or cannot be read. The bootstrap never tells the agent to edit the file,
+// since no host rewrites it any more.
+//
+// Item 2 names neither retired top-level key and writes the row value as a
+// placeholder. The hooks ignore those keys without comment, so naming one invites
+// the agent to act on it, and a literal row value would be an activation value,
+// which this block carries none of. The agent reports the rows it ignored and not
+// the keys, so the keys the hooks pass over silently stay silent here too.
+//
+// A rules file reached through a symbolic link is still classified by both hooks,
+// which show nothing read from it and only count its ignored entries (TRL-97 Q5):
+// a committed link can point at any file the user can read. The agent on this
+// path cannot apply a file's rows without reading them into its own context, so
+// item 2 has it not read a linked file at all: nothing is switched off and every
+// rule applies (the maintainer's answer to TRL-97's code review round 3). That
+// includes a `governed = false` inside the linked file, so a project that
+// declined through a link is governed on this path; that edge was accepted. A
+// hook that withholds a linked or oversized file still delivers its activation
+// section, which is why the fallback table counts that section as loaded:
+// without it the table would send the agent to read the withheld file.
 //
 // The `governed = false` exception is load-bearing and is NOT decoration: on the
 // one-line opt-out codex-context.mjs exits 0 emitting nothing, which is precisely
-// when this bootstrap takes over. The retired predicate refused that file only by
-// accident — an opt-out carries no strictness, so it was never "complete" — and
-// reconciliation removes the accident, since an absent row set is reconcilable by
-// definition. Without the exception stated here, describing reconciliation would
-// have converted a silent opt-out into sixteen synthesized active rows.
+// when this bootstrap takes over. Read as a row set, that file holds no false row,
+// so every rule would apply; without the exception stated here, a project that
+// declined Trellis would be governed. A repeated `governed`, or one that is not a
+// boolean, is no opt-out: it is ignored like any other malformed entry, and every
+// rule applies.
 //
 // Assessment item 1 names two markers and no prose (TRL-10). It deliberately
 // does NOT add the end marker to the four-inputs paragraph below, which
@@ -293,16 +300,6 @@ func renderClaudeBlock() string {
 // file-level checks were already structural (an exact `@rules.md` expansion
 // point, the one terminal sentinel, a `^payload@[0-9a-f]{12}$` stamp), so
 // item 1 was the only prose-keyed predicate left in the block.
-//
-// One clause deliberately states the RATIFIED contract over current hook
-// behaviour, and is called out rather than quietly reconciled to it: "a repeated
-// top-level key" is fatal per decision-0084 section 1's table, but a repeated
-// `governed` is not fatal in either hook today — codex-context.mjs:440-446 skips
-// a boolean `governed` before the duplicate check at :451-456, and staleness.sh
-// opts out only at `-eq 1` (:403), so TWO `governed = false` lines govern on both
-// hosts instead of opting out or failing. That is a hook defect against the
-// record, filed rather than encoded here; a fallback that refuses the file is
-// also the fail-safe direction for one somebody was plainly trying to opt out of.
 func renderCodexBootstrap() string {
 	return codexBootstrapBegin + `
 # Trellis delivery receipt and fallback
@@ -312,20 +309,20 @@ Trellis rules are authoritative only in the installed project files listed below
 Before substantive work, assess two independently loaded components:
 
 1. Generated prose is complete only when the exact terminal sentinel ` + "`" + trellisRulesLoadedSentinel + "`" + ` is followed, later in the same generated prose, by the exact end marker ` + "`" + trellisProseCompleteMarker + "`" + ` — both written by the generator, in that order, each matched as a whole line and as nothing else. The prose between and around them is free to be reworded and is no part of this test. A sentinel alone, an end marker alone, a diagnostic marker, this bootstrap's mention of either marker, or bare slug-name presence is not completion.
-2. Activation TOML is valid when it parses and ` + "`strictness`" + `, if present, is exactly ` + "`firm`" + ` or ` + "`adaptive`" + ` — absent, read it as ` + "`adaptive`" + `. A single top-level ` + "`governed = false`" + ` is an opt-out, not a row set: nothing is reconciled, no rule applies including the two floor rules, and you say so rather than govern. Otherwise a row set that does not match the canonical list below is **reconciled, never refused** — for this session, in what you load, never by editing the file: a canonical slug carrying no row of its own governs as active, the first occurrence of a repeated slug is kept, and a correctly shaped row naming a slug not in that list, or a later duplicate of one in it, is set aside — commented out with the date and the reason, its value kept verbatim, never deleted. A disabled floor row is understood as overridden-by-floor. Only a genuine syntax fault makes the file invalid: a row not of the form ` + "`inv-<name>`" + ` or ` + "`floor-<name>`" + `, ` + "`<name>`" + ` lowercase letters and hyphens only, followed by ` + "`= { active = <boolean> }`" + `; before the ` + "`[rules]`" + ` header, a key other than ` + "`seeded_from`" + `, ` + "`strictness`" + ` or ` + "`governed`" + `, or one of those repeated; a duplicate or foreign section; a ` + "`seeded_from`" + ` or ` + "`strictness`" + ` whose value is not a quoted string, or a ` + "`strictness`" + ` that is present but is neither value; or a ` + "`governed`" + ` that is not a boolean.
+2. Activation TOML is valid whenever ` + "`.trellis/rules.toml`" + ` can be read: no entry in it makes the file invalid, and you never edit or rewrite the file. A single top-level ` + "`governed = false`" + ` is an opt-out, not a row set: no rule applies including the two floor rules, and you say so rather than govern. Top-level means above every section header, and single means exactly one ` + "`governed`" + ` line there. Otherwise the file can only switch rules off. A row sits under the ` + "`[rules]`" + ` header and is ` + "`inv-<name>`" + ` or ` + "`floor-<name>`" + `, ` + "`<name>`" + ` lowercase letters and hyphens only, followed by ` + "`= { active = <boolean> }`" + `. Only a row whose boolean is ` + "`false`" + ` switches its rule off; a canonical slug with no row applies, and a rule with any ` + "`false`" + ` row is off, whatever its other rows say, so a repeated row for a slug is not an error. Every other entry is ignored, and ignoring it changes nothing else in the file: a ` + "`false`" + ` row for either floor rule, since floor rules cannot be switched off; a row naming a slug not in the list below, which another plugin version may ship; a line under ` + "`[rules]`" + ` that is neither a row nor a comment, and a row outside ` + "`[rules]`" + `; any other section, with the lines under it; a repeated ` + "`governed`" + `, or one that is not a boolean; and any other top-level key. Before reading ` + "`.trellis/rules.toml`" + `, check whether it or ` + "`.trellis`" + ` is a symbolic link. If either is, do not read it at all: the file switches no rule off, every rule applies, and you tell the user it is a symbolic link and was not read.
 
 ` + "`" + strings.Join(catalogSlugOrder(), "`, `") + "`" + `
 
 Use this single-copy fallback table:
 
-- If both the sentinel-plus-end-marker boundary and valid activation TOML are already present from a previously verified generated overlay, use the loaded context and read no Trellis file again.
-- If the boundary is present but activation TOML is absent or invalid, read only ` + "`.trellis/rules.toml`" + `.
+- If the sentinel-plus-end-marker boundary is present together with either valid activation TOML from a previously verified generated overlay or a native hook's ` + "`## Project rule activation`" + ` section, use the loaded context and read no Trellis file again.
+- If the boundary is present but neither of those is, read only ` + "`.trellis/rules.toml`" + `.
 - If valid activation TOML is present but the boundary is absent, read only the three ` + "`.trellis/internal/`" + ` files.
 - If neither component is present, read and validate all four installed inputs.
 
 The four inputs are ` + "`.trellis/internal/trellis.md`" + `, ` + "`.trellis/internal/rules.md`" + `, ` + "`.trellis/internal/version`" + `, and ` + "`.trellis/rules.toml`" + `. The generated prose files must be readable and nonempty; trellis.md must contain exactly one exact ` + "`@rules.md`" + ` expansion point; rules.md must carry the one terminal sentinel; version, after at most one terminal newline is trimmed, must match ` + "`^payload@[0-9a-f]{12}$`" + `; and rules.toml must be valid by the test above. The installed files, never plugin-side reference files, are the rule authority.
 
-Missing native-hook delivery is not itself an error: attempt the applicable fallback branch. A reconciled row set is not a failure to load — govern by the reconciled set, and tell the user what you reconciled, row by row, before substantive work. If the required installed components remain absent, unreadable, or invalid, tell the user exactly **“Trellis was not loaded”** and do not claim governed execution.
+Missing native-hook delivery is not itself an error: attempt the applicable fallback branch. An ignored row is not a failure to load: govern by the rows that remain, and tell the user which rows you ignored, and why, before substantive work. If the required installed components remain absent, unreadable, or invalid, tell the user exactly **“Trellis was not loaded”** and do not claim governed execution.
 ` + codexBootstrapEnd
 }
 
@@ -348,15 +345,15 @@ Missing native-hook delivery is not itself an error: attempt the applicable fall
 // "LAST line" scopes to THIS FILE, and deliberately is not a terminality
 // requirement on anything downstream — in .claude/rules/trellis.md the whole of
 // install.sh's own rendered footer follows it (the <!-- trellis:rendered-footer -->
-// marker, the four-line posture-vs-rows paragraph, the activation heading, the
-// @../../.trellis/rules.toml import and the trellis:rendered-from stamp:
-// install.sh:976-988), and in the Codex injection the rows, the mandate and the
-// stamp do (codex-context.mjs buildContext). What the position buys is
+// marker, the activation heading, the @../../.trellis/rules.toml import and the
+// trellis:rendered-from stamp: install.sh:904-912), and in the Codex injection
+// the activation section and the stamp do (codex-context.mjs activationSection).
+// What the position buys is
 // that the marker cannot precede the tail, so it cannot be reached by a delivery
 // that stopped early. Do not turn it into "the marker is the last line of the
 // context": that is false in both delivered artifacts and would fail every one.
-func renderHeader(p Profile) string {
-	return governanceHeader(p) + "\n" +
+func renderHeader() string {
+	return governanceHeader() + "\n" +
 		"@rules.md\n" +
 		"---\n" + invariantsTrigger + "\n" +
 		trellisProseCompleteMarker + "\n"
@@ -416,41 +413,6 @@ func renderRulesReadout() string {
 	// is validation/provenance for transport completeness, not rule prose.
 	b.WriteString(trellisRulesLoadedSentinel)
 	b.WriteByte('\n')
-	return b.String()
-}
-
-// renderRulesToml renders a posture's rules.toml seed (decision-0051 rule 2:
-// posture-as-seed, rows-as-truth): explicit rows, one per assessable catalog slug,
-// all active; seeded_from is provenance only; strictness is the one instance-level
-// key (rule 7 — no per-row dials until something enforces them). The comments are
-// the live-rows wording research-0012's header_arm_toml tested (decision-0053
-// point 4): rows govern at read time, and the floor rows apply regardless of their
-// value (decision-0051 rule 3, now held by the readout's authority header plus
-// setup's loud validation rather than by assembly).
-func renderRulesToml(p Profile) string {
-	strictness := "adaptive"
-	if p.C1Lean == "enforced" {
-		strictness = "firm"
-	}
-	slugs := catalogSlugOrder()
-	width := 0
-	for _, s := range slugs {
-		if len(s) > width {
-			width = len(s)
-		}
-	}
-	var b strings.Builder
-	b.WriteString("# Rows govern rule activation live (see the authority note in the project instructions).\n\n")
-	fmt.Fprintf(&b, "seeded_from = %q  # provenance only — the rows below win if they diverge\n", p.Short)
-	fmt.Fprintf(&b, "strictness  = %q  # firm (a·conductor) | adaptive (b·author-adapt)\n", strictness)
-	b.WriteString("\n[rules]  # one row per assessable catalog slug (signature-catalog-v1)\n")
-	for _, slug := range slugs {
-		fmt.Fprintf(&b, "%-*s = { active = true }", width, slug)
-		if strings.HasPrefix(slug, "floor-") {
-			b.WriteString("  # floor — applies regardless of this row")
-		}
-		b.WriteString("\n")
-	}
 	return b.String()
 }
 

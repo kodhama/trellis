@@ -282,6 +282,7 @@ func TestRemoveSkillFalseSentencesRemoved(t *testing.T) {
 		{"install.sh seeds rules.toml, so a fresh curl install carries TWO shapes (conformance item 10 / adversary F1)", "has the rendered file and neither of the other two"},
 		{"false for the post-step-2 window — keep the ordering, fix the argument (code-review F3)", "leaves **at least one** delivery path intact"},
 		{"provenance is undecidable from disk; consent-on-ambiguity, not a claimed pedigree (code-review F4)", "known to have been added by Trellis"},
+		{"TRL-97 retired the posture headers; install.sh renders the one rules header", "embeds the posture header"},
 	} {
 		if strings.Contains(body, tc.needle) {
 			t.Errorf("SKILL.md still carries %q — %s", tc.needle, tc.why)
@@ -375,6 +376,7 @@ func TestRemoveSkillVerificationAndReportSemantics(t *testing.T) {
 		{"§4", "the mismatch-stop behavior (N4)", "stops the transaction where it stands", tx},
 		{"§4", "the verification-failed category (N4)", "verification-failed", tx},
 		{"§4", "the single import-form rendered-file characterization (N6)", "imported activation rows", tx},
+		{"§4", "the rendered file's one header, since TRL-97 retired the posture variants", "embeds the rules header", tx},
 		{"§4", "the self-deletion acknowledgement (code-review E)", "this very skill file", tx},
 		// Round 3 (spec-adversary R1/R3): the entry threshold must read
 		// resolves — a denied consent narrows the transaction, it never bars

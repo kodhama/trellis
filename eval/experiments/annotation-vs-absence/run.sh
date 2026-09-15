@@ -38,10 +38,22 @@ RULE_SLUG="${RULE_SLUG:-inv-clarify-before-commit}"
 WORKER_AGENT="${WORKER_AGENT:-claude -p --permission-mode acceptEdits}"
 REVIEWER_AGENT="${REVIEWER_AGENT:-claude -p}"
 OUTDIR="${OUTDIR:-$EXP/runs}"
-REF="$ROOT/plugins/trellis/reference"
 FIX="$EXP/fixture"
 [ -d "$FIX" ] || { echo "FATAL: fixture dir $FIX missing" >&2; exit 1; }
 [ -f "$FIX/brief.md" ] || { echo "FATAL: $FIX/brief.md missing — the worker brief is fixture-local" >&2; exit 1; }
+
+# Payload inputs are pinned to the recorded run's commit (runs/provenance, first line).
+# TRL-97 retired the posture-a files from the shipped payload, and the surviving files
+# moved on (rules.md no longer carries the absence-era preamble header_arm_readout
+# rewrites), so every payload file this runner reads comes from that commit.
+PAYLOAD_COMMIT=2ec7da8fec054e87c54c47e6491703613c4ce192
+git -C "$ROOT" cat-file -e "$PAYLOAD_COMMIT^{commit}" 2>/dev/null || { echo "FATAL: commit $PAYLOAD_COMMIT (this experiment's recorded run) is not in the local clone at $ROOT — its payload inputs cannot be resolved; fetch the full history (git fetch --unshallow) and re-run" >&2; exit 1; }
+REF="$(mktemp -d)"
+trap 'rm -rf "$REF"' EXIT
+for f in rules.md invariants.md version trellis-a.md rules-a.toml block-inline-a-head.md block-inline-tail.md; do
+  git -C "$ROOT" show "$PAYLOAD_COMMIT:plugins/trellis/reference/$f" > "$REF/$f" 2>/dev/null \
+    || { echo "FATAL: plugins/trellis/reference/$f missing at $PAYLOAD_COMMIT" >&2; exit 1; }
+done
 grep -q "\`$RULE_SLUG\`" "$REF/rules.md" || { echo "FATAL: slug $RULE_SLUG not tagged in payload rules.md" >&2; exit 1; }
 
 # The authority header (eval-local; the live-rows mechanism under test).

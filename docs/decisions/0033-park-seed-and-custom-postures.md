@@ -17,6 +17,8 @@ ratified: 2026-07-05
 
 # 0033 — Offer two postures (conductor / author-adapt); park seed and custom
 
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** Point 1's two postures no longer ship: the presets `rules-a.toml` and `rules-b.toml` and the headers `trellis-a.md` and `trellis-b.md` retire, `strictness` is ignored, and every project receives the "By default" sentence. So the pointer above's "the two-posture offer (point 1) is unchanged" and the Consequences' "A vs B is a stated stance" no longer hold. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+
 ## Context
 
 Setup offered four profile presets — **A conductor · B author-adapt · seed · Custom**. In practice:

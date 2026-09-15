@@ -115,9 +115,7 @@ anyone has seen. Two limits: the environment snapshot keeps what the script wrot
 so the plugin version is pinned between rebuilds, and a session gets this only when it runs in
 an environment carrying the script.
 
-Applying a preset **replaces** rows, strictness and `seeded_from`, so replacing a file you
-already have shows up as a git diff — provided the file is committed, which nothing does for you. There is no per-host disable: `/trellis:remove` removes both
-host blocks and the shared overlay. The parked `seed` and `custom` presets stay parked.
+There is no per-host disable: `/trellis:remove` removes both host blocks and the shared overlay.
 
 ## Install
 
@@ -131,49 +129,58 @@ resolved):
 ```
 
 That is the whole install **on Claude Code**, where installing at project scope is the adoption
-act — the shipped defaults apply immediately, all sixteen rules at the adaptive posture, with no
-further command and no file required (`decision-0070` D3).
+act — every rule applies immediately, with no further command and no file required
+(`decision-0070` D3).
 
 **Codex is not supported yet.** It remains a delivery target (`kodhama-0013`) with **no date
 attached**. The machinery is already here — `hooks/codex-context.mjs`, a `.codex-plugin/`
 manifest, a catalog entry — and none of it is claimed as a supported path (`kodhama-0021` §2).
 Until it is, Codex is carried rather than maintained: its behaviour is not kept in step with the
-Claude path, and a difference between them is expected rather than a defect to file. **Row-set
-reconciliation is no longer one of those differences:** `codex-context.mjs` used to refuse a
-mismatched or incomplete row set outright — `invalid-rules`, nothing injected — and it now
-reconciles and delivers exactly as the Claude hook described below does, pinned to byte-identical
-reconciled output by a cross-host test (`decision-0084`). That closes one named gap; it does not
-make Codex a supported path. What a
+Claude path, and a difference between them is expected rather than a defect to file. **Reading
+`.trellis/rules.toml` is not one of those differences:** on the plugin path, given the same file,
+both hooks deliver the same rules text, switch off the same rules and give the same warnings,
+pinned by a cross-host test. That closes one named gap; it does not make Codex a supported path.
+What a
 supported Codex distribution would require is tracked in Linear. Its adoption signal also differs —
 `codex-context.mjs` walks up for `.trellis/rules.toml` and reports `project-root-not-found`
 when there is none, so both the project-scope default and the user-scope announcement above are
 Claude-only (`decision-0070` D7). On Codex the config file is the only adoption signal there is,
 which is where `decision-0077` leaves the Claude path too.
 
-Changing the posture has two shapes, the same on both hosts. **With no `.trellis/rules.toml`
-yet**, copy a **complete** preset — `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive — then set
-`active = false` on any row you want off. A hand-written partial file is no longer fatal: the hook
-validates the row set against what the plugin ships and, on a mismatch, **reconciles** it rather
-than injecting nothing — a missing slug is delivered `active = true`, a row the payload does not
-ship is **quarantined** (commented out with the date and the payload stamp, never deleted), the
-session is governed from the reconciled set, and the agent writes that set back and reports what it
-changed (`decision-0083`). A row starting with `#` is a quarantined row: inert, safe to leave, and
-one uncomment away if a newer release ships that slug. **With a file already there**, edit
-`strictness` in place:
-both presets set every row active, so copying one over your file silently re-enables every rule
-you disabled. **With the one-line `governed = false` opt-out**, editing `strictness` beside the
-opt-out leaves it in force and the hook stays silent, so that is not re-enabling. Deleting the line
-alone does re-enable governance, but on an empty file that reconciles to all sixteen rows active at
-the adaptive posture — so confirm the intent, and write a complete preset over it if the posture or
-the row set matters (`decision-0070` D5, `decision-0083`). Older projects still carry an
-**overlay**, split by who owns what (`decision-0051`):
+**Configuring it is the same on both hosts.** `.trellis/rules.toml` keeps a `[rules]` table, and
+only a row set `active = false` has any effect: `<slug> = { active = false }` switches that rule
+off. To switch it back on, delete that row: a row that says `active = true` does not override it.
+A rule with no false row applies, and `strictness` and `seeded_from` do nothing. Floor rules cannot
+be switched off. A bad entry — a floor or an unknown slug set to `active = false`, a row that does
+not parse, a key the file does not define — is ignored with a warning in the session, and the
+file's other rows keep their effect. A new file holds exactly these two lines, the same two
+`install.sh` seeds and the hook asks for when a user accepts its announcement:
+
+```toml
+# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }
+[rules]
+```
+
+**With the one-line `governed = false` opt-out** — one top-level line, above any table — no rule
+applies, floor rules included (`decision-0070` D5). Deleting that line turns governance back on with
+every rule applying, so confirm the intent first. **An existing file keeps working as it is:** its
+`strictness`, `seeded_from` and `active = true` rows now do nothing, and nothing asks you to remove
+them. Removing rows is safe only once every install that opens the repository runs 0.24.0 or later,
+because installed plugin versions are pinned per checkout and 0.6.0 and older refuse a file with
+missing rows. **A legacy delivery shape keeps every row:** a vendored `.trellis/internal/` overlay,
+an inline managed block, and a `.claude/rules/trellis.md` rendered by an older installer carry rules
+text that applies a rule only when its row says `active = true`, so those projects keep a full row
+set until they migrate.
+
+Older projects still carry an **overlay**, split by who owns what (`decision-0051`):
 
 - **`.trellis/` root — yours.** `rules.toml` alone (the machine-read config: one row per rule,
-  `active = true|false`, plus a `strictness` key), seeded once from the payload and **never
-  rewritten**; editing a row *is* the configuration act, and it takes effect **immediately** —
-  the readout ships complete with an authority header, and your rows govern which rules apply at
-  read time (`decision-0053`); each rule in the readout ends with its row's slug, so the two are
-  matchable. The two floors (`floor-transparency`, `floor-intent-gate`) have rows too, but the
+  `active = true|false`), **never rewritten**; editing a row *is* the configuration act, and it
+  takes effect **immediately** — the readout ships complete with an authority header, and your rows
+  govern which rules apply at read time (`decision-0053`); each rule in the readout ends with its
+  row's slug, so the two are matchable. Keep a row for every rule on this shape: the overlay's
+  authority header applies a rule only when its row says `active = true`.
+  The two floors (`floor-transparency`, `floor-intent-gate`) have rows too, but the
   floor rules apply regardless of their value, and the injected readout says so rather than
   silently honoring a row set false. (There is no `expression.md`: it retired with the
   `decision-0051` amendment — your governance prose belongs in your own instructions file, which
@@ -191,14 +198,15 @@ very next session. Augment-never-clobber; nothing else is touched, and it's idem
 
 Migration is a manual edit since `decision-0072` retired the setup skill. Delete
 `.trellis/internal/` (or the pre-`decision-0051` flat files directly in `.trellis/`) and the
-managed block from your instructions file, keeping `.trellis/rules.toml`. The plugin then
-delivers the rules and the hook stops nudging. Three cases the retired refresh used to handle,
+managed block from your instructions file, keeping `.trellis/rules.toml`. An inline block with no
+`.trellis/rules.toml` beside it holds its rows inside the block: before deleting it, write the
+two-line file shown under Install, followed by each row the block sets to `active = false`. The
+plugin then delivers the rules and the hook stops nudging. Three cases the retired refresh used to handle,
 and what to do about each yourself:
 
 - **Flat-layout overlays** (generated files directly in `.trellis/`, from before `decision-0051`):
-  delete the old-path copies. If there is no `.trellis/rules.toml`, copy the shipped preset
-  (`reference/rules-b.toml`) rather than recovering rows from the legacy `profile:` key in
-  `expression.md` — the preset is the current row set.
+  delete the old-path copies. If there is no `.trellis/rules.toml`, write the two-line file shown
+  under Install rather than recovering rows from the legacy `profile:` key in `expression.md`.
 - **A leftover `expression.md`** (seeded before the amendment retired it): move any hand-written
   body into your own instructions file, outside the managed block, then delete the file. Nothing
   reads it any more, so leaving it in place is harmless but inert.
@@ -216,9 +224,9 @@ and what to do about each yourself:
   confirmation), then `.trellis/` — and point a morphed project at its git rollback.
 - **`reference/`** — the pre-rendered payload (`kodhama-0007`): `invariants.md` (the full signature
   catalog: every invariant with its *why* and a with/without example), the complete rules readout
-  (`rules.md`, opened by the live-rows authority header), the `rules-<p>.toml` posture seeds,
-  every posture variant of the header and managed blocks, and the checksum manifest
-  `install.sh` verifies against.
+  (`rules.md`, opened by the live-rows authority header), the rules header (`trellis.md`), the
+  managed blocks (`block-claude.md`, `block-codex.md`, and `block-inline.md` with its head and tail
+  parts), and the checksum manifest `install.sh` verifies against.
 - **`hooks/`** — host-isolated hooks: Claude's `SessionStart` staleness hook stays quiet until the installed plugin's payload differs
   from the overlay in your project (`decision-0039` rule 1, mechanics per `decision-0043`), then
   nudges you once, with the manual migration steps. Binary-free and network-free:

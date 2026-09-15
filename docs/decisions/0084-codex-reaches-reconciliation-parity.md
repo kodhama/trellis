@@ -22,6 +22,8 @@ date: 2026-08-30
 
 # 0084 — Codex reaches reconciliation parity; `parseRulesToml` becomes a classifier
 
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** §1, §2, §4 and §6 no longer hold: `parseRulesToml` no longer classifies a file for reconciliation, Codex neither reconciles nor writes quarantine comments, and the over-budget provenance degradation retires with provenance. The four conditions §1 kept fatal no longer fail closed: an invalid `strictness` is ignored, and a malformed row, an unknown top-level key, a second or foreign section or a bad `governed` line is ignored with a warning. §5's byte-identity guard retires with the two reconcilers it paired. §3's empty-slug-set guard stands. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+
 ## Context
 
 **`decision-0083` retired the blackout on one host and said so.** Its §1 recorded that the design's
@@ -361,7 +363,7 @@ changed.
   nothing to re-present it is exactly the shape `inv-no-orphan-followups` was minted against
   (`decision-0078`) — whose own analysis names this case in `inv-self-improvement`'s violated
   example, *"a PR raises the same open question every time, with no follow-up, and it rots
-  unowned"* (`docs/decisions/0078:47`), while ruling that a deferral is not a glitch but **planned work
+  unowned"* (`docs/decisions/0078:49`), while ruling that a deferral is not a glitch but **planned work
   with no address**. It now has one: **TRL-31** (Medium, Bug, related to TRL-30 and TRL-20) is the
   named consumer that will re-present it.
 

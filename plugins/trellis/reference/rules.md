@@ -1,8 +1,8 @@
-**Rule activation is governed by `.trellis/rules.toml` (its rows are loaded below the rules):** apply each rule below ONLY if its row says `active = true`. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rows apply regardless of their row value.
+**Rule activation is governed by `.trellis/rules.toml` (its rows, when loaded, appear below the rules):** apply each rule below unless a row for it says `active = false`; a rule with no row applies. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rules always apply while the project is governed, whatever their row says. Nothing else in `.trellis/rules.toml` changes which rules apply.
 
 ## The rules — do these
 
-Each rule below ends with its row's slug. Whether a rule applies is governed by its row in `.trellis/rules.toml` (see the authority note above; the rows are loaded below the rules). Each is a rule to follow, then the ✗ failure it prevents:
+Each rule below ends with its row's slug. Whether a rule applies follows the authority note above. Each is a rule to follow, then the ✗ failure it prevents:
 
 - Build only on settled ground — an approved spec or a made decision, never a draft that's still changing under you. If your input isn't settled, or you can't tell whether it is, ask before you build on it. `inv-directional-flow`
     ✗ an agent builds against a spec still being edited; it shifts, and the work is built on a version that no longer exists.
