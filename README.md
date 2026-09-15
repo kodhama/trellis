@@ -31,7 +31,8 @@ that, and a new one holds exactly these two lines:
 ```
 
 - **To switch a rule off**, add its row under `[rules]`: `<slug> = { active = false }`. Only a row
-  like that has any effect. A rule with no row applies, and so does a row that says `active = true`;
+  like that has any effect, and one is enough. **To switch the rule back on, delete that row**: a
+  row that says `active = true` does not override it. A rule with no false row applies, and
   `strictness` and `seeded_from` do nothing. Floor rules cannot be switched off. A bad entry — a
   floor or an unknown slug set to `active = false`, a row that does not parse, a key the file does
   not define — is ignored with a warning in the session, and the rest of the file still counts.
@@ -122,8 +123,9 @@ less install.sh && sh install.sh --scope personal
 
 Neither path needs a command to become governed — the curl path seeds the file and a
 project-scoped plugin applies the shipped defaults without any file at all (`decision-0070`).
-To switch individual rules off, add `active = false` rows as described at the top of this section;
-the curl path never rewrites a file you already have.
+To switch individual rules off, add `active = false` rows as described at the top of this section,
+and delete a rule's false row to switch it back on; the curl path never rewrites a file you already
+have.
 
 ### Local Codex — carried, not supported
 

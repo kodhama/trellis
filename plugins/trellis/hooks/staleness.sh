@@ -791,7 +791,7 @@ if [ ! -f "$toml" ]; then
     # The accept instruction quotes the new file byte for byte, one backticked
     # span per line (TRL-97, KTD9); install.sh seeds the same bytes, and a test
     # pins the pair.
-    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 16 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\` — so the choice persists; without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: a row <slug> = { active = false } under [rules] switches that rule off.) Inject and follow no Trellis rules this turn: none are active yet."
+    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 16 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\` — so the choice persists; without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: a row <slug> = { active = false } under [rules] switches that rule off, and the rule stays off until that row is gone, whatever any other row for it says.) Inject and follow no Trellis rules this turn: none are active yet."
     exit 0
   fi
 fi
@@ -1015,11 +1015,13 @@ case "$rules_prose" in
 esac
 
 # ----------------------------------------------------- the project rules file
-# TRL-97. Only a row set `active = false` has any effect. The contract is KTD3
-# of the TRL-97 plan; codex-context.mjs classifyRules implements the same one,
-# and TestBothHostsClassifyRulesRowsIdentically runs both hooks on one table, so
-# a line class the two read differently is a red test rather than two hosts
-# governing one project differently.
+# TRL-97. Only a row set `active = false` has any effect, and one is enough: a
+# rule is off when any row for it under [rules] says false, whatever its other
+# rows say, so a repeated row is never an error. The contract is KTD3 of the
+# TRL-97 plan as the maintainer amended it; codex-context.mjs classifyRules
+# implements the same one, and TestBothHostsClassifyRulesRowsIdentically runs
+# both hooks on one table, so a line class the two read differently is a red
+# test rather than two hosts governing one project differently.
 #
 # Nothing here refuses the file for what it says: a bad entry costs that entry
 # and is reported, never the session, because over-governance the session
@@ -1036,24 +1038,44 @@ esac
 # largest consumer file known on 2026-09-14, and the two hosts refuse the same
 # files.
 rules_file_max=1048576
-# T (KTD12), codex-context.mjs RULES_ECHO_MAX_BYTES. A file of at most this many
-# bytes is echoed verbatim under the computed sentence; a larger one is replaced
-# by one line in the payload block below.
-rules_echo_max=1500
-# The warning cap (KTD4), codex-context.mjs OTHER_WARNINGS_NAMED and
-# WARNING_NAME_MAX. It is applied in one place, at the end of the classifier
-# below: every ignored row that sets a shipped rule to active = false is named,
-# the first $rules_warnings_named of the other warnings are named and the rest
-# counted, and a name taken from the file is cut at $rules_warning_name_max
-# bytes, so a runaway file cannot turn its warnings into the context.
+# B, codex-context.mjs RULES_ECHO_MAX_BYTES, where its measurement is recorded.
+# The file is echoed verbatim under the computed sentence only while its bytes
+# plus the bytes of its rendered warning block (every warning line with its
+# newline, the count line included) fit this; otherwise one line in the payload
+# block below stands in for it. The Codex context budget is the tighter of the
+# two hosts, so it sets the value, and both hosts share it so the activation
+# sections stay identical.
+rules_echo_max=1800
+# The warning cap (KTD4), codex-context.mjs WARNINGS_NAMED and WARNING_NAME_MAX.
+# It is applied in one place, at the end of the classifier below: five warnings
+# are named in total, first the attempts (a false row for a shipped rule that
+# takes no effect) and then the rest, each group in file line order; past the
+# fifth, one count line says how many more entries were ignored and how many of
+# them are attempts. A name taken from the file is cut at
+# $rules_warning_name_max bytes, so a runaway file cannot turn its warnings into
+# the context.
 rules_warnings_named=5
 rules_warning_name_max=40
 
 rules_off=""
 rules_warnings=""
 rules_echo=yes
+rules_symlink=no
 toml_size=0
 if [ "$rows_present" = yes ]; then
+  # A rules file reached through a symbolic link (TRL-97). A repository can
+  # commit .trellis/rules.toml, or the directory holding it, as a link to
+  # any file the user can read, a credentials file included, and the echo would
+  # put that file into the model context. It is still read and classified, so
+  # its opt-outs apply and the sentence names them from the payload slugs, but
+  # nothing read from it is shown: no echo and no key, slug or line number in a
+  # warning, only counts. Only the two components this project owns are tested,
+  # never the project root, whose own path often runs through a link. The
+  # governed = false read, the read bound and the NUL byte check go through the
+  # link unchanged.
+  if [ -L "$toml" ] || [ -L "$root/.trellis" ]; then
+    rules_symlink=yes
+  fi
   classified=""
   if [ -r "$toml" ] && toml_size="$(wc -c 2>/dev/null < "$toml")"; then
     toml_size="$(printf '%s' "$toml_size" | tr -d '[:space:]')"
@@ -1072,33 +1094,41 @@ if [ "$rows_present" = yes ]; then
     else
       # The classifier. It prints one `off <slugs>` line, the switched-off
       # rules in rules.md order, then one `warn <kind> <line> <name>` record per
-      # warning in file line order, already bounded; `#` stands in for a name
-      # the entry does not have, since no slug or key can hold one. The words of
-      # each warning live in the payload block below, as printf format literals
-      # the destructive-instruction scans read. A file it cannot open prints
-      # `#unreadable`, which is refused below rather than read as a file that
-      # switches nothing off.
+      # named warning in the order it is shown, already bounded, then at most one
+      # count record: `warn more <entries> <attempts>`, or for a symlinked file
+      # `warn symlink-count <entries> <attempts>` and nothing else. `#` stands in
+      # for a name the entry does not have, since no slug or key can hold one.
+      # The words of each warning live in the payload block below, as printf
+      # format literals the destructive-instruction scans read. A file it cannot
+      # open prints `#unreadable`, which is refused below rather than read as a
+      # file that switches nothing off.
       #
       # LC_ALL=C, so the character classes are ASCII and length is bytes, as on
       # the other host. Paths and the byte-order mark arrive through ENVIRON,
       # which does no escape processing (see the -v note above).
       classified="$(
-        TRELLIS_TOML="$toml" TRELLIS_SLUGS="$rule_slugs" TRELLIS_BOM="$bom" \
+        TRELLIS_TOML="$toml" TRELLIS_SLUGS="$rule_slugs" TRELLIS_BOM="$bom" TRELLIS_SYMLINK="$rules_symlink" \
         TRELLIS_NAMED="$rules_warnings_named" TRELLIS_NAME_MAX="$rules_warning_name_max" \
         LC_ALL=C awk '
-          function note(ln, kind, name, shipped_false) {
+          # A warning that names a slug (a floor row set false, an unknown slug
+          # set false, a row above [rules]) is noted once per kind and slug, at
+          # the first line that draws it, so a repeated row adds none. A later
+          # row can only make that entry an attempt: a well-formed false row for
+          # a shipped slug that takes no effect, which the cap names first.
+          function note(ln, kind, name, attempt,    k) {
+            if (kind == "floor-row" || kind == "unknown-slug" || kind == "row-above-rules") {
+              k = kind " " name
+              if (k in first) {
+                if (attempt) e_attempt[first[k]] = 1
+                return
+              }
+              first[k] = n + 1
+            }
             n++
             e_line[n] = ln
             e_kind[n] = kind
             e_name[n] = name
-            e_always[n] = 0
-            # An ignored row setting a shipped rule to false is always named,
-            # once per slug: the model reads that row verbatim in the file, and
-            # silence about it would read as the rule being off.
-            if (shipped_false && !(name in named)) {
-              named[name] = 1
-              e_always[n] = 1
-            }
+            e_attempt[n] = attempt ? 1 : 0
           }
           # The value a governed line holds, as the regex on the other host
           # reads it: the longest run with no space or tab, unless what follows
@@ -1117,6 +1147,7 @@ if [ "$rows_present" = yes ]; then
             bom = ENVIRON["TRELLIS_BOM"]
             named_max = ENVIRON["TRELLIS_NAMED"] + 0
             name_max = ENVIRON["TRELLIS_NAME_MAX"] + 0
+            symlink = ENVIRON["TRELLIS_SYMLINK"]
             nslugs = split(ENVIRON["TRELLIS_SLUGS"], order, " ")
             for (i = 1; i <= nslugs; i++) shipped[order[i]] = 1
             section = "top"
@@ -1186,11 +1217,6 @@ if [ "$rows_present" = yes ]; then
                 else note(lineno, "malformed-row", key, 0)
                 continue
               }
-              if (slug in seen) {
-                note(lineno, "duplicate-row", slug, shipped_false)
-                continue
-              }
-              seen[slug] = 1
               if (value == "true") continue
               if (!(slug in shipped)) note(lineno, "unknown-slug", slug, 0)
               else if (substr(slug, 1, 6) == "floor-") note(lineno, "floor-row", slug, 1)
@@ -1206,19 +1232,27 @@ if [ "$rows_present" = yes ]; then
               if (order[i] in off) out = out (out == "" ? "" : ", ") order[i]
             print "off " out
 
-            # THE WARNING CAP (KTD4), in the one place it is applied.
-            said = 0
-            counted = 0
-            for (i = 1; i <= n; i++) {
-              if (!e_always[i]) {
-                if (said == named_max) { counted++; continue }
-                said++
-              }
-              nm = e_name[i]
-              if (nm != "#" && length(nm) > name_max) nm = substr(nm, 1, name_max) "..."
-              print "warn " e_kind[i] " " e_line[i] " " nm
+            # THE WARNING CAP (KTD4), in the one place it is applied. A
+            # symlinked file draws one count and nothing it holds. Otherwise the
+            # attempts are named first (pass 1) and then the rest (pass 2), five
+            # in all, and one count record covers every entry left.
+            attempts = 0
+            for (i = 1; i <= n; i++) if (e_attempt[i]) attempts++
+            if (symlink == "yes") {
+              if (n > 0) print "warn symlink-count " n " " attempts
+              exit
             }
-            if (counted > 0) print "warn counted " counted " #"
+            said = 0
+            for (pass = 1; pass <= 2; pass++) {
+              for (i = 1; i <= n && said < named_max; i++) {
+                if (e_attempt[i] != (pass == 1)) continue
+                said++
+                nm = e_name[i]
+                if (nm != "#" && length(nm) > name_max) nm = substr(nm, 1, name_max) "..."
+                print "warn " e_kind[i] " " e_line[i] " " nm
+              }
+            }
+            if (n > said) print "warn more " (n - said) " " (attempts - (attempts < named_max ? attempts : named_max))
           }
         '
       )"
@@ -1238,36 +1272,18 @@ fi
 payload="$(
   printf '%s\n' "$rules_prose"
   if [ "$rows_present" = yes ]; then
-    printf '\n## Project rule activation\n\n'
-    # THE COMPUTED SENTENCE (KTD1). It names the rules the file switches off, in
-    # rules.md order, so the model is told the effective result even where the
-    # file below still shows a row this hook ignored.
-    if [ -z "$rules_off" ]; then
-      printf 'The project file .trellis/rules.toml switches no rule off, so every rule above applies.\n'
-    else
-      printf 'The project file .trellis/rules.toml switches these rules off: %s. Every other rule above applies.\n' "$rules_off"
-    fi
-    # THE FILE, OR THE LINE THAT STANDS IN FOR IT (KTD12). Echoed verbatim up to
-    # T bytes, with a newline supplied when it has none; above T, one line. A
-    # file holding a NUL byte is neither, and an empty file has nothing to show.
-    if [ "$rules_echo" = yes ] && [ "$toml_size" -gt 0 ]; then
-      printf '\n'
-      if [ "$toml_size" -gt "$rules_echo_max" ]; then
-        printf 'The project file is larger than %s bytes, so it is not shown here; the sentence above names every rule it switches off.\n' "$rules_echo_max"
-      else
-        cat "$toml"
-        [ -z "$(tail -c 1 "$toml")" ] || printf '\n'
-      fi
-    fi
-    # THE WARNINGS (KTD4), in file line order and already bounded by the
-    # classifier. Every template is a printf format literal, so the
-    # destructive-instruction and deletion scans read it; the line, slug and key
-    # arrive as arguments. None quotes the raw line, and none asks for the file
-    # to change. Case arms open with a parenthesis: bash 3.2 otherwise reads a
-    # bare pattern paren as the end of this command substitution.
+    # THE WARNINGS (KTD4), rendered first because their bytes decide below
+    # whether the file is shown, and printed last. They arrive in the order and
+    # bound the classifier already applied. Every template is a printf format
+    # literal, so the destructive-instruction and deletion scans read it; the
+    # line, slug and key arrive as arguments, and for the two count lines the
+    # counts do. None quotes the raw line, and none asks for the file to change.
+    # Case arms open with a parenthesis: bash 3.2 otherwise reads a bare pattern
+    # paren as the end of this command substitution.
+    rules_warning_block=""
+    rules_warning_bytes=0
     if [ -n "$rules_warnings" ]; then
-      printf '\n'
-      printf '%s\n' "$rules_warnings" | while read -r kind line name; do
+      rules_warning_block="$(printf '%s\n' "$rules_warnings" | while read -r kind line name; do
         case "$kind" in
           (nul-byte)
             printf 'Trellis warning: .trellis/rules.toml contains a NUL byte, so none of its rows take effect and it is not shown; every rule applies.\n'
@@ -1277,9 +1293,6 @@ payload="$(
             ;;
           (floor-row)
             printf 'Trellis warning: line %s of .trellis/rules.toml sets the floor rule %s to active = false, but floor rules cannot be switched off, so the row is ignored and the rule applies.\n' "$line" "$name"
-            ;;
-          (duplicate-row)
-            printf 'Trellis warning: line %s of .trellis/rules.toml is a later row for %s, so it is ignored; the first row for a rule decides.\n' "$line" "$name"
             ;;
           (row-above-rules)
             printf 'Trellis warning: line %s of .trellis/rules.toml is a row for %s above the [rules] table, so it is ignored; rows count only under [rules].\n' "$line" "$name"
@@ -1306,11 +1319,69 @@ payload="$(
               printf 'Trellis warning: line %s of .trellis/rules.toml is a malformed row naming %s, so it is ignored and switches no rule off; any rule it names still applies.\n' "$line" "$name"
             fi
             ;;
-          (counted)
-            printf 'Trellis warning: ignored entries in .trellis/rules.toml beyond those named above: %s. None of them switches a rule off.\n' "$line"
+          (more)
+            if [ "$line" = 1 ]; then
+              if [ "$name" = 1 ]; then
+                printf 'Trellis warning: .trellis/rules.toml has 1 more ignored entry, and it tries to switch a rule off.\n'
+              else
+                printf 'Trellis warning: .trellis/rules.toml has 1 more ignored entry, and it does not try to switch a rule off.\n'
+              fi
+            elif [ "$name" = 0 ]; then
+              printf 'Trellis warning: .trellis/rules.toml has %s more ignored entries, none of which tries to switch a rule off.\n' "$line"
+            elif [ "$name" = 1 ]; then
+              printf 'Trellis warning: .trellis/rules.toml has %s more ignored entries, 1 of which tries to switch a rule off.\n' "$line"
+            else
+              printf 'Trellis warning: .trellis/rules.toml has %s more ignored entries, %s of which try to switch a rule off.\n' "$line" "$name"
+            fi
+            ;;
+          (symlink-count)
+            if [ "$line" = 1 ]; then
+              if [ "$name" = 1 ]; then
+                printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its 1 ignored entry is counted but not named; it tries to switch a rule off.\n'
+              else
+                printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its 1 ignored entry is counted but not named; it does not try to switch a rule off.\n'
+              fi
+            elif [ "$name" = 0 ]; then
+              printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its %s ignored entries are counted but not named; none of them tries to switch a rule off.\n' "$line"
+            elif [ "$name" = 1 ]; then
+              printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its %s ignored entries are counted but not named; 1 of them tries to switch a rule off.\n' "$line"
+            else
+              printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its %s ignored entries are counted but not named; %s of them try to switch a rule off.\n' "$line" "$name"
+            fi
             ;;
         esac
-      done
+      done)"
+      rules_warning_bytes="$(printf '%s\n' "$rules_warning_block" | wc -c | tr -d '[:space:]')"
+    fi
+    printf '\n## Project rule activation\n\n'
+    # THE COMPUTED SENTENCE (KTD1). It names the rules the file switches off, in
+    # rules.md order, so the model is told the effective result even where the
+    # file below still shows a row this hook ignored.
+    if [ -z "$rules_off" ]; then
+      printf 'The project file .trellis/rules.toml switches no rule off, so every rule above applies.\n'
+    else
+      printf 'The project file .trellis/rules.toml switches these rules off: %s. Every other rule above applies.\n' "$rules_off"
+    fi
+    # THE FILE, OR THE LINE THAT STANDS IN FOR IT. A file reached through a
+    # symbolic link is never shown, at any size. Any other file is echoed
+    # verbatim, with a newline supplied when it has none, only while its bytes
+    # plus the bytes of the warning block fit B; past that, one line. A file
+    # holding a NUL byte is neither, and an empty file has nothing to show.
+    if [ "$rules_echo" = yes ]; then
+      if [ "$rules_symlink" = yes ]; then
+        printf '\n'
+        printf 'The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off.\n'
+      elif [ "$((toml_size + rules_warning_bytes))" -gt "$rules_echo_max" ]; then
+        printf '\n'
+        printf 'The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n'
+      elif [ "$toml_size" -gt 0 ]; then
+        printf '\n'
+        cat "$toml"
+        [ -z "$(tail -c 1 "$toml")" ] || printf '\n'
+      fi
+    fi
+    if [ -n "$rules_warning_block" ]; then
+      printf '\n%s\n' "$rules_warning_block"
     fi
   fi
   # The path-B arm of TRL-34. Delivery is unaffected -- the rules payload is
@@ -1331,12 +1402,13 @@ payload="$(
 # A bounded payload, like the Codex hook's MAX_CONTEXT_BYTES. It once caught a
 # runaway rules.toml — measured, a 5 MB file produced 4.8 MB of valid JSON and
 # exit 0 — and since TRL-97 no project file can reach it: the file is echoed
-# only up to $rules_echo_max bytes and its warnings are bounded. What is left
-# for it is a plugin payload that has outgrown the budget on its own.
+# only while it and its warnings fit $rules_echo_max bytes, and its warnings are
+# bounded. What is left for it is a plugin payload that has outgrown the budget
+# on its own.
 limit=32768
 size=$(printf '%s' "$payload" | wc -c | tr -d '[:space:]')
 if [ "$size" -gt "$limit" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — the assembled Trellis rules are ${size} bytes, over the ${limit}-byte injection budget, so nothing was injected. The project file is echoed only up to ${rules_echo_max} bytes and its warnings are bounded, so this is a plugin payload that has outgrown the budget: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — the assembled Trellis rules are ${size} bytes, over the ${limit}-byte injection budget, so nothing was injected. The project file is echoed only while it and its warnings fit ${rules_echo_max} bytes, and its warnings are bounded, so this is a plugin payload that has outgrown the budget: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
   exit 0
 fi
 

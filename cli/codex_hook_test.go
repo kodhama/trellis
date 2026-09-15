@@ -410,8 +410,8 @@ func TestCodexHookFailureVocabularyAndIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The project file is read up to its own runaway guard and echoed only up to
-	// the shared threshold (TRL-97, KTD12). A file past the old 9500-byte read
+	// The project file is read up to its own runaway guard and echoed only while
+	// it and its warnings fit the shared bound (TRL-97). A file past the old 9500-byte read
 	// bound used to refuse here; it now delivers the too-large line instead, and
 	// only a file past MAX_PROJECT_CONFIG_BYTES (one MiB) is refused.
 	writeFileT(t, configPath, originalConfig+"#"+strings.Repeat("x", 8001)+"\n")
@@ -696,9 +696,12 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 	//   "Only a row whose boolean is `false` ..." and "a canonical slug with no row applies"
 	//                                   the activation rule itself; the retired
 	//                                   predicate wanted an active row for every rule
-	//   "the first row for a slug decides"
-	//                                   without it a later duplicate can flip a
-	//                                   deliberate disable back on, or the reverse
+	//   "a rule with any `false` row is off, whatever its other rows say" and
+	//   "a repeated row for a slug is not an error"
+	//                                   any false row wins on both hooks, so without
+	//                                   it a later true row can read as switching a
+	//                                   deliberate disable back on, and a repeated
+	//                                   row can read as one more entry to ignore
 	//   "a `false` row for either floor rule" and
 	//   "a row naming a slug not in the list below, which another plugin version may ship"
 	//                                   the two ignored rows a project writes on
@@ -721,7 +724,8 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 		"no rule applies including the two floor rules",
 		"Only a row whose boolean is `false` switches its rule off",
 		"a canonical slug with no row applies",
-		"the first row for a slug decides",
+		"a rule with any `false` row is off, whatever its other rows say",
+		"a repeated row for a slug is not an error",
 		"a `false` row for either floor rule",
 		"a row naming a slug not in the list below, which another plugin version may ship",
 		"lowercase letters and hyphens only",
@@ -744,6 +748,9 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 		"no unknown or duplicate slug",
 		"complete activation predicate",
 		"genuine syntax fault",
+		// Retired with first-row-decides: any false row wins (TRL-97, Q4).
+		"the first row for a slug decides",
+		"a later row for a slug that already has one",
 	} {
 		if strings.Contains(block, retired) {
 			t.Errorf("block-codex.md carries a retired activation predicate %q — a bad entry costs that entry, never the file (TRL-97)", retired)

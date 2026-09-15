@@ -1398,8 +1398,8 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 //
 // The padding goes into the plugin's rules.md, above its terminator, because
 // that is delivered whole. It used to go into the project's rules.toml, which
-// TRL-97 stopped echoing past 1500 bytes, so a padded project file can no
-// longer carry the payload toward the budget.
+// TRL-97 stopped echoing past a small shared bound, so a padded project file can
+// no longer carry the payload toward the budget.
 func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	// staleness.sh's own budget, READ OUT OF THE HOOK rather than duplicated.
 	//

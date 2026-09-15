@@ -1,4 +1,4 @@
-**Rule activation is governed by `.trellis/rules.toml` (its rows, when loaded, appear below the rules):** apply each rule below unless its row says `active = false`; a rule with no row applies. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rules always apply while the project is governed, whatever their row says. Nothing else in `.trellis/rules.toml` changes which rules apply.
+**Rule activation is governed by `.trellis/rules.toml` (its rows, when loaded, appear below the rules):** apply each rule below unless a row for it says `active = false`; a rule with no row applies. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rules always apply while the project is governed, whatever their row says. Nothing else in `.trellis/rules.toml` changes which rules apply.
 
 ## The rules — do these
 

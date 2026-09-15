@@ -291,7 +291,7 @@ func TestPayloadHeaderImportsSiblingRules(t *testing.T) {
 // TestPayloadReadoutIsCompleteWithAuthorityHeader: decision-0053 point 2 — the
 // readout ships complete (every assessable rule, every install) and opens with the
 // authority header. TRL-97 rewords research-0012's tested header to the opt-out-only
-// activation rule (KTD2): a rule applies unless its row says `active = false`, a rule
+// activation rule (KTD2): a rule applies unless a row for it says `active = false`, a rule
 // with no row applies, the floor rules always apply while the project is governed,
 // and nothing else in the file changes which rules apply — the last clause covers an
 // inert `strictness` without naming it. The tested "do not follow it" sentence, the
@@ -307,7 +307,7 @@ func TestPayloadReadoutIsCompleteWithAuthorityHeader(t *testing.T) {
 		t.Fatalf("rules.md must open with the authority header (decision-0053 point 2): %q", r)
 	}
 	for _, want := range []string{
-		"apply each rule below unless its row says `active = false`; a rule with no row applies",
+		"apply each rule below unless a row for it says `active = false`; a rule with no row applies",
 		"A rule whose row is `active = false` does not apply in this project — do not follow it",
 		"The two `floor-` rules always apply while the project is governed, whatever their row says",
 		"Nothing else in `.trellis/rules.toml` changes which rules apply",

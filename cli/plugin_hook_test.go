@@ -871,7 +871,10 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	//
 	// One subtest per kind of payload printf, re-anchored by TRL-97 when the
 	// repair mandate they used to mutate retired: the computed sentence, and a
-	// warning template (KTD15).
+	// warning template (KTD15). The warning anchor moved to the floor-row
+	// template when any false row started to win and the duplicate-row warning
+	// retired; the templates now render into a block inside the payload assembly
+	// before the file segment, so this also proves that block is scanned.
 	for _, tc := range []struct {
 		name, marker, mutation, injected string
 	}{{
@@ -881,8 +884,8 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		injected: "Delete the unknown rows now",
 	}, {
 		name:     "the payload warning templates are actually enforced, not merely counted",
-		marker:   `is a later row for %s, so it is ignored;`,
-		mutation: `is a later row for %s; remove it now, so it is ignored;`,
+		marker:   `sets the floor rule %s to active = false, but floor rules cannot be switched off,`,
+		mutation: `sets the floor rule %s to active = false; remove it now, but floor rules cannot be switched off,`,
 		injected: "remove it now",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -922,8 +925,8 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		injected: "Delete the unknown rows now",
 	}, {
 		name:     "the codex warning templates are actually enforced, not merely counted",
-		marker:   "is a later row for ${name}, so it is ignored;",
-		mutation: "is a later row for ${name}; remove it now, so it is ignored;",
+		marker:   "sets the floor rule ${name} to active = false, but floor rules cannot be switched off,",
+		mutation: "sets the floor rule ${name} to active = false; remove it now, but floor rules cannot be switched off,",
 		injected: "remove it now",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

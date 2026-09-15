@@ -136,9 +136,11 @@ Four-step flow (`01` – `04`):
    pre-rendered bundle by hand.
 2. **02 · rules — You choose which rules apply.** Every rule applies
    until you switch it off with a row in `.trellis/rules.toml`:
-   `<slug> = { active = false }`. A rule with no row applies, floor rules
-   cannot be switched off, and `governed = false` opts the whole project
-   out. An older file with a row for every rule keeps working as it is.
+   `<slug> = { active = false }`. Delete that row to switch the rule back
+   on; a row saying `active = true` does not override it. A rule with no
+   row applies, floor rules cannot be switched off, and `governed = false`
+   opts the whole project out. An older file with a row for every rule
+   keeps working as it is.
    Remove those rows only once every install that opens the repository
    runs 0.24.0 or later, and keep them while the project still carries a
    vendored overlay, an inline block, or a `.claude/rules/trellis.md`

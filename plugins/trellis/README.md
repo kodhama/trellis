@@ -149,12 +149,12 @@ which is where `decision-0077` leaves the Claude path too.
 
 **Configuring it is the same on both hosts.** `.trellis/rules.toml` keeps a `[rules]` table, and
 only a row set `active = false` has any effect: `<slug> = { active = false }` switches that rule
-off. A rule with no row applies, and so does a row that says `active = true`; `strictness` and
-`seeded_from` do nothing. Floor rules cannot be switched off. A bad entry — a floor or an unknown
-slug set to `active = false`, a row that does not parse, a key the file does not define — is ignored
-with a warning in the session, and the file's other rows keep their effect. A new file holds exactly
-these two lines, the same two `install.sh` seeds and the hook asks for when a user accepts its
-announcement:
+off. To switch it back on, delete that row: a row that says `active = true` does not override it.
+A rule with no false row applies, and `strictness` and `seeded_from` do nothing. Floor rules cannot
+be switched off. A bad entry — a floor or an unknown slug set to `active = false`, a row that does
+not parse, a key the file does not define — is ignored with a warning in the session, and the
+file's other rows keep their effect. A new file holds exactly these two lines, the same two
+`install.sh` seeds and the hook asks for when a user accepts its announcement:
 
 ```toml
 # Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }

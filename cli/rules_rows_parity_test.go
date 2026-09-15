@@ -15,13 +15,15 @@ package main
 // The golden text lives in this file and nowhere else in the test suite. A test
 // that read the hook's own templates could not catch the templates changing.
 //
-// Three consumer-visible pieces were still open with the maintainer when this
-// was written, and each sits behind one named place so an answer is a local
-// edit rather than a rewrite of the rows:
+// The maintainer's answers to the five open questions each sit behind one named
+// place here:
 //
-//   - expectedActivationSentence, the computed sentence (KTD1)
-//   - rulesEchoMaxBytes and expectedTooLargeLine, the shared threshold (KTD12)
-//   - expectedWarnings's bound, the five named others (KTD4)
+//   - any false row wins, and a repeated row draws no warning (the rows below)
+//   - five named warnings in total, real-rule attempts first (warnMore)
+//   - one bound on the file plus its warnings (rulesShowMaxBytes,
+//     expectedTooLargeLine)
+//   - a symbolic link is classified and never shown (expectedSymlinkLine,
+//     warnSymlinkCounted)
 //
 // Out of scope on purpose: CR-only line endings and invalid UTF-8, the two
 // divergences TRL-97's follow-up issue records, and every shape where no hook
@@ -36,9 +38,13 @@ import (
 	"testing"
 )
 
-// rulesEchoMaxBytes is T (KTD12): a file of at most this many bytes is echoed
-// verbatim under the framing; a larger one is replaced by the too-large line.
-const rulesEchoMaxBytes = 1500
+// rulesShowMaxBytes is B, the bound both hooks share (codex-context.mjs
+// RULES_ECHO_MAX_BYTES, staleness.sh rules_echo_max). The file is echoed
+// verbatim only when its bytes plus the bytes of its rendered warning block fit
+// B; otherwise the too-large line stands in for it. Measured so the largest
+// section either branch can build leaves codexContextMargin under
+// codexContextCap (the two "largest" rows below).
+const rulesShowMaxBytes = 1800
 
 // rulesReadMaxBytes is the read bound both hooks put on the project file
 // (codex-context.mjs MAX_PROJECT_CONFIG_BYTES, staleness.sh rules_file_max): a
@@ -48,6 +54,11 @@ const rulesReadMaxBytes = 1024 * 1024
 // codexContextCap is codex-context.mjs's MAX_CONTEXT_BYTES, written out rather
 // than read from the hook so a changed cap is a visible edit here.
 const codexContextCap = 9500
+
+// codexContextMargin is the headroom the largest section must leave under
+// codexContextCap on this suite's own plugin root, for an install whose plugin
+// root path, repointed into the prose, is longer.
+const codexContextMargin = 250
 
 const activationHeading = "## Project rule activation"
 
@@ -60,9 +71,16 @@ func expectedActivationSentence(off []string) string {
 	return "The project file .trellis/rules.toml switches these rules off: " + strings.Join(off, ", ") + ". Every other rule above applies."
 }
 
-// expectedTooLargeLine stands in for a file larger than T (KTD12).
+// expectedTooLargeLine stands in for a file whose bytes plus its warning block
+// exceed B.
 func expectedTooLargeLine() string {
-	return fmt.Sprintf("The project file is larger than %d bytes, so it is not shown here; the sentence above names every rule it switches off.", rulesEchoMaxBytes)
+	return "The project file and its warnings are too large to show here; the sentence above names every rule it switches off."
+}
+
+// expectedSymlinkLine stands in for a file reached through a symbolic link, at
+// any size.
+func expectedSymlinkLine() string {
+	return "The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off."
 }
 
 // The warning texts (KTD4). Each names the line and the slug, the key, or only
@@ -77,10 +95,6 @@ func warnUnknownSlug(line int, slug string) string {
 
 func warnFloorRow(line int, slug string) string {
 	return warnLine(line, "sets the floor rule "+slug+" to active = false, but floor rules cannot be switched off, so the row is ignored and the rule applies.")
-}
-
-func warnDuplicateRow(line int, slug string) string {
-	return warnLine(line, "is a later row for "+slug+", so it is ignored; the first row for a rule decides.")
 }
 
 func warnRowAboveRules(line int, slug string) string {
@@ -119,8 +133,51 @@ func warnNulByte() string {
 	return "Trellis warning: .trellis/rules.toml contains a NUL byte, so none of its rows take effect and it is not shown; every rule applies."
 }
 
-func warnCounted(n int) string {
-	return fmt.Sprintf("Trellis warning: ignored entries in .trellis/rules.toml beyond those named above: %d. None of them switches a rule off.", n)
+// warnMore is the count line after the five named warnings: n entries not
+// named, m of which try to switch a rule off.
+func warnMore(n, m int) string {
+	const lead = "Trellis warning: .trellis/rules.toml has "
+	if n == 1 {
+		if m == 1 {
+			return lead + "1 more ignored entry, and it tries to switch a rule off."
+		}
+		return lead + "1 more ignored entry, and it does not try to switch a rule off."
+	}
+	switch m {
+	case 0:
+		return fmt.Sprintf(lead+"%d more ignored entries, none of which tries to switch a rule off.", n)
+	case 1:
+		return fmt.Sprintf(lead+"%d more ignored entries, 1 of which tries to switch a rule off.", n)
+	}
+	return fmt.Sprintf(lead+"%d more ignored entries, %d of which try to switch a rule off.", n, m)
+}
+
+// warnSymlinkCounted is the only warning a symlinked file draws: a count, and
+// nothing read from the file it points at.
+func warnSymlinkCounted(n, m int) string {
+	const lead = "Trellis warning: .trellis/rules.toml is a symbolic link, so its "
+	if n == 1 {
+		if m == 1 {
+			return lead + "1 ignored entry is counted but not named; it tries to switch a rule off."
+		}
+		return lead + "1 ignored entry is counted but not named; it does not try to switch a rule off."
+	}
+	switch m {
+	case 0:
+		return fmt.Sprintf(lead+"%d ignored entries are counted but not named; none of them tries to switch a rule off.", n)
+	case 1:
+		return fmt.Sprintf(lead+"%d ignored entries are counted but not named; 1 of them tries to switch a rule off.", n)
+	}
+	return fmt.Sprintf(lead+"%d ignored entries are counted but not named; %d of them try to switch a rule off.", n, m)
+}
+
+// warningBlockBytes is what the bound charges for the warnings: every warning
+// line with its newline, the count line included.
+func warningBlockBytes(warnings []string) int {
+	if len(warnings) == 0 {
+		return 0
+	}
+	return len(strings.Join(warnings, "\n")) + 1
 }
 
 type rulesSegment int
@@ -128,7 +185,19 @@ type rulesSegment int
 const (
 	segmentEcho rulesSegment = iota
 	segmentTooLarge
+	segmentSymlink
 	segmentNone
+)
+
+// rulesLink says how the project reaches its rules file.
+type rulesLink int
+
+const (
+	linkNone rulesLink = iota
+	// linkFile: .trellis/rules.toml is a symbolic link to a file outside the project.
+	linkFile
+	// linkDir: .trellis is a symbolic link to a directory outside the project.
+	linkDir
 )
 
 type rulesOutcome string
@@ -143,6 +212,7 @@ type rulesRowsCase struct {
 	name       string
 	toml       string
 	unreadable bool
+	link       rulesLink
 	outcome    rulesOutcome // "" means deliver
 	off        []string
 	segment    rulesSegment
@@ -151,6 +221,12 @@ type rulesRowsCase struct {
 	// means unreadable-file. Claude refuses every such file as
 	// TRELLIS_RULES_NOT_LOADED.
 	codexRefusal string
+	// absent is text the file holds that neither host may put anywhere in its
+	// output, the Codex systemMessage included.
+	absent []string
+	// largest marks a row built to the largest section its branch can deliver:
+	// the Codex context must leave codexContextMargin under the cap.
+	largest bool
 }
 
 func (c rulesRowsCase) wantOutcome() rulesOutcome {
@@ -161,11 +237,14 @@ func (c rulesRowsCase) wantOutcome() rulesOutcome {
 }
 
 // expectedSegment is the file part of the region: the file verbatim (with a
-// newline supplied when it has none), the too-large line, or nothing.
+// newline supplied when it has none), the too-large line, the symlink line, or
+// nothing.
 func (c rulesRowsCase) expectedSegment() string {
 	switch c.segment {
 	case segmentTooLarge:
 		return expectedTooLargeLine() + "\n"
+	case segmentSymlink:
+		return expectedSymlinkLine() + "\n"
 	case segmentNone:
 		return ""
 	}
@@ -192,6 +271,24 @@ func (c rulesRowsCase) expectedRegion() string {
 	return strings.Join(parts, "\n")
 }
 
+// checkBoundPremise keeps the table honest about the bound: a row that declares
+// the echo or the too-large line must be on that side of B, so a golden cannot
+// pin the wrong branch by mistake.
+func (c rulesRowsCase) checkBoundPremise(t *testing.T) {
+	t.Helper()
+	if c.wantOutcome() != outcomeDeliver || c.link != linkNone || (c.segment != segmentEcho && c.segment != segmentTooLarge) {
+		return
+	}
+	charged := len(c.toml) + warningBlockBytes(c.warnings)
+	want := segmentEcho
+	if charged > rulesShowMaxBytes {
+		want = segmentTooLarge
+	}
+	if c.segment != want {
+		t.Fatalf("premise: the file and its warnings are %d bytes against a bound of %d, so the row must declare segment %d, not %d", charged, rulesShowMaxBytes, want, c.segment)
+	}
+}
+
 // rulesFileOfBytes pads body with one comment line to exactly n bytes.
 func rulesFileOfBytes(t *testing.T, body string, n int) string {
 	t.Helper()
@@ -206,8 +303,25 @@ func rulesFileOfBytes(t *testing.T, body string, n int) string {
 	return out
 }
 
+// shippedNonFloorSlugs is the payload's non-floor slugs in rules.md order, the
+// order the computed sentence names them in.
+func shippedNonFloorSlugs(t *testing.T) []string {
+	t.Helper()
+	var slugs []string
+	for _, m := range regexp.MustCompile("(?m)`((?:inv|floor)-[a-z-]+)`[ \t]*$").FindAllStringSubmatch(payloadFiles()["rules.md"], -1) {
+		if !strings.HasPrefix(m[1], "floor-") {
+			slugs = append(slugs, m[1])
+		}
+	}
+	if len(slugs) != 14 {
+		t.Fatalf("premise: the payload ships fourteen non-floor rules, found %d", len(slugs))
+	}
+	return slugs
+}
+
 func rulesRowsCases(t *testing.T) []rulesRowsCase {
 	t.Helper()
+	nonFloor := shippedNonFloorSlugs(t)
 
 	var fourteen strings.Builder
 	fourteen.WriteString("[rules]  # one row per assessable catalog slug\n")
@@ -221,12 +335,92 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 
 	thisRepo := readFileT(t, "../.trellis/rules.toml")
 	if !strings.Contains(thisRepo, `strictness  = "firm"`) || !strings.Contains(thisRepo, "seeded_from") ||
-		strings.Count(thisRepo, "{ active = true }") != 16 {
-		t.Fatal("premise: AE8 is this repository's file with strictness = \"firm\", seeded_from and sixteen true rows; it no longer is")
+		strings.Count(thisRepo, "{ active = true }") != 16 || !strings.HasSuffix(thisRepo, "\n") {
+		t.Fatal("premise: AE8 is this repository's file with strictness = \"firm\", seeded_from and sixteen true rows, ending in a newline; it no longer is")
 	}
 
 	const optOut = "[rules]\ninv-minimal-first = { active = false }\n"
 	longSlug := "inv-" + strings.Repeat("a", 60)
+
+	// The retired rules-b.toml preset as it last shipped (4ef640a^), with eight
+	// false rows appended: the code review's reproduction of a Codex session that
+	// loaded no rules at all.
+	presetB := strings.Replace(strings.Replace(legacyFirmRulesToml,
+		`seeded_from = "conductor"`, `seeded_from = "author-adapt"`, 1),
+		`strictness  = "firm"`, `strictness  = "adaptive"`, 1)
+	presetBPlusEight := presetB
+	for _, slug := range nonFloor[:8] {
+		presetBPlusEight += slug + " = { active = false }\n"
+	}
+	if len(presetB) != 1149 || len(presetBPlusEight) != 1493 {
+		t.Fatalf("premise: rules-b.toml is 1149 bytes and 1493 with eight false rows; got %d and %d", len(presetB), len(presetBPlusEight))
+	}
+
+	// This repository's file with six mixed warnings appended, about 1.3 KB.
+	base := strings.Count(thisRepo, "\n")
+	mixed := thisRepo +
+		"floor-transparency = { active = false }\n" +
+		"inv-not-a-rule = { active = false }\n" +
+		"inv-bounded-context = off\n" +
+		"governed = false\n" +
+		"[rules]\n" +
+		"[tool]\n"
+
+	var allAbove strings.Builder
+	var allAboveWarnings []string
+	for i, slug := range nonFloor {
+		allAbove.WriteString(slug + " = { active = false }\n")
+		if i < 5 {
+			allAboveWarnings = append(allAboveWarnings, warnRowAboveRules(i+1, slug))
+		}
+	}
+	allAbove.WriteString("[rules]\n")
+	allAboveWarnings = append(allAboveWarnings, warnMore(9, 9))
+
+	withWarning := "[rules]\nfloor-transparency = { active = false }\ninv-minimal-first = { active = false }\n"
+	withWarningWarnings := []string{warnFloorRow(2, "floor-transparency")}
+	fitsWithWarning := rulesShowMaxBytes - warningBlockBytes(withWarningWarnings)
+
+	// The largest echoed section: every non-floor rule switched off, two warnings
+	// with names at the cut, and the file padded so it and its warnings are
+	// exactly B, with no trailing newline, so the hook supplies one more byte.
+	longKey := strings.Repeat("k", 45)
+	cutKey := longKey[:40] + "..."
+	var largestBody strings.Builder
+	largestBody.WriteString(longKey + "1 = 1\n" + longKey + "2 = 1\n[rules]\n")
+	for _, slug := range nonFloor {
+		largestBody.WriteString(slug + "={active=false}\n")
+	}
+	largestWarnings := []string{warnUnknownKey(1, cutKey), warnUnknownKey(2, cutKey)}
+	largestEcho := strings.TrimSuffix(rulesFileOfBytes(t, largestBody.String(), rulesShowMaxBytes-warningBlockBytes(largestWarnings)+1), "\n")
+
+	// The largest too-large section: every non-floor rule switched off and the
+	// longest warning kind five times over, at seven-digit line numbers, beside a
+	// count line.
+	var runaway strings.Builder
+	runaway.WriteString(strings.Repeat("\n", 999_999))
+	var runawayWarnings []string
+	for i := 0; i < 8; i++ {
+		fmt.Fprintf(&runaway, "%s%d = 1\n", longKey, i)
+		if i < 5 {
+			runawayWarnings = append(runawayWarnings, warnUnknownKey(1_000_000+i, cutKey))
+		}
+	}
+	runaway.WriteString("[rules]\n")
+	for _, slug := range nonFloor {
+		runaway.WriteString(slug + "={active=false}\n")
+	}
+	runawayWarnings = append(runawayWarnings, warnMore(3, 0))
+
+	// A file a symbolic link points at, holding what must never be shown.
+	const canaryKey = "trellis_canary_unknown_key"
+	const canarySecret = "wJalrXUtnFEMIK7MDENGbPxRfiCYTRELLISCANARY"
+	credentials := canaryKey + " = 1\n" +
+		"aws_secret_access_key = " + canarySecret + "\n" +
+		"[rules]\n" +
+		"inv-minimal-first = { active = false }\n" +
+		"floor-transparency = { active = false }\n"
+	canaries := []string{canaryKey, "aws_secret_access_key", canarySecret}
 
 	return []rulesRowsCase{{
 		name: "AE1 a single false row switches that rule off",
@@ -303,14 +497,43 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 			warnMalformedRow(4, ""),
 		},
 	}, {
-		name:     "a duplicate slug, false then true",
-		toml:     optOut + "inv-minimal-first = { active = true }\n",
-		off:      []string{"inv-minimal-first"},
-		warnings: []string{warnDuplicateRow(3, "inv-minimal-first")},
+		// Q4: any false row wins, and a repeated row is never an error.
+		name: "a duplicate slug, false then true, is off and silent",
+		toml: optOut + "inv-minimal-first = { active = true }\n",
+		off:  []string{"inv-minimal-first"},
 	}, {
-		name:     "a duplicate slug, true then false",
-		toml:     "[rules]\ninv-minimal-first = { active = true }\ninv-minimal-first = { active = false }\n",
-		warnings: []string{warnDuplicateRow(3, "inv-minimal-first")},
+		name: "a duplicate slug, true then false, is off and silent",
+		toml: "[rules]\ninv-minimal-first = { active = true }\ninv-minimal-first = { active = false }\n",
+		off:  []string{"inv-minimal-first"},
+	}, {
+		name: "three rows for one slug are off and silent",
+		toml: "[rules]\ninv-minimal-first = { active = true }\ninv-minimal-first = { active = false }\ninv-minimal-first = { active = true }\n",
+		off:  []string{"inv-minimal-first"},
+	}, {
+		name: "repeated true rows are silent",
+		toml: "[rules]\ninv-minimal-first = { active = true }\ninv-minimal-first = { active = true }\n",
+	}, {
+		name:     "a floor row set false twice draws one warning, at the first line",
+		toml:     "[rules]\nfloor-transparency = { active = false }\nfloor-transparency = { active = false }\n",
+		warnings: []string{warnFloorRow(2, "floor-transparency")},
+	}, {
+		// The true row draws nothing, so the first line of the floor-row kind is
+		// the false row.
+		name:     "a floor row true then false draws its warning at the false row",
+		toml:     "[rules]\nfloor-intent-gate = { active = true }\nfloor-intent-gate = { active = false }\n",
+		warnings: []string{warnFloorRow(3, "floor-intent-gate")},
+	}, {
+		name:     "an unknown slug set false twice draws one warning",
+		toml:     "[rules]\ninv-not-a-rule = { active = false }\ninv-not-a-rule = { active = true }\ninv-not-a-rule = { active = false }\n",
+		warnings: []string{warnUnknownSlug(2, "inv-not-a-rule")},
+	}, {
+		name:     "a slug repeated above [rules] draws one warning",
+		toml:     "inv-minimal-first = { active = true }\ninv-minimal-first = { active = false }\n[rules]\n",
+		warnings: []string{warnRowAboveRules(1, "inv-minimal-first")},
+	}, {
+		name: "the retired rules-b preset plus eight false rows switches eight rules off and is shown",
+		toml: presetBPlusEight,
+		off:  nonFloor[:8],
 	}, {
 		name:     "a second [rules] header continues the table",
 		toml:     optOut + "[rules]\ninv-bounded-context = { active = false }\n",
@@ -393,46 +616,217 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		off:      []string{"inv-minimal-first"},
 		warnings: []string{warnFloorRow(3, "floor-intent-gate")},
 	}, {
+		// Q2: five named warnings in total, then one count line.
 		name: "twelve malformed rows name five and count the rest",
 		toml: "[rules]\n" + strings.Repeat("{ active = false }\n", 12),
 		warnings: []string{
 			warnMalformedRow(2, ""), warnMalformedRow(3, ""), warnMalformedRow(4, ""),
-			warnMalformedRow(5, ""), warnMalformedRow(6, ""), warnCounted(7),
+			warnMalformedRow(5, ""), warnMalformedRow(6, ""), warnMore(7, 0),
 		},
 	}, {
-		// Six ignored false rows for shipped slugs beside six other warnings. If
-		// the six were folded into the five-name bound, the count would read 7.
-		name: "ignored false rows for shipped slugs are always named",
-		toml: "inv-directional-flow = { active = false }\n" +
+		// The two rows above [rules] for inv-directional-flow are one entry, and
+		// its false row makes it a real-rule attempt, so it is named at line 2.
+		name: "real-rule attempts are named first, then the other warnings in line order",
+		toml: "disabled = [\"inv-minimal-first\"]\n" +
+			"inv-directional-flow = { active = true }\n" +
+			"inv-directional-flow = { active = false }\n" +
 			"inv-handover-points = { active = false }\n" +
 			"[rules]\n" +
+			"not a row\n" +
 			"floor-transparency = { active = false }\n" +
+			"inv-not-a-rule = { active = false }\n" +
+			"floor-intent-gate = { active = true }\n" +
 			"floor-intent-gate = { active = false }\n" +
-			"inv-intent-locus = { active = true }\n" +
 			"inv-intent-locus = { active = false }\n" +
 			"inv-graph-maintenance = { active = true }\n" +
 			"inv-graph-maintenance = { active = false }\n" +
-			strings.Repeat("not a row\n", 6),
+			"inv-graph-maintenance = { active = true }\n" +
+			"[tool]\n" +
+			"inv-ratifiable-artifacts = { active = false }\n",
+		off: []string{"inv-intent-locus", "inv-graph-maintenance"},
+		warnings: []string{
+			warnRowAboveRules(2, "inv-directional-flow"),
+			warnRowAboveRules(4, "inv-handover-points"),
+			warnFloorRow(7, "floor-transparency"),
+			warnFloorRow(10, "floor-intent-gate"),
+			warnUnknownKey(1, "disabled"),
+			warnMore(3, 0),
+		},
+	}, {
+		name: "seven real-rule attempts: the count line says how many of the rest try",
+		toml: "strictness = \"firm\"\n" +
+			"mystery = 1\n" +
+			"inv-directional-flow = { active = false }\n" +
+			"inv-handover-points = { active = false }\n" +
+			"inv-intent-locus = { active = false }\n" +
+			"inv-ratifiable-artifacts = { active = false }\n" +
+			"inv-graph-maintenance = { active = false }\n" +
+			"[rules]\n" +
+			"floor-transparency = { active = false }\n" +
+			"junk\n" +
+			"floor-intent-gate = { active = false }\n" +
+			"inv-not-a-rule = { active = false }\n",
+		warnings: []string{
+			warnRowAboveRules(3, "inv-directional-flow"),
+			warnRowAboveRules(4, "inv-handover-points"),
+			warnRowAboveRules(5, "inv-intent-locus"),
+			warnRowAboveRules(6, "inv-ratifiable-artifacts"),
+			warnRowAboveRules(7, "inv-graph-maintenance"),
+			warnMore(5, 2),
+		},
+	}, {
+		name: "six real-rule attempts beside one other warning",
+		toml: "other = 1\n" +
+			"inv-directional-flow = { active = false }\n" +
+			"inv-handover-points = { active = false }\n" +
+			"inv-intent-locus = { active = false }\n" +
+			"inv-ratifiable-artifacts = { active = false }\n" +
+			"[rules]\n" +
+			"floor-transparency = { active = false }\n" +
+			"floor-intent-gate = { active = false }\n",
+		warnings: []string{
+			warnRowAboveRules(2, "inv-directional-flow"),
+			warnRowAboveRules(3, "inv-handover-points"),
+			warnRowAboveRules(4, "inv-intent-locus"),
+			warnRowAboveRules(5, "inv-ratifiable-artifacts"),
+			warnFloorRow(7, "floor-transparency"),
+			warnMore(2, 1),
+		},
+	}, {
+		name: "six real-rule attempts alone",
+		toml: "inv-directional-flow = { active = false }\n" +
+			"inv-handover-points = { active = false }\n" +
+			"inv-intent-locus = { active = false }\n" +
+			"inv-ratifiable-artifacts = { active = false }\n" +
+			"[rules]\n" +
+			"floor-transparency = { active = false }\n" +
+			"floor-intent-gate = { active = false }\n",
 		warnings: []string{
 			warnRowAboveRules(1, "inv-directional-flow"),
 			warnRowAboveRules(2, "inv-handover-points"),
-			warnFloorRow(4, "floor-transparency"),
-			warnFloorRow(5, "floor-intent-gate"),
-			warnDuplicateRow(7, "inv-intent-locus"),
-			warnDuplicateRow(9, "inv-graph-maintenance"),
-			warnMalformedRow(10, ""), warnMalformedRow(11, ""), warnMalformedRow(12, ""),
-			warnMalformedRow(13, ""), warnMalformedRow(14, ""),
-			warnCounted(1),
+			warnRowAboveRules(3, "inv-intent-locus"),
+			warnRowAboveRules(4, "inv-ratifiable-artifacts"),
+			warnFloorRow(6, "floor-transparency"),
+			warnMore(1, 1),
 		},
 	}, {
-		name: "a file of exactly T bytes is echoed",
-		toml: rulesFileOfBytes(t, optOut, rulesEchoMaxBytes),
+		name:     "every non-floor rule set false above [rules] is ignored, named five times and counted",
+		toml:     allAbove.String(),
+		warnings: allAboveWarnings,
+	}, {
+		// Q1: about 1.3 KB and six warnings is past the bound, so the too-large
+		// line stands in for the file and both hosts still deliver.
+		name:    "a 1.3 KB file with six mixed warnings is not shown and still delivers",
+		toml:    mixed,
+		segment: segmentTooLarge,
+		warnings: []string{
+			warnFloorRow(base+1, "floor-transparency"),
+			warnUnknownSlug(base+2, "inv-not-a-rule"),
+			warnMalformedRow(base+3, "inv-bounded-context"),
+			warnGoverned(base + 4),
+			warnRulesAgain(base + 5),
+			warnMore(1, 0),
+		},
+	}, {
+		name: "a file of exactly B bytes and no warning is echoed",
+		toml: rulesFileOfBytes(t, optOut, rulesShowMaxBytes),
 		off:  []string{"inv-minimal-first"},
 	}, {
-		name:    "a file one byte over T is not echoed and still switches its rule off",
-		toml:    rulesFileOfBytes(t, optOut, rulesEchoMaxBytes+1),
+		name:    "a file one byte over B and no warning is not echoed and still switches its rule off",
+		toml:    rulesFileOfBytes(t, optOut, rulesShowMaxBytes+1),
 		off:     []string{"inv-minimal-first"},
 		segment: segmentTooLarge,
+	}, {
+		name:     "a file and its warnings of exactly B bytes are echoed",
+		toml:     rulesFileOfBytes(t, withWarning, fitsWithWarning),
+		off:      []string{"inv-minimal-first"},
+		warnings: withWarningWarnings,
+	}, {
+		name:     "a file and its warnings one byte over B are not echoed",
+		toml:     rulesFileOfBytes(t, withWarning, fitsWithWarning+1),
+		off:      []string{"inv-minimal-first"},
+		segment:  segmentTooLarge,
+		warnings: withWarningWarnings,
+	}, {
+		name:     "the largest echoed section fits the Codex context with its margin",
+		toml:     largestEcho,
+		off:      nonFloor,
+		warnings: largestWarnings,
+		largest:  true,
+	}, {
+		name:     "the largest too-large section fits the Codex context with its margin",
+		toml:     runaway.String(),
+		off:      nonFloor,
+		segment:  segmentTooLarge,
+		warnings: runawayWarnings,
+		largest:  true,
+	}, {
+		// Q5: a symbolic link is classified, and nothing read from its target is
+		// shown or named.
+		name:     "a symlinked rules file is classified and not shown",
+		toml:     credentials,
+		link:     linkFile,
+		off:      []string{"inv-minimal-first"},
+		segment:  segmentSymlink,
+		warnings: []string{warnSymlinkCounted(3, 1)},
+		absent:   canaries,
+	}, {
+		name:     "a symlinked .trellis directory is classified and not shown",
+		toml:     credentials,
+		link:     linkDir,
+		off:      []string{"inv-minimal-first"},
+		segment:  segmentSymlink,
+		warnings: []string{warnSymlinkCounted(3, 1)},
+		absent:   canaries,
+	}, {
+		name:    "a symlinked rules file with no ignored entry draws no warning",
+		toml:    optOut,
+		link:    linkFile,
+		off:     []string{"inv-minimal-first"},
+		segment: segmentSymlink,
+	}, {
+		name:    "an empty symlinked rules file is still not shown",
+		toml:    "",
+		link:    linkFile,
+		segment: segmentSymlink,
+	}, {
+		name:     "a symlinked file with one ignored entry that tries nothing",
+		toml:     "[rules]\n" + canaryKey + "\n",
+		link:     linkFile,
+		segment:  segmentSymlink,
+		warnings: []string{warnSymlinkCounted(1, 0)},
+		absent:   []string{canaryKey},
+	}, {
+		name:     "a symlinked directory with one ignored entry that tries to switch a rule off",
+		toml:     "[rules]\nfloor-intent-gate = { active = false }\n",
+		link:     linkDir,
+		segment:  segmentSymlink,
+		warnings: []string{warnSymlinkCounted(1, 1)},
+	}, {
+		name:     "a symlinked file counts every ignored entry, past five too",
+		toml:     "[rules]\n" + strings.Repeat("not a row\n", 12),
+		link:     linkFile,
+		segment:  segmentSymlink,
+		warnings: []string{warnSymlinkCounted(12, 0)},
+	}, {
+		name:     "a symlinked file whose ignored entries include two attempts",
+		toml:     "[rules]\nfloor-transparency = { active = false }\nfloor-intent-gate = { active = false }\n" + canaryKey + " = 1\n",
+		link:     linkFile,
+		segment:  segmentSymlink,
+		warnings: []string{warnSymlinkCounted(3, 2)},
+		absent:   []string{canaryKey},
+	}, {
+		name:     "a symlinked file holding a NUL byte keeps the NUL handling",
+		toml:     credentials + "\x00\n",
+		link:     linkFile,
+		segment:  segmentNone,
+		warnings: []string{warnNulByte()},
+		absent:   canaries,
+	}, {
+		name:    "a symlinked governed = false still opts out",
+		toml:    "governed = false\n",
+		link:    linkFile,
+		outcome: outcomeUngoverned,
 	}, {
 		name:       "an unreadable file is refused",
 		toml:       optOut,
@@ -556,6 +950,16 @@ var writeInstructionRe = regexp.MustCompile(`(?i)\b(write|rewrite|edit|uncomment
 
 func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRulesResult) {
 	t.Helper()
+	// Q5: nothing read from a symlinked file reaches either host's output, on
+	// any outcome. Checked first, because a leak is worse than a wrong branch.
+	for _, s := range c.absent {
+		if !strings.Contains(c.toml, s) {
+			t.Fatalf("premise: the file must hold %q for its absence to mean anything", s)
+		}
+		if strings.Contains(r.raw, s) || strings.Contains(r.context, s) || strings.Contains(r.systemMessage, s) {
+			t.Errorf("%s: text from the file a symbolic link points at reached the output: %q\n%s", host, s, r.raw)
+		}
+	}
 	if r.outcome != c.wantOutcome() {
 		t.Fatalf("%s: want outcome %q, got %q\n%s", host, c.wantOutcome(), r.outcome, r.raw)
 	}
@@ -614,8 +1018,17 @@ func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRules
 	}
 
 	if host == "codex" {
-		if n := len(r.context); n > codexContextCap {
+		n := len(r.context)
+		if n > codexContextCap {
 			t.Errorf("codex: the context is %d bytes, over MAX_CONTEXT_BYTES (%d)", n, codexContextCap)
+		}
+		// Q1: no project file can cost a Codex session its rules, and the largest
+		// section the bound allows leaves room for a longer plugin root.
+		if c.largest {
+			t.Logf("codex: the largest section of this kind assembles a %d-byte context, %d under MAX_CONTEXT_BYTES", n, codexContextCap-n)
+			if codexContextCap-n < codexContextMargin {
+				t.Errorf("codex: the largest section leaves %d bytes under MAX_CONTEXT_BYTES, less than the %d-byte margin a longer plugin root needs", codexContextCap-n, codexContextMargin)
+			}
 		}
 		// KTD4: the warnings are mirrored to systemMessage, in the same order and
 		// nothing else: the plugin root here is complete, so no invariants report
@@ -626,17 +1039,44 @@ func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRules
 	}
 }
 
+// writeRulesRowsProject writes the case's file where the case says the project
+// reaches it: in place, or through a symbolic link to a place outside the project.
+func writeRulesRowsProject(t *testing.T, c rulesRowsCase) (project, path string) {
+	t.Helper()
+	project = newGitProject(t)
+	path = filepath.Join(project, ".trellis", "rules.toml")
+	switch c.link {
+	case linkFile:
+		target := filepath.Join(t.TempDir(), "credentials")
+		writeFileT(t, target, c.toml)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, path); err != nil {
+			t.Fatal(err)
+		}
+	case linkDir:
+		outside := filepath.Join(t.TempDir(), "elsewhere")
+		writeFileT(t, filepath.Join(outside, "rules.toml"), c.toml)
+		if err := os.Symlink(outside, filepath.Join(project, ".trellis")); err != nil {
+			t.Fatal(err)
+		}
+	default:
+		writeFileT(t, path, c.toml)
+	}
+	return project, path
+}
+
 // TestBothHostsClassifyRulesRowsIdentically is R12 and KTD3 as one table.
 func TestBothHostsClassifyRulesRowsIdentically(t *testing.T) {
 	pluginRoot := writeDualHostPluginRoot(t)
 	for _, c := range rulesRowsCases(t) {
 		t.Run(c.name, func(t *testing.T) {
+			c.checkBoundPremise(t)
 			results := map[string]hostRulesResult{}
 			for _, host := range []string{"claude", "codex"} {
 				t.Run(host, func(t *testing.T) {
-					project := newGitProject(t)
-					path := filepath.Join(project, ".trellis", "rules.toml")
-					writeFileT(t, path, c.toml)
+					project, path := writeRulesRowsProject(t, c)
 					if c.unreadable {
 						if os.Geteuid() == 0 {
 							t.Skip("running as root: mode 0000 does not deny reads")

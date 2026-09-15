@@ -182,7 +182,7 @@ const inlineInvariantsTrigger = "If a rule seems ambiguous, or in tension with t
 // heading, then the preamble. The header began as research-0012's eval-tested
 // AUTHORITY_HEADER, one word adapted for the channel split ("inlined" → "loaded").
 // TRL-97 rewords it to the opt-out-only activation rule (KTD2): a rule applies
-// unless its row says `active = false`, so a rule with no row applies; the two floor
+// unless a row for it says `active = false`, so a rule with no row applies; the two floor
 // rules always apply while the project is governed; and nothing else in the file
 // changes which rules apply, which covers an inert `strictness` without naming it.
 // The tested "does not apply in this project — do not follow it" sentence, the one
@@ -194,7 +194,7 @@ const inlineInvariantsTrigger = "If a rule seems ambiguous, or in tension with t
 // 4+5 — no shipped text claims refresh-time semantics for rows, and nothing closes
 // the readout below its last rule.
 const (
-	rulesAuthorityHeader = "**Rule activation is governed by `.trellis/rules.toml` (its rows, when loaded, appear below the rules):** apply each rule below unless its row says `active = false`; a rule with no row applies. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rules always apply while the project is governed, whatever their row says. Nothing else in `.trellis/rules.toml` changes which rules apply.\n"
+	rulesAuthorityHeader = "**Rule activation is governed by `.trellis/rules.toml` (its rows, when loaded, appear below the rules):** apply each rule below unless a row for it says `active = false`; a rule with no row applies. A rule whose row is `active = false` does not apply in this project — do not follow it. The two `floor-` rules always apply while the project is governed, whatever their row says. Nothing else in `.trellis/rules.toml` changes which rules apply.\n"
 	rulesReadoutHeader   = rulesAuthorityHeader +
 		"\n## The rules — do these\n\n" +
 		"Each rule below ends with its row's slug. Whether a rule applies follows the authority note above. Each is a rule to follow, then the ✗ failure it prevents:\n\n"
@@ -257,7 +257,8 @@ func renderClaudeBlock() string {
 // mismatched slug set (decision-0083, decision-0084); TRL-97 retired reconciliation,
 // and item 2 moved with it. On the fallback path no hook runs, so the agent
 // classifies the rows itself and must classify them as the hooks do: only a row set
-// to false switches a rule off, a rule with no row applies, and an entry the format
+// to false switches a rule off, any one false row is enough whatever the other rows
+// for that rule say, a rule with no row applies, and an entry the format
 // does not define is ignored without costing the file. What still fails closed is
 // deliberately narrow: the generated files' own checks, and a rules.toml that is
 // absent or cannot be read. The bootstrap never tells the agent to edit the file,
@@ -296,7 +297,7 @@ Trellis rules are authoritative only in the installed project files listed below
 Before substantive work, assess two independently loaded components:
 
 1. Generated prose is complete only when the exact terminal sentinel ` + "`" + trellisRulesLoadedSentinel + "`" + ` is followed, later in the same generated prose, by the exact end marker ` + "`" + trellisProseCompleteMarker + "`" + ` — both written by the generator, in that order, each matched as a whole line and as nothing else. The prose between and around them is free to be reworded and is no part of this test. A sentinel alone, an end marker alone, a diagnostic marker, this bootstrap's mention of either marker, or bare slug-name presence is not completion.
-2. Activation TOML is valid whenever ` + "`.trellis/rules.toml`" + ` can be read: no entry in it makes the file invalid, and you never edit or rewrite the file. A single top-level ` + "`governed = false`" + ` is an opt-out, not a row set: no rule applies including the two floor rules, and you say so rather than govern. Top-level means above every section header, and single means exactly one ` + "`governed`" + ` line there. Otherwise the file can only switch rules off. A row sits under the ` + "`[rules]`" + ` header and is ` + "`inv-<name>`" + ` or ` + "`floor-<name>`" + `, ` + "`<name>`" + ` lowercase letters and hyphens only, followed by ` + "`= { active = <boolean> }`" + `. Only a row whose boolean is ` + "`false`" + ` switches its rule off; a canonical slug with no row applies, and the first row for a slug decides. Every other entry is ignored, and ignoring it changes nothing else in the file: a ` + "`false`" + ` row for either floor rule, since floor rules cannot be switched off; a row naming a slug not in the list below, which another plugin version may ship; a later row for a slug that already has one; a line under ` + "`[rules]`" + ` that is neither a row nor a comment, and a row outside ` + "`[rules]`" + `; any other section, with the lines under it; a repeated ` + "`governed`" + `, or one that is not a boolean; and any other top-level key.
+2. Activation TOML is valid whenever ` + "`.trellis/rules.toml`" + ` can be read: no entry in it makes the file invalid, and you never edit or rewrite the file. A single top-level ` + "`governed = false`" + ` is an opt-out, not a row set: no rule applies including the two floor rules, and you say so rather than govern. Top-level means above every section header, and single means exactly one ` + "`governed`" + ` line there. Otherwise the file can only switch rules off. A row sits under the ` + "`[rules]`" + ` header and is ` + "`inv-<name>`" + ` or ` + "`floor-<name>`" + `, ` + "`<name>`" + ` lowercase letters and hyphens only, followed by ` + "`= { active = <boolean> }`" + `. Only a row whose boolean is ` + "`false`" + ` switches its rule off; a canonical slug with no row applies, and a rule with any ` + "`false`" + ` row is off, whatever its other rows say, so a repeated row for a slug is not an error. Every other entry is ignored, and ignoring it changes nothing else in the file: a ` + "`false`" + ` row for either floor rule, since floor rules cannot be switched off; a row naming a slug not in the list below, which another plugin version may ship; a line under ` + "`[rules]`" + ` that is neither a row nor a comment, and a row outside ` + "`[rules]`" + `; any other section, with the lines under it; a repeated ` + "`governed`" + `, or one that is not a boolean; and any other top-level key.
 
 ` + "`" + strings.Join(catalogSlugOrder(), "`, `") + "`" + `
 

@@ -30,12 +30,12 @@ const SENTINEL = "<!-- trellis:rules-loaded -->";
 const MAX_CONTEXT_BYTES = 9500;
 // The read bound for the PROJECT's .trellis/rules.toml alone (TRL-97). Every
 // payload read stays bounded by MAX_CONTEXT_BYTES because each payload file is
-// delivered whole. The project file is echoed only up to RULES_ECHO_MAX_BYTES
-// and is otherwise only classified, so the context budget is the wrong bound
-// for reading it: held at 9500 B, a file between that and staleness.sh's own
-// 32768 B budget was refused here and governed there. One MiB is a runaway
-// guard, roughly nine hundred times the largest consumer file known on
-// 2026-09-14.
+// delivered whole. The project file is echoed only while it and its warnings fit
+// RULES_ECHO_MAX_BYTES and is otherwise only classified, so the context budget is
+// the wrong bound for reading it: held at 9500 B, a file between that and
+// staleness.sh's own 32768 B budget was refused here and governed there. One MiB
+// is a runaway guard, roughly nine hundred times the largest consumer file known
+// on 2026-09-14.
 const MAX_PROJECT_CONFIG_BYTES = 1024 * 1024;
 // The project always owns its rows. The three payload files come from the
 // vendored overlay when one exists, and from the plugin's own payload when it
@@ -334,10 +334,12 @@ function readRequired(projectRoot, relativePath, options = {}) {
 // hooks on one table, so a line class the two read differently is a red test
 // rather than two hosts governing one project differently.
 //
-// Only a row set `active = false` has any effect. Nothing here refuses the file:
-// a bad entry costs that entry and is reported, never the session, because
-// over-governance the session announces beats under-governance nobody sees
-// (decision-0083 §5). The classes, in the order they are tested:
+// Only a row set `active = false` has any effect, and one is enough: a rule is
+// off when ANY row for it under [rules] says false, whatever its other rows say,
+// so a repeated row is never an error and draws no warning. Nothing here refuses
+// the file: a bad entry costs that entry and is reported, never the session,
+// because over-governance the session announces beats under-governance nobody
+// sees (decision-0083 §5). The classes, in the order they are tested:
 //
 //   blank, or `#` after trimming   nothing
 //   `[rules]` header               opens the table; a second one continues it, warned
@@ -346,10 +348,16 @@ function readRequired(projectRoot, relativePath, options = {}) {
 //                                  strictness and seeded_from are silent; governed is
 //                                  silent only as a first `governed = true`; any other
 //                                  key or line is warned
-//   under [rules]                  a row switches its rule off only when it is the
-//                                  first row for a shipped, non-floor slug and says
-//                                  false; anything else is ignored, and warned unless
-//                                  it is a first `true` row
+//   under [rules]                  a false row for a shipped, non-floor slug switches
+//                                  that rule off; a true row is silent; a false row
+//                                  for a floor or an unknown slug is warned; any other
+//                                  line is warned
+//
+// A warning that names a slug (a floor row set false, an unknown slug set false, a
+// row above [rules]) is noted once per kind and slug, at the first line that draws
+// it, so a repeated row adds none. An entry is an ATTEMPT when a well-formed false
+// row for a shipped slug sits in it and takes no effect: a floor row set false, or
+// such a row above [rules]. ruleWarnings names attempts first.
 //
 // Whitespace is ASCII space and tab only, as on the other host under LC_ALL=C,
 // so an NBSP-indented row is malformed on both. Lines split on LF with one
@@ -365,24 +373,33 @@ const RULES_HEADER_PATTERN = /^\[[ \t]*rules[ \t]*\](?:[ \t]*#[\s\S]*)?$/u;
 // One token and an optional comment. Anything else a `governed` line holds is
 // not `true`, so it is warned rather than read.
 const GOVERNED_VALUE_PATTERN = /^([^ \t]*)[ \t]*(?:#[\s\S]*)?$/u;
+// The warning kinds that name a slug, each noted once per slug.
+const SLUG_WARNING_KINDS = new Set(["floor-row", "unknown-slug", "row-above-rules"]);
 
 function classifyRules(source, slugs) {
   const shipped = new Set(slugs);
   const offSet = new Set();
-  const seen = new Set();
-  const named = new Set();
+  const bySlug = new Map();
   const entries = [];
   let section = "top";
   let rulesOpened = false;
   let governedSeen = false;
 
-  // An ignored row that sets a shipped slug false is always named, once per
-  // slug (KTD4): the model reads that row verbatim in the file, and silence
-  // about it would read as the rule being off.
-  const note = (line, kind, name, shippedFalse = false) => {
-    const alwaysNamed = shippedFalse && !named.has(name);
-    if (alwaysNamed) named.add(name);
-    entries.push({ line, kind, name, alwaysNamed });
+  // A later row of a slug-naming kind adds no entry; it can only make the first
+  // one an attempt, which is what orders the warnings (KTD4).
+  const note = (line, kind, name, attempt = false) => {
+    if (SLUG_WARNING_KINDS.has(kind)) {
+      const first = bySlug.get(`${kind} ${name}`);
+      if (first !== undefined) {
+        if (attempt) first.attempt = true;
+        return;
+      }
+      const entry = { line, kind, name, attempt };
+      bySlug.set(`${kind} ${name}`, entry);
+      entries.push(entry);
+      return;
+    }
+    entries.push({ line, kind, name, attempt });
   };
 
   source
@@ -435,11 +452,6 @@ function classifyRules(source, slugs) {
         return;
       }
       const [, slug, value] = row;
-      if (seen.has(slug)) {
-        note(lineNo, "duplicate-row", slug, shippedFalse);
-        return;
-      }
-      seen.add(slug);
       if (value === "true") return;
       if (!shipped.has(slug)) note(lineNo, "unknown-slug", slug);
       else if (slug.startsWith("floor-")) note(lineNo, "floor-row", slug, true);
@@ -461,25 +473,52 @@ function classifyRules(source, slugs) {
 // deletion-instruction guards scan this function's literals
 // (codexPayloadFunctions, cli/plugin_hook_test.go).
 //
-// Every entry marked alwaysNamed is named. Of the rest, the first
-// OTHER_WARNINGS_NAMED are named and the others counted, and a name taken from
-// the file is cut at WARNING_NAME_MAX bytes, so a runaway file cannot turn its
-// warnings into the context.
-const OTHER_WARNINGS_NAMED = 5;
+// WARNINGS_NAMED warnings are named in total: the attempts first, in file line
+// order, then every other warning in file line order. Past that, one count line
+// says how many more entries were ignored and how many of those are attempts. A
+// name taken from the file is cut at WARNING_NAME_MAX bytes, so a runaway file
+// cannot turn its warnings into the context.
+//
+// A file reached through a symbolic link is named nowhere. Its target can be any
+// file the user can read, so no key, slug or line number read from it is
+// repeated: one count line stands in for every warning, and a file with nothing
+// ignored draws none.
+const WARNINGS_NAMED = 5;
 const WARNING_NAME_MAX = 40;
 
-function ruleWarnings(entries) {
-  const warnings = [];
-  let named = 0;
-  let counted = 0;
-  for (const entry of entries) {
-    if (!entry.alwaysNamed) {
-      if (named === OTHER_WARNINGS_NAMED) {
-        counted += 1;
-        continue;
-      }
-      named += 1;
+function ruleWarnings(entries, symlink) {
+  const attempts = entries.filter((entry) => entry.attempt).length;
+  if (symlink) {
+    const total = entries.length;
+    const linked = "Trellis warning: .trellis/rules.toml is a symbolic link, so its ";
+    if (total === 0) return [];
+    if (total === 1) {
+      return [
+        attempts === 1
+          ? `${linked}1 ignored entry is counted but not named; it tries to switch a rule off.`
+          : `${linked}1 ignored entry is counted but not named; it does not try to switch a rule off.`,
+      ];
     }
+    if (attempts === 0) {
+      return [
+        `${linked}${total} ignored entries are counted but not named; none of them tries to switch a rule off.`,
+      ];
+    }
+    if (attempts === 1) {
+      return [
+        `${linked}${total} ignored entries are counted but not named; 1 of them tries to switch a rule off.`,
+      ];
+    }
+    return [
+      `${linked}${total} ignored entries are counted but not named; ${attempts} of them try to switch a rule off.`,
+    ];
+  }
+  const ordered = [
+    ...entries.filter((entry) => entry.attempt),
+    ...entries.filter((entry) => !entry.attempt),
+  ];
+  const warnings = [];
+  for (const entry of ordered.slice(0, WARNINGS_NAMED)) {
     const name =
       entry.name !== undefined && entry.name.length > WARNING_NAME_MAX
         ? `${entry.name.slice(0, WARNING_NAME_MAX)}...`
@@ -499,11 +538,6 @@ function ruleWarnings(entries) {
       case "floor-row":
         warnings.push(
           `${at}sets the floor rule ${name} to active = false, but floor rules cannot be switched off, so the row is ignored and the rule applies.`,
-        );
-        break;
-      case "duplicate-row":
-        warnings.push(
-          `${at}is a later row for ${name}, so it is ignored; the first row for a rule decides.`,
         );
         break;
       case "row-above-rules":
@@ -540,51 +574,98 @@ function ruleWarnings(entries) {
         );
     }
   }
-  if (counted > 0) {
-    warnings.push(
-      `Trellis warning: ignored entries in .trellis/rules.toml beyond those named above: ${counted}. None of them switches a rule off.`,
-    );
+  const more = ordered.length - WARNINGS_NAMED;
+  if (more > 0) {
+    // The attempts are named first, so an attempt is counted only once every
+    // named slot holds one.
+    const tries = attempts - Math.min(attempts, WARNINGS_NAMED);
+    const counted = "Trellis warning: .trellis/rules.toml has ";
+    if (more === 1) {
+      warnings.push(
+        tries === 1
+          ? `${counted}1 more ignored entry, and it tries to switch a rule off.`
+          : `${counted}1 more ignored entry, and it does not try to switch a rule off.`,
+      );
+    } else if (tries === 0) {
+      warnings.push(
+        `${counted}${more} more ignored entries, none of which tries to switch a rule off.`,
+      );
+    } else if (tries === 1) {
+      warnings.push(
+        `${counted}${more} more ignored entries, 1 of which tries to switch a rule off.`,
+      );
+    } else {
+      warnings.push(
+        `${counted}${more} more ignored entries, ${tries} of which try to switch a rule off.`,
+      );
+    }
   }
   return warnings;
 }
 
-// T (KTD12). A file of at most this many bytes is echoed verbatim under the
-// framing; a larger one is replaced by one line, and the computed sentence still
+// B, the bound on what the project file may add to the context (TRL-97). The file
+// is echoed verbatim under the framing only while its bytes plus the bytes of its
+// warning block (every warning line with its newline, the count line included)
+// fit this; otherwise one line stands in for it, and the computed sentence still
 // states which rules it switches off. staleness.sh shares the value, and the
-// parity table pins both hosts to it. Chosen so every known consumer file
-// (1.1-1.2 KB on 2026-09-14) is echoed, as research-0012's row form measured;
-// the context it leaves room for is recorded with the TRL-97 decision.
-const RULES_ECHO_MAX_BYTES = 1500;
+// parity table pins both hosts to it.
+//
+// MEASURED, NOT CHOSEN, because what it protects is this hook's context budget:
+// no project file may ever cost a Codex session its rules. The largest section
+// the bound admits is every non-floor rule switched off (the longest sentence)
+// beside a file and warnings of exactly this many bytes, the file with no
+// trailing newline so one more is supplied. Measured on 2026-09-15 on a 74-byte
+// plugin root, that context is 9153 bytes, 347 under MAX_CONTEXT_BYTES; the
+// too-large branch peaks at 8869 (the too-large line beside five of the longest
+// warning at seven-digit line numbers and a count line). 1900 left 247, under
+// the 250 bytes held back for a longer plugin root path, which appears once in
+// the prose, so 1800 is the largest round value that keeps that margin. It is
+// below the 2.5 KB first approved, and every consumer file known on 2026-09-14
+// (1.1-1.2 KB) is still shown beside a few warnings.
+// TestBothHostsClassifyRulesRowsIdentically builds both largest sections and
+// fails when either leaves less than 250 bytes.
+const RULES_ECHO_MAX_BYTES = 1800;
 
 // activationSection builds what follows the rules prose on both branches (KTD1,
-// KTD7): the heading, the computed sentence, the file or the too-large line, and
-// the warnings, one blank line apart. The sentence is what tells the model the
-// effective result, so it stays right where the file still shows a row this hook
-// ignored, and under a vendored overlay whose frozen text applies a rule only
-// when its row says `active = true`.
+// KTD7): the heading, the computed sentence, the file or the line that stands in
+// for it, and the warnings, one blank line apart. The sentence is what tells the
+// model the effective result, so it stays right where the file still shows a row
+// this hook ignored, and under a vendored overlay whose frozen text applies a rule
+// only when its row says `active = true`.
 //
 // A file holding a NUL byte is not classified (KTD5). It is not text both hosts
 // split into the same lines, so none of its rows takes effect, it is not echoed,
 // and one warning says why. The `governed = false` read runs before this, so an
 // opted-out file with a NUL byte still loads nothing.
-function activationSection(rulesToml, sizeBytes, slugs) {
+//
+// A file reached through a symbolic link (`symlink`) is classified like any other,
+// so its opt-outs apply and the sentence names them from the payload's own slugs,
+// but nothing read from it is shown, at any size: one line stands in for it, and
+// its warnings are one count (ruleWarnings). A NUL byte keeps its own handling.
+function activationSection(rulesToml, sizeBytes, slugs, symlink) {
   const nulByte = rulesToml.includes("\u0000");
   const { off, entries } = nulByte
-    ? { off: [], entries: [{ kind: "nul-byte", alwaysNamed: true }] }
+    ? { off: [], entries: [{ kind: "nul-byte", attempt: false }] }
     : classifyRules(rulesToml, slugs);
   const sentence =
     off.length === 0
       ? "The project file .trellis/rules.toml switches no rule off, so every rule above applies."
       : `The project file .trellis/rules.toml switches these rules off: ${off.join(", ")}. Every other rule above applies.`;
+  const warnings = ruleWarnings(entries, symlink && !nulByte);
+  const warningBytes =
+    warnings.length === 0 ? 0 : Buffer.byteLength(`${warnings.join("\n")}\n`, "utf8");
   let segment = "";
   if (nulByte) {
     segment = "";
-  } else if (sizeBytes > RULES_ECHO_MAX_BYTES) {
-    segment = `The project file is larger than ${RULES_ECHO_MAX_BYTES} bytes, so it is not shown here; the sentence above names every rule it switches off.\n`;
+  } else if (symlink) {
+    segment =
+      "The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off.\n";
+  } else if (sizeBytes + warningBytes > RULES_ECHO_MAX_BYTES) {
+    segment =
+      "The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n";
   } else if (rulesToml !== "") {
     segment = rulesToml.endsWith("\n") ? rulesToml : `${rulesToml}\n`;
   }
-  const warnings = ruleWarnings(entries);
   const parts = [`${sentence}\n`];
   if (segment !== "") parts.push(segment);
   if (warnings.length > 0) parts.push(`${warnings.join("\n")}\n`);
@@ -1121,19 +1202,35 @@ if (slugs.length === 0) {
 }
 
 const stamp = version.endsWith("\n") ? version.slice(0, -1) : version;
+// A rules file reached through a symbolic link is classified and never shown
+// (TRL-97): a repository can commit .trellis/rules.toml, or the directory
+// holding it, as a link to any file the user can read, a credentials file
+// included, and the echo would put that file into the model's context. Only
+// those two components are tested, with lstat, and never the project root, whose
+// own path often runs through a link (a temp directory, a home directory). An
+// lstat that fails on a path just read is a race and reads as no link, as
+// `[ -L ]` does on the other host.
+let rulesSymlink = false;
+for (const component of [".trellis", PROJECT_CONFIG]) {
+  try {
+    if (fs.lstatSync(path.join(projectRoot, component)).isSymbolicLink()) rulesSymlink = true;
+  } catch {
+    // See above: not a link.
+  }
+}
 // One assembly for both branches (KTD7). The prose ends with the header's
 // end marker and its newline, so the blank line before the heading is the one
 // staleness.sh prints too.
-const section = activationSection(rulesToml, configResult.size, slugs);
+const section = activationSection(rulesToml, configResult.size, slugs, rulesSymlink);
 const context =
   `${trellis.replace("@rules.md", rules)}\n${section.text}\n` +
   `Trellis hook loaded installed overlay: ${stamp}\n`;
 
-// The runaway guard, and nothing more. The file is echoed only up to
-// RULES_ECHO_MAX_BYTES and the warnings are bounded, so what reaches this is a
-// payload that has outgrown the budget on its own, or a project file built to
-// carry every bounded warning at once beside a file of nearly that size. TRL-29's
-// degradation retired with the provenance it degraded (TRL-97).
+// The runaway guard, and nothing more. The file is echoed only while it and its
+// warnings fit RULES_ECHO_MAX_BYTES, a bound measured so the largest section it
+// admits still fits this budget, and the warnings are bounded, so what reaches
+// this is a payload that has outgrown the budget on its own. TRL-29's degradation
+// retired with the provenance it degraded (TRL-97).
 if (Buffer.byteLength(context, "utf8") > MAX_CONTEXT_BYTES) {
   fail("assembled-context", "context-over-budget");
   process.exit(0);
