@@ -274,8 +274,6 @@ function nearestOverlay(cwd, boundary) {
 // Every existing failure class is preserved byte for byte: the callers pass the
 // classes their post-checks already produced, so this is a structural change
 // with no behaviour change. TestEveryReadRequiredStatesWhatEmptyMeans holds it.
-// `size` is the byte count read, which is what a byte threshold compares; the
-// decoded string's length is not, once a file holds non-ASCII text.
 function readRequired(projectRoot, relativePath, options = {}) {
   const absolute = path.join(projectRoot, relativePath);
   const maxBytes = options.maxBytes ?? MAX_CONTEXT_BYTES;
@@ -315,7 +313,7 @@ function readRequired(projectRoot, relativePath, options = {}) {
     if (value.length === 0 && options.emptyIsValid !== true) {
       return { error: options.emptyError ?? "empty-file" };
     }
-    return { value, size: total };
+    return { value };
   } catch {
     return { error: "unreadable-file" };
   } finally {
@@ -604,11 +602,11 @@ function ruleWarnings(entries, symlink) {
 }
 
 // B, the bound on what the project file may add to the context (TRL-97). The file
-// is echoed verbatim under the framing only while its bytes plus the bytes of its
-// warning block (every warning line with its newline, the count line included)
-// fit this; otherwise one line stands in for it, and the computed sentence still
-// states which rules it switches off. staleness.sh shares the value, and the
-// parity table pins both hosts to it.
+// is echoed verbatim under the framing only while its decoded bytes plus the bytes
+// of its warning block (every warning line with its newline, the count line
+// included) fit this; otherwise one line stands in for it, and the computed
+// sentence still states which rules it switches off. staleness.sh shares the
+// value, and the parity table pins both hosts to it.
 //
 // MEASURED, NOT CHOSEN, because what it protects is this hook's context budget:
 // no project file may ever cost a Codex session its rules. The largest section
@@ -642,7 +640,14 @@ const RULES_ECHO_MAX_BYTES = 1800;
 // so its opt-outs apply and the sentence names them from the payload's own slugs,
 // but nothing read from it is shown, at any size: one line stands in for it, and
 // its warnings are one count (ruleWarnings). A NUL byte keeps its own handling.
-function activationSection(rulesToml, sizeBytes, slugs, symlink) {
+//
+// The bound charges the file what it would add to the context: its bytes once
+// decoded, not as read. The two differ only for a byte that is not valid UTF-8,
+// which decodes to U+FFFD, three bytes; charging the bytes read let a file of
+// such bytes fit the bound and still push the context past MAX_CONTEXT_BYTES,
+// costing the session every rule. staleness.sh charges the bytes read, and its
+// budget is never reached, so the hosts differ only for such a file (TRL-100).
+function activationSection(rulesToml, slugs, symlink) {
   const nulByte = rulesToml.includes("\u0000");
   const { off, entries } = nulByte
     ? { off: [], entries: [{ kind: "nul-byte", attempt: false }] }
@@ -660,7 +665,7 @@ function activationSection(rulesToml, sizeBytes, slugs, symlink) {
   } else if (symlink) {
     segment =
       "The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off.\n";
-  } else if (sizeBytes + warningBytes > RULES_ECHO_MAX_BYTES) {
+  } else if (Buffer.byteLength(rulesToml, "utf8") + warningBytes > RULES_ECHO_MAX_BYTES) {
     segment =
       "The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n";
   } else if (rulesToml !== "") {
@@ -1221,7 +1226,7 @@ for (const component of [".trellis", PROJECT_CONFIG]) {
 // One assembly for both branches (KTD7). The prose ends with the header's
 // end marker and its newline, so the blank line before the heading is the one
 // staleness.sh prints too.
-const section = activationSection(rulesToml, configResult.size, slugs, rulesSymlink);
+const section = activationSection(rulesToml, slugs, rulesSymlink);
 const context =
   `${trellis.replace("@rules.md", rules)}\n${section.text}\n` +
   `Trellis hook loaded installed overlay: ${stamp}\n`;

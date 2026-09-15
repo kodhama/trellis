@@ -719,7 +719,18 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 	//                                   TestEveryDeletionInstructionIsGated (both read
 	//                                   only the two hook files), so a write instruction
 	//                                   landing here would be ungated
+	//   "check whether it or `.trellis` is a symbolic link", "repeat nothing read from it",
+	//   "give its ignored entries only as a count" and
+	//   "for a file reached through a symbolic link, tell them only how many"
+	//                                   both hooks classify a linked file and show
+	//                                   nothing from it (TRL-97 Q5); without these the
+	//                                   fallback's own report of ignored rows would
+	//                                   quote the file the link points at
 	for _, required := range []string{
+		"check whether it or `.trellis` is a symbolic link",
+		"repeat nothing read from it",
+		"give its ignored entries only as a count",
+		"for a file reached through a symbolic link, tell them only how many",
 		"A single top-level `governed = false` is an opt-out, not a row set",
 		"no rule applies including the two floor rules",
 		"Only a row whose boolean is `false` switches its rule off",

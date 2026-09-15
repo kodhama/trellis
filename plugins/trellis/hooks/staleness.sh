@@ -1044,7 +1044,9 @@ rules_file_max=1048576
 # newline, the count line included) fit this; otherwise one line in the payload
 # block below stands in for it. The Codex context budget is the tighter of the
 # two hosts, so it sets the value, and both hosts share it so the activation
-# sections stay identical.
+# sections stay identical. They differ only for a byte that is not valid UTF-8:
+# this hook charges the bytes read, and Codex the three bytes such a byte decodes
+# to, so Codex can show the too-large line where this hook echoes (TRL-100).
 rules_echo_max=1800
 # The warning cap (KTD4), codex-context.mjs WARNINGS_NAMED and WARNING_NAME_MAX.
 # It is applied in one place, at the end of the classifier below: five warnings

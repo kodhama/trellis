@@ -339,20 +339,20 @@ ce026bdfe8f83b85c57082782caf28bc047485d2a50a9d86f3a516850e2b2d06  .claude-plugin
 a5daf43d32ec728330a38359eb466e45a28f238e3252221e8422f4c299cde2cc  .codex-plugin/plugin.json
 48f314c3dcc2b04d89bce408cadbb95ddd572b401e45418eb433fc6b1f2f845e  README.md
 dbf81d3754264f6dce22444d551ef30913c3959a2ecc784a786162df068d5435  VERSION
-f2fcbc0e3c6e898c8645c6798400e3a4683a0ea12386016f5409a32db5698956  hooks/codex-context.mjs
+f1987bae5e6e9b64f99a0d53d715371bc22151b6128a8cf98884d5206631d1d8  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a741930673c1fb723ae6cce9421d49579c7eb5bc2dd0385a2b53be8b1d1b27f5  hooks/hooks.json
-89590ecc8118bddaca23ff9122a7a593b993b3c5e47f252e3856c101b5b930da  hooks/staleness.sh
+966452153fec7424aad361339969bde87f814cbaee6270ff74728d782a8a005f  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
-464ea7d2c2832651bf7a005adae27f00f6244c4933d2b87474821ad7fea680b9  reference/block-codex.md
+d9a26dca3f8c1545c168e0f2cc5acb842b224cbdc18df6bd6c1d0eb3c766c0f0  reference/block-codex.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-head.md
 10892805ec9c8297e2385bf0c6a552ee64eca7491ca89862ee3941fe60833e32  reference/block-inline-tail.md
 22afae7cc98422bedb23096a2f18d9d838ee76560f0230082cad46f034d6fd51  reference/block-inline.md
-41a4ffbe9dd06bad2ee79a90eab0439a6c6b8c7fb3fdad53b9fafa60dacf647d  reference/checksums
+e61de1bf0eb2cba81e897f329b40d4d504992d0a4feb108e63eb43430e553e24  reference/checksums
 5c068cf2e5592dab37c0820430166bc101e1725689a1e189abce821bed8b2f6e  reference/invariants.md
 7a0950a22293b0207227b3c5b70373222e7dfbcdd4e8c9fd2c904411639700e9  reference/rules.md
 8787be1ab60f4718b6cc0e9ad34293f9bcd21e264aa9ad38a857c48217cbdd3d  reference/trellis.md
-d2d822c3031e27afe53553345f2dec8b740688b21de6addcdad5d081255f1ef6  reference/version
+4f739e0b2cfdaa65a723821ec29931faba4cfc50f4e2ed64296393da6251839f  reference/version
 8db91620379d6f1b4cfda846bb1abbc8fd326b9a0342fcce205912bce61a7f6f  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
@@ -1124,9 +1124,9 @@ case "${seeded_rows:-}" in
       # A plugin outside the repository governs a project only once that project
       # has the file; the hook announces and asks in one that has none
       # (decision-0070 D4, decision-0077).
-      say "A project is governed once it has .trellis/rules.toml: the first session in a project"
-      say "without one asks whether to adopt Trellis there and writes the file if you accept. In it, a row"
-      say "<slug> = { active = false } under [rules] switches a rule off until you delete that row."
+      say "A project is governed once it has .trellis/rules.toml: the first session in a project without one"
+      say "asks whether to adopt Trellis there and writes the file if you accept. In it, a row <slug> = { active = false }"
+      say "under [rules] switches a rule off until you delete that row; a row set to active = true does not override it."
     else
       say "Edit .trellis/rules.toml to switch a rule off: a row <slug> = { active = false }"
       say "under [rules]. Deleting that row switches the rule back on; a row set to"

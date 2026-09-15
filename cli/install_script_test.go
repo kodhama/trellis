@@ -317,9 +317,10 @@ func TestVendorPersonalScopeFreshInstall(t *testing.T) {
 
 	// TRL-97. Personal scope's next steps are its own: a plugin outside the
 	// repository governs a project once that project has .trellis/rules.toml,
-	// and the hook asks in a project that has none. They name the opt-out row,
+	// and the hook asks in a project that has none. They name the opt-out row
+	// and, as the other two branches do, that a true row does not override it,
 	// and nothing about strictness.
-	for _, want := range []string{"asks whether to adopt Trellis", "<slug> = { active = false }"} {
+	for _, want := range []string{"asks whether to adopt Trellis", "<slug> = { active = false }", "a row set to active = true does not override it"} {
 		if !strings.Contains(res.stdout, want) {
 			t.Errorf("personal-scope next steps must say %q; got:\n%s", want, res.stdout)
 		}

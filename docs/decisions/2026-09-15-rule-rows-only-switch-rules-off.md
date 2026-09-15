@@ -68,8 +68,10 @@ row from `true` to `false` moved the rate from 95% to 0%.
    plugin-native path, below the rules, the context carries `## Project rule activation` and then one
    sentence the hook computes: "The project file .trellis/rules.toml switches these rules off: …
    Every other rule above applies.", or that it switches no rule off. The file's own rows follow,
-   shown unchanged, when the file and its warnings together fit 1800 bytes. Otherwise one line says
-   they are too large to show. Then come the warnings. A symlinked `.trellis/rules.toml`, or one under
+   shown unchanged, when the file and its warnings together fit 1800 bytes. The file counts as the
+   bytes that would enter the context: its bytes as read, and on Codex, which decodes it as UTF-8, a
+   byte that is not valid UTF-8 counts as the three bytes of the replacement character that stands in
+   for it. Otherwise one line says they are too large to show. Then come the warnings. A symlinked `.trellis/rules.toml`, or one under
    a symlinked `.trellis`, is read and classified, so its opt-outs apply and the sentence names them.
    But none of its contents is shown: one line says so, and its warnings are a count with no text taken
    from the file. The computed sentence is untested wording; `research-0012` measured the rows
@@ -83,7 +85,8 @@ row from `true` to `false` moved the rate from 95% to 0%.
    because the provenance its degradation removed no longer exists. The byte caps, 9500 B of context on
    Codex and 32768 B on Claude, stay as guards against a runaway payload. No project file within the
    1 MiB read bound can reach them, because the shared limit in point 4 and the warning cap in point 3
-   bound what the file adds.
+   bound what the file adds. On Codex that holds while the plugin's own path, which the context names
+   once, stays under about 420 bytes; the installed Codex plugin path measured 56 bytes.
 6. **One header ships, and no preset.** `trellis.md` carries the "By default" sentence for every
    project. `rules-a.toml`, `rules-b.toml`, `trellis-a.md`, `trellis-b.md` and the per-posture inline
    blocks retire. The shipped inline block carries no rows section; a project with opt-outs builds the
@@ -118,7 +121,7 @@ row from `true` to `false` moved the rate from 95% to 0%.
   rows but reconcile the file and ask for the rows to be written back.
 - A renamed rule's opt-out lapses: the old slug's row draws the unknown-slug warning, and the new slug
   applies until the project adds a row for it.
-- The Codex context, measured with this change, is 7016 B for an empty file and 8159 B for this
+- The Codex context, measured with this change, is 7021 B for an empty file and 8164 B for this
   repository's sixteen-row file (1142 B), against the 9500 B cap. The shared limit in point 4 is set
   from the worst case: every non-floor rule switched off, with a file and warnings exactly at the
   limit. At 1800 B that case measured 9153 B, leaving room for a longer plugin path, and the
