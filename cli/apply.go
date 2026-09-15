@@ -126,7 +126,7 @@ const (
 	// Claude side, where the STALENESS HOOK had matched the invariants sentence,
 	// the posture note and the activation heading; one legitimate reword flipped
 	// the predicate, and every fresh install got a permanent false "not governed"
-	// warning with the suite green throughout. install.sh:962-967 is where that
+	// warning with the suite green throughout. install.sh:888-893 is where that
 	// history is recorded — the script PRINTS the markers, it never matched the
 	// prose itself. A marker the writer owns cannot drift out from under its
 	// reader; payload prose can.
@@ -332,10 +332,10 @@ Missing native-hook delivery is not itself an error: attempt the applicable fall
 // "LAST line" scopes to THIS FILE, and deliberately is not a terminality
 // requirement on anything downstream — in .claude/rules/trellis.md the whole of
 // install.sh's own rendered footer follows it (the <!-- trellis:rendered-footer -->
-// marker, the four-line posture-vs-rows paragraph, the activation heading, the
-// @../../.trellis/rules.toml import and the trellis:rendered-from stamp:
-// install.sh:976-988), and in the Codex injection the rows, the mandate and the
-// stamp do (codex-context.mjs buildContext). What the position buys is
+// marker, the activation heading, the @../../.trellis/rules.toml import and the
+// trellis:rendered-from stamp: install.sh:904-912), and in the Codex injection
+// the activation section and the stamp do (codex-context.mjs activationSection).
+// What the position buys is
 // that the marker cannot precede the tail, so it cannot be reached by a delivery
 // that stopped early. Do not turn it into "the marker is the last line of the
 // context": that is false in both delivered artifacts and would fail every one.

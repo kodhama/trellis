@@ -437,7 +437,7 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		name:         "a file one byte over the read bound is refused",
 		toml:         rulesFileOfBytes(t, optOut, rulesReadMaxBytes+1),
 		outcome:      outcomeRefuse,
-		codexRefusal: "context-over-budget",
+		codexRefusal: ".trellis/rules.toml: context-over-budget",
 	}}
 }
 

@@ -279,6 +279,13 @@ function nearestOverlay(cwd, boundary) {
 function readRequired(projectRoot, relativePath, options = {}) {
   const absolute = path.join(projectRoot, relativePath);
   const maxBytes = options.maxBytes ?? MAX_CONTEXT_BYTES;
+  // A payload file over MAX_CONTEXT_BYTES could never fit the context it is
+  // read into, so the refusal names the context. A read with its own bound is
+  // bounded for its own sake, and the refusal names the file that crossed it.
+  const overBound = {
+    label: options.maxBytes === undefined ? "assembled-context" : relativePath,
+    error: "context-over-budget",
+  };
   let stat;
   try {
     stat = fs.statSync(absolute);
@@ -287,18 +294,14 @@ function readRequired(projectRoot, relativePath, options = {}) {
     return { error: "unreadable-file" };
   }
   if (!stat.isFile()) return { error: "unreadable-file" };
-  if (stat.size > maxBytes) {
-    return { label: "assembled-context", error: "context-over-budget" };
-  }
+  if (stat.size > maxBytes) return overBound;
   let descriptor;
   try {
     fs.accessSync(absolute, fs.constants.R_OK);
     descriptor = fs.openSync(absolute, "r");
     const openedStat = fs.fstatSync(descriptor);
     if (!openedStat.isFile()) return { error: "unreadable-file" };
-    if (openedStat.size > maxBytes) {
-      return { label: "assembled-context", error: "context-over-budget" };
-    }
+    if (openedStat.size > maxBytes) return overBound;
 
     const buffer = Buffer.alloc(maxBytes + 1);
     let total = 0;
@@ -307,9 +310,7 @@ function readRequired(projectRoot, relativePath, options = {}) {
       if (count === 0) break;
       total += count;
     }
-    if (total > maxBytes) {
-      return { label: "assembled-context", error: "context-over-budget" };
-    }
+    if (total > maxBytes) return overBound;
     const value = buffer.subarray(0, total).toString("utf8");
     if (value.length === 0 && options.emptyIsValid !== true) {
       return { error: options.emptyError ?? "empty-file" };
@@ -784,7 +785,7 @@ if (trellis.split("@rules.md").length - 1 !== 1) {
 // hook delivers that shape on Codex. It performed the import edit above and
 // not this one, so every plugin-native Codex session was handed
 // `.trellis/internal/invariants.md`: a directory this mode is DEFINED by not
-// having. staleness.sh:1373-1398 makes the same substitution for Claude, at
+// having. staleness.sh:977-1005 makes the same substitution for Claude, at
 // the same target; TestBothHostsRepointTheInvariantsPointerIdentically runs
 // both hooks on one project and pins them to each other, because the two
 // implementations share no line to diff (awk there, JS here) and only the
@@ -1165,7 +1166,7 @@ const warnings = [];
 // report the same broken install, and an operator who reads both must not have
 // to reconcile two vocabularies for one fault -- which remedy applies is the
 // whole reason payload_read classifies at all ("missing and unreadable are told
-// apart because their remedies differ", staleness.sh:162).
+// apart because their remedies differ", staleness.sh:164).
 //
 // "YIELDS NOTHING TO READ", not "cannot be read", and that sentence had to move
 // together with the classification rather than after it. #295 corrected the

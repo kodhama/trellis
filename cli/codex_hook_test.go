@@ -420,7 +420,7 @@ func TestCodexHookFailureVocabularyAndIsolation(t *testing.T) {
 		t.Errorf("a project file past the old read bound must deliver the too-large line, not refuse: %s", raw)
 	}
 	writeFileT(t, configPath, "#"+strings.Repeat("x", 1024*1024)+"\n")
-	assertFailure(t, startupInput(t, project), "assembled-context", "context-over-budget")
+	assertFailure(t, startupInput(t, project), ".trellis/rules.toml", "context-over-budget")
 	writeFileT(t, configPath, originalConfig)
 
 	missing := filepath.Join(project, ".trellis", "internal", "rules.md")
@@ -778,9 +778,9 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 // matching the invariants sentence, the posture note and the activation heading —
 // all payload text an editor may legitimately reword. One reword flipped the
 // predicate, every freshly installed project got a permanent false "not governed"
-// warning, and the whole suite stayed green. install.sh:962-967 says so in a
+// warning, and the whole suite stayed green. install.sh:888-893 says so in a
 // comment and prints `<!-- trellis:rendered-begin -->` / `<!-- trellis:rendered-footer -->`
-// instead; staleness.sh:621-623 matches those as whole lines.
+// instead; staleness.sh:619-621 matches those as whole lines.
 //
 // block-codex.md carried the old shape: generated prose counted as delivered only
 // when the sentinel was followed by "the fixed footer whose first nonblank line is
