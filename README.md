@@ -22,30 +22,33 @@ That is the whole install:
 ```
 
 Installing the plugin at **project scope is the adoption act** — no further command, no file
-required (`decision-0070`). The shipped defaults apply: all rules, adaptive posture.
-To change that, the recipe depends on whether you already have a `.trellis/rules.toml`:
+required (`decision-0070`). Every rule applies. `.trellis/rules.toml` is where a project changes
+that, and a new one holds exactly these two lines:
 
-- **No file yet** — copy a complete preset from the installed plugin: `reference/rules-a.toml`
-  for the firm posture, `rules-b.toml` for adaptive. Then set `active = false` on any row you
-  want off (rows govern at read time, `decision-0053`). Copying the whole file is still the clean
-  start, but a partial one is no longer fatal on **either host**: the hook validates your rows
-  against the shipped set and, on a mismatch, **reconciles** instead of refusing — a missing slug
-  is delivered `active = true`, the session is governed from the reconciled set, and the agent
-  writes that set back to your file and tells you what it changed (`decision-0083`,
-  `decision-0084`). A file with no `strictness` at all is fine on both: the posture falls to
-  adaptive rather than the file being rejected.
-- **File already there** — edit it **in place**: change `strictness` (and `seeded_from` to
-  match), flip individual rows. **Do not copy a preset over it** — both presets set every row
-  active, so a posture-only change made by copying silently re-enables every rule you turned
-  off.
-- **The file is the one-line `governed = false` opt-out** — Trellis is switched off for this
-  project (`decision-0070` D5). Editing `strictness` beside the opt-out leaves it in force and the
-  hook stays silent, so that is not re-enabling. Deleting the line alone **does** re-enable
-  governance — but the file is then empty, so it reconciles to **all rows active at the
-  adaptive posture**, whatever this project ran before, on either host (`decision-0083`,
-  `decision-0084`). Confirm that turning governance back on is what you want, then write a
-  complete preset over it if you want a posture or a row set of your own. The plugin vendors
-nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
+```toml
+# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }
+[rules]
+```
+
+- **To switch a rule off**, add its row under `[rules]`: `<slug> = { active = false }`. Only a row
+  like that has any effect. A rule with no row applies, and so does a row that says `active = true`;
+  `strictness` and `seeded_from` do nothing. Floor rules cannot be switched off. A bad entry — a
+  floor or an unknown slug set to `active = false`, a row that does not parse, a key the file does
+  not define — is ignored with a warning in the session, and the rest of the file still counts.
+- **To opt out**, the file holds `governed = false` on one top-level line, above any table. No rule
+  applies then, floor rules included (`decision-0070` D5). Deleting that line turns governance back
+  on with every rule applying, so confirm that is what you want.
+- **An existing file keeps working as it is.** An older file usually carries `strictness`,
+  `seeded_from` and an `active = true` row for every rule. Those lines now do nothing, and nothing
+  asks you to remove them. Removing rows is safe only once every install that opens the repository
+  runs plugin 0.24.0 or later: installed versions are pinned per checkout, and 0.6.0 and older
+  refuse a file with missing rows.
+- **A legacy delivery shape keeps every row.** A vendored `.trellis/internal/` overlay, an inline
+  managed block, and a `.claude/rules/trellis.md` rendered by an older installer carry rules text
+  that applies a rule only when its row says `active = true`. Those projects keep a full row set
+  until they migrate.
+
+The plugin vendors nothing. The rules themselves arrive at session start, injected by the plugin's own hook from the
 plugin's payload, so there is no copy in your repo to install, refresh or let drift
 (`decision-0065`). A project set up before that change still carries a vendored `.trellis/`
 bundle and a managed block in your `CLAUDE.md`, and keeps working — the hook detects the overlay
@@ -66,9 +69,9 @@ under a skills directory with its own `.claude-plugin/plugin.json` loads as `tre
 Claude Code's next session, no marketplace and no install step. On **project scope** it also
 renders one file it wholly owns, `.claude/rules/trellis.md` — the rules themselves, which Claude
 loads at launch with no hook and no *plugin* trust prompt (the workspace-trust dialog on first
-launch in a project still applies — see the project-scope bullet below) — and seeds `.trellis/rules.toml` from the shipped
-preset when none exists, so the project is governed at 16/16 on the adaptive posture the moment the
-script exits (`decision-0070` D2). A project whose `.trellis/rules.toml` declares `governed = false`
+launch in a project still applies — see the project-scope bullet below) — and seeds the two-line
+`.trellis/rules.toml` shown above when none exists, so the project is governed at 16/16 the moment
+the script exits (`decision-0070` D2). A project whose `.trellis/rules.toml` declares `governed = false`
 has opted out (`decision-0070` D5): it gets the bundle and **no** rules file, exactly as the plugin
 hook injects nothing there (`TRL-38`). That is how the rules actually reach a session:
 `decision-0068` measured that the vendored bundle alone delivered **none**, which is
@@ -117,12 +120,10 @@ curl -fsSLO https://raw.githubusercontent.com/kodhama/trellis/main/install.sh
 less install.sh && sh install.sh --scope personal
 ```
 
-Neither path needs a command to become governed — the curl path seeds the rows and a
+Neither path needs a command to become governed — the curl path seeds the file and a
 project-scoped plugin applies the shipped defaults without any file at all (`decision-0070`).
-When you want the **firm** posture instead of the default adaptive one, or to turn individual
-rules off: copy the matching preset (`reference/rules-a.toml` / `rules-b.toml`) if you have no
-`.trellis/rules.toml` yet, otherwise edit the one you have in place. The row set must stay
-complete, and copying over an existing file discards every row you disabled.
+To switch individual rules off, add `active = false` rows as described at the top of this section;
+the curl path never rewrites a file you already have.
 
 ### Local Codex — carried, not supported
 
@@ -153,10 +154,7 @@ remains model-directed rather than deterministic.
 
 Phase 1 does not support Codex resume, clear, compact, subagent boundaries, desktop, IDE,
 headless/automation, or cloud surfaces. It adds no per-host disable: `/trellis:remove` removes both
-host blocks and the shared overlay. Applying a preset **replaces** the consumer's rows, strictness
-and `seeded_from`, so replacing a file you already have shows up as a git diff — provided the file
-is committed, which the installer suggests but never does for you (`decision-0072` §3). Also excluded are any other host-native
-transport, and revival of the parked `seed` or `custom` presets.
+host blocks and the shared overlay. Also excluded is any other host-native transport.
 
 **Any other harness — the manual copy path.** This is for harnesses the plugin does **not** cover.
 On **Claude Code** it is superseded — use the marketplace or curl paths above
@@ -168,13 +166,17 @@ file, on purpose, because both would load and deliver the rules twice.
 
 Every bundle file is pre-rendered plain text in
 [`plugins/trellis/reference/`](plugins/trellis/reference) (the payload, `kodhama-0007`: one
-render, many copiers). Pick a posture key (`a` = conductor, `b` = author-adapt) and copy:
+render, many copiers). Start with the rules file:
 
 ```sh
 git clone --depth 1 https://github.com/kodhama/trellis /tmp/trellis
-ref=/tmp/trellis/plugins/trellis/reference   # <p> below: a (conductor) | b (author-adapt)
+ref=/tmp/trellis/plugins/trellis/reference
 mkdir -p .trellis
-cp "$ref"/rules-<p>.toml .trellis/rules.toml          # first install only — yours after that
+# first install only — the file is yours after that
+[ -e .trellis/rules.toml ] || cat > .trellis/rules.toml <<'EOF'
+# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }
+[rules]
+EOF
 ```
 
 Then pick **exactly one** delivery branch — the two blocks below are alternatives, never both
@@ -184,20 +186,20 @@ Then pick **exactly one** delivery branch — the two blocks below are alternati
 
 ```sh
 mkdir -p .trellis/internal
-cp "$ref"/invariants.md  .trellis/internal/invariants.md
-cp "$ref"/rules.md       .trellis/internal/rules.md   # the complete rules readout
-cp "$ref"/trellis-<p>.md .trellis/internal/trellis.md
-cp "$ref"/version        .trellis/internal/version
+cp "$ref"/invariants.md .trellis/internal/invariants.md
+cp "$ref"/rules.md      .trellis/internal/rules.md   # the complete rules readout
+cp "$ref"/trellis.md    .trellis/internal/trellis.md
+cp "$ref"/version       .trellis/internal/version
 cat "$ref"/block-claude.md >> CLAUDE.md
 sed -n -e 's|  invariants\.md$|  .trellis/internal/invariants.md|p' \
        -e 's|  rules\.md$|  .trellis/internal/rules.md|p' \
-       -e 's|  trellis-<p>\.md$|  .trellis/internal/trellis.md|p' \
+       -e 's|  trellis\.md$|  .trellis/internal/trellis.md|p' \
        -e 's|  version$|  .trellis/internal/version|p' \
        "$ref"/checksums | shasum -a 256 -c -           # verify: all four lines print OK
 ```
 
 **No @import support (e.g. AGENTS.md)** — append the SELF-CONTAINED inline block instead. It
-embeds the rules and the rows and takes NO `.trellis/internal/` copies: the block plus
+embeds the rules and takes NO `.trellis/internal/` copies: the block plus
 `.trellis/rules.toml` is the whole install, and copying the overlay beside it would deliver the
 rules twice.
 
@@ -205,26 +207,20 @@ rules twice.
 # the block must start at column 0 of its own line: guard against a file
 # whose last line has no trailing newline before appending
 [ -s AGENTS.md ] && [ -n "$(tail -c1 AGENTS.md)" ] && echo >> AGENTS.md
-(cd "$ref" && grep '  block-inline-<p>\.md$' checksums | shasum -a 256 -c -)  # verify: OK
-cat "$ref"/block-inline-<p>.md >> AGENTS.md
+(cd "$ref" && grep '  block-inline\.md$' checksums | shasum -a 256 -c -)  # verify: OK
+cat "$ref"/block-inline.md >> AGENTS.md
 ```
 
-To deactivate a rule later, set its row in `.trellis/rules.toml` to `active = false` — that's
-it (`decision-0053`): the readout ships complete and opens with an authority header, so agents
-apply a rule only where its row says `active = true`, and a row edit takes effect at the next
-host context-loading boundary.
-**A row starting with `#` is a quarantined row** — the hook found a slug the installed payload does
-not ship and commented it out, with the date and the payload stamp, rather than deleting it
-(`decision-0083`). It is inert and safe to leave. If a newer Trellis release ships that slug, update
-the plugin and uncomment the row; if the rule was retired, delete the line whenever you like.
-The two `floor-*` rows apply regardless of their value. On an **import** install the block loads
-your current `rules.toml` every session. On an **inline** install the block carries a copy of
-the rows inlined below the rules, so re-paste that copy after editing: replace everything
-between the `trellis:begin`/`trellis:end` markers with the sandwich `cat
-"$ref"/block-inline-<p>-head.md "$ref"/rules.md`, then an `## Active rows (`.trellis/rules.toml`)`
-heading followed by your `rules.toml` inside a ```toml fence, then `cat
-"$ref"/block-inline-tail.md` (the shipped `block-inline-<p>.md` is that sandwich with the seed
-rows).
+To switch a rule off later, add its row to `.trellis/rules.toml` as described under Get started
+(`decision-0053`): the readout ships complete and opens with an authority note, and a row edit
+takes effect at the next host context-loading boundary. The two `floor-*` rules apply whatever
+their row says. On an **import** install the block loads your current `rules.toml` every session.
+
+**On an inline install, the block is the only copy of your opt-outs the host reads.** The shipped
+`block-inline.md` carries no rows, so a project that switches a rule off builds the block instead:
+`cat "$ref"/block-inline-head.md "$ref"/rules.md`, then its `active = false` rows inside a ```toml
+fence, then `cat "$ref"/block-inline-tail.md`. After every row edit, replace everything between
+the `trellis:begin` and `trellis:end` markers with a block built the same way.
 
 No binary or project runtime — the assets are plain files, and anything can verify them with
 `shasum -c` against the shipped manifest. The optional local Codex native transport uses the

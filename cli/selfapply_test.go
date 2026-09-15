@@ -29,21 +29,25 @@ func TestRepoDeclaresRulesConfig(t *testing.T) {
 		t.Fatalf("repo overlay has no .trellis/rules.toml — the consumer-authoritative config (decision-0051 rule 1): %v", err)
 	}
 	content := string(b)
-	// TRL-97 (R17) leaves this file unchanged: `strictness` and every `active = true`
-	// row are inert under this release, and the repo's sessions receive the "By
-	// default" posture sentence. They stay because a plugin version older than this
-	// release, pinned by some checkout, still reads them — and because the change
-	// asks no existing file to be edited, this one included.
-	if !strings.Contains(content, `strictness  = "firm"`) {
-		t.Errorf(".trellis/rules.toml must keep its strictness \"firm\" line — TRL-97 leaves this file unchanged, though the key is inert under this release, got: %q", content)
+	// TRL-97 (R17) leaves this file unchanged, but pins none of its lines: its
+	// `strictness`, `seeded_from` and `active = true` rows do nothing under that
+	// release, and the repo's sessions receive the "By default" sentence whatever
+	// `strictness` says. What the test pins is what the file must still MEAN: this
+	// repository governs itself by every rule it ships (self-application,
+	// decision-0035), so no row switches one off, and no row names a slug the plugin
+	// does not ship, which the hook would ignore.
+	offRe := regexp.MustCompile(`(?m)^[ \t]*([a-z][a-z0-9-]*)[ \t]*=[ \t]*\{[ \t]*active[ \t]*=[ \t]*false[ \t]*\}`)
+	for _, m := range offRe.FindAllStringSubmatch(content, -1) {
+		t.Errorf(".trellis/rules.toml switches %s off — this repository governs itself by every rule it ships, so no row here may say active = false", m[1])
 	}
-	// Every pinned row is ACTIVE. Whether the row SET matches the pin (both ways — a
-	// stale row after a retire failed nothing here) is TestRowSetDerivativesFollowThePin's
-	// job (row_set_guard_test.go); this loop is about the value, not the membership.
+	pinned := map[string]bool{}
 	for _, slug := range assessableSlugs {
-		rowRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(slug) + `\s+= \{ active = true \}`)
-		if !rowRe.MatchString(content) {
-			t.Errorf(".trellis/rules.toml must keep its active row for %s — TRL-97 leaves this file unchanged, and an older installed plugin version still applies a rule only when its row says active = true", slug)
+		pinned[slug] = true
+	}
+	rowRe := regexp.MustCompile(`(?m)^[ \t]*([a-z][a-z0-9-]*)[ \t]*=[ \t]*\{`)
+	for _, m := range rowRe.FindAllStringSubmatch(content, -1) {
+		if !pinned[m[1]] {
+			t.Errorf(".trellis/rules.toml has a row for %s, which is not a rule this plugin ships (assessableSlugs, cli/payload_test.go) — the hook ignores such a row; delete it or correct the slug", m[1])
 		}
 	}
 }

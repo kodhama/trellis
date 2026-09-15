@@ -56,18 +56,12 @@ ratified: 2026-07-04
 > not listed.** `cli/row_set_guard_test.go` reads the pinned slug set (`assessableSlugs`,
 > `cli/payload_test.go` — the one pin) and fails naming what has not followed: this catalog's own
 > entry list, the `invariants-v1` registry, `profiles/trellis-self.md` (each gene present *and*
-> active), the `site/invariants.html` cards, this repo's `.trellis/rules.toml`, and the rendered
-> `reference/rules-*.toml` (**without a row the rule ships but is inactive**). Run
+> active), the `site/invariants.html` cards, and this repo's `.trellis/rules.toml` (**each row
+> there must name a shipped rule; a rule with no row still applies**). Run
 > `go test -count=1 ./...` in `cli/` and follow the failures.
 >
 > **The count itself is guarded where the number is the claim** — the installer's closing line,
-> the staleness hook's announcement, the README's `16/16`, and AC1's class breakdown below — **and
-> in one place where it is not.** `plugins/trellis/README.md` still spells the count out twice;
-> those two sentences are pinned rather than deleted because editing a numeral inside the shipped
-> bundle forces `install.sh`'s baked manifest to be re-hashed, and those manifest lines are owned
-> by open **trellis#262**. The pin is where that deferral is recorded, so it cannot go stale while
-> it waits — delete the two rows when a change that already touches the bundle deletes the
-> numerals.
+> the staleness hook's announcement, the README's `16/16`, and AC1's class breakdown below.
 >
 > Elsewhere — the root README, `site/`, the corpus — the numeral was simply deleted ("all sixteen
 > rules" → "all rules"), because a list of count sites kept here was found short twice

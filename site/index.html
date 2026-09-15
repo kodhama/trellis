@@ -443,7 +443,7 @@
         <div class="panel" data-panel="curl" role="tabpanel" id="panel-curl" aria-labelledby="tab-curl" tabindex="0">
           <div class="cmd"><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh</code></div>
           <div class="cmd"><code><span class="cmt"># macOS, Linux, WSL — a POSIX shell; not cmd or PowerShell</span></code></div>
-          <div class="cmd"><code><span class="cmt"># that's it — all rules active, adaptive posture</span></code></div>
+          <div class="cmd"><code><span class="cmt"># that's it — every rule applies</span></code></div>
         </div>
         <div class="panel" data-panel="manual" role="tabpanel" id="panel-manual" aria-labelledby="tab-manual" tabindex="0">
           <div class="cmd"><code><span class="prompt">$ </span>git clone --depth 1 https://github.com/kodhama/trellis</code></div>
@@ -546,7 +546,7 @@
       <div class="sec-head">
         <p class="eyebrow">How it works</p>
         <h2>One command. It reads your project, you choose the fit.</h2>
-        <p>Trellis rides your existing harness — Claude Code today. The rules land as plain instructions your agents read, and one small config file you own says how strictly they apply. No runtime, no lock-in.</p>
+        <p>Trellis rides your existing harness — Claude Code today. The rules land as plain instructions your agents read, and one small config file you own names any you switch off. No runtime, no lock-in.</p>
       </div>
       <!-- The four titles were not parallel: 01/02 were imperatives aimed at the
            reader, 03 a statement about the system, 04 a statement about the
@@ -556,7 +556,7 @@
            section ran h2 → h4 with no h3 between, a level skip. -->
       <div class="flow">
         <div class="step"><p class="k">01 · install</p><h3>You add the plugin</h3><p>From the kodhama family marketplace — or, for a harness the plugin does not cover, copy the pre-rendered bundle by hand.</p></div>
-        <div class="step"><p class="k">02 · posture</p><h3>You set the posture</h3><p>Every rule active, adaptive posture — the shipped default, seeded as explicit rows in your <code>rules.toml</code>. No file yet? Copy a complete preset — <code>reference/rules-a.toml</code> for firm, <code>rules-b.toml</code> for adaptive. Already have one? Edit <code>strictness</code> in place; copying a preset over it re-enables every row you turned off. Unless it is the <code>governed = false</code> opt-out — that one is a replace, not an edit. Rows govern at read time, and the set has to stay whole.</p></div>
+        <div class="step"><p class="k">02 · rules</p><h3>You choose which rules apply</h3><p>Every rule applies until you switch it off with a row in <code>.trellis/rules.toml</code>: <code>&lt;slug&gt; = { active = false }</code>. A rule with no row applies, floor rules cannot be switched off, and <code>governed = false</code> opts the whole project out. An older file with a row for every rule keeps working as it is. Remove those rows only once every install that opens the repository runs 0.24.0 or later, and keep them while the project still carries a vendored overlay, an inline block, or a <code>.claude/rules/trellis.md</code> from an older installer.</p></div>
         <div class="step"><p class="k">03 · deliver</p><h3>The rules arrive on their own</h3><p>On the plugin path a session hook injects them; on the curl path they are rendered into <code>.claude/rules/</code>. Never both — the hook stands down when it finds the rendered file, and says so if it ever sees both.</p></div>
         <div class="step"><p class="k">04 · verify</p><h3>You approve the merge</h3><p>The curl path checks every byte against a shipped checksum manifest before it writes one, and never overwrites rows you already have — <code>.trellis/rules.toml</code> is seeded only when it is absent. Trellis proposes; the merge is yours.</p></div>
       </div>
@@ -564,8 +564,8 @@
       <div class="footprint">
         <p class="fp-label" id="fp-label">What it leaves in your repo — small, yours to edit where it says so, and yours to remove:</p>
         <pre class="fp-code"><span class="fp-c">.trellis/</span>
-  <span class="fp-c">rules.toml</span>       <span class="fp-m"># which rules are active, how strictly — yours to edit.</span>
-                   <span class="fp-m">#   Seeded by the installer, all rows on (decision-0070)</span>
+  <span class="fp-c">rules.toml</span>       <span class="fp-m"># which rules are switched off — yours to edit.</span>
+                   <span class="fp-m">#   Seeded by the installer, every rule on (decision-0070)</span>
 <span class="fp-c">.claude/</span>           <span class="fp-m"># curl path only — the plugin path writes neither:</span>
   <span class="fp-c">rules/</span>
     <span class="fp-c">trellis.md</span>     <span class="fp-m">#   the rules readout, loaded every session — Trellis owns</span>

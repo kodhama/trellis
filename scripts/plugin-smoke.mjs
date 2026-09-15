@@ -24,9 +24,10 @@ function contextFrom(response, host) {
 try {
   fs.mkdirSync(path.join(projectRoot, ".git"));
   fs.mkdirSync(rulesDir);
-  fs.copyFileSync(
-    path.join(pluginRoot, "reference", "rules-b.toml"),
+  // The two-line file install.sh seeds and the hook's accept instruction quotes.
+  fs.writeFileSync(
     path.join(rulesDir, "rules.toml"),
+    "# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\n[rules]\n",
   );
 
   const claudeResponse = JSON.parse(
