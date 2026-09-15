@@ -56,7 +56,7 @@ row from `true` to `false` moved the rate from 95% to 0%.
    switched-off rule's measured effect, is kept word for word. The clause that retires assumed a row
    for every rule, which a file no longer needs to carry.
 3. **A bad entry costs that entry, never the session.** Each of these is ignored with a warning: a
-   `false` row for a floor rule, a row naming a slug the plugin does not ship, a row outside
+   `false` row for a floor rule, a `false` row naming a slug the plugin does not ship, a row outside
    `[rules]`, a table other than `[rules]`, a malformed row, an unknown top-level key, and a `governed`
    line that does not opt out. A warning names the line number and the slug, key or kind of entry, never
    the raw line. Five warnings are named in total. Entries that try to switch a shipped rule off come

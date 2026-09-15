@@ -588,15 +588,18 @@ func TestBothHostsClassifyRulesRowsIdentically(t *testing.T) {
 	pluginRoot := writeDualHostPluginRoot(t)
 	for _, c := range rulesRowsCases(t) {
 		t.Run(c.name, func(t *testing.T) {
+			// Root reads a mode-0000 file, so an unreadable row cannot be built
+			// there. Skipped for the whole row, not per host: the parity subtest
+			// below would otherwise run with no result from either host.
+			if c.unreadable && os.Geteuid() == 0 {
+				t.Skip("running as root: mode 0000 does not deny reads")
+			}
 			c.checkBoundPremise(t)
 			results := map[string]hostRulesResult{}
 			for _, host := range []string{"claude", "codex"} {
 				t.Run(host, func(t *testing.T) {
 					project, path := writeRulesRowsProject(t, c)
 					if c.unreadable {
-						if os.Geteuid() == 0 {
-							t.Skip("running as root: mode 0000 does not deny reads")
-						}
 						if err := os.Chmod(path, 0o000); err != nil {
 							t.Fatal(err)
 						}
