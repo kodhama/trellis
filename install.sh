@@ -50,23 +50,21 @@
 # one file it wholly owns, .claude/rules/trellis.md, from bundle bytes — that is
 # how the rules actually reach a session, since a vendored bundle alone delivers
 # none (decision-0068; issue #201). It touches a project's .trellis/ at exactly ONE
-# point — seeding .trellis/rules.toml from the shipped preset when none exists
-# (decision-0070 D2), never overwriting; otherwise .trellis/ is the consumer's
-# to edit (decision-0072 retired the setup skill). It DOES therefore pick a
-# posture for a project that has none, the adaptive one, by copying
-# rules-b.toml: that is a shipped constant, not a decision this script makes, but
-# the header used to claim "no posture choice" full stop and that reads as false
-# next to the seed. When the project ALREADY has a rules.toml, the rendered rules
-# file takes its posture header from that file: `strictness = "firm"` selects
-# reference/trellis-a.md, anything else reference/trellis-b.md, read with the
-# plugin hook's own parser so the two deliveries agree on the same project
-# (TRL-37). When that file declares `governed = false`, the project has opted
+# point — seeding a missing .trellis/rules.toml with a fixed two-line file, a
+# comment naming the opt-out row and an empty [rules] table (decision-0070 D2,
+# as its dated note states it now), never overwriting; otherwise .trellis/ is
+# the consumer's to edit (decision-0072 retired the setup skill). The seed
+# switches no rule off, and nothing in it is a decision this script makes. One
+# header ships, reference/trellis.md, so the rendered rules file is the same for
+# every project whatever its rules.toml says (TRL-97). When that file declares
+# `governed = false`, the project has opted
 # out of Trellis (decision-0070 D5): the plugin hook reads that key before every
 # delivery path and injects nothing there, so this script renders nothing there
 # either — the bundle is vendored, no rules file is written, and the opt-out is
-# left as it is (TRL-38). Those two keys are the only project CONTENTS that
-# decide anything here; the managed-block marker is read too, but only to
-# refuse. It NEVER runs a git
+# left as it is (TRL-38). That key is the only project CONTENT that decides
+# anything about delivery here; the managed-block marker and CLAUDE.md's
+# @AGENTS.md import line are read too, but only to decide whether the render is
+# refused. It NEVER runs a git
 # command that mutates anything (no add, no commit): it prints a suggested next
 # command for project scope and leaves the commit to you.
 #
@@ -143,12 +141,13 @@ it at all, so use WSL there. The dependency list at the top of this file is the
 whole of the boundary, and POSIX sh is the binding entry in it.
 
 This is the ONLY decision this script makes. A project with no .trellis/rules.toml
-is seeded with the adaptive preset; one that already has the file keeps it, and the
-rendered rules file takes its posture header from that file's strictness. One whose
-file declares `governed = false` has opted out: it gets the bundle and no rules
-file, exactly as the plugin hook delivers nothing there. Either way the posture is
-yours to change afterwards by editing .trellis/rules.toml; see the "next steps"
-this script prints when it finishes.
+is seeded with a file that switches no rule off, so every rule applies; one that
+already has the file keeps it exactly as it is. One whose file declares
+`governed = false` has opted out: it gets the bundle and no rules file, exactly as
+the plugin hook delivers nothing there. Either way the file is yours to edit
+afterwards — a row `<slug> = { active = false }` under [rules] switches that rule
+off, and deleting that row switches it back on (a row set to active = true does
+not override it); see the "next steps" this script prints when it finishes.
 
 Flags:
   --scope personal|project   where to vendor the plugin. Also settable via
@@ -336,30 +335,25 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-e5331990a7c06345cee406e7203fd1a2b13c012fb6afd4f5d915863f050b04f5  .claude-plugin/plugin.json
-5167d411db2695dd537c23ef5512c80176088ea3b6e18b8968e8757f4ccd31c6  .codex-plugin/plugin.json
-310cdc794d7d325f428b84da5f4c045bfbd1c2d65ab751cf1ebcdcca13fdbb11  README.md
-228e6f3bd9ed9041edbee63beef08708f3a7dea54b92583f6579c522e371bf05  VERSION
-acb3ba1be2dc3501f102628b49068513ad945bb860819c04aa6be7efbd01e2aa  hooks/codex-context.mjs
+392bedadcb2d2b43053b831e5a4d40827c02908048cb1f9b3d480921b18ae71c  .claude-plugin/plugin.json
+340bb5cabdda2d7a266b76842edc4b213f6a7a97bdce3289197bed5d29b6ad5e  .codex-plugin/plugin.json
+48f314c3dcc2b04d89bce408cadbb95ddd572b401e45418eb433fc6b1f2f845e  README.md
+d5a935787e35a015a6d612dea57c2bfd60e30de562b72e88bd08f91c67860926  VERSION
+2319b531e8f83ea8df800a7d2ac9e1e756876d98dab7689504e12590d63fc156  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a741930673c1fb723ae6cce9421d49579c7eb5bc2dd0385a2b53be8b1d1b27f5  hooks/hooks.json
-7ce6b4244eac03aea0eb76df6790b4befb6b71aca9a9e444be7ff3ead4374297  hooks/staleness.sh
+d536718230dbbe2be77073e85da238ddb2fcff6544c227093b93f4a5596eb49b  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
-6afab1304c31516e46cf620a204b0251ecc35a79e62657d5b1a197e5fe2a350b  reference/block-codex.md
-c277d931c9f8512e948b8d79e50d7c60859b1f875f4f5e682ba07a228890a0a7  reference/block-inline-a-head.md
-8a997895fdb9ee92c66138f61313e5d73a769459c410e13c9cf3d168e2bbdeea  reference/block-inline-a.md
-32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-b-head.md
-7cde807909b863bfdea4e5b29d15ffb0e842acf6a7a3dde2943eabcbae6e1755  reference/block-inline-b.md
+79e4af76e405dcc4cc4e153b1e8e913796c5d92679916d62348007cb343064f8  reference/block-codex.md
+32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-head.md
 10892805ec9c8297e2385bf0c6a552ee64eca7491ca89862ee3941fe60833e32  reference/block-inline-tail.md
-7debc7dae94ff5e2230b733e42c55f1148e8fb249f7914e9b7f78cd7851a4be2  reference/checksums
+22afae7cc98422bedb23096a2f18d9d838ee76560f0230082cad46f034d6fd51  reference/block-inline.md
+e34f794b51600424754a507e31d196ff1b9c42c5a5fa51fc6193641409f25618  reference/checksums
 5c068cf2e5592dab37c0820430166bc101e1725689a1e189abce821bed8b2f6e  reference/invariants.md
-dc01e98b476d66cc02557cf059ed12af2c13e94c2ab03311c594096574f8e893  reference/rules-a.toml
-6d8e3471644f79a6282b16f9c34ad5cb6248dfaa164caf4dcc439e849e829ad7  reference/rules-b.toml
-938fcf009476ff36e8775391cebe83aff3fe12316e445d6dbfbcfd64d82267dd  reference/rules.md
-3bbb8a94e2d39d85215906db92e83fcca9be4addeb322e80defc8cbb14af2596  reference/trellis-a.md
-8787be1ab60f4718b6cc0e9ad34293f9bcd21e264aa9ad38a857c48217cbdd3d  reference/trellis-b.md
-8e46195c0632752c0b87ab14729e5bcd023b399fa0dcff5179a7413f978366fe  reference/version
-247037659b91a1c4f0285c1e6b1c42637b18954f4e0b18a79647ef79d5f5d899  skills/remove/SKILL.md
+7a0950a22293b0207227b3c5b70373222e7dfbcdd4e8c9fd2c904411639700e9  reference/rules.md
+8787be1ab60f4718b6cc0e9ad34293f9bcd21e264aa9ad38a857c48217cbdd3d  reference/trellis.md
+2fe3f6b2679f2a295eac4d5bc3932824574feb8de8d75b69ab0511a8c1fc178a  reference/version
+8db91620379d6f1b4cfda846bb1abbc8fd326b9a0342fcce205912bce61a7f6f  skills/remove/SKILL.md
 TRELLIS_BUNDLE_MANIFEST
 }
 
@@ -438,25 +432,18 @@ nfiles="$(printf '%s\n' "$bundle_files" | wc -l | tr -d ' ')"
 # patched, nothing branched on an instructions file. AC2's "never reads" clause
 # WAS amended for this branch (see the spec's frontmatter and AC2d): six reads
 # over five paths, of which ONE read a file's contents — the managed-block
-# opening marker. TRL-37 made it eight reads over the same five paths (the
-# existence-and-readability guard on .trellis/rules.toml, and the key itself),
-# two of them content reads; TRL-38 makes it nine, three of them content reads.
-# TRL-37 added the second: the `strictness` key of an existing
-# .trellis/rules.toml, which selects the posture HEADER — trellis-a for `firm`,
-# trellis-b for anything else — with the plugin hook's own parser. TRL-38 added
-# the third: the top-level `governed` key of that same file, read FIRST and with
-# the hook's own matcher, which refuses the render when it says false. The hook
+# opening marker. The enumeration in the static-delivery refusal branch below
+# counts them now, and cli/install_script_test.go pins that count. TRL-38 added
+# the top-level `governed` key of .trellis/rules.toml, read FIRST and with the
+# hook's own matcher, which refuses the render when it says false. The hook
 # reads that key before every delivery path and injects nothing on it
 # (decision-0070 D5); an installer that rendered a governing file over it put
 # the full rules body into always-loaded context for a project that had
 # declined, and the hook could then only tell each session to disregard what
-# the host had already read. Before that
-# the header was trellis-b's prose as a CONSTANT (decision-0068 D5), and a firm
-# project read the adaptive sentence above its own firm rows while the hook
-# served the firm header to the same project: two deliveries, two postures.
-# Absent, missing or unrecognised strictness still resolves to `b`, exactly as
-# staleness.sh resolves it, so the install path inherits the hook's default
-# rather than inventing one.
+# the host had already read. TRL-37 had added a `strictness` read that selected
+# one of two posture headers with the hook's own parser; TRL-97 retired it with
+# the second header. One header ships, and every project receives its By
+# default sentence, which is what the hook delivers too.
 #
 # Two edits, both of which staleness.sh already performs under decision-0065's
 # "one edit" allowance:
@@ -476,6 +463,15 @@ static_conflict=""
 static_host_reads=yes
 opted_out=no
 bom="$(printf '\357\273\277')"
+# The seed's comment line (TRL-97). The seed below writes it above an empty
+# [rules] table, and the next steps show the same two lines wherever they tell
+# a project to write the file. The hook's accept instruction quotes the same
+# bytes; TestInstallScriptSeedMatchesTheHooksAcceptInstruction pins the pair.
+trellis_seed_comment='# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }'
+say_seed() {
+  say "  $trellis_seed_comment"
+  say "  [rules]"
+}
 if [ "$scope" = "project" ]; then
   # decision-0070 D5, read BEFORE every other branch, exactly where the hook
   # reads it: an explicit refusal outranks every default and every other
@@ -489,8 +485,8 @@ if [ "$scope" = "project" ]; then
   # for it; the same narrowed divergence the hook records against Codex.
   # An unreadable file leaves $governed_head empty, so it is never an opt-out
   # here — nor in the hook, whose sed fails the same way; that case is handled
-  # in the render branch below. Regular-and-readable BEFORE the open, as the
-  # strictness read below is guarded: a FIFO at that path (review found it)
+  # in the render branch below. Regular-and-readable BEFORE the open: a FIFO at
+  # that path (review found it)
   # would block the sed forever waiting for a writer, ahead of the non-regular
   # handling the seed step already has. The hook takes the same guard on its
   # own copy of this read (TRL-43, this change); the parity test pins the
@@ -535,7 +531,7 @@ if [ "$scope" = "project" ]; then
   # .trellis/rules.toml directly", so such a project has rules.toml and nothing
   # else under .trellis/. Both tests miss it and the render proceeds into live
   # double delivery. Measured, not reasoned: a consumer built from the shipped
-  # block-inline-b.md got `inv-directional-flow` in CLAUDE.md AND in the rendered
+  # inline block got `inv-directional-flow` in CLAUDE.md AND in the rendered
   # file, with the hook emitting its quiet stand-down — both components
   # affirmatively misreporting.
   #
@@ -606,7 +602,7 @@ if [ "$scope" = "project" ]; then
   # seen by neither probe, and on that repo this gate is wrong. TRL-49 carries
   # the resolver; the NOTE below names the case rather than papering it.
   # Measured on main before the change: a
-  # non-opted-out repo with the shipped block-inline-b.md at AGENTS.md and no
+  # non-opted-out repo with the shipped inline block at AGENTS.md and no
   # import line got "NOT rendering ... this project already delivers the rules
   # statically (managed block in AGENTS.md)" and a remedy telling the author to
   # delete the block — the one thing that DOES deliver rules there, to Codex —
@@ -732,9 +728,9 @@ if [ "$scope" = "project" ] && [ "$opted_out" = yes ]; then
   if [ -n "$loaded_anyway" ]; then
     rendered_note="LEFT IN PLACE — $loaded_anyway present AND .trellis/rules.toml declares governed = false"
   fi
-  say "To adopt Trellis here instead, replace the governed = false line with the rows from"
-  say "the installed plugin's reference/rules-b.toml (rules-a.toml for firm) and re-run"
-  say "this installer."
+  say "To adopt Trellis here instead, replace .trellis/rules.toml with the two-line file"
+  say "shown at the end of this output, followed by any row it sets to active = false,"
+  say "and re-run this installer."
 elif [ "$scope" = "project" ] && [ -n "$static_conflict" ] && [ "$static_host_reads" = yes ]; then
   # A pre-plugin-delivery consumer whose CLAUDE.md managed block imports
   # @.trellis/internal/trellis.md. Rendering here would put BOTH static chains
@@ -743,7 +739,7 @@ elif [ "$scope" = "project" ] && [ -n "$static_conflict" ] && [ "$static_host_re
   # what the HOOK injects — it cannot un-load a file Claude already read. So this
   # is refused at install time, because there is no runtime fix for it.
   #
-  # Every read this script makes of pre-existing project state — SIXTEEN LINES,
+  # Every read this script makes of pre-existing project state — FIFTEEN LINES,
   # six paths. An earlier version of this comment claimed "the ONE place this
   # script reads .trellis/", which was false; a later one claimed no contents are
   # read anywhere, which is false while the marker check exists; the two after
@@ -753,15 +749,18 @@ elif [ "$scope" = "project" ] && [ -n "$static_conflict" ] && [ "$static_host_re
   # below as `"$git_root/…"` or `"$rules_dir/…"`. Writes are not reads and are
   # not counted (the seed's cp, the render's mv, the mkdir). Counting lines, not
   # purposes, is what lets TestInstallScriptReadEnumerationIsCounted fail in the
-  # commit that adds the seventeenth — which is the only reason the last three
+  # commit that adds the sixteenth — which is the only reason the last three
   # corrections were needed at all (inv-self-improvement).
-  #   - .trellis/rules.toml        9  (existence for the floors-only guidance
-  #                                    line and for the seed's two guards;
-  #                                    existence-and-readable twice, as the guard
-  #                                    on each content read; CONTENT x2: the
+  #   - .trellis/rules.toml        8  (existence: the opt-out test, the
+  #                                    unreadable-file check, the seed's two
+  #                                    guards and the legacy no-file guidance;
+  #                                    readable: the unreadable-file check;
+  #                                    existence-and-readable once, as the guard
+  #                                    on the content read; CONTENT x1: the
   #                                    top-level governed key, refusing over the
-  #                                    opt-out — TRL-38; and the strictness key,
-  #                                    selecting the posture header — TRL-37)
+  #                                    opt-out — TRL-38. The strictness read
+  #                                    TRL-37 added retired with the posture
+  #                                    headers — TRL-97)
   #   - .claude/rules/trellis.md   3  (existence: the opt-out branch's ALREADY
   #                                    EXISTS warning, the live double-delivery
   #                                    warning below, and the non-regular refusal
@@ -774,16 +773,16 @@ elif [ "$scope" = "project" ] && [ -n "$static_conflict" ] && [ "$static_host_re
   #                                    AGENTS.md at all — TRL-44 for the opt-out
   #                                    branch's warning, TRL-48 for the refusal)
   #   - CLAUDE.md / AGENTS.md      1  (CONTENT: opening marker, one loop)
-  # Four are content reads, and decision-0090 splits them by what they DO, not by
-  # how many there are. Two only ever REFUSE or print: the marker, one
+  # Three are content reads, and decision-0090 splits them by what they DO, not
+  # by how many there are. Two only ever REFUSE or print: the marker, one
   # line-anchored string, and the governed key. One REMOVES A REFUSAL: the
   # @AGENTS.md gate, which since TRL-48 decides whether the static-delivery
   # refusal below fires at all. That is D2's fourth clause, so it came to the
   # corpus before it landed and got decision-0091 — TRL-44 shipped this read
   # wired to the MESSAGE only, and said so in terms, for exactly that reason.
-  # One SELECTS: the strictness key, choosing which SHIPPED header is rendered,
-  # and D2 is why that one was owed decision-0088 and the two refuse-only reads
-  # were not. None patches a marker or writes anything under .trellis/.
+  # A fourth, the strictness key, SELECTED which shipped header was rendered and
+  # so was owed decision-0088 under D2; it retired with the second header
+  # (TRL-97). None patches a marker or writes anything under .trellis/.
   # spec-0005 AC2's second amendment permitted the marker; the rest are argued,
   # and the count is pinned, in cli/install_script_test.go — decision-0090 D1
   # makes that the count's home. The count is unchanged by TRL-48: the gate moved
@@ -811,110 +810,38 @@ elif [ "$scope" = "project" ]; then
   rules_dir="$git_root/.claude/rules"
   mkdir -p "$rules_dir" || fail "could not create $rules_dir (is .claude/rules present as a file?). The bundle is already vendored; re-run once the path is clear."
 
-  # Posture selects the header, exactly as the plugin's SessionStart hook does
-  # on its config-only path (plugins/trellis/hooks/staleness.sh, path B): the
-  # first `strictness = ...` line of .trellis/rules.toml, in either TOML string
-  # form, and exactly `firm` picks reference/trellis-a.md — everything else,
-  # including no file, no key and a value the hook does not know, picks
-  # reference/trellis-b.md. The awk program is the hook's own, copied because
-  # the hook lives inside the bundle this script vendors and cannot be shared;
-  # a test pins the two copies to each other (decision-0028: a guard per pair).
-  # The file is read as STDIN rather than as an operand so that the lexical
-  # content-read guard in the test suite sees the read; it is never written.
+  # One header ships (TRL-97): every project is rendered from
+  # reference/trellis.md and receives its By default sentence, whatever
+  # `strictness` its .trellis/rules.toml carries, and nothing here reads that
+  # key. The hook delivers the same header, so the two agree without a copied
+  # parser. Before TRL-97 that key selected one of two headers here, read with a
+  # copy of the hook's parser (TRL-37, decision-0088); the read, its pair guard
+  # and the posture note the confirmation used to print retired together.
   #
-  # Before TRL-37 the header was trellis-b's as a constant, and a project whose
-  # rows said firm got the adaptive sentence rendered over them — while the hook
-  # served the firm header to that same project. The rendered footer below
-  # still says the rows win over the sentence, because strictness can be edited
-  # after this file is written and the sentence is frozen at that moment.
-  # `-r` as well as `-f`, and it is not belt-and-braces. A regular file this
-  # user cannot read (a shared checkout, a stray chmod) makes the `<` redirect
-  # fail INSIDE the command substitution: under dash the substitution exits 2,
-  # the assignment takes that status, and `set -eu` kills the script — after the
-  # bundle is already in place, with no rules file, no seed, and only the
-  # shell's own one-line "cannot open" as the diagnosis (the `2>/dev/null`
-  # cannot help: redirections are processed left to right, so the shell's error
-  # is written before it takes effect). Measured under dash as an unprivileged
-  # user. The hook does not die there — it runs without `set -e` and swallows
-  # awk's read error, so its strictness comes back empty — but it does NOT then
-  # serve the adaptive header: its row validator gets no usable report from a
-  # file it cannot read, and it emits TRELLIS_RULES_NOT_LOADED and injects
-  # nothing (its fail-closed branch above the reconciler). An earlier version of
-  # this comment, and of the message below, claimed the hook "falls back the
-  # same way"; decision-0088 D3 showed that false and recorded the truth: on an
-  # unreadable file the two deliveries DIVERGE — installer adaptive and
-  # announced, hook nothing and announced — and once this rendered file exists
-  # the hook stands down to it (path C), so the adaptive file is what governs.
-  # That divergence is taken deliberately (D3): an install that stops halfway,
-  # with a vendored bundle and no rules file, is the worse state, and the
-  # install is the one moment someone reads the output. So: unreadable renders
-  # adaptive, says so, and says what the hook does instead.
+  # The unreadable-file check stays, and `-r` is what makes it. A regular file
+  # this user cannot read (a shared checkout, a stray chmod) passes `-f`. The
+  # `governed` read above is guarded regular-and-readable, so such a file yields
+  # an empty $governed_head and $opted_out stays `no`: a project whose rules.toml
+  # says `governed = false` at mode 000 is rendered over, and governed by the
+  # file it declined. decision-0088 D3 takes that deliberately — an install that
+  # stops halfway, with a vendored bundle and no rules file, is the worse state,
+  # and the install is the one moment someone reads the output. The hook
+  # diverges on the same input: it emits TRELLIS_RULES_NOT_LOADED and injects
+  # nothing, and once this rendered file exists it stands down to it (path C),
+  # so the rendered file is what governs. So the render goes ahead, and the
+  # confirmation below says so on a line of its own.
   #
-  # TRL-44. It now also says the OPT-OUT may have been missed, which is the
-  # bigger of the two things this input can lose. The `governed` read above is
-  # guarded regular-and-readable by the same reasoning, so an unreadable file
-  # yields an empty $governed_head and $opted_out stays `no` — a project whose
-  # rules.toml says `governed = false` at mode 000 is rendered over and governed
-  # by the file it declined. That behaviour is D3's, deliberately, and is not
-  # changed here; what changes is that the message stops describing the loss as a
-  # posture question. Measured as an unprivileged user on
-  # `strictness = "firm"\ngoverned = false` at mode 000: renders adaptive, and
-  # the hook then stands down to the rendered file (path C).
-  #
-  # NOT "governed 16/16", which is how TRL-44 reported it. The rendered file gates
-  # activation on rows it imports from @../../.trellis/rules.toml — the same file
-  # that cannot be read — so the row table is absent and the count is not a thing
-  # this branch can state. The message says what governs, not how much.
-  strictness=""
+  # What that line names is the OPT-OUT (TRL-44), the bigger thing this input can
+  # lose. It used to lead with a posture that could not be honoured; no posture
+  # is read now. And it says every rule applies rather than giving a count: the
+  # rendered file imports its rows from the file that cannot be read, and a rule
+  # with no row applies (TRL-97), so no opt-out takes effect.
   toml_state=absent
   if [ -f "$git_root/.trellis/rules.toml" ]; then
     toml_state=present
     [ -r "$git_root/.trellis/rules.toml" ] || toml_state=unreadable
   fi
-  if [ "$toml_state" = present ]; then
-    strictness="$(awk '
-  /^[[:space:]]*strictness[[:space:]]*=/ {
-    if (match($0, /"[^"]*"/) || match($0, /\x27[^\x27]*\x27/)) {
-      print substr($0, RSTART + 1, RLENGTH - 2); exit
-    }
-  }' < "$git_root/.trellis/rules.toml" 2>/dev/null)" || strictness=""
-  fi
-  case "$strictness" in
-    firm) header="reference/trellis-a.md"
-          posture_note="firm — strictness = \"firm\" in .trellis/rules.toml; header from $header" ;;
-    *)    header="reference/trellis-b.md"
-          # Said out loud, because the hook's fall-through is silent: a value it
-          # does not recognise governs as adaptive there without a word, and the
-          # install is the one moment someone is reading the output.
-          if [ "$toml_state" = absent ]; then
-            posture_note="adaptive — no .trellis/rules.toml file; the seed written below, if that path is free, is adaptive too; header from $header"
-          elif [ "$toml_state" = unreadable ]; then
-            posture_note="adaptive — .trellis/rules.toml exists but could not be read (permissions?), so neither its posture NOR any opt-out in it could be honoured: the governed = false check above reads the same file under the same guard and comes back empty, so if that file DECLINES Trellis it has just been rendered over, and this project is now governed by the rules file it declined. The plugin hook does NOT fall back this way: on a file it cannot read it emits TRELLIS_RULES_NOT_LOADED and injects nothing, and once this rendered file exists it stands down to it — so this adaptive file is what governs until you fix the permissions and re-run, which will then honour the posture, or the opt-out, that file actually asks for (decision-0088 D3). Header from $header"
-          elif [ -z "$strictness" ]; then
-            # Unqualified parity, and TRL-38 is what earned it. This branch used
-            # to carry a parenthetical — "if that file is the `governed = false`
-            # opt-out, the hook stands down entirely while this rendered file
-            # still governs; delete .claude/rules/trellis.md" — under a comment
-            # saying rendering over the opt-out was "pre-existing behaviour and
-            # outside this change". TRL-38 IS that change: a real opt-out is
-            # refused above and never reaches this branch, so the parenthetical
-            # could only fire where its own claim was false, and following its
-            # advice left the project MORE governed, not less.
-            #
-            # What still reaches here carrying the words `governed = false` is a
-            # file where they do not opt out — under a [table], or a second
-            # top-level `governed` key — and the hook governs those normally too.
-            # Measured on `[rules]\ngoverned = false`: this branch renders the
-            # adaptive header, and the hook on the same repo injects that same
-            # adaptive header and the full rule set. So there is nothing left to
-            # qualify, and the sentence says only what it can now stand behind.
-            posture_note="adaptive — .trellis/rules.toml carries no strictness key, and the hook's header selection defaults the same way; header from $header"
-          elif [ "$strictness" = adaptive ]; then
-            posture_note="adaptive — strictness = \"adaptive\" in .trellis/rules.toml; header from $header"
-          else
-            posture_note="adaptive — strictness = \"$strictness\" in .trellis/rules.toml is not a posture the plugin hook recognises, and it resolves every value but \"firm\" to adaptive; header from $header"
-          fi ;;
-  esac
+  header="reference/trellis.md"
 
   # The placeholder must exist or the first sed silently emits the whole file
   # minus its last line and the second emits nothing — a truncated render that
@@ -947,12 +874,12 @@ elif [ "$scope" = "project" ]; then
   # `sed ... | sed '$d'` reports success when the first sed dies, and POSIX sh
   # has no pipefail. So the only reliable signal is the artifact itself.
   #
-  # Deliberately NOT a prose check. Probing for the posture sentence or the
+  # Deliberately NOT a prose check. Probing for the By default sentence or the
   # invariants pointer would re-create the exact defect this branch fixed — a
   # legitimate payload reword breaking every install. `-s` asks only "did this
   # step produce anything", which no reword can falsify.
   sed -n '1,/^@rules\.md[[:space:]]*$/p' "$stage/bundle/$header" | sed '$d' > "$stage/render.head"
-  [ -s "$stage/render.head" ] || fail "rendering the posture prose produced nothing; the bundle's $header is damaged or has no @rules.md placeholder. Nothing was written."
+  [ -s "$stage/render.head" ] || fail "rendering the header prose produced nothing; the bundle's $header is damaged or has no @rules.md placeholder. Nothing was written."
   cat "$stage/bundle/reference/rules.md" > "$stage/render.body"
   [ -s "$stage/render.body" ] || fail "rendering the rules body produced nothing; the bundle's reference/rules.md is missing or empty. Nothing was written."
   sed -n '/^@rules\.md[[:space:]]*$/,$p' "$stage/bundle/$header" | sed '1d' \
@@ -969,15 +896,13 @@ elif [ "$scope" = "project" ]; then
     cat "$stage/render.head"
     cat "$stage/render.body"
     cat "$stage/render.tail"
-    # D5's single sentence of new prose. The posture sentence above is frozen at
-    # install time; the rows below are live and carry their own `strictness`.
-    # They can disagree, and the reader is told which wins rather than left to
-    # see a contradiction.
+    # Framing only (TRL-97). The activation rule lives once, in rules.md above:
+    # a rule applies unless a row for it says active = false. The footer adds the
+    # heading and the import that brings the rows in, and no sentence of its
+    # own; it used to carry one naming `strictness` as authoritative over a
+    # posture sentence that no longer varies. The shape is the one the hook's
+    # stage machine walks and cli/plugin_hook_test.go's renderedFile builds.
     printf '<!-- trellis:rendered-footer -->\n'
-    printf '**If the posture sentence above and the rows below disagree, the rows win:**\n'
-    printf 'the `strictness` key in `.trellis/rules.toml` is authoritative. The sentence\n'
-    printf 'above was fixed when this file was written; the rows are read fresh every\n'
-    printf 'session. Edit `strictness` in `.trellis/rules.toml` to change the posture.\n'
     printf '\n'
     printf '## Project rule activation\n'
     printf '\n'
@@ -996,13 +921,13 @@ elif [ "$scope" = "project" ]; then
   # group yields group exit 0 and a truncated file. Two of the writes above are
   # sed pipelines whose failure leaves every marker and every rule line intact —
   # install.sh would report success, the hook would stand down quietly, and the
-  # file could silently lose the activation sentence, which INVERTS the rule
-  # semantics (every rule applies regardless of its row).
+  # file could silently lose the activation sentence, which drops every opt-out
+  # (every rule applies whatever its row says).
   #
   # So validate the artifact, not the exit status. This is WEAKER than the hook's
   # reader-side check and is not a mirror of it: the probes are matched
   # independently (no ordering), and `grep -c` counts matching LINES where the
-  # hook counts DISTINCT ones. Three of the five probes also check strings this
+  # hook counts DISTINCT ones. Three of the four probes also check strings this
   # script itself printf's, so they cannot catch a payload-derived step failing —
   # that is the -s checks' job, above. What it does guarantee is that a render
   # which would not satisfy the hook never reaches the mv.
@@ -1011,8 +936,7 @@ elif [ "$scope" = "project" ]; then
     '<!-- trellis:rendered-begin -->' \
     '<!-- trellis:rules-loaded -->' \
     '<!-- trellis:rendered-footer -->' \
-    '@../../.trellis/rules.toml' \
-    'the `strictness` key in `.trellis/rules.toml` is authoritative'
+    '@../../.trellis/rules.toml'
   do
     grep -qF "$probe" "$rendered_tmp" 2>/dev/null || { render_defect="$probe"; break; }
   done
@@ -1027,11 +951,18 @@ elif [ "$scope" = "project" ]; then
   }
   rendered_note=".claude/rules/trellis.md"
 
-  # decision-0070 D2. Seed the rows, so the path that renders the rules also
-  # makes them apply. Without this the curl path shipped its full context cost —
-  # every rule, always loaded — while only the two floor- rules turned,
-  # and the rendered file's own @../../.trellis/rules.toml import resolved to
-  # nothing, silently.
+  # decision-0070 D2. Seed the file, so the adoption this run makes is recorded
+  # where every other delivery looks for it. The rendered file does not need it
+  # — a rule with no row applies — but the plugin on Codex, and a plugin
+  # installed outside the repository, adopt a project only by
+  # .trellis/rules.toml (decision-0070 D4 and D7, decision-0077); without it a
+  # collaborator on either is asked again, or gets nothing.
+  #
+  # The bytes are $trellis_seed_comment above an empty [rules] table, written
+  # literally rather than copied from the bundle (TRL-97): the file the hook's
+  # TRELLIS_NOT_YET_GOVERNING accept instruction quotes, pinned to it by
+  # TestInstallScriptSeedMatchesTheHooksAcceptInstruction. It holds only what has
+  # effect — no strictness, no seeded_from, no row set active = true.
   #
   # Running an installer INSIDE a repository is the adoption act (D1), which is
   # what makes writing here legitimate where the plugin path must ask. Never
@@ -1046,18 +977,22 @@ elif [ "$scope" = "project" ]; then
   # path silently vendors an overlay, is untouched: one config file, in the repo
   # the user pointed this script at.
   if [ -e "$git_root/.trellis/rules.toml" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
-    # A non-regular target must be refused BEFORE the copy. `cp file dir` copies
-    # INTO the directory and returns 0 — measured, that produced a success banner,
-    # seeded_rows=yes, a stray rules-b.toml buried inside .trellis/rules.toml/,
-    # and an import resolving to nothing. Exactly the defect already guarded on
-    # the rendered file's move; this block reintroduced it.
+    # A non-regular target must be refused BEFORE the write. When the seed was a
+    # copy, `cp file dir` copied INTO the directory and returned 0 — measured,
+    # that produced a success banner, seeded_rows=yes, a stray copy buried inside
+    # .trellis/rules.toml/, and an import resolving to nothing. Exactly the
+    # defect already guarded on the rendered file's move. The seed is a redirect
+    # now, which fails on a directory but blocks forever on a FIFO, so the guard
+    # stays.
     seeded_rows=failed
   elif [ ! -f "$git_root/.trellis/rules.toml" ]; then
+    # `2>` before `>`: redirections apply left to right, so the shell's own
+    # "cannot create" message is silenced only when stderr moves first.
     if mkdir -p "$git_root/.trellis" 2>/dev/null &&
-       cp "$stage/bundle/reference/rules-b.toml" "$git_root/.trellis/rules.toml" 2>/dev/null; then
+       printf '%s\n' "$trellis_seed_comment" '[rules]' 2>/dev/null >"$git_root/.trellis/rules.toml"; then
       seeded_rows=yes
     else
-      # Not fatal: the rules file is already in place and governing at the floors.
+      # Not fatal: the rules file is already in place and every rule applies.
       # Say so rather than exit, because the install itself succeeded.
       seeded_rows=failed
     fi
@@ -1069,8 +1004,9 @@ fi
 say "vendored the Trellis plugin ($stamp) to $target"
 say "  $nfiles files written; manifest verify OK on every byte before anything was written"
 say "  rules: $rendered_note"
-if [ "$rendered_note" = ".claude/rules/trellis.md" ]; then
-  say "  posture header: $posture_note"
+if [ "$rendered_note" = ".claude/rules/trellis.md" ] && [ "${toml_state:-}" = unreadable ]; then
+  # decision-0088 D3 and TRL-44, on a line of its own; the render branch says why.
+  say "  WARNING: .trellis/rules.toml exists but could not be read (permissions?), so no opt-out in it could be honoured and every rule applies. This installer's governed = false check reads that file too and came back empty: if the file declines Trellis, it has just been rendered over, and this project is now governed by the rules file it declined. The plugin hook does NOT do this — on a file it cannot read it emits TRELLIS_RULES_NOT_LOADED and injects nothing, and once this rendered file exists it stands down to it — so this rendered file governs until you fix the permissions and re-run, which will then honour any opt-out, or the governed = false, that the file holds (decision-0088 D3)."
 fi
 if [ "$scope" = "project" ]; then
   say ""
@@ -1139,39 +1075,62 @@ if [ "$scope" = "project" ]; then
 fi
 case "${seeded_rows:-}" in
   yes)
-    say "This project is governed now: all sixteen rules are active, followed by"
-    say "default with deviations said out loud. .trellis/rules.toml holds the rows —"
-    say "it is yours to edit: strictness = \"firm\" for the by-the-book posture,"
-    say "active = false on a row to turn that rule off."
+    say "This project is governed now: all sixteen rules are active, followed by default"
+    say "with deviations said out loud. .trellis/rules.toml is yours to edit — a row"
+    say "<slug> = { active = false } under [rules] switches that rule off, and deleting"
+    say "that row switches it back on; a row set to active = true does not override it."
     ;;
   failed)
-    say "Could not write .trellis/rules.toml (permissions?). The rules file is in place,"
-    say "but until those rows exist only floor-transparency and floor-intent-gate apply."
-    say "Create .trellis/rules.toml yourself to activate the rest — copy the preset"
-    say "from the installed plugin's reference/rules-b.toml."
+    # Every rule applies without the file, since a rule with no row applies; what
+    # is missing is the adoption record the seed exists to write (see the seed).
+    say "Could not write .trellis/rules.toml (permissions, or something that is not a"
+    say "file at that path). The rules file is in place and every rule applies here, but"
+    say "the plugin on Codex, and any plugin install outside this repository, adopt a"
+    say "project only by that file. Clear the path if it needs it, then write the file"
+    say "yourself, containing exactly these two lines:"
+    say_seed
     ;;
   *)
-    # Nothing was seeded on this run — either the rows already existed, or the
-    # render was refused (a static-delivery conflict), or this is personal scope.
-    # Those are NOT the same state, and the old code only ever printed one line
-    # for all of them. `seeded_rows` is unset here, so ask the disk instead.
+    # Nothing was seeded on this run — either the file already existed, or the
+    # render was refused (a static-delivery conflict or an opt-out), or this is
+    # personal scope. Those are NOT the same state, and the old code only ever
+    # printed one line for all of them. `seeded_rows` is unset here, so ask the
+    # disk instead.
     if [ "$scope" = "project" ] && [ ! -f "$git_root/.trellis/rules.toml" ]; then
-      # The floors-only warning, restored. Dropping it was a regression: a
-      # static-conflict repo with no rows is running on two rules out of sixteen
-      # and was no longer told so.
+      # Only a refusal over a legacy static shape reaches here with no file: the
+      # opt-out needs the file, and the render path seeds it. The floors-only
+      # warning was dropped once, and that was a regression: such a repo runs on
+      # two rules and was no longer told so. Under that shape's frozen text a
+      # rule applies only when its row says active = true, so the file this
+      # installer seeds would change nothing there, and telling the user to
+      # write it by hand is the wrong advice (TRL-97). The route is the
+      # migration the refusal names, then a re-run, which seeds the file, with
+      # any opt-out the old shape carried added back under its [rules].
       say "This project has no .trellis/rules.toml, so only floor-transparency and"
-      say "floor-intent-gate apply — every other rule is gated on a row in that file."
-      say "Write it yourself to activate the rest — copy the preset from the"
-      say "installed plugin's reference/rules-b.toml."
+      say "floor-intent-gate apply: the legacy shape's frozen rules text applies any other"
+      say "rule only when a row says active = true. Do not write that file by hand — the"
+      say "file this installer seeds has no such rows, so under that text it would govern"
+      say "only the floors too. Migrate as described above, noting any row the old shape"
+      say "sets to active = false; then re-run this installer, which seeds the file, and"
+      say "add those rows under its [rules]."
     elif [ "$opted_out" = yes ]; then
       say "This project is NOT governed: .trellis/rules.toml declares governed = false, and"
       say "neither this installer nor the plugin hook delivers any rule over that — the"
       say "floors included (decision-0070 D5). To adopt Trellis here, replace that file"
-      say "with the installed plugin's reference/rules-b.toml and re-run this installer."
+      say "with exactly these two lines, followed by any row it sets to active = false,"
+      say "and re-run this installer:"
+      say_seed
+    elif [ "$scope" = "personal" ]; then
+      # A plugin outside the repository governs a project only once that project
+      # has the file; the hook announces and asks in one that has none
+      # (decision-0070 D4, decision-0077).
+      say "A project is governed once it has .trellis/rules.toml: the first session in a project without one"
+      say "asks whether to adopt Trellis there and writes the file if you accept. In it, a row <slug> = { active = false }"
+      say "under [rules] switches a rule off until you delete that row; a row set to active = true does not override it."
     else
-      say "Edit .trellis/rules.toml to change the posture or turn individual rules"
-      say "off: strictness = \"firm\" for by-the-book, active = false on a row. That"
-      say "file is yours and is the authority (decision-0053)."
+      say "Edit .trellis/rules.toml to switch a rule off: a row <slug> = { active = false }"
+      say "under [rules]. Deleting that row switches the rule back on; a row set to"
+      say "active = true does not override it. That file is yours, and this installer never rewrites it."
     fi
     ;;
 esac

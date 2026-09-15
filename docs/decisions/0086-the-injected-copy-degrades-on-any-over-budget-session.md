@@ -1,6 +1,7 @@
 ---
 id: decision-0086
 type: decision
+superseded_by: [decision-2026-09-15-rule-rows-only-switch-rules-off]  # 2026-09-15 TRL-97 — provenance retires, so §1-§3's degradation and its announcement go with it; §4's hard refusal survives only as the runaway guard that record restates, which no project file within the 1 MiB read bound can reach
 depends_on: [decision-0083, decision-0084]
 informed_by: [decision-0028, decision-0070, decision-0078, decision-0081, decision-0082]
 owner: agent

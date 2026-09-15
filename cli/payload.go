@@ -1,9 +1,9 @@
 package main
 
 // The release-render pipeline (kodhama-0007 rule 1, "render once, at release";
-// kodhama/trellis#117). The full M1 variant space is enumerable — 2 postures ×
-// 2 block styles, where the profile is posture-invariant today and the CLAUDE.md
-// block is a constant — so every bundle file every writer will ever need is
+// kodhama/trellis#117). The full M1 variant space is enumerable — one posture since
+// TRL-97, so one header and one inline block, and the CLAUDE.md block is a
+// constant — so every bundle file every writer will ever need is
 // pre-rendered here and vendored in plugins/trellis/reference/. Downstream
 // writers only copy, paste between markers, and verify (rule 2); the payload
 // ships a checksum manifest so anything can verify with standard tools —
@@ -29,28 +29,26 @@ import (
 // artifact-contract metadata or catalog-maintainer governance prose; the source
 // at core/catalog/ keeps all of it, unconditionally), the complete readout
 // (rules.md — every install's copy source; its authority header defers rule
-// activation to the rules.toml rows at read time), both posture variants of the
-// header / inline rows-sandwich block / rules.toml seed, the constant CLAUDE.md
-// block (two imports: the header and the rows), a content-derived version stamp,
+// activation to the rules.toml rows at read time), the one header and the one
+// inline block with its head and tail, the constant CLAUDE.md block (two imports:
+// the header and the rows), the Codex bootstrap, a content-derived version stamp,
 // and the checksums manifest. The per-rule fragment files retired with assembly
 // (decision-0053 point 1 — no consumer remained; the executor's consumer sweep is
-// recorded on the decision's build). The rules.toml seeds are manifest-covered like
-// any payload file; only the *installed* consumer-root copy (.trellis/rules.toml)
-// sits outside verification, because the consumer owns it from the moment it is
-// seeded (decision-0051 rule 1).
+// recorded on the decision's build). The posture variants of the header and the
+// inline block, and the rules.toml seeds, retired with TRL-97: every project
+// receives the "By default" sentence, and a rule with no row applies, so nothing
+// is seeded. The installed consumer-root .trellis/rules.toml sits outside
+// verification, because the consumer owns it (decision-0051 rule 1).
 func payloadFiles() map[string]string {
 	files := map[string]string{
 		"invariants.md":        extractEntriesSection(invariantsRef), // the catalog's entries section only — preamble+tail excluded at the write site (decision-0055, widening decision-0054); invariantsRef itself stays untouched for every other reader below
 		"block-claude.md":      renderClaudeBlock(),
 		"block-codex.md":       renderCodexBootstrap(),
 		"rules.md":             renderRulesReadout(),
-		"block-inline-tail.md": renderInlineBlockTail(), // posture-independent — one tail, not two
-	}
-	for _, p := range allProfiles {
-		files["trellis-"+p.Key+".md"] = renderHeader(p)
-		files["block-inline-"+p.Key+".md"] = renderInlineBlock(p)
-		files["block-inline-"+p.Key+"-head.md"] = renderInlineBlockHead(p)
-		files["rules-"+p.Key+".toml"] = renderRulesToml(p)
+		"trellis.md":           renderHeader(),
+		"block-inline.md":      renderInlineBlock(),
+		"block-inline-head.md": renderInlineBlockHead(),
+		"block-inline-tail.md": renderInlineBlockTail(),
 	}
 
 	// The payload's version stamp is derived from its own content: a vendored file

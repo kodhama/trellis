@@ -47,7 +47,7 @@ framing, which is why this copy changed):
   ```
   $ curl -fsSL https://raw.githubusercontent.com/kodhama/trellis/main/install.sh | sh
   # macOS, Linux, WSL — a POSIX shell; not cmd or PowerShell
-  # that's it — all rules active, adaptive posture
+  # that's it — every rule applies
   ```
 - `manual` (harnesses the plugin does not cover — **not** Claude Code,
   which the tabs above serve; `decision-0069`):
@@ -123,7 +123,7 @@ row, a "with" row):
 **Heading:** One command. It reads your project, you choose the fit.
 **Lede:** Trellis rides your existing harness — Claude Code today. The
 rules land as plain instructions your agents read, and one small config
-file you own says how strictly they apply. No runtime, no lock-in.
+file you own names any you switch off. No runtime, no lock-in.
 
 *(Codex CLI is deliberately not named. The plugin supports it and the
 hook is real, but there is no way to install it there — `trellis#220`.
@@ -134,14 +134,17 @@ Four-step flow (`01` – `04`):
 1. **01 · install — You add the plugin.** From the kodhama family
    marketplace — or, for a harness the plugin does not cover, copy the
    pre-rendered bundle by hand.
-2. **02 · posture — You set the posture.** Every rule active,
-   adaptive posture — the shipped default, seeded as explicit rows in
-   your `rules.toml`. No file yet? Copy a complete preset —
-   `reference/rules-a.toml` for firm, `rules-b.toml` for adaptive.
-   Already have one? Edit `strictness` in place; copying a preset over it
-   re-enables every row you turned off. Unless it is the `governed = false`
-   opt-out — that one is a replace, not an edit. Rows govern at read time, and the
-   set has to stay whole.
+2. **02 · rules — You choose which rules apply.** Every rule applies
+   until you switch it off with a row in `.trellis/rules.toml`:
+   `<slug> = { active = false }`. Delete that row to switch the rule back
+   on; a row saying `active = true` does not override it. A rule with no
+   row applies, floor rules cannot be switched off, and `governed = false`
+   opts the whole project out. An older file with a row for every rule
+   keeps working as it is.
+   Remove those rows only once every install that opens the repository
+   runs 0.24.0 or later, and keep them while the project still carries a
+   vendored overlay, an inline block, or a `.claude/rules/trellis.md`
+   from an older installer.
 3. **03 · deliver — The rules arrive on their own.** On the plugin path a
    session hook injects them; on the curl path they are rendered into
    `.claude/rules/`. Never both — the hook stands down when it finds the
@@ -156,8 +159,8 @@ pattern — this is a file-tree illustration, not a shell session):
 
 ```
 .trellis/
-  rules.toml       # which rules are active, how strictly — yours to edit.
-                   #   Seeded by the installer, all rows on (decision-0070)
+  rules.toml       # which rules are switched off — yours to edit.
+                   #   Seeded by the installer, every rule on (decision-0070)
 .claude/           # curl path only — the plugin path writes neither:
   rules/
     trellis.md     #   the rules readout, loaded every session — Trellis owns

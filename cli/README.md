@@ -1,10 +1,9 @@
 # Trellis payload generator
 
 The `trellis` command is **release tooling, not an end-user installer**: `trellis payload`
-renders the complete pre-built M1 bundle — every posture variant of the header and managed
-blocks, the complete rules readout (rows govern at read time, `decision-0053`), the `rules.toml`
-posture seeds (`decision-0051`, as amended), a content-derived version stamp, and a
-`shasum`-compatible checksum manifest — into the vendored payload home,
+renders the complete pre-built M1 bundle — the rules header and the managed blocks, the
+complete rules readout (rows govern at read time, `decision-0053`), a content-derived version
+stamp, and a `shasum`-compatible checksum manifest — into the vendored payload home,
 `plugins/trellis/reference/` (`kodhama-0007` rule 1: render once, at release).
 
 **Generator-only, by decision.** `kodhama-0007` rule 5 retired the end-user binary channel

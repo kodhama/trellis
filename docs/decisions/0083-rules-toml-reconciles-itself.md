@@ -20,6 +20,8 @@ date: 2026-08-30
 
 # 0083 — `.trellis/rules.toml` reconciles itself; the repair is reported, not gated
 
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** §1 to §3 no longer hold: neither hook reconciles, quarantines or tells the agent to rewrite `.trellis/rules.toml`, so the resolution table, the reconciler that the seven entry points reached, and the "announced, not asked" repair are gone; a rule with no row applies, and a bad entry is ignored with a warning. §5's "added 16 row(s)" repair of an empty file goes with them, though an empty file still governs every rule. §6's payload-derived slug set and the byte-cap finding stand. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+
 ## Context
 
 **A single unmatched row cost all sixteen rules, every session, until a human edited the file.**

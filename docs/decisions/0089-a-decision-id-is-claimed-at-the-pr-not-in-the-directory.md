@@ -34,7 +34,7 @@ Three recurrences, each recorded at the time:
 | 3 | `decision-0086` claimed by both trellis#262 (TRL-33) and trellis#263 (TRL-29) | a coordinating session noticed; #262 renumbered to `0087` before merge |
 
 **`decision-0078` recorded #1 and #2 and armed a trigger**, at
-`docs/decisions/0078-no-orphan-followups.md:147-156` *(TRL-40 cites it as `:146-155`; the forward pointer
+`docs/decisions/0078-no-orphan-followups.md:149-158` *(TRL-40 cites it as `:146-155`; the forward pointer
 this change adds to that record's frontmatter displaced it by one — `decision-0085`'s treatment of
 the same problem)*: *"it is dropped, on this record, because no one has
 agreed to do it; if it recurs a third time, that is the trigger to file it."* That is the rule of
@@ -99,7 +99,7 @@ repo's existing pattern for external scripts — `cli/plugin_hook_test.go` on
 reason `go test -count=1` is not optional here.
 
 **6. `decision-0078`'s parked observation is closed, and only that.** It gains
-`superseded_in_part_by: [decision-0089]` scoped to the dropped observation at `:147-156`, plus a
+`superseded_in_part_by: [decision-0089]` scoped to the dropped observation at `:149-158`, plus a
 dated note beside the original claim (`decision-0085` §5 shape: a note beside the claim, never an
 edit that makes the record look prescient). **`inv-no-orphan-followups` itself is untouched** — this
 record does not reopen the rule, only the example it parked.
@@ -207,11 +207,11 @@ record does not reopen the rule, only the example it parked.
 ## Self-check (gate)
 
 - **The three recurrences are quoted from where they were recorded**, not reconstructed:
-  `decision-0078:147-156` for #1 and #2, TRL-40's own table for #3. The trigger sentence is quoted
+  `decision-0078:149-158` for #1 and #2, TRL-40's own table for #3. The trigger sentence is quoted
   verbatim because the whole warrant for this record is that a prior record armed it.
 
 - **The scope of the change to `decision-0078` is stated narrowly and is checkable.** The forward
-  pointer names the dropped observation at `:147-156` and nothing else; `## Decision` there is
+  pointer names the dropped observation at `:149-158` and nothing else; `## Decision` there is
   untouched, and `inv-no-orphan-followups` remains exactly as minted. A reader who wants to reject
   this record can do so without disturbing that rule.
 

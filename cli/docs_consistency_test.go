@@ -458,7 +458,7 @@ func parseBriefTabs(t *testing.T, source string) map[string][]string {
 // TestManualRecipeBranchesAreSeparatePastes guards decision-0073 Consequence 2
 // (global review H1). The manual recipe's two delivery branches — the @import
 // branch (overlay copies + block-claude.md) and the inline branch
-// (block-inline-<p>.md, no overlay) — lived in ONE fenced sh block where both
+// (block-inline.md, no overlay) — lived in ONE fenced sh block where both
 // were live commands, so a wholesale paste produced overlay + import block +
 // inline block: exactly the S2-plus-S4 conflict the record ordered the recipe
 // to stop shipping, and the hook absorbs it silently (path A exits first on a
@@ -494,7 +494,9 @@ func TestManualRecipeBranchesAreSeparatePastes(t *testing.T) {
 		if strings.Contains(b, "block-claude.md") {
 			importBlocks = append(importBlocks, i)
 		}
-		if strings.Contains(b, "block-inline-<p>.md") {
+		// One inline block ships since TRL-97 retired the posture variants
+		// (block-inline-<p>.md); block-inline-head.md does not contain this name.
+		if strings.Contains(b, "block-inline.md") {
 			inlineBlocks = append(inlineBlocks, i)
 		}
 	}
@@ -506,6 +508,20 @@ func TestManualRecipeBranchesAreSeparatePastes(t *testing.T) {
 			if a == b {
 				t.Errorf("the @import and inline branches share fenced block %d — one wholesale paste produces the overlay AND both managed blocks, the S2-plus-S4 conflict decision-0073 Consequence 2 ordered this recipe to stop shipping", a)
 			}
+		}
+	}
+}
+
+// TestReadmesQuoteTheNewRulesFile (TRL-97, KTD9; decision-0028, a guard per
+// pair). Both READMEs show the two lines a new .trellis/rules.toml holds, for
+// people who write the file by hand. install.sh's seed and the hook's accept
+// text are pinned to each other elsewhere; this pins the README copies to the
+// same bytes, so a changed seed cannot leave the docs handing out a file
+// nothing else writes any more.
+func TestReadmesQuoteTheNewRulesFile(t *testing.T) {
+	for _, f := range []string{"../README.md", "../plugins/trellis/README.md"} {
+		if !strings.Contains(readDocSurface(t, f), newRulesFile) {
+			t.Errorf("%s does not show the new rules file byte for byte as install.sh seeds it — quote these two lines, each on its own line:\n%s", f, newRulesFile)
 		}
 	}
 }

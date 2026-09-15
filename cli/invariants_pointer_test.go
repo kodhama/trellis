@@ -19,7 +19,7 @@ package main
 // VENDORED project's `.trellis/internal/invariants.md` is a real file: the
 // retired setup skill copied it there (its SKILL.md at 2f6a21a:121,
 // `cp "${CLAUDE_PLUGIN_ROOT}/reference/invariants.md" .trellis/internal/invariants.md`),
-// and decision-0051:75-78 specifies it as part of the trellis-authoritative
+// and decision-0051:77-80 specifies it as part of the trellis-authoritative
 // half of the overlay. plugins/trellis/README.md:27 then binds the delivery:
 // "Where a vendored `.trellis/internal/` still exists it remains
 // authoritative ... the plugin's `reference/` files stay installation sources
@@ -47,7 +47,7 @@ import (
 )
 
 // invariantsToken is the unresolved placeholder as it ships inside
-// reference/trellis-{a,b}.md. Backticked because that is how the prose carries
+// reference/trellis.md. Backticked because that is how the prose carries
 // it and how both hooks match it — an unbackticked search would also hit this
 // file's own prose in a grep, and more importantly would not prove the
 // substitution replaced the whole delivered span.
@@ -77,18 +77,24 @@ func writeDualHostPluginRoot(t *testing.T) string {
 	return root
 }
 
+// configOnlyProjectRules is the file writeConfigOnlyProject writes: the sparse
+// shape TRL-97 ships, holding one row with an effect, so a delivery that echoes
+// the project's rows can be told from one that echoes nothing. It replaced a
+// copy of the retired rules-a.toml preset.
+const configOnlyProjectRules = "[rules]\ninv-minimal-first = { active = false }\n"
+
+// configOnlyProjectRow is that row's slug, for asserting the rows arrived.
+const configOnlyProjectRow = "inv-minimal-first"
+
 // writeConfigOnlyProject is the decision-0065 shape: rules.toml and no
-// .trellis/internal/. The .git directory writePluginNativeProject supplies is
-// needed because codex-context.mjs bounds its overlay search at the nearest git
-// boundary; staleness.sh does not need it and does not mind it.
-//
-// The firm posture is this helper's own choice, not a property of the shape —
-// TRL-55 lifted the body into writePluginNativeProject so a test can pick the
-// other one. Every caller here wants a posture it does not care about, so they
-// keep asking for the shape and letting it default.
+// .trellis/internal/. The .git directory is needed because codex-context.mjs
+// bounds its overlay search at the nearest git boundary; staleness.sh does not
+// need it and does not mind it.
 func writeConfigOnlyProject(t *testing.T) string {
 	t.Helper()
-	return writePluginNativeProject(t, "a")
+	project := newGitProject(t)
+	writeFileT(t, filepath.Join(project, ".trellis", "rules.toml"), configOnlyProjectRules)
+	return project
 }
 
 // codexContextFor runs codex-context.mjs and returns the injected context. It
@@ -114,9 +120,9 @@ func claudeContextFor(t *testing.T, pluginRoot, project string) string {
 // trimmed, WITHOUT requiring that it parse as a delivered context.
 //
 // Split out for the vendored fixtures, where staleness.sh legitimately emits
-// NOTHING -- path A opens at `if [ -d "$internal" ]` (staleness.sh:482) and
-// every route out of it exits, unconditionally at :529, long before the repoint
-// at :1403. An earlier version of this comment cited :559, which is a comment
+// NOTHING -- path A opens at `if [ -d "$internal" ]` (staleness.sh:477) and
+// every route out of it exits, unconditionally at :524, long before the repoint
+// at :977. An earlier version of this comment cited :559, which is a comment
 // inside path C; review caught it. nudgeContext fails on
 // that empty string, which is right for every caller that expects a delivery
 // and wrong for a caller asserting the absence of one.
@@ -217,7 +223,7 @@ func TestCodexLeavesAVendoredInvariantsPointerAlone(t *testing.T) {
 	// a fixture without it would be arguing for a pointer into thin air.
 	if err := os.WriteFile(
 		filepath.Join(project, ".trellis", "internal", "invariants.md"),
-		[]byte(payloadFiles()["invariants.md"]), 0o644); err != nil {
+		[]byte(payloadFile(t, "invariants.md")), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -311,7 +317,7 @@ func overlayOwnCopyShapes() []struct {
 	}{{
 		name:  "a healthy overlay copy",
 		why:   "",
-		write: func(t *testing.T, target string) { writeFileT(t, target, payloadFiles()["invariants.md"]) },
+		write: func(t *testing.T, target string) { writeFileT(t, target, payloadFile(t, "invariants.md")) },
 	}, {
 		name:  "a zero-byte overlay copy",
 		why:   "is empty",
@@ -331,7 +337,7 @@ func overlayOwnCopyShapes() []struct {
 			if os.Geteuid() == 0 {
 				t.Skip("running as root: mode 0000 does not deny reads, so the fixture cannot be built")
 			}
-			writeFileT(t, target, payloadFiles()["invariants.md"])
+			writeFileT(t, target, payloadFile(t, "invariants.md"))
 			if err := os.Chmod(target, 0o000); err != nil {
 				t.Fatal(err)
 			}
@@ -586,7 +592,7 @@ func TestNoDeliveryChannelShipsTheUnresolvedPointer(t *testing.T) {
 	channels := map[string]string{
 		"staleness.sh (Claude, plugin path)":            claudeContextFor(t, pluginRoot, project),
 		"codex-context.mjs (Codex, plugin path)":        codexContextFor(t, pluginRoot, project),
-		"reference/block-inline-tail.md (inline block)": payloadFiles()["block-inline-tail.md"],
+		"reference/block-inline-tail.md (inline block)": payloadFile(t, "block-inline-tail.md"),
 	}
 	for name, delivered := range channels {
 		if strings.Contains(delivered, invariantsToken) {
@@ -1226,7 +1232,7 @@ func assertInvariantsReport(t *testing.T, host, report, target string, fault inv
 //
 //     An earlier version of this comment said a marker is "a refusal, not a
 //     note", and review measured that false: TRELLIS_STALENESS_UNKNOWN
-//     (staleness.sh:523 and :663) is a note on a session that IS governed —
+//     (staleness.sh:518 and :658) is a note on a session that IS governed —
 //     "Nothing is wrong with this project and no rules are missing". The
 //     injects-nothing half is true of every marker and carries the argument on
 //     its own; the refusal half did not, and overstating it here would have
@@ -1296,7 +1302,7 @@ func TestBothHostsReportAMissingInvariantsTarget(t *testing.T) {
 				// is consulted on demand and never injected, and
 				// decision-0093:1 rules that failing a session closed over such
 				// a file trades a dead pointer for no governance at all.
-				if !strings.Contains(host.context, rulesLoadedSentinel) || !deliveredRow(host.context, "floor-intent-gate") {
+				if !governedSwitchingOff(host.context, configOnlyProjectRow) {
 					t.Errorf("%s did not deliver a complete governed context; a broken consulted reference must not cost the session its rules (decision-0093:1):\n%s", host.name, host.context)
 				}
 				// The pointer moves either way. This is the assertion the
@@ -1335,7 +1341,7 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 			}
 
 			context := claudeContextFor(t, pluginRoot, project)
-			if !strings.Contains(context, rulesLoadedSentinel) || !deliveredRow(context, "floor-intent-gate") {
+			if !governedSwitchingOff(context, configOnlyProjectRow) {
 				t.Fatalf("the rules must still be delivered whole; only the consulted reference is broken (decision-0093:1):\n%s", context)
 			}
 			if got := pointerIn(t, context); got != target {
@@ -1380,15 +1386,20 @@ func TestStalenessNamesWhyTheInvariantsTargetCannotBeRead(t *testing.T) {
 // hook's own comments claimed it could not happen.
 //
 // It is also the property the two hosts must agree on. codex-context.mjs bounds
-// `context` alone (:1328) and pushes the same warning onto systemMessage
-// afterwards (:1482), so Codex can never lose its context to this warning.
+// `context` alone and pushes the same warning onto systemMessage afterwards, so
+// Codex can never lose its context to this warning.
 //
 // The fixture CALIBRATES rather than hardcoding a padding size: it measures the
 // payload at two padding sizes, derives the per-line cost, and solves for a
-// rules.toml that lands the healthy payload just inside the budget. A hardcoded
+// padding that lands the healthy payload just inside the budget. A hardcoded
 // count would drift out of the dangerous band the first time the shipped
 // payload changed size, and this test would then pass while proving nothing —
 // which is why the band itself is asserted.
+//
+// The padding goes into the plugin's rules.md, above its terminator, because
+// that is delivered whole. It used to go into the project's rules.toml, which
+// TRL-97 stopped echoing past a small shared bound, so a padded project file can
+// no longer carry the payload toward the budget.
 func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	// staleness.sh's own budget, READ OUT OF THE HOOK rather than duplicated.
 	//
@@ -1404,15 +1415,20 @@ func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	// code. Parsed the way TestNoPayloadReadBypassesTheGateway parses this same
 	// file, and fatal if the declaration cannot be found.
 	limit := stalenessInjectionBudget(t)
-	const padLine = "# padding, so this fixture sits exactly where the budget bites\n"
+	const padLine = "<!-- padding, so this fixture sits exactly where the budget bites -->\n"
 
 	pluginRoot := writeDualHostPluginRoot(t)
 	project := writeConfigOnlyProject(t)
-	toml := filepath.Join(project, ".trellis", "rules.toml")
-	base := readFileT(t, toml)
+	rulesMd := filepath.Join(pluginRoot, "reference", "rules.md")
+	terminator := rulesLoadedSentinel + "\n"
+	shipped := readFileT(t, rulesMd)
+	if !strings.HasSuffix(shipped, terminator) {
+		t.Fatal("premise: the payload rules.md must end with its terminator, or padding above it would break the payload rather than grow it")
+	}
+	body := strings.TrimSuffix(shipped, terminator)
 
 	measure := func(lines int) int {
-		writeFileT(t, toml, base+strings.Repeat(padLine, lines))
+		writeFileT(t, rulesMd, body+strings.Repeat(padLine, lines)+terminator)
 		return len(claudeContextFor(t, pluginRoot, project))
 	}
 
@@ -1421,8 +1437,8 @@ func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	if perLine <= 0 {
 		t.Fatalf("calibration failed: 64 padding lines moved the payload by %d bytes, so the fixture cannot be aimed", at64-at0)
 	}
-	// Aim just under the budget, then correct — integer division and the row
-	// reconciler's own wording make one pass approximate.
+	// Aim just under the budget, then correct — integer division makes one pass
+	// approximate.
 	//
 	// The band below is an AIMING AID, not the property: the decisive assertion
 	// is that the broken context exceeds the budget, and it fails loudly on its
@@ -1442,7 +1458,7 @@ func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	if healthy > limit || healthy < limit-700 {
 		t.Fatalf("could not aim the fixture into the band: %d bytes against a %d-byte budget, after %d padding lines — a fixture outside the band proves nothing", healthy, limit, lines)
 	}
-	if !strings.Contains(claudeContextFor(t, pluginRoot, project), rulesLoadedSentinel) {
+	if !governedSwitchingOff(claudeContextFor(t, pluginRoot, project), configOnlyProjectRow) {
 		t.Fatalf("the calibrated fixture is not governed even with a healthy payload; the assertion below would prove nothing")
 	}
 
@@ -1455,8 +1471,8 @@ func TestTheMissingInvariantsReportNeverCostsTheSessionItsRules(t *testing.T) {
 	if strings.Contains(broken, "TRELLIS_RULES_NOT_LOADED") {
 		t.Fatalf("deleting a CONSULTED reference refused the session — a dead pointer traded for no governance at all (decision-0093:1), and the budget is the only thing that changed:\n%s", broken)
 	}
-	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, "floor-intent-gate") {
-		t.Errorf("the rules and rows must survive a missing consulted reference:\n%s", broken)
+	if !governedSwitchingOff(broken, configOnlyProjectRow) {
+		t.Errorf("the rules and the activation section must survive a missing consulted reference:\n%s", broken)
 	}
 	if !strings.Contains(broken, invariantsReportLead+target) {
 		t.Errorf("the report was dropped rather than delivered outside the budget:\n%s", broken)
@@ -1495,11 +1511,11 @@ func stalenessInjectionBudget(t *testing.T) int {
 }
 
 // writeDefaultsShapeProject is the OTHER arm of path B: decision-0070's
-// shipped-defaults shape, with no `.trellis/rules.toml` at all and the plugin
-// vendored inside the repository — which is the adoption act that makes the
-// shipped rows apply (decision-0070 D6, staleness.sh's own `rows_are_default`).
-// It reaches the same delivery block, and therefore the same repoint and the
-// same report, through a different door.
+// adopted-with-no-file shape, with no `.trellis/rules.toml` at all and the
+// plugin vendored inside the repository — the adoption act that makes every
+// rule apply (decision-0070 D3 and D6). It reaches the same delivery block, and
+// therefore the same repoint and the same report, through a different door,
+// with no activation section to frame (TRL-97).
 func writeDefaultsShapeProject(t *testing.T) (pluginRoot, project string) {
 	t.Helper()
 	project = t.TempDir()
@@ -1511,6 +1527,15 @@ func writeDefaultsShapeProject(t *testing.T) (pluginRoot, project string) {
 		writeFileT(t, filepath.Join(pluginRoot, "reference", name), body)
 	}
 	return pluginRoot, project
+}
+
+// deliveredEveryRuleWithNoFile reports whether context is the no-file shape's
+// delivery (KTD6): the rules, no TRELLIS_ refusal or announcement marker, and
+// no activation section, since there is no project file to frame.
+func deliveredEveryRuleWithNoFile(context string) bool {
+	return strings.Contains(context, rulesLoadedSentinel) &&
+		!strings.Contains(context, activationHeading) &&
+		!strings.Contains(context, "TRELLIS_")
 }
 
 // TestTheMissingInvariantsReportFiresOnTheDefaultsShapeToo covers the arm the
@@ -1530,8 +1555,8 @@ func TestTheMissingInvariantsReportFiresOnTheDefaultsShapeToo(t *testing.T) {
 	target := filepath.Join(pluginRoot, "reference", "invariants.md")
 
 	healthy := claudeContextFor(t, pluginRoot, project)
-	if !strings.Contains(healthy, rulesLoadedSentinel) || !deliveredRow(healthy, "floor-intent-gate") {
-		t.Fatalf("fixture drift: this shape no longer delivers the shipped defaults, so the assertions below would prove nothing:\n%s", healthy)
+	if !deliveredEveryRuleWithNoFile(healthy) {
+		t.Fatalf("fixture drift: this shape no longer delivers every rule with no project file, so the assertions below would prove nothing:\n%s", healthy)
 	}
 	if strings.Contains(healthy, invariantsReportLead+target) {
 		t.Errorf("a complete payload was reported as broken on the defaults shape:\n%s", healthy)
@@ -1539,8 +1564,8 @@ func TestTheMissingInvariantsReportFiresOnTheDefaultsShapeToo(t *testing.T) {
 
 	removeFileT(t, target)
 	broken := claudeContextFor(t, pluginRoot, project)
-	if !strings.Contains(broken, rulesLoadedSentinel) || !deliveredRow(broken, "floor-intent-gate") {
-		t.Errorf("the shipped defaults must still govern a project whose plugin lacks its invariants copy:\n%s", broken)
+	if !deliveredEveryRuleWithNoFile(broken) {
+		t.Errorf("every rule must still govern a project whose plugin lacks its invariants copy:\n%s", broken)
 	}
 	if got := pointerIn(t, broken); got != target {
 		t.Errorf("the pointer names the wrong invariants file on the defaults shape\nwant: %s\ngot:  %s", target, got)

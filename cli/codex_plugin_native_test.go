@@ -1,25 +1,20 @@
 package main
 
 // TRL-55. codex-context.mjs resolves its payload down one of two branches, and
-// a single directory test decides which (codex-context.mjs:1030): a project
-// holding `.trellis/internal/` is VENDORED and the overlay is the source;
-// a project without one is PLUGIN-NATIVE and the plugin's own `reference/` is.
+// a single directory test decides which (the `vendored` const): a project
+// holding `.trellis/internal/` is VENDORED and the overlay is the source; a
+// project without one is PLUGIN-NATIVE and the plugin's own `reference/` is.
 //
 // Measured on 1984862 by instrumenting the hook and running the whole package:
 // it was invoked 110 times, of which 99 got as far as this branch decision —
 // the other 11 exit earlier, on a bad stdin/event/cwd, on no project root, or
 // on `governed = false`, all of which are settled before `vendored` is
-// computed. Of those 99, the plugin-native branch was taken 5 times (5%),
-// spread over 5 tests that each reach it once: three invariants-pointer tests
-// (TRL-52/#283, all posture a) plus one incidental control in
-// TestCodexHookHonoursGovernedFalse and one posture sub-test in
-// TestCodexReconcilesInsteadOfFailingClosed. Every other fixture that reaches
-// the branch writes an overlay, so it goes vendored whatever plugin root it is
-// handed — most pair writeCodexPluginRoot, which writes only
-// `.codex-plugin/plugin.json` and no `reference/` at all, and two vendored
-// invariants tests pair writeDualHostPluginRoot, whose `reference/` is real but
-// goes unread because the overlay outranks it. That is how TRL-52 shipped: the
-// tests were not weak on the plugin-native path, they never reached it.
+// computed. Of those 99, the plugin-native branch was taken 5 times (5%). Every
+// other fixture that reached the branch wrote an overlay, so it went vendored
+// whatever plugin root it was handed. That is how TRL-52 shipped: the tests were
+// not weak on the plugin-native path, they never reached it. (TRL-97's parity
+// table, TestBothHostsClassifyRulesRowsIdentically, now runs this branch on
+// every row it has.)
 //
 // What this file adds is the half of that branch the pointer tests do not
 // touch — which FILE the branch reads, and which file it NAMES when that file
@@ -27,13 +22,10 @@ package main
 // read off `sources`, the one value the branch decides.
 //
 // What it deliberately does NOT do is re-run the vendored suite on this branch.
-// Everything downstream of `sources` — row reconciliation, quarantine, floor
-// warnings, provenance, budget degradation, the `governed = false` opt-out and
-// the whole stdin/cwd/PLUGIN_ROOT input vocabulary — reads `payload.*` and
-// `rulesToml` and never consults `vendored` again; the input checks run before
-// the branch is even computed. Feeding those the same bytes down the other
-// branch would execute the identical instructions for the identical result:
-// runtime spent to imply coverage that is not there.
+// Everything downstream of `sources` — row classification, the warnings, the
+// `governed = false` opt-out and the whole stdin/cwd/PLUGIN_ROOT input
+// vocabulary — reads `payload.*` and `rulesToml` and never consults `vendored`
+// again; the input checks run before the branch is even computed.
 
 import (
 	"fmt"
@@ -43,13 +35,14 @@ import (
 	"testing"
 )
 
-// The one line that differs between reference/trellis-a.md and
-// reference/trellis-b.md. `comm` on the two files returns exactly this pair, so
-// each marker is present in its own posture's prose and absent from the other's
-// — which is what makes them usable as evidence of WHICH file was read.
+// The one line that tells the shipped header from the header a vendored overlay
+// froze before TRL-97. The shipped reference/trellis.md carries the By default
+// sentence; frozenFirmOverlayHeader carries the Firmly one. Each marker is in its
+// own file and absent from the other, which is what makes them evidence of
+// WHICH file was read.
 const (
-	firmProseMarker     = "**Firmly**"
-	adaptiveProseMarker = "**By default**"
+	frozenOverlayProseMarker = "**Firmly**"
+	shippedProseMarker       = "**By default**"
 )
 
 // removeFileT is the readFileT/writeFileT sibling this file needs: a fault
@@ -62,74 +55,27 @@ func removeFileT(t *testing.T, path string) {
 	}
 }
 
-// writePluginNativeProject is writeConfigOnlyProject with the posture dial the
-// plugin-native branch actually turns. writeConfigOnlyProject hardcodes
-// rules-a.toml, so every fixture built from it computes posture "a" and reads
-// reference/trellis-a.md; nothing could reach the "b" arm of
-// `reference/trellis-${posture}.md` through it.
+// TestCodexPluginNativeServesThePluginRootsOwnPayload is the positive statement
+// of this branch. It asserts two things about ONE run because they are two facts
+// about one delivery:
 //
-// Posture is a PLUGIN-NATIVE-ONLY dial: codex-context.mjs computes it for every
-// run but only the plugin-native arm of `sources` consumes it, so this helper
-// deliberately has no vendored twin. A symmetric helper would imply the dial
-// works on both branches; TestCodexVendoredDeliveryIgnoresTheProjectsPosture
-// asserts that it does not.
-func writePluginNativeProject(t *testing.T, posture string) string {
-	t.Helper()
-	project := newGitProject(t)
-	toml := filepath.Join(project, ".trellis", "rules.toml")
-	if err := os.MkdirAll(filepath.Dir(toml), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	body, ok := payloadFiles()["rules-"+posture+".toml"]
-	if !ok {
-		t.Fatalf("no payload rules-%s.toml; the posture dial names a file that does not ship", posture)
-	}
-	if err := os.WriteFile(toml, []byte(body), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return project
-}
-
-// TestCodexPluginNativeServesAFirmProjectThePluginRootsOwnPayload is the
-// positive statement of this branch, which it did not have. It asserts two
-// things about ONE run because they are two facts about one delivery, and
-// splitting them would mean building the same fixture and executing the same
-// instructions twice to look at different bytes of the same output:
-//
-//   - WHICH prose file the posture selected (the firm half of the dial), and
+//   - WHICH prose file the branch read: reference/trellis.md, the one header
+//     TRL-97 ships, whatever `strictness` the project declares, and
 //   - that the rules body and version stamp delivered are the plugin root's own
 //     bytes (ORIGIN, not merely shape).
 //
-// On the FIRM half: the adaptive half is already run by
-// TestCodexReconcilesInsteadOfFailingClosed's "a missing strictness falls back
-// to adaptive, as Claude does — posture" sub-test, which reaches this branch
-// with a real bundle and asserts the same `**By default**` header. Only the firm
-// direction was unpinned, and with the dial pinned on one side a selector stuck
-// at "b" served adaptive prose to every firm project with the suite green.
-//
-// On ORIGIN: the three invariants-pointer tests run this branch but assert only
-// the pointer, and TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead
-// below proves the three payload paths are STAT'd — neither proves the bytes at
-// those paths are the bytes the model receives. Nor does the nearest thing on
-// the vendored branch: TestCodexHookValidStartupAndLiveRows asserts that one
-// hardcoded relative literal, "../plugins/trellis/reference", never appears in a
-// vendored project's context — a check on a leaked path string rather than on
-// where the delivered bytes came from, and one its own fixture could not fail
-// anyway, since that fixture's plugin root is a t.TempDir() whose path bears no
-// resemblance to the literal.
-// So no test on either branch pinned delivery to origin, and this one does it
-// where the branch decides the origin. The gap is not hypothetical — this hook
-// already rewrites one payload value between reading it and delivering it (the
-// invariants repoint rewrites `trellis` in place), so "read the file, deliver
-// something else" is a shape the file's own structure invites.
+// The project declares `strictness = 'firm'`, in the literal string form that
+// once selected the retired firm header, so a selector that came back would
+// have something to select.
 //
 // Each of the three files is marked distinguishably in a throwaway copy of the
 // plugin root, inside the constraints the hook enforces on that file: the prose
 // keeps its single @rules.md, the rules body keeps its single trailing
 // sentinel, and the version stamp stays a well-formed but different stamp.
-func TestCodexPluginNativeServesAFirmProjectThePluginRootsOwnPayload(t *testing.T) {
+func TestCodexPluginNativeServesThePluginRootsOwnPayload(t *testing.T) {
 	pluginRoot := writeDualHostPluginRoot(t)
-	project := writePluginNativeProject(t, "a")
+	project := writeConfigOnlyProject(t)
+	writeFileT(t, filepath.Join(project, ".trellis", "rules.toml"), "strictness = 'firm'\n"+configOnlyProjectRules)
 
 	const proseMark = "TRL55-PROSE-FROM-PLUGIN-ROOT"
 	const rulesMark = "TRL55-RULES-FROM-PLUGIN-ROOT"
@@ -137,19 +83,19 @@ func TestCodexPluginNativeServesAFirmProjectThePluginRootsOwnPayload(t *testing.
 	// asserting it proves the delivered stamp tracked this file rather than
 	// coincidentally matching the payload the test package already holds.
 	const versionMark = "payload@0123456789ab"
-	if versionMark == strings.TrimSpace(payloadFiles()["version"]) {
+	if versionMark == strings.TrimSpace(payloadFile(t, "version")) {
 		t.Fatal("fixture drift: the marker stamp equals the shipped stamp, so the assertion below would pass either way")
 	}
 
 	ref := func(name string) string { return filepath.Join(pluginRoot, "reference", name) }
 
 	// Ahead of @rules.md, so the placeholder count the hook enforces is untouched.
-	prose := readFileT(t, ref("trellis-a.md"))
+	prose := readFileT(t, ref("trellis.md"))
 	marked := strings.Replace(prose, "@rules.md", proseMark+"\n\n@rules.md", 1)
 	if marked == prose {
-		t.Fatal("fixture drift: reference/trellis-a.md no longer carries @rules.md")
+		t.Fatal("fixture drift: reference/trellis.md no longer carries @rules.md")
 	}
-	writeFileT(t, ref("trellis-a.md"), marked)
+	writeFileT(t, ref("trellis.md"), marked)
 
 	// Ahead of the terminal sentinel, so the rules body still ends with exactly
 	// one of them and slug derivation is unaffected.
@@ -164,13 +110,11 @@ func TestCodexPluginNativeServesAFirmProjectThePluginRootsOwnPayload(t *testing.
 
 	context := codexContextFor(t, pluginRoot, project)
 
-	// Which file the posture selected. The marker was written into
-	// reference/trellis-a.md only, so its presence identifies the file read.
-	if !strings.Contains(context, firmProseMarker) {
-		t.Errorf("a firm project must be served reference/trellis-a.md:\n%s", context)
+	if !strings.Contains(context, shippedProseMarker) {
+		t.Errorf("the plugin-native branch must serve reference/trellis.md, the one header that ships:\n%s", context)
 	}
-	if strings.Contains(context, adaptiveProseMarker) {
-		t.Errorf("a firm project was served the adaptive prose — the posture selector is not reading the project's strictness:\n%s", context)
+	if strings.Contains(context, frozenOverlayProseMarker) {
+		t.Errorf("a project declaring strictness = 'firm' was served the Firmly sentence; strictness selects nothing (TRL-97):\n%s", context)
 	}
 
 	// That the bytes at the three resolved paths are the bytes delivered.
@@ -192,149 +136,83 @@ func TestCodexPluginNativeServesAFirmProjectThePluginRootsOwnPayload(t *testing.
 	}
 }
 
-// TestCodexFirmPostureIsSelectedFromEitherTomlStringForm pins the OTHER half of
-// the posture regex on the only branch that consumes posture.
+// TestCodexVendoredProseOutranksThePlugins is the other half of the branch: a
+// vendored overlay's own trellis.md is delivered, not the plugin's
+// reference/trellis.md. The overlay is authoritative (plugins/trellis/README.md:27),
+// so its frozen prose governs even where the plugin ships a newer header.
 //
-// codex-context.mjs:1034 matches `strictness = "firm"` or `strictness = 'firm'`,
-// and its own comment records why both are there: "matching only the basic form
-// served a firm project the adaptive posture without saying so." That is a
-// shipped defect with a recorded fix — and the fix was unpinned in effect.
-// codex_hook_test.go's strict-schema test does feed the literal form, but on a
-// VENDORED fixture, where posture is computed and then discarded, and it asserts
-// only that the hook does not fail. Nothing observed which prose the literal
-// form selected, so deleting `|'firm'` from the regex left the whole suite
-// green while every literal-quoted firm project silently got adaptive prose.
-//
-// Separate from the test above rather than a case inside it: that one builds a
-// marked plugin root to prove ORIGIN, and none of that machinery is needed to
-// ask which of two files a quoting form selects.
-func TestCodexFirmPostureIsSelectedFromEitherTomlStringForm(t *testing.T) {
-	pluginRoot := writeDualHostPluginRoot(t)
-	project := writePluginNativeProject(t, "a")
-
-	rules := filepath.Join(project, ".trellis", "rules.toml")
-	basic := readFileT(t, rules)
-	literal := strings.Replace(basic, `strictness  = "firm"`, `strictness  = 'firm'`, 1)
-	if literal == basic {
-		t.Fatal("fixture drift: rules-a.toml no longer carries a basic-string strictness to convert")
-	}
-	writeFileT(t, rules, literal)
-
-	context := codexContextFor(t, pluginRoot, project)
-	if !strings.Contains(context, firmProseMarker) {
-		t.Errorf("a firm project declared with a TOML literal string must still select reference/trellis-a.md:\n%s", context)
-	}
-	if strings.Contains(context, adaptiveProseMarker) {
-		t.Errorf("the literal-quoted firm posture fell through to adaptive — the regex's `'firm'` arm is not doing anything:\n%s", context)
-	}
-}
-
-// TestCodexVendoredDeliveryIgnoresTheProjectsPosture is the other half of the
-// dial, and it is the half that makes `posture` a PLUGIN-NATIVE-ONLY value
-// rather than a global one. codex-context.mjs computes posture on every run but
-// only the plugin-native arm of `sources` consumes it; the vendored arm spreads
-// VENDORED_PAYLOAD, whose prose is the overlay's single trellis.md.
-//
-// The overlay is authoritative (plugins/trellis/README.md:27), so its own prose
-// is delivered whatever the project declares. This is the arm a careless "make
-// posture work everywhere" change breaks: the overlay ships one trellis.md and
-// has no trellis-{a,b}.md for a posture to select between, so honouring posture
-// here can only mean reading a file that is not there — or, as the mutation that
-// proves this test bites does, quietly sourcing the prose from the plugin
-// instead of the overlay that outranks it.
-func TestCodexVendoredDeliveryIgnoresTheProjectsPosture(t *testing.T) {
+// The overlay here carries the header vendored overlays froze before TRL-97,
+// and the plugin root carries the shipped one, so the two branches deliver
+// different posture sentences and the fixture can tell them apart. The mutation
+// this bites is the careless "serve the one shipped header everywhere" change,
+// which quietly sources the prose from the plugin instead of the overlay that
+// outranks it.
+func TestCodexVendoredProseOutranksThePlugins(t *testing.T) {
 	pluginRoot := writeDualHostPluginRoot(t)
 	project := newGitProject(t)
-	// writeValidCodexOverlay writes trellis-a.md as the overlay prose and
-	// rules-a.toml as the project config. Overwriting only the config makes the
-	// two disagree: the project declares adaptive, the overlay carries firm
-	// prose. Without that disagreement the fixture could not tell the two
-	// branches apart.
 	writeValidCodexOverlay(t, project)
-	config := filepath.Join(project, ".trellis", "rules.toml")
-	// Asserted rather than assumed, in the idiom
-	// TestCodexRepointsWhenAVendoredOverlayLacksInvariants already uses. If the
-	// helper ever seeded rules-b.toml itself, the overwrite below would be a
-	// no-op, the project and the overlay would agree, and this test would go on
-	// passing while proving nothing — the overlay's prose is firm either way.
-	if readFileT(t, config) == payloadFiles()["rules-b.toml"] {
-		t.Fatal("fixture drift: writeValidCodexOverlay now seeds rules-b.toml, so this fixture no longer makes the project's posture and the overlay's prose disagree")
+	overlay := readFileT(t, filepath.Join(project, ".trellis", "internal", "trellis.md"))
+	if !strings.Contains(overlay, frozenOverlayProseMarker) || strings.Contains(payloadFile(t, "trellis.md"), frozenOverlayProseMarker) {
+		t.Fatal("fixture drift: the overlay's frozen header and the shipped header no longer differ by the posture sentence, so this test cannot tell the branches apart")
 	}
-	writeFileT(t, config, payloadFiles()["rules-b.toml"])
 
 	context := codexContextFor(t, pluginRoot, project)
-	if !strings.Contains(context, firmProseMarker) {
-		t.Errorf("the vendored overlay's own trellis.md must be delivered regardless of the project's declared posture:\n%s", context)
+	if !strings.Contains(context, frozenOverlayProseMarker) {
+		t.Errorf("the vendored overlay's own trellis.md must be delivered:\n%s", context)
 	}
-	if strings.Contains(context, adaptiveProseMarker) {
-		t.Errorf("posture reached the vendored branch and selected prose there; the overlay is authoritative and has no posture variants to choose between:\n%s", context)
+	if strings.Contains(context, shippedProseMarker) {
+		t.Errorf("the plugin's reference/trellis.md reached a vendored project; the overlay is authoritative:\n%s", context)
 	}
 }
 
 // TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead is the assertion
 // this branch never had. Every `fail()` on a payload fault reports
 // `sources.prose` / `sources.rules` / `sources.version`, and those three values
-// ARE the branch — `.trellis/internal/*` when vendored,
-// `reference/trellis-${posture}.md` and `reference/{rules.md,version}` when
-// plugin-native. The hook's own comment records this going wrong once: the
-// labels were hardcoded to the vendored paths, "so on the plugin-native path it
-// reported a failure against a file that was never read". The fix shipped
-// unpinned — the whole vocabulary is asserted only through
-// TestCodexHookFailureVocabularyAndIsolation, whose fixture is vendored, so a
-// regression to the hardcoded path is invisible to this suite.
+// ARE the branch — `.trellis/internal/*` when vendored, `reference/trellis.md`
+// and `reference/{rules.md,version}` when plugin-native. The hook's own comment
+// records this going wrong once: the labels were hardcoded to the vendored
+// paths, "so on the plugin-native path it reported a failure against a file that
+// was never read".
 //
-// One case per REACHABLE `fail(sources.*)` call site rather than a re-run of
-// that test's table: each site is a separate place the wrong path can be
-// written, and the classes themselves are not branch-sensitive. The hook has
-// seven sites whose label comes from `sources` — six match a grep for
-// `fail(sources.`, and the seventh is the read loop at :944, which reaches it
-// through `sources[key]`. Five are reachable and each has a case here: the payload
-// read loop (:944, exercised once per role, since the label it reports is
-// `sources[key]` and the role is what varies), :980
-// invalid-placeholder-count, :970 invalid-version, :1060 invalid-rules and
-// :1093 no-slugs-in-payload. The other two — :962 and :966, both
-// `empty-prose` — are the second lock on a door readRequired already shut,
-// as the hook's own comment above them says; a zero-byte file is refused at
-// the read and reported from :944, so those two cannot be reached to be
-// asserted. The `empty-prose` CLASS is still covered, via the read loop.
+// One case per REACHABLE `fail(sources.*)` call site: the payload read loop
+// (exercised once per role, since the label it reports is `sources[key]` and the
+// role is what varies), invalid-placeholder-count, invalid-version,
+// invalid-rules and no-slugs-in-payload. The two `empty-prose` post-checks are
+// the second lock on a door readRequired already shut; a zero-byte file is
+// refused at the read and reported from the loop, so the `empty-prose` CLASS is
+// covered there.
 //
 // The vendored half of the vocabulary is deliberately not repeated here; it is
-// pinned literally next door, and asserting it twice would state one property in
-// two places that could then drift apart.
+// pinned literally next door.
 //
 // Each case gets its own throwaway plugin root, because breaking a payload file
 // to see how the hook names it is not something to do to a shared fixture.
 func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		posture string
-		// break mutates the plugin root's reference/ into the fault under test.
+		name string
+		// breakIt mutates the plugin root's reference/ into the fault under test.
 		breakIt func(t *testing.T, ref func(string) string)
 		label   string
 		class   string
 	}{{
-		name:    "a missing prose file names the posture prose, not the overlay's trellis.md",
-		posture: "a",
-		breakIt: func(t *testing.T, ref func(string) string) { removeFileT(t, ref("trellis-a.md")) },
-		label:   "reference/trellis-a.md",
+		name:    "a missing prose file names reference/trellis.md, not the overlay's trellis.md",
+		breakIt: func(t *testing.T, ref func(string) string) { removeFileT(t, ref("trellis.md")) },
+		label:   "reference/trellis.md",
 		class:   "missing-file",
 	}, {
-		name:    "prose with no @rules.md import names the posture prose",
-		posture: "a",
+		name: "prose with no @rules.md import names reference/trellis.md",
 		breakIt: func(t *testing.T, ref func(string) string) {
-			writeFileT(t, ref("trellis-a.md"), "no import\n")
+			writeFileT(t, ref("trellis.md"), "no import\n")
 		},
-		label: "reference/trellis-a.md",
+		label: "reference/trellis.md",
 		class: "invalid-placeholder-count",
 	}, {
 		name:    "an empty rules payload names reference/rules.md",
-		posture: "a",
 		breakIt: func(t *testing.T, ref func(string) string) { writeFileT(t, ref("rules.md"), "") },
 		label:   "reference/rules.md",
 		class:   "empty-prose",
 	}, {
-		name:    "a rules payload with no sentinel names reference/rules.md",
-		posture: "a",
+		name: "a rules payload with no sentinel names reference/rules.md",
 		breakIt: func(t *testing.T, ref func(string) string) {
 			writeFileT(t, ref("rules.md"), "no sentinel\n")
 		},
@@ -342,49 +220,35 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 		class: "invalid-rules",
 	}, {
 		name:    "a missing version stamp names reference/version",
-		posture: "a",
 		breakIt: func(t *testing.T, ref func(string) string) { removeFileT(t, ref("version")) },
 		label:   "reference/version",
 		class:   "missing-file",
 	}, {
-		name:    "a malformed version stamp names reference/version",
-		posture: "a",
+		name: "a malformed version stamp names reference/version",
 		breakIt: func(t *testing.T, ref func(string) string) {
 			writeFileT(t, ref("version"), "plugin@abcdef123456\n")
 		},
 		label: "reference/version",
 		class: "invalid-version",
 	}, {
-		// The seventh site, and the one furthest from the read: a rules payload
-		// that is well-formed enough to pass the sentinel gate but carries no
-		// backticked rule tags, so the derived slug set comes back empty. It is
-		// the last `fail(sources.*)` in the file (codex-context.mjs:1093) and the
-		// easiest to leave hardcoded, because everything around it reports the
-		// PROJECT's rules.toml rather than the payload.
-		// TestCodexRejectsAnEmptyDerivedSlugSet pins this class on the vendored
-		// branch with the overlay path written out literally, so it cannot see
-		// this label move.
-		name:    "a rules payload with no rule tags names reference/rules.md",
-		posture: "a",
+		// The site furthest from the read: a rules payload that is well-formed
+		// enough to pass the sentinel gate but carries no backticked rule tags, so
+		// the derived slug set comes back empty. It is the easiest to leave
+		// hardcoded, because everything around it concerns the PROJECT's
+		// rules.toml rather than the payload. TestCodexRejectsAnEmptyDerivedSlugSet
+		// pins this class on the vendored branch with the overlay path written out
+		// literally, so it cannot see this label move.
+		name: "a rules payload with no rule tags names reference/rules.md",
 		breakIt: func(t *testing.T, ref func(string) string) {
 			writeFileT(t, ref("rules.md"),
 				"Prose with no backticked rule tags, so no slug is derived.\n\n"+rulesLoadedSentinel+"\n")
 		},
 		label: "reference/rules.md",
 		class: "no-slugs-in-payload",
-	}, {
-		// The label is templated on the posture, so an adaptive project's broken
-		// prose must name trellis-b.md. Without this case a label frozen at
-		// trellis-a.md passes every other case in this table.
-		name:    "an adaptive project's broken prose names trellis-b.md, not trellis-a.md",
-		posture: "b",
-		breakIt: func(t *testing.T, ref func(string) string) { removeFileT(t, ref("trellis-b.md")) },
-		label:   "reference/trellis-b.md",
-		class:   "missing-file",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			pluginRoot := writeDualHostPluginRoot(t)
-			project := writePluginNativeProject(t, tc.posture)
+			project := writeConfigOnlyProject(t)
 			tc.breakIt(t, func(name string) string {
 				return filepath.Join(pluginRoot, "reference", name)
 			})
@@ -409,10 +273,7 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 // copy (TRL-52, decision-0065:106-111) — and until this test existed nothing
 // observed what happens when that copy is not there.
 //
-// The argument for reporting rather than guarding is at the repoint itself
-// (codex-context.mjs, the TRL-69 comment) and is not restated here; what
-// belongs here is what the cases pin. Three of them, and each pins something
-// the other two cannot:
+// Three cases, and each pins something the other two cannot:
 //
 //   - The pointer MOVES even when its target is missing. This is the assertion
 //     that fails the symmetric guard — the obvious fix, and the wrong one,
@@ -421,21 +282,18 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 //   - A COMPLETE payload warns about nothing. Without it, "warn on a missing
 //     copy" reads as "warn always" and an unconditional message passes.
 //   - Both warnings at once JOIN rather than clobber. The assembly collects
-//     into an array precisely because two independent conditions can hold
-//     together, and nothing else in the package makes them: the floor-row test
-//     is vendored, where this warning cannot fire, and the two cases above
-//     carry no false floor row. An implementation that went back to assigning
-//     response.systemMessage directly would drop one message and pass the
-//     whole suite.
+//     into an array precisely because independent conditions can hold
+//     together: here the missing copy and a floor row set false in the
+//     project's file (TRL-97 folded that warning into the rules.toml warnings).
+//     An implementation that went back to assigning response.systemMessage
+//     directly would drop one message and pass the whole suite.
 //
 // Delivery survives all three: the context is asserted non-nil in every case,
 // because invariants.md is consulted on demand and decision-0093:1 rules that
 // failing a session closed over such a file trades a dead pointer for no
 // governance at all.
 func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
-	// The floor warning as codex-context.mjs composes it, matched from its own
-	// start so the separator assertion below can anchor on it.
-	const floorWarning = "Trellis warning: floor rows set active = false are overridden-by-floor and remain active: floor-intent-gate."
+	floorWarning := warnFloorRow(2, "floor-intent-gate")
 	for _, tc := range []struct {
 		name string
 		// removeInvariants makes the plugin payload the broken one: three valid
@@ -456,19 +314,13 @@ func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			pluginRoot := writeDualHostPluginRoot(t)
-			project := writePluginNativeProject(t, "a")
+			project := writeConfigOnlyProject(t)
 			pointer := filepath.Join(pluginRoot, "reference", "invariants.md")
 			if tc.removeInvariants {
 				removeFileT(t, pointer)
 			}
 			if tc.falseFloor {
-				config := filepath.Join(project, ".trellis", "rules.toml")
-				rows := readFileT(t, config)
-				disabled := setRuleActive(t, rows, "floor-intent-gate", false)
-				if disabled == rows {
-					t.Fatal("fixture drift: setting floor-intent-gate inactive changed nothing, so the floor warning would not fire")
-				}
-				writeFileT(t, config, disabled)
+				writeFileT(t, filepath.Join(project, ".trellis", "rules.toml"), "[rules]\nfloor-intent-gate = { active = false }\n")
 			}
 
 			raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))

@@ -64,21 +64,27 @@ func captureAll(re *regexp.Regexp, s string) []string {
 
 // TestRowSetDerivativesFollowThePin: every surface that carries the slug set
 // carries exactly the pinned set — missing AND extra both fail, so a retire is
-// caught as well as a mint. The rendered TOMLs and the catalog are pinned
-// elsewhere too (TestPayloadRulesTomlSeeds, TestVendoredPayloadIsCurrent,
-// rules_test.go); they are listed here so this one test's output is the
-// complete map of what has not followed.
+// caught as well as a mint. The catalog is pinned elsewhere too
+// (TestVendoredPayloadIsCurrent, rules_test.go); it is listed here so this one
+// test's output is the complete map of what has not followed. The two posture
+// presets this test also read, reference/rules-a.toml and rules-b.toml, retired
+// with TRL-97, and nothing ships a complete row set in their place.
 //
-// Membership is the contract for every derivative but one: the profile also
+// Membership is the contract for every derivative but two. The profile also
 // carries a per-row VALUE, and profiles/trellis-self.md claims in prose that
 // every gene is active, so its pattern matches `| true |` only — a row flipped
-// to false reads here as missing, which is what that claim means.
+// to false reads here as missing, which is what that claim means. This repo's
+// .trellis/rules.toml is checked one way only: since TRL-97 a rule with no row
+// applies, so a missing row is not drift, while a row naming a slug the plugin
+// does not ship is.
 func TestRowSetDerivativesFollowThePin(t *testing.T) {
 	tomlRowRe := regexp.MustCompile(`(?m)^([a-z][a-z-]*)\s*= \{`)
 	derivatives := []struct {
 		name string
 		got  []string
-		fix  string
+		// subset: only slugs outside the pin fail; a pinned slug may be absent.
+		subset bool
+		fix    string
 	}{
 		{
 			// catalogSlugOrder parses the EMBEDDED copy (cli/assets/invariants.md,
@@ -111,23 +117,19 @@ func TestRowSetDerivativesFollowThePin(t *testing.T) {
 			fix: "add or remove the card; TestInvariantsPageMatchesCatalog checks its examples",
 		},
 		{
-			name: ".trellis/rules.toml (this repo's rows)",
-			got:  captureAll(tomlRowRe, readFileT(t, "../.trellis/rules.toml")),
-			fix:  "add or remove the row — without a row the rule ships but is inactive",
-		},
-		{
-			name: "plugins/trellis/reference/rules-a.toml",
-			got:  captureAll(tomlRowRe, readFileT(t, vendoredPayloadDir+"/rules-a.toml")),
-			fix:  "regenerate the payload (`go run . payload --out ../plugins/trellis/reference`)",
-		},
-		{
-			name: "plugins/trellis/reference/rules-b.toml",
-			got:  captureAll(tomlRowRe, readFileT(t, vendoredPayloadDir+"/rules-b.toml")),
-			fix:  "regenerate the payload (`go run . payload --out ../plugins/trellis/reference`)",
+			// A subset, not the set: a rule with no row applies (TRL-97), and R17
+			// leaves this file's inert `active = true` rows in place.
+			name:   ".trellis/rules.toml (this repo's rows, a subset of the pin)",
+			got:    captureAll(tomlRowRe, readFileT(t, "../.trellis/rules.toml")),
+			subset: true,
+			fix:    "delete the row or correct its slug — a row naming a rule the plugin does not ship switches nothing off, and a rule with no row still applies",
 		},
 	}
 	for _, d := range derivatives {
 		missing, extra := rowSetDiff(assessableSlugs, d.got)
+		if d.subset {
+			missing = nil
+		}
 		if len(missing) == 0 && len(extra) == 0 {
 			continue
 		}
@@ -184,11 +186,11 @@ func catalogClassCounts() (methodology, design, floor int) {
 // not-yet-governing announcement, neither of which can say "all rules" without
 // losing the point); one is the README's headline 16/16; one is the catalog's
 // own acceptance criterion, where the class breakdown is the claim being
-// accepted. The last two are the exception that proves the rule: sentences in
-// plugins/trellis/README.md whose numeral SHOULD have been deleted, pinned
-// instead because the deletion is blocked on a file another PR owns (see the
-// note beside them). The remove skill's own 16/16 is already derived from the
-// pin by remove_skill_test.go, so it is not repeated here.
+// accepted. Two sentences in plugins/trellis/README.md whose numeral should
+// have been deleted were pinned here while that deletion waited on a bundle
+// change; TRL-97 was that change and deleted both, and their rows with them.
+// The remove skill's own 16/16 is already derived from the pin by
+// remove_skill_test.go, so it is not repeated here.
 //
 // There is no sweep for sites this table does not know: at this size the
 // stopping rule is the review, and a pattern broad enough to find a new count
@@ -218,16 +220,6 @@ func TestRowCountProseSitesFollowThePin(t *testing.T) {
 		{"../core/catalog/signature-catalog-v1.md",
 			"Covers all **%[1]d assessable** slugs (the %[3]s structural, the %[4]s remaining operating, the %[5]s floors",
 			"AC1 — the coverage claim the catalog is accepted against"},
-		// Deferred deletions, pinned so they cannot go stale while they wait.
-		// These two sentences do not need their numeral, but deleting it edits a
-		// file inside the shipped bundle, which forces install.sh's baked manifest
-		// to be re-hashed — and those manifest lines are owned by open trellis#262.
-		// Pinned to the strings present verbatim today; when a change that already
-		// touches the bundle deletes the numerals, delete these two rows with them.
-		{"../plugins/trellis/README.md", "all %[2]s rules at the adaptive posture",
-			"deferred deletion — re-baking install.sh's manifest is owned by trellis#262"},
-		{"../plugins/trellis/README.md", "all %[2]s rows active at",
-			"deferred deletion — re-baking install.sh's manifest is owned by trellis#262"},
 		// The floor-class count, pinned rather than narrowed (the maintainer's
 		// ruling on TRL-47). Both name the floors and then say something true of
 		// exactly those rows, so "the floors" would lose which rows are meant —

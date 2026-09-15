@@ -21,9 +21,11 @@
 #
 #   B. Config only (.trellis/rules.toml present, no .trellis/internal/ directory) —
 #      plugin-native delivery. The rules are injected from the installed plugin's
-#      own payload instead of read from vendored copies. Same always-loaded chain
-#      the import channel delivers — posture header, rules, live rows — so the
-#      tested wording stays the shipped wording (decision-0053). The one edit is
+#      own payload instead of read from vendored copies: the header and the
+#      rules, then the project's rule activation section, where this hook
+#      classifies .trellis/rules.toml and names the rules it switches off
+#      (TRL-97). The tested wording stays the shipped wording (decision-0053).
+#      The one edit is
 #      repointing the invariants path at the plugin, which is where the file
 #      actually is in this mode, and which therefore cannot go stale. It can
 #      still be ABSENT from a half-installed payload, and the pointer moves
@@ -42,7 +44,7 @@
 # of the three used to get NOTHING. decision-0070 changed that, and this comment
 # said the opposite until it was corrected. What such a project gets now depends
 # on where the plugin lives: vendored under <repo>/.claude/skills/ means this
-# project adopted Trellis, so the shipped defaults apply; anywhere else means the
+# project adopted Trellis, so every rule applies; anywhere else means the
 # project is told — every session until it answers — and governed by nothing
 # meanwhile. The never-BY-SURPRISE half stands. The never-governed half fails
 # only for the vendored-bundle case above, where the bundle IS the adoption act;
@@ -93,7 +95,11 @@ json_escape() {
   # below) would make the JSON string invalid — a form feed in rules.toml did
   # exactly that. A config file has no business carrying one, so replace rather
   # than emit nothing: a stray byte degrades the payload, not the session.
-  tr '\001-\010\013\014\016-\037' '    ' | awk '
+  # Both tools run in the C locale so they work on bytes. In a UTF-8 locale a
+  # byte that is not valid UTF-8, such as a Latin-1 comment in rules.toml, made
+  # tr stop mid-stream, and everything after it (the rest of the file, every
+  # warning, the footer) was silently cut from otherwise valid JSON.
+  LC_ALL=C tr '\001-\010\013\014\016-\037' '    ' | LC_ALL=C awk '
     BEGIN { ORS = "" }
     {
       gsub(/\\/, "\\\\")
@@ -283,19 +289,12 @@ fi
 # reasoning from "the only settings that never dial to zero"; that read a
 # within-governance guarantee as a without-governance one.
 #
-# So the hook reads this file for exactly one thing — this key — and injects
-# nothing when it is set. It never reads the rows; those are live, editable, and
-# read by the model on demand, which is the behaviour this design is for.
+# So this read is for exactly one thing — this key — and nothing is injected
+# when it is set. It runs before path B classifies the rest of the file, so an
+# opted-out file is never classified, whatever else it holds.
 bom="$(printf '\357\273\277')"
-# KNOWN, NARROWED DIVERGENCE. A misplaced `governed = false` UNDER `[rules]` is
-# not a top-level key, so neither host opts out — but they then differ: this hook
-# ignores the stray line and governs normally (the full rule set), while codex-context.mjs
-# rejects the file as invalid-rules, because its parser validates every row shape
-# and this one does not. Both fail SAFE — neither silently disables anything,
-# which was the defect — but Codex is louder. Aligning them means teaching this
-# awk slug check to reject unknown row shapes, which is a larger change than the
-# bug warrants; recorded here so the next person sees it as known rather than
-# discovering it as new.
+# A misplaced `governed = false` UNDER `[rules]` is not a top-level key, so
+# neither host opts out on it, and both warn that it does not (TRL-97).
 # Normalise ONCE, then ask two questions of the result. Doing it in one pass is
 # the point: each of the previous four rounds fixed a matcher in one place and
 # left the other host, or an earlier stage, unfixed. The BOM strip must precede
@@ -588,13 +587,13 @@ if [ -f "$legacy" ]; then
     overlay_line="$(printf '%s\n' "$payload_text" | head -n1 | LC_ALL=C sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
   fi
   if [ -z "$overlay" ] || [ -z "$current" ]; then
-    emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version. This hook could not read both stamps, so it cannot say how far behind this overlay is — but the LAYOUT itself is the stale part and the migration below is correct regardless. To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
+    emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version. This hook could not read both stamps, so it cannot say how far behind this overlay is — but the LAYOUT itself is the stale part and the migration below is correct regardless. To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\`. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
     exit 0
   fi
   # TRL-101: the stamp is quoted only when it has a stamp's shape.
   legacy_named="$overlay; "
   stamp_shaped "$overlay_line" || legacy_named="its first line is not a version stamp and is not quoted; "
-  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version (${legacy_named}the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
+  emit "Trellis overlay predates the .trellis/internal/ layout (decision-0051): its stamp sits at the legacy path .trellis/version (${legacy_named}the installed plugin ships $current). To migrate, delete the legacy overlay — .trellis/version, .trellis/trellis.md and .trellis/internal/ if present, plus the managed block from this project's instructions file — keeping your .trellis/rules.toml rows. An overlay this old may predate .trellis/rules.toml entirely; if there is none, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\`. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked."
   exit 0
 fi
 
@@ -744,7 +743,7 @@ fi
 # ungoverned), so the refusal names both states, says how to tell, and asserts
 # neither as fact.
 if [ -n "$inline_file" ]; then
-  emit "TRELLIS_INLINE_BLOCK — $inline_files carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read each block named above to tell which. To move onto plugin-delivered rules either way, delete the managed block from EACH of $inline_files — everything from its trellis:begin marker through its trellis:end marker, in every file named; leaving one behind leaves this project in the same refused state — keeping .trellis/rules.toml rows if that file exists. Without it, read each block's own strictness value BEFORE deleting anything and copy the preset that matches — $plugin/reference/rules-a.toml for firm, rules-b.toml for adaptive — to $root/.trellis/rules.toml, so the project keeps the posture it had instead of silently becoming adaptive. If two blocks disagree on strictness, there is no posture to preserve: say so, show the user both values, and let them choose — never pick one silently. Or run /trellis:remove to take Trellis out of this project entirely — the opposite endpoint, not a migration. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
+  emit "TRELLIS_INLINE_BLOCK — $inline_files carries a Trellis managed block (its trellis:begin marker at column 0), so this hook injected nothing. This project is in one of two states and the hook cannot tell which: if the rules readout is written out between the block's markers, the host already loaded those rules at launch and injecting here would put them in context twice; if the block holds only @-import lines whose .trellis/internal/ overlay was deleted, no rules are loaded and this session is ungoverned. Read each block named above to tell which. To move onto plugin-delivered rules either way, delete the managed block from EACH of $inline_files — everything from its trellis:begin marker through its trellis:end marker, in every file named; leaving one behind leaves this project in the same refused state — keeping .trellis/rules.toml if that file exists. Without it, read each block for rows set to active = false BEFORE deleting anything, then write $root/.trellis/rules.toml containing exactly these two lines: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\`, followed by each row a block sets to active = false, so the project keeps the rules it switched off instead of silently gaining them back. If two blocks disagree about a row, show the user both and let them choose — never pick one silently. Or run /trellis:remove to take Trellis out of this project entirely — the opposite endpoint, not a migration. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the file is tracked. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -754,15 +753,14 @@ toml="$root/.trellis/rules.toml"
 # A path that EXISTS but is not a regular file — a directory, a FIFO, a socket,
 # a device node — is neither a rules file nor a missing one, and every read
 # below is guarded by `-f`, so without this it fell into the missing-file
-# branch: a vendored bundle governed with the shipped defaults under a heading
-# saying the project "has no .trellis/rules.toml", and a user-scope install
-# announced the same and told the user to WRITE that file — over a FIFO, a
-# write that blocks exactly as the read did. Both were wrong about the
-# reader's state (decision-0073's class). Measured on the guarded hook before
-# this check: `mkdir .trellis/rules.toml` drew TRELLIS_NOT_YET_GOVERNING and
-# "has no .trellis/rules.toml". So it is refused, loudly, like the mode-000
-# file the slug check catches further down — the same disposition as an
-# unreadable regular file, said before anything tries to read it.
+# branch: a vendored bundle governed as though the project had no file, and a
+# user-scope install announced the same and told the user to WRITE that file —
+# over a FIFO, a write that blocks exactly as the read did. Both were wrong
+# about the reader's state (decision-0073's class). Measured on the guarded
+# hook before this check: `mkdir .trellis/rules.toml` drew
+# TRELLIS_NOT_YET_GOVERNING and "has no .trellis/rules.toml". So it is refused,
+# loudly, like the unreadable file further down, before anything tries to read
+# it.
 #
 # HOSTS AGREE HERE, with different words. codex-context.mjs stat-checks
 # `isFile()` while locating the overlay and never reaches its `unreadable-file`
@@ -774,13 +772,16 @@ toml="$root/.trellis/rules.toml"
 # `-e` follows symlinks, as `-f` does and as Codex's statSync does, so a
 # dangling symlink is missing on both hosts and a symlink to a FIFO is this.
 if [ -e "$toml" ] && [ ! -f "$toml" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml exists but is not a regular file (a directory, a FIFO, a socket or a device node; \`ls -l $toml\` says which), so the Trellis plugin hook did not open it. This project is configured for Trellis: something sits at .trellis/rules.toml, but it is not a rules file and it is not a governed = false opt-out, so the session is running ungoverned and NO rules and NO rows were injected. Nothing on disk was changed. To govern this project, replace it with a regular file holding the rows (copy $plugin/reference/rules-b.toml there) or the single line governed = false to opt out — show the user the exact path you would replace and get explicit confirmation before removing anything (floor-intent-gate): this hook advises, it never authorises a deletion. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml exists but is not a regular file (a directory, a FIFO, a socket or a device node; \`ls -l $toml\` says which), so the Trellis plugin hook did not open it. This project is configured for Trellis: something sits at .trellis/rules.toml, but it is not a rules file and it is not a governed = false opt-out, so the session is running ungoverned and NO rules were injected. Nothing on disk was changed. To govern this project, replace it with a regular file containing exactly these two lines: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\` — or with the single line governed = false to opt out. Show the user the exact path you would replace and get explicit confirmation before removing anything (floor-intent-gate): this hook advises, it never authorises a deletion. Tell the user before doing substantive work."
   exit 0
 fi
 
 # decision-0070. Adoption is the consent act, and every path has one; what a
 # missing rules.toml means now depends on WHICH path installed this plugin.
 #
+# $rows_present says whether there is a project file to classify below. Only
+# the vendored-bundle branch sets it to no.
+rows_present=yes
 if [ ! -f "$toml" ]; then
   # D6. Scope by containment: a project-scoped plugin is vendored INSIDE the
   # repository, a user-scoped one lives under the user's home. Resolved with pwd
@@ -820,82 +821,55 @@ if [ ! -f "$toml" ]; then
 
   if [ "$scoped_to_project" = yes ]; then
     # D3. The bundle sits in this repository, so this project adopted Trellis —
-    # visibly, greppably, and revocably by deleting it. Absent rows therefore
-    # mean the standard set, not none. Rather than invent a second activation
-    # semantics, point at the shipped preset and let every check below run
-    # unchanged: same slugs, every row active, strictness "adaptive" (posture B).
-    toml="$plugin/reference/rules-b.toml"
-    # TRL-33. This was `[ -f "$toml" ] || exit 0`. Measured on main: an ABSENT
-    # rules-b.toml on this path produced completely empty stdout, exit 0, zero
-    # bytes of stderr — a session governed by nothing, with no signal of any
-    # kind — while the UNREADABLE sibling of the same file was caught, loudly,
-    # two hundred lines downstream by a message that names .trellis/rules.toml
-    # to a project that HAS NO .trellis/rules.toml. Absent-vs-unreadable was an
-    # inconsistency, not a choice, and the loud half also named the wrong file.
-    #
-    # Reachability is the payload-header case's: rules-b.toml is a line of
-    # install.sh's bundle manifest, so an interrupted install leaves exactly
-    # this state.
-    #
-    # THE WORDING IS THE `default_rows` REFUSAL'S, deliberately. That check
-    # still stands further down and catches the shape this one cannot — a file
-    # that reads fine and parses to no rows — so both doors lead to the same
-    # room, and a consumer who hits either is told the same true thing.
-    if ! payload_read "$toml"; then
-      emit "TRELLIS_RULES_NOT_LOADED — this project has no .trellis/rules.toml and is governed by the rule rows the Trellis plugin ships ($toml), and that file $payload_why. This project adopted Trellis (the plugin is vendored in this repository), but the session is running ungoverned and NO rules and NO rows were injected. The hook refused rather than treat a broken payload file as if it were this project's own settings. NOTHING is wrong with this project and there is nothing here to correct: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the fix. Tell the user before doing substantive work."
-      exit 0
-    fi
-    rows_are_default=yes
+    # visibly, greppably, and revocably by deleting it. No file therefore means
+    # every rule applies. There is nothing to classify, so the delivery below
+    # carries no activation section and never reads $toml (TRL-97). This branch
+    # used to stand the shipped default rows in for the project file; a
+    # leftover read of $toml here would now refuse every such project.
+    rows_present=no
   else
     # D4, as corrected by decision-0077. A user-wide install is a broad choice,
     # and this says so in the project it is about to affect rather than assuming
     # consent it never asked for. Announce, inject NO rules on this turn ("will
     # be", not "is"), and name both answers.
     #
-    # SILENCE IS NOT ONE OF THEM. 0070 D4 said an ignored prompt seeds the preset
+    # SILENCE IS NOT ONE OF THEM. 0070 D4 said an ignored prompt seeds the file
     # ("accept, or no objection -> seed"); this code has never done that, in any
     # version since #218 built the record. An unanswered announcement leaves the
     # project ungoverned and recurs next session — which the message below states
     # in as many words. decision-0077 corrected the record to match the code
     # rather than the reverse, so that nothing is governed by silence.
-    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 16 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, copy $plugin/reference/rules-b.toml to $root/.trellis/rules.toml so the choice persists — without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: strictness = \"firm\" for the by-the-book posture, active = false on a row to turn a rule off.) Inject and follow no Trellis rules this turn: none are active yet."
+    #
+    # The accept instruction quotes the new file byte for byte, one backticked
+    # span per line (TRL-97, KTD9); install.sh seeds the same bytes, and a test
+    # pins the pair.
+    emit "TRELLIS_NOT_YET_GOVERNING — the Trellis plugin is installed outside this project (user scope, or a location this hook cannot place), so it applies to every project opened here, and $root has no .trellis/rules.toml. Tell the user, in your own words and before doing substantive work: \"Trellis is installed for your user account, so this repo will be governed by it — 16 rules, followed by default and deviations said out loud. Do you want to disable that for this repo?\" If they want it DISABLED, write .trellis/rules.toml containing exactly the line: governed = false — and nothing else. If they ACCEPT, write $root/.trellis/rules.toml containing exactly these two lines, each ending in a newline: \`# Every Trellis rule applies. To switch one off, add a row: <slug> = { active = false }\` then \`[rules]\` — so the choice persists; without that file this same announcement repeats every session and the project is never governed. (That file is theirs to edit afterwards: a row <slug> = { active = false } under [rules] switches that rule off, and the rule stays off until that row is gone, whatever any other row for it says.) Inject and follow no Trellis rules this turn: none are active yet."
     exit 0
   fi
 fi
 
-# Posture selects the header, exactly as the import channel does.
-# Both TOML string forms: "firm" and 'firm' are equally valid, and the Codex
-# hook's parser accepts both, so matching only double quotes served the wrong
-# posture to a firm project without saying so.
-strictness="$(awk '
-  /^[[:space:]]*strictness[[:space:]]*=/ {
-    if (match($0, /"[^"]*"/) || match($0, /\x27[^\x27]*\x27/)) {
-      print substr($0, RSTART + 1, RLENGTH - 2); exit
-    }
-  }' "$toml" 2>/dev/null)"
-case "$strictness" in
-  firm) header="$plugin/reference/trellis-a.md" ;;
-  *)    header="$plugin/reference/trellis-b.md" ;;
-esac
+# One header ships (TRL-97). `strictness` selects nothing any more, and every
+# project receives the By default posture sentence.
+header="$plugin/reference/trellis.md"
 rules="$plugin/reference/rules.md"
 
 # Fail loudly rather than govern silently on a partial payload. A hook cannot
 # report that it never ran, but it can report that it ran and could not deliver.
 #
 # THROUGH THE GATEWAY, both of them. This was a bare `[ ! -f ]` pair, and `-f`
-# proves existence and never readability — the gap the posture header fell
-# through four separate ways (mode 000, zero-byte, truncated, and the firm
-# trellis-a.md), each measured, each shipping sixteen activation rows with zero
-# rules prose under them at exit 0. The header is read ONCE, here, where a
+# proves existence and never readability — the gap the header fell through four
+# separate ways (mode 000, zero-byte, truncated, and the second posture header
+# that has since retired), each measured, each shipping activation rows with
+# zero rules prose under them at exit 0. The header is read ONCE, here, where a
 # failure can still be reported; $header_prose is what the assembly below uses,
 # so the fatal positional open that produced that damage is gone rather than
 # merely guarded.
 if ! payload_read "$rules"; then
-  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read its own rules payload: $rules $payload_why. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected. This is a broken or half-written plugin install, not a problem with your rows: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read its own rules payload: $rules $payload_why. This project is configured for Trellis, but the session is running ungoverned and NO rules were injected. This is a broken or half-written plugin install, not a problem with this project: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
   exit 0
 fi
 if ! payload_read "$header"; then
-  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read the posture header it was about to inject: $header $payload_why. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected. This is a broken or half-written plugin install, not a problem with your rows: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook ran but could not read the header it was about to inject: $header $payload_why. This project is configured for Trellis, but the session is running ungoverned and NO rules were injected. This is a broken or half-written plugin install, not a problem with this project: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
   exit 0
 fi
 header_prose="$payload_text"
@@ -903,15 +877,10 @@ header_prose="$payload_text"
 # The payload's own terminator, checked BEFORE its slugs are trusted -- the
 # order codex-context.mjs uses and for the reason its comment gives: derive
 # first and a broken rules.md yields a broken slug set, after which every
-# downstream verdict is about the consumer's rows when the defect is the
-# plugin's. rules.md is 39 lines with the sentinel on line 39, so a truncation
+# downstream verdict is about the consumer's file when the defect is the
+# plugin's. rules.md ends with the sentinel on its last line, so a truncation
 # anywhere loses it, and this catches the shape DIRECTLY rather than inferring
 # it from a slug count.
-#
-# It is also the one payload check with no second-file dependency. The
-# coherence check further down needs reference/rules-b.toml and skips itself
-# when that file is absent -- measured, that skip reopens the full
-# quarantine-fourteen-rows hole. This gate has nothing to skip on.
 #
 # Exactly one occurrence, and it must be the last line: the same two conditions
 # Codex enforces (`split(SENTINEL).length - 1 !== 1` and `endsWith`). One
@@ -922,13 +891,8 @@ header_prose="$payload_text"
 # CRLF. `last` is the raw record awk read under RS="\n", so a rules.md checked
 # out or packaged with CRLF normalization leaves a trailing \r on it and an
 # exact ASCII comparison fails -- reporting `not-last` and blacking out a
-# COMPLETE, CORRECT payload. This branch already fixed that blindness once, in
-# the reconciler, which strips \r for the same reason and only a few hundred
-# lines away; this guard reintroduced the assumption. Every other check here is
-# already CRLF-safe by accident rather than intent: the slug scans anchor on
-# `[[:space:]]*$`, and \r is in [[:space:]] under the C locale. Only an exact
-# string compare could break, and it did. Stripped rather than tolerated in the
-# regex, so the comparison stays a comparison.
+# COMPLETE, CORRECT payload. Stripped rather than tolerated in the regex, so
+# the comparison stays a comparison.
 sentinel_report="$(
   awk '
     { last = $0; sub(/\r$/, "", last); n += gsub(/<!-- trellis:rules-loaded -->/, "&") }
@@ -941,403 +905,32 @@ case "$sentinel_report" in
     # Empty when the awk died outright, which is the unreadable-file case; the
     # message covers both readings rather than asserting one.
     [ -n "$sentinel_report" ] || sentinel_report="unreadable"
-    emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own rules payload ($rules) is not complete: it must carry exactly one \`<!-- trellis:rules-loaded -->\` terminator as its final line, and this hook found \"$sentinel_report\". A payload cut short of that line is a truncated or half-written install, and every rule below the cut is simply absent — so its slug list cannot be trusted to say what the rule set is. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rows were injected; your rows were not judged against it and nothing on disk was changed. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+    emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own rules payload ($rules) is not complete: it must carry exactly one \`<!-- trellis:rules-loaded -->\` terminator as its final line, and this hook found \"$sentinel_report\". A payload cut short of that line is a truncated or half-written install, and every rule below the cut is simply absent — so its slug list cannot be trusted to say what the rule set is. This project is configured for Trellis, but the session is running ungoverned and NO rules were injected; nothing on disk was changed. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
     exit 0
     ;;
 esac
 
-# Validate the rows before injecting them. The Codex hook has always done this
-# (parseRulesToml against a known slug list); the Claude hook did not, so a
-# truncated or hand-broken rules.toml was injected verbatim and the session ran
-# on a config nobody checked. The slugs the payload actually ships are the
-# authority: each must have exactly one row, and no row may name anything else.
-slug_report="$(
-  awk '
-    FNR == NR {
-      # Rule slugs as rules.md declares them: a trailing `slug` on a rule line.
-      if (match($0, /`(inv|floor)-[a-z-]+`[[:space:]]*$/)) {
-        s = substr($0, RSTART + 1, RLENGTH - 2)
-        sub(/`[[:space:]]*$/, "", s)
-        want[s] = 1
-      }
-      next
+# The slugs the payload ships, in rules.md order and each once: a trailing
+# backticked slug on a rule line, the anchor codex-context.mjs slugsFromRules
+# uses. The classifier below finds unknown slugs and floors against this set,
+# and the computed sentence names switched-off rules in its order.
+rule_slugs="$(
+  LC_ALL=C awk '
+    { line = $0; sub(/\r$/, "", line) }
+    match(line, /`(inv|floor)-[a-z-]+`[ \t]*$/) {
+      s = substr(line, RSTART + 1)
+      sub(/`.*$/, "", s)
+      if (!(s in seen)) { seen[s] = 1; out = out (out == "" ? "" : " ") s }
     }
-    /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
-      row = $1
-      sub(/[^a-z-].*$/, "", row)
-      if (row in seen) { dup = dup " " row }
-      seen[row] = 1
-      if (!(row in want)) { unknown = unknown " " row }
-    }
-    END {
-      for (s in want) if (!(s in seen)) missing = missing " " s
-      if (length(want) == 0) { print "no-slugs-in-payload"; exit }
-      # EVERY category, not the first one an else-if chain reaches. A plugin
-      # update that RENAMES a slug produces a missing new row and an unknown old
-      # row at the same time; reporting only `missing:` sent the agent to add the
-      # new one, and validation failed again next session on the old one it was
-      # never told about. The remedy text below promises the report names the
-      # repair, so a partial report makes that promise false.
-      report = ""
-      if (missing != "") report = report "missing:" missing "; "
-      if (unknown != "") report = report "unknown:" unknown "; "
-      if (dup != "") report = report "duplicate:" dup "; "
-      if (report == "") print "ok"
-      else { sub(/; $/, "", report); print report }
-    }
-  ' "$rules" "$toml"
+    END { print out }
+  ' "$rules"
 )"
-# Reconcile rather than refuse. A mismatch used to inject nothing at all, so a
-# single bad row cost all sixteen rules every session until a human edited the
-# file (TRL-20). The rules the payload ships are still the authority; what
-# changes is that an unmatched row is quarantined instead of blocking delivery.
-#
-# Quarantine — commenting the row out rather than deleting it — is what makes
-# an ungated repair safe. `unknown:` has two causes with opposite repairs (the
-# rule was retired, or the installed plugin is behind the project's config,
-# TRL-27) and config-only mode carries no version stamp to tell them apart. A
-# commented row is correct under both readings and loses nothing either way.
-# It is also invisible to the validator above, which anchors rows at line
-# start, so a repaired file draws no second notice.
-# `no-slugs-in-payload` is a different failure than a project's rows not
-# matching a valid payload: it means the validator above found NOTHING to
-# check rows against (the payload's own rules.md is unreadable or malformed),
-# not that this project's rows are wrong. Reconciling against an empty want
-# set would quarantine every legitimate row and run the session ungoverned
-# with exit 0 — silently inverting the fail-loud invariant stated above
-# ("Fail loudly rather than govern silently on a partial payload"). This is
-# the same broken-plugin shape the header/rules file-existence check already
-# fails loudly on, just caught one step later.
-if [ "$slug_report" = "no-slugs-in-payload" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own rules payload ($rules) carries no rule slugs for this hook to validate .trellis/rules.toml against. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned. This is a broken or unrecognisable plugin payload, not a problem with your rows — reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix, not editing .trellis/rules.toml. Tell the user before doing substantive work."
-  exit 0
-fi
-# A report that is neither `ok` nor one of the three defect shapes is not a
-# mismatch to reconcile — it is the validator itself having failed, and the
-# EMPTY STRING is how that arrives. The awk above reads two files positionally,
-# and a positional file that exists but cannot be OPENED (mode 000, a stale ACL,
-# a dangling symlink target) is a fatal awk error: it prints nothing, so the
-# command substitution captures "". Both operands can produce it -- an
-# unreadable payload rules.md, or an unreadable project rules.toml, each of
-# which passes the `-f` existence checks above.
-#
-# Read as a mismatch, "" walked straight into the reconciler with an empty want
-# set: every legitimate row failed `row in want`, all of them were quarantined,
-# and the hook delivered `added 0 row(s); quarantined N row(s)` plus a mandate
-# to write that file to disk -- the session ungoverned at exit 0. That is
-# precisely the hazard the no-slugs-in-payload note above names, reached
-# through a different door, so it exits through the same one.
-case "$slug_report" in
-  ok|missing:*|unknown:*|duplicate:*) ;;
-  *)
-    emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook could not validate this project's .trellis/rules.toml: its row check produced no usable report (\"$slug_report\"), which means one of the two files it reads — the payload's rules.md ($rules) or $toml — exists but could not be read. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned, and NO rows were injected or reconciled. Check that both files are readable; reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix if the payload is the unreadable side. Tell the user before doing substantive work."
-    exit 0
-    ;;
-esac
-# ON THE DEFAULTS PATH THE PAYLOAD **IS** THE ROWS, and that inverts what an
-# unusable row file means. When rows_are_default=yes (decision-0070 D3: the
-# bundle is vendored in this repository, so absent rows mean the standard set)
-# $toml was repointed at the payload's own rules-b.toml. There is no consumer
-# file at all -- and the reconciler, reached with zero rows parsed, reads all
-# sixteen slugs as missing, adds them, and mandates writing .trellis/rules.toml
-# into a project that never had one. Measured against a 0-byte rules-b.toml:
-# exit 0, sixteen rows, and "Write .trellis/rules.toml with exactly the rows
-# shown above" -- a broken payload driving a write into the consumer's tree,
-# which is the persists-damage class the comment below this one exists for.
-#
-# It reached that path through the coherence gate skipping itself, correctly,
-# on `length(rows) == 0`: that gate treats rules-b.toml as the COMPARISON file,
-# and skipping an unusable comparison is right when the rows come from
-# somewhere else. Here they do not. So the row count is checked on $toml
-# directly rather than inferred from the gate below, which keeps this correct
-# even if the defaults path is ever pointed at a different preset file.
-#
-# Only the defaults path. An empty PROJECT rules.toml is the supported
-# hand-written-partial shape and must keep reconciling into the consumer's own
-# file -- the difference is whose file the mandate names.
-if [ "${rows_are_default:-no}" = yes ]; then
-  default_rows="$(awk '/^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ { n++ } END { print n + 0 }' "$toml")"
-  case "${default_rows:-0}" in
-    0)
-      emit "TRELLIS_RULES_NOT_LOADED — this project has no .trellis/rules.toml and is governed by the rule rows the Trellis plugin ships ($toml), and that file carries no rows at all — it is empty, unreadable, or truncated. This project adopted Trellis (the plugin is vendored in this repository), but the session is running ungoverned and NO rules and NO rows were injected. The hook refused rather than treat a broken payload file as if it were this project's own settings. NOTHING is wrong with this project and there is nothing here to correct: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the fix. Tell the user before doing substantive work."
-      exit 0
-      ;;
-  esac
-fi
-# PAYLOAD-VS-PAYLOAD, not payload-vs-project. Everything above this line checks
-# the PROJECT's rows against the payload; nothing checked the payload against
-# ITSELF, and `length(want) == 0` is the only shape of broken rules.md the
-# validator can see. A rules.md truncated BELOW its first slug is non-empty, so
-# it passes that test and is then treated as authoritative -- measured with a
-# 9-line, 2-slug payload, the hook reported `quarantined 14 row(s)`, commented
-# out BOTH floor rules, and instructed the agent to write that file to
-# .trellis/rules.toml. Exit 0, no loud marker.
-#
-# That is worse in kind than the blackouts above rather than another of them.
-# Those WITHHELD governance for a session; this one PERSISTS DAMAGE: a broken
-# payload drives a mandate to comment out fourteen rules in the consumer's own
-# file, while the whole safety argument for reconciling without a gate is that
-# a repair loses nothing.
-#
-# The check is possible because the payload ships two independent statements of
-# the same set: rules.md tags sixteen slugs and reference/rules-b.toml carries
-# sixteen rows, and they are IDENTICAL by construction. A payload whose own two
-# halves disagree is provable internal corruption -- and it is exactly what
-# quarantine cannot be allowed to act on, because it is distinguishable from
-# the stale-plugin case quarantine legitimately exists to handle (there the
-# payload is coherent and the PROJECT is out of step). So the disagreement is
-# refused loudly and the reconciler is never reached.
-#
-# Placed AFTER the report classification deliberately: an unreadable rules.md
-# already exits above with a message that names the read failure, which is a
-# better diagnosis than "the payload disagrees with itself".
-#
-# Skipped, not failed, when the preset is unusable: a payload without it offers
-# nothing to compare against, which is where this hook already stood. That skip
-# is the ONE payload read in this file whose failure is deliberately silent, and
-# it stays that way -- an over-correction here is what
-# TestAnUnusablePresetSkipsTheCoherenceCheckRatherThanBlackingOut exists to
-# catch, and nothing is wrong for the consumer when only the COMPARISON file is
-# broken. The gateway is used anyway, so the silence is a stated disposition at
-# a checked read rather than the by-product of a bare `-f`. (The other silent
-# exit this comment used to point at -- rules-b.toml missing on the DEFAULTS
-# path, where the same file is the rows rather than the comparison -- was
-# TRL-33, and is now a loud refusal.)
-preset="$plugin/reference/rules-b.toml"
-if payload_read "$preset"; then
-  coherence="$(
-    awk '
-      FNR == NR {
-        if (match($0, /`(inv|floor)-[a-z-]+`[[:space:]]*$/)) {
-          s = substr($0, RSTART + 1, RLENGTH - 2)
-          sub(/`[[:space:]]*$/, "", s)
-          want[s] = 1
-        }
-        next
-      }
-      /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
-        row = $1
-        sub(/[^a-z-].*$/, "", row)
-        rows[row] = 1
-      }
-      END {
-        # NOTHING TO COMPARE is a third answer, and collapsing it into
-        # "they disagree" was a false blackout on a healthy payload: an
-        # EMPTY rules-b.toml yielded 16 want vs 0 rows and read as corruption.
-        if (length(want) == 0 || length(rows) == 0) { print "incomparable"; exit }
-        for (s in want) if (!(s in rows)) d++
-        for (s in rows) if (!(s in want)) d++
-        printf "%d %d %d\n", length(want), length(rows), d + 0
-      }
-    ' "$rules" "$preset"
-  )"
-  # `-f` proves the file EXISTS, never that it can be READ, and the difference
-  # was inverted here: an ABSENT rules-b.toml skipped the check and governed
-  # normally, while an UNREADABLE or EMPTY one produced a full
-  # TRELLIS_RULES_NOT_LOADED blaming payload incoherence -- with rules.md and
-  # the project rows both perfectly healthy. The more broken state was handled
-  # better than the less broken one.
-  #
-  # A guard that cannot tell "I could not read this" from "this is corrupt" is
-  # not a guard. So the two are separated: an empty capture means the awk died
-  # on the positional read, `incomparable` means it ran and found no rows, and
-  # both mean the same thing this check already does for an absent file -- skip
-  # it. Silently, because nothing is wrong for the consumer: the terminator gate
-  # above is the unconditional half of this pair and needs no second file, so
-  # skipping here loses the narrower case only (a rules.md whose slug list is
-  # wrong while its ending is intact).
-  case "$coherence" in
-    "" | incomparable) ;;
-    *" 0") ;;
-    *)
-      coherence_rest="${coherence#* }"
-      # NO SLUG NAMES in the message below. It is a payload defect, the reader
-      # can do nothing with the list, and the loud paths are pinned by tests
-      # that assert no rule slug appears anywhere in a refusal.
-      #
-      # And the word "preset" cannot appear in it either: the destructive-verb
-      # scan in cli/plugin_hook_test.go matches SUBSTRINGS, so "p-reset" hits
-      # `reset` and demands a confirmation gate on a message that instructs no
-      # mutation at all. Erring safe is the right default for that guard, so the
-      # wording moves rather than the guard.
-      emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own payload is internally inconsistent: its rules.md and the rules-b.toml default row list it ships alongside do not describe the same rule set (rules.md slugs: ${coherence%% *}; rules-b.toml rows: ${coherence_rest%% *}; named in one but not the other: ${coherence_rest##* }). Those two files ship together and are identical by construction, so this is a truncated or corrupted plugin payload, not a problem with your rows. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rows were injected — your file was not reconciled against a payload that cannot be trusted to say what the rule set is, and nothing on disk was changed. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
-      exit 0
-      ;;
-  esac
-fi
-reconciled=""
-repair_summary=""
-# `no-slugs-in-payload` already exited above, and the case just proved the
-# report is one of the four well-formed values, so `ok` is the only non-defect.
-if [ "$slug_report" != "ok" ]; then
-  today="$(date +%Y-%m-%d)"
-  # The quarantine note is written INTO THE CONSUMER'S OWN FILE and reads
-  # "not in <stamp>". With an unreadable reference/version, $current is the
-  # empty string and that note used to read "not in ." — a broken sentence
-  # persisted into a tracked file, silently. A named fallback keeps the line a
-  # sentence and keeps it TRUE; the rules themselves are fine, so this
-  # degrades the provenance rather than the delivery.
-  note_stamp="$current"
-  [ -n "$note_stamp" ] || note_stamp="the installed Trellis payload"
-  reconciled="$(
-    TRELLIS_WANT_SRC="$rules" awk -v stamp="$note_stamp" -v today="$today" '
-      BEGIN {
-        # ENVIRON, not -v, for the same reason as the assembly below: -v
-        # escape-processes its value, so a plugin root containing a backslash
-        # arrived here as a path that does not exist. The rc check under this
-        # made that fail LOUDLY rather than silently, which was right for a
-        # broken payload and wrong for a legitimate root that merely has a
-        # backslash in it. Now it simply works, and rc guards real read failures.
-        want_src = ENVIRON["TRELLIS_WANT_SRC"]
-        # A REDIRECTED getline is silent where a positional read is fatal: it
-        # returns -1 when the file cannot be opened and 0 at EOF, and the plain
-        # `> 0` test could not tell those apart from a file that simply held no
-        # slugs. So an unreadable want_src left want[] empty and quarantined
-        # every row at exit 0. Keep the return value and refuse to reconcile
-        # against nothing -- the guard above should already have caught this,
-        # and this is the second lock on the same door.
-        rc = 0
-        while ((rc = (getline line < want_src)) > 0) {
-          if (match(line, /`(inv|floor)-[a-z-]+`[[:space:]]*$/)) {
-            s = substr(line, RSTART + 1, RLENGTH - 2)
-            sub(/`[[:space:]]*$/, "", s)
-            want[s] = 1
-            order[++n] = s
-          }
-        }
-        if (rc < 0 || n == 0) { no_want_set = 1; exit 1 }
-        note = "  # quarantined " today ": not in " stamp ". If a newer Trellis" \
-               " release ships this slug, update the Trellis plugin and uncomment this row."
-      }
-      # The default record separator here is "\n" alone, so a CRLF-terminated
-      # line arrives with its "\r" still attached to $0 -- stripped BEFORE any
-      # other rule reads $0, so every rule below (the header check, the row
-      # check, the bare passthrough) sees the same CR-free line the Codex
-      # hook reconciler produces (it splits on /\r?\n/, which consumes a CRLF
-      # pair as one delimiter and never leaves a trailing \r on a line). Left
-      # unstripped, `print "# " $0 note` on a quarantined CRLF row emitted a
-      # bare CR MID-LINE, before the note -- measured directly against this
-      # block. This is host parity, not a cosmetic fix: the two reconcilers
-      # must produce the same bytes from the same input, and only one of them
-      # was doing that.
-      { sub(/\r$/, "") }
-      # A row can be appended below with no `[rules]` table preceding it in the
-      # file at all (the hand-written-partial shape: just strictness, no rows).
-      # parseRulesToml in codex-context.mjs only accepts inv-/floor- keys INSIDE
-      # `[rules]` — outside it, any key but seeded_from/strictness/governed is a
-      # fatal invalid-rules on Codex while Claude governs normally from the same
-      # file. Track whether the file already opens the table so the END block
-      # can open one itself before appending, rather than assume it is there.
-      #
-      # Leading whitespace is tolerated here for the same host-parity reason,
-      # and it was not at first: parseRulesToml trims each line before matching
-      # its section regex (codex-context.mjs), so Codex reads an INDENTED
-      # `  [rules]` as opening the table while an anchored match here did not.
-      # A file with an indented table plus any missing row therefore had a
-      # SECOND `[rules]` appended below -- and a second table header is
-      # precisely what parseRulesToml rejects, so the repaired file read
-      # invalid-rules on Codex. Nothing was lost (such a file was already
-      # Codex-invalid before the repair) but the mandate promises the written
-      # file matches what governs, and a file Codex refuses does not. Matching
-      # the row regex one line down, which was already whitespace-tolerant.
-      /^[[:space:]]*\[rules\][[:space:]]*(#.*)?$/ { has_rules = 1 }
-      /^[[:space:]]*(inv|floor)-[a-z-]+[[:space:]]*=/ {
-        row = $1
-        sub(/[^a-z-].*$/, "", row)
-        if (!(row in want) || (row in seen)) {
-          print "# " $0 note
-          quarantined++
-          next
-        }
-        seen[row] = 1
-        print
-        next
-      }
-      { print }
-      # ONE header comment above the whole appended block, not one per row
-      # (Ruling 6, TRL-20 task 3). MAX_CONTEXT_BYTES on the Codex hook leaves
-      # only about 176 bytes of headroom over the plain firm preset, and the
-      # stamp-and-date note repeated on all sixteen rows -- the
-      # hand-written-partial worst case -- overran it: a reconciled Codex
-      # session hit its own budget and injected NOTHING, reintroducing on
-      # Codex exactly the blackout this whole change removes on Claude. The
-      # provenance (date, stamp, count) is unchanged; it is stated once
-      # instead of sixteen times. Quarantine notes stay per-row (unchanged):
-      # this is the shape review measured as the actual overrun.
-      # NO APOSTROPHES ABOVE OR BELOW, to the end of this awk program: it is
-      # single-quoted at the shell level, and one would close the quote early.
-      END {
-        # `exit` in BEGIN still runs END, so the marker is printed here rather
-        # than there; the shell below turns it into a loud refusal.
-        if (no_want_set) { print "#trellis-reconcile-no-want-set"; exit 1 }
-        missing_n = 0
-        for (i = 1; i <= n; i++) {
-          s = order[i]
-          if (!(s in seen)) { missing[++missing_n] = s }
-        }
-        if (missing_n > 0) {
-          if (!has_rules) { print "[rules]"; has_rules = 1 }
-          print "# added " missing_n " row(s) below on " today " (missing from " stamp ")"
-          for (i = 1; i <= missing_n; i++) print missing[i] " = { active = true }"
-        }
-        # THIS run-s counts, stated by the code that did the work. Peeled off
-        # by the shell below and never delivered. See the note there for why
-        # the summary cannot be recovered from the text.
-        print "#trellis-reconcile-counts " (missing_n + 0) " " (quarantined + 0)
-      }
-    ' "$toml"
-  )"
-  # No rows, or the marker the BEGIN block prints when it had nothing to
-  # reconcile against. Either way there is no reconciled set to govern from,
-  # and delivering the heading with an empty block under it is the blackout
-  # this whole guard chain exists to prevent.
-  case "$reconciled" in
-    "" | "#trellis-reconcile-no-want-set")
-      emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook tried to reconcile this project's .trellis/rules.toml against the rules the payload ships ($rules) and could not read that payload, so there was nothing to reconcile against. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned, and NO rows were injected — your rows were NOT quarantined and nothing was changed on disk. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix, not editing .trellis/rules.toml. Tell the user before doing substantive work."
-      exit 0
-      ;;
-  esac
-  # The summary must describe THIS session, so awk states its own counts on a
-  # trailer line that is peeled off here. Counting the reconciled text instead
-  # was one source of truth but the wrong one: quarantine notes and the
-  # `# added N row(s)` header are PERSISTED provenance, so a partially repaired
-  # file already carries earlier sessions' marks and a text count adds them to
-  # this run's. Measured on the pre-fix hook: a file with one old quarantine
-  # line and one old added-header, plus one further missing row, reported
-  # "added 2 row(s); quarantined 1 row(s)" for a session that added 1 and
-  # quarantined 0. The in-file provenance was right either way; the SPOKEN
-  # summary was not — and that summary is what the agent reports to the user,
-  # which is the whole channel this change is built to make trustworthy.
-  counts="$(printf '%s\n' "$reconciled" | sed -n '$p')"
-  case "$counts" in
-    '#trellis-reconcile-counts '*)
-      reconciled="$(printf '%s\n' "$reconciled" | sed '$d')"
-      added="${counts#* }"
-      added="${added%% *}"
-      quarantined="${counts##* }"
-      ;;
-    *)
-      # The trailer is unconditional in the END block above, so this is
-      # unreachable short of awk failing outright. Never strip a line that is
-      # not the trailer — a delivered row is worth more than a count — and say
-      # the count is unknown rather than assert one that was not counted.
-      added="unreported"
-      quarantined="unreported"
-      ;;
-  esac
-  repair_summary="added ${added} row(s); quarantined ${quarantined} row(s)"
-fi
-
-# Delivery reads $toml directly when nothing was reconciled, and that read sits
-# inside the payload command substitution below, where a failing `cat` writes
-# nothing and changes no exit status anybody looks at: the payload would ship
-# the "Rows from this project's .trellis/rules.toml" heading with zero rows
-# under it and no warning at all. Probe the read here instead, where a failure
-# can still be reported. Belt-and-braces -- an unreadable $toml already fails
-# the validator guard above -- but the silent-empty shape is exactly the defect
-# class this change is closing, so it does not get to survive anywhere.
-if [ -z "$reconciled" ] && ! cat "$toml" >/dev/null 2>&1; then
-  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook could not read the rule rows it was about to inject ($toml). This project is configured for Trellis: that file is present, but it could not be read, so the session is running ungoverned and NO rows were injected. Check the file's permissions. Tell the user before doing substantive work."
+# An EMPTY set is a payload whose rule lines lost their slugs, not a project
+# fault: against it every row would name an unknown slug and nothing could be
+# switched off, so the session would look governed with no way to tell which
+# rules it names. Refused here, before anything consumes the set.
+if [ -z "$rule_slugs" ]; then
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin's own rules payload ($rules) carries no rule slugs, so this hook cannot tell which rules it ships. This project is configured for Trellis, but the session is running ungoverned. This is a broken or unrecognisable plugin payload, not a problem with this project — reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix, not editing .trellis/rules.toml. Tell the user before doing substantive work."
   exit 0
 fi
 
@@ -1346,52 +939,37 @@ fi
 # Repointing it at the plugin keeps the trigger-read affordance and cannot go
 # stale, because it names the payload this session is actually running.
 #
-# The assembly awk below used to read $header POSITIONALLY -- the same construct
-# as the validator above, behind the same bare `-f` existence check -- and that
-# was the worst-looking member of this whole family. A $header that EXISTS but
-# yields nothing dies fatally and prints nothing, while the printfs and the row
-# block around it carry on: measured four ways (mode 000, zero-byte, truncated,
-# and the firm-posture trellis-a.md), the hook emitted sixteen activation rows,
-# ZERO rules prose, no loud marker, and exit 0. That is more dangerous than the
-# two blackouts above rather than less, because the payload looks substantive
-# and nothing signals a problem -- the agent is told which sixteen rules are
-# active and handed none of them. It needs no permission trickery either: a
-# header left truncated by an interrupted install.sh is enough.
-#
-# The Codex hook has always refused exactly this -- readRequired reports
-# unreadable-file/missing-file, and an explicit check rejects empty prose
-# (codex-context.mjs) -- so the Claude-side gap was an oversight, not a design
-# choice. Match it. The header is read ONCE, here, where a failure can still be
-# reported, and the assembly reads that text from stdin, so the fatal positional
-# open is gone rather than merely guarded.
+# The Codex hook has always refused a header that yields nothing --
+# readRequired reports unreadable-file/missing-file, and an explicit check
+# rejects empty prose (codex-context.mjs) -- so the Claude-side gap was an
+# oversight, not a design choice. Match it. The header is read ONCE, above,
+# where a failure can still be reported, and the assembly reads that text from
+# stdin, so no positional open of it is left to fail silently.
 #
 # Exactly one `@rules.md` import is required for the same reason Codex rejects
 # invalid-placeholder-count: a header truncated ABOVE that line is non-empty and
-# still assembles into rows with no rules under them, which is the identical
-# blackout reached through a shorter truncation. Counted with awk over stdin --
-# never a positional read, which is the failure being closed here.
+# assembles into an activation section with no rules above it. Counted with awk
+# over stdin -- never a positional read, which is the failure being closed here.
 # $header_prose was read through payload_read at the top of path B, which is
-# also where emptiness is now refused; the `-z` test below is kept as the second
+# also where emptiness is refused; the `-z` test below is kept as the second
 # lock on the same door rather than as the only one.
 header_imports="$(printf '%s\n' "$header_prose" |
   awk '/^@rules\.md[[:space:]]*$/ { n++ } END { print n + 0 }')"
 if [ -z "$header_prose" ] || [ "$header_imports" != "1" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook could not assemble its own rules payload: the posture header it was about to inject ($header) read as empty, or carries ${header_imports} @rules.md imports where exactly one is required, so the rules themselves would have been missing from what was injected. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected — the hook refused rather than deliver a rule ACTIVATION list with no rules under it. This is a broken or half-written plugin payload, not a problem with your rows: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook could not assemble its own rules payload: the header it was about to inject ($header) read as empty, or carries ${header_imports} @rules.md imports where exactly one is required, so the rules themselves would have been missing from what was injected. This project is configured for Trellis, but the session is running ungoverned and NO rules were injected — the hook refused rather than deliver a rule activation section with no rules above it. This is a broken or half-written plugin payload, not a problem with this project: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
   exit 0
 fi
-# The `@rules.md` expansion is the TWIN of the reconciler getline this branch
-# already fixed -- same redirected read, same silent -1 on a failed open -- left
-# unguarded on the `ok` path while its sibling 186 lines up checks `rc`. A
-# failed open printed ZERO rules prose and carried on.
+# The `@rules.md` expansion reads through a redirected getline, whose -1 on a
+# failed open is silent, so its return value is checked: a failed open used to
+# print ZERO rules prose and carry on.
 #
-# What triggers it is the `-v` channel, not a permission: `awk -v`
+# What triggered that is the `-v` channel, not a permission: `awk -v`
 # ESCAPE-PROCESSES its value (`awk -v v=/a\tb/c` yields length 6, not 7), so a
-# CLAUDE_PLUGIN_ROOT containing a backslash reaches this awk as a DIFFERENT path
+# CLAUDE_PLUGIN_ROOT containing a backslash reached this awk as a DIFFERENT path
 # than the one every `-f` test and every positional read used -- all of which
-# pass. Measured with a root named `plug\tools`: 16 activation rows, 0 rules
-# prose, exit 0, no marker, which is verbatim the damage shape the posture-header
-# guard above exists to stop. The same root with a mismatched rules.toml already
-# refused loudly, from the sibling that checks `rc`.
+# pass. Measured with a root named `plug\tools`: activation rows, 0 rules
+# prose, exit 0, no marker, which is verbatim the damage shape the header guard
+# above exists to stop.
 #
 # `inv` took the identical mangling in silence, so the invariants pointer this
 # block exists to REPOINT was itself wrong on such a root. ENVIRON does no escape
@@ -1449,9 +1027,9 @@ fi
 # on the same broken install -- deliberate, and recorded in
 # TestBothHostsReportAMissingInvariantsTarget rather than left to be found.
 #
-# Reads LAST of path B on purpose. payload_read assigns $payload_text and
-# $payload_why, and every earlier caller has already copied what it needed out
-# of them ($header_prose, $stamp_defect, $current).
+# Reads LAST of the payload reads on purpose. payload_read assigns $payload_text
+# and $payload_why, and every earlier caller has already copied what it needed
+# out of them ($header_prose, $stamp_defect, $current).
 inv="$plugin/reference/invariants.md"
 inv_defect=""
 payload_read "$inv" || inv_defect="$payload_why"
@@ -1483,29 +1061,382 @@ rules_prose="$(
 )"
 case "$rules_prose" in
   "" | *"#trellis-rules-import-failed")
-    emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook assembled its posture header but could not import the rules themselves from $rules, so what it was about to inject named which rules are active without saying what any of them are. This project is configured for Trellis: .trellis/rules.toml is present, but the session is running ungoverned and NO rules and NO rows were injected — the hook refused rather than deliver an activation list with nothing under it. This is a broken or half-written plugin payload: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
+    emit "TRELLIS_RULES_NOT_LOADED — the Trellis plugin hook assembled its header but could not import the rules themselves from $rules, so what it was about to inject framed the project's rule activation without saying what any rule is. This project is configured for Trellis, but the session is running ungoverned and NO rules were injected — the hook refused rather than deliver an activation section with nothing above it. This is a broken or half-written plugin payload: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
     exit 0
     ;;
 esac
+
+# ----------------------------------------------------- the project rules file
+# TRL-97. Only a row set `active = false` has any effect, and one is enough: a
+# rule is off when any row for it under [rules] says false, whatever its other
+# rows say, so a repeated row is never an error. The contract is KTD3 of the
+# TRL-97 plan as the maintainer amended it; codex-context.mjs classifyRules
+# implements the same one, and TestBothHostsClassifyRulesRowsIdentically runs
+# both hooks on one table, so a line class the two read differently is a red
+# test rather than two hosts governing one project differently.
+#
+# Nothing here refuses the file for what it says: a bad entry costs that entry
+# and is reported, never the session, because over-governance the session
+# announces beats under-governance nobody sees (decision-0083 section 5). What
+# is refused is a file this hook cannot read, because a governed = false it
+# cannot read cannot be ruled out (KTD5), and a file past the read bound.
+#
+# The order is the one both hosts share: regular (above), then the governed =
+# false read (at the top of this file, before any delivery path), then readable
+# and bounded, then the NUL byte check, then classification.
+
+# The read bound, codex-context.mjs MAX_PROJECT_CONFIG_BYTES. A rules file holds
+# a comment and a few rows; this is a runaway guard about nine hundred times the
+# largest consumer file known on 2026-09-14, and the two hosts refuse the same
+# files.
+rules_file_max=1048576
+# B, codex-context.mjs RULES_ECHO_MAX_BYTES, where its measurement is recorded.
+# The file is echoed verbatim under the computed sentence only while its bytes
+# plus the bytes of its rendered warning block (every warning line with its
+# newline, the count line included) fit this; otherwise one line in the payload
+# block below stands in for it. The Codex context budget is the tighter of the
+# two hosts, so it sets the value, and both hosts share it so the activation
+# sections stay identical. They differ only for a byte that is not valid UTF-8:
+# this hook charges the bytes read, and Codex the three bytes such a byte decodes
+# to, so Codex can show the too-large line where this hook echoes (TRL-100).
+rules_echo_max=1800
+# The warning cap (KTD4), codex-context.mjs WARNINGS_NAMED and WARNING_NAME_MAX.
+# It is applied in one place, at the end of the classifier below: five warnings
+# are named in total, first the attempts (a false row for a shipped rule that
+# takes no effect) and then the rest, each group in file line order; past the
+# fifth, one count line says how many more entries were ignored and how many of
+# them are attempts. A name taken from the file is cut at
+# $rules_warning_name_max bytes, so a runaway file cannot turn its warnings into
+# the context.
+rules_warnings_named=5
+rules_warning_name_max=40
+
+rules_off=""
+rules_warnings=""
+rules_echo=yes
+rules_symlink=no
+toml_size=0
+if [ "$rows_present" = yes ]; then
+  # A rules file reached through a symbolic link (TRL-97). A repository can
+  # commit .trellis/rules.toml, or the directory holding it, as a link to
+  # any file the user can read, a credentials file included, and the echo would
+  # put that file into the model context. It is still read and classified, so
+  # its opt-outs apply and the sentence names them from the payload slugs, but
+  # nothing read from it is shown: no echo and no key, slug or line number in a
+  # warning, only counts. Only the two components this project owns are tested,
+  # never the project root, whose own path often runs through a link. The
+  # governed = false read, the read bound and the NUL byte check go through the
+  # link unchanged.
+  if [ -L "$toml" ] || [ -L "$root/.trellis" ]; then
+    rules_symlink=yes
+  fi
+  classified=""
+  if [ -r "$toml" ] && toml_size="$(wc -c 2>/dev/null < "$toml")"; then
+    toml_size="$(printf '%s' "$toml_size" | tr -d '[:space:]')"
+    if [ "$toml_size" -gt "$rules_file_max" ]; then
+      emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml is ${toml_size} bytes, over the ${rules_file_max}-byte bound this hook reads a rules file up to, so it was not read and NO rules were injected. A rules file holds a comment and a few rows, so this one is probably not the file the project meant to commit; show the user its size. Tell the user before doing substantive work."
+      exit 0
+    fi
+    # A NUL byte (KTD5). Such a file is not text both hosts split into the same
+    # lines, so none of its rows takes effect, it is not echoed, and one warning
+    # says why. Counted by tr and wc, which see every byte; a shell variable
+    # cannot hold a NUL at all. The governed = false read has already run, so an
+    # opted-out file with a NUL byte still loads nothing.
+    if [ "$(LC_ALL=C tr -cd '\000' 2>/dev/null < "$toml" | wc -c | tr -d '[:space:]')" != 0 ]; then
+      classified="$(printf 'off \nwarn nul-byte 0 #\n')"
+      rules_echo=no
+    else
+      # The classifier. It prints one `off <slugs>` line, the switched-off
+      # rules in rules.md order, then one `warn <kind> <line> <name>` record per
+      # named warning in the order it is shown, already bounded, then at most one
+      # count record: `warn more <entries> <attempts>`, or for a symlinked file
+      # `warn symlink-count <entries> <attempts>` and nothing else. `#` stands in
+      # for a name the entry does not have, since no slug or key can hold one.
+      # The words of each warning live in the payload block below, as printf
+      # format literals the destructive-instruction scans read. A file it cannot
+      # open prints `#unreadable`, which is refused below rather than read as a
+      # file that switches nothing off.
+      #
+      # LC_ALL=C, so the character classes are ASCII and length is bytes, as on
+      # the other host. Paths and the byte-order mark arrive through ENVIRON,
+      # which does no escape processing (see the -v note above).
+      classified="$(
+        TRELLIS_TOML="$toml" TRELLIS_SLUGS="$rule_slugs" TRELLIS_BOM="$bom" TRELLIS_SYMLINK="$rules_symlink" \
+        TRELLIS_NAMED="$rules_warnings_named" TRELLIS_NAME_MAX="$rules_warning_name_max" \
+        LC_ALL=C awk '
+          # A warning that names a slug (a floor row set false, an unknown slug
+          # set false, a row above [rules]) is noted once per kind and slug, at
+          # the first line that draws it, so a repeated row adds none. A later
+          # row can only make that entry an attempt: a well-formed false row for
+          # a shipped slug that takes no effect, which the cap names first.
+          function note(ln, kind, name, attempt,    k) {
+            if (kind == "floor-row" || kind == "unknown-slug" || kind == "row-above-rules") {
+              k = kind " " name
+              if (k in first) {
+                if (attempt) e_attempt[first[k]] = 1
+                return
+              }
+              first[k] = n + 1
+            }
+            n++
+            e_line[n] = ln
+            e_kind[n] = kind
+            e_name[n] = name
+            e_attempt[n] = attempt ? 1 : 0
+          }
+          # The value a governed line holds, as the regex on the other host
+          # reads it: the longest run with no space or tab, unless what follows
+          # it is neither blank nor a comment, when the match backtracks to the
+          # last # inside that run. #null is no value at all.
+          function governed_value(v,    tok, i) {
+            tok = v
+            sub(/[ \t].*$/, "", tok)
+            if (substr(v, length(tok) + 1) ~ /^[ \t]*(#.*)?$/) return tok
+            for (i = length(tok) - 1; i >= 0; i--)
+              if (substr(tok, i + 1, 1) == "#") return substr(tok, 1, i)
+            return "#null"
+          }
+          BEGIN {
+            path = ENVIRON["TRELLIS_TOML"]
+            bom = ENVIRON["TRELLIS_BOM"]
+            named_max = ENVIRON["TRELLIS_NAMED"] + 0
+            name_max = ENVIRON["TRELLIS_NAME_MAX"] + 0
+            symlink = ENVIRON["TRELLIS_SYMLINK"]
+            nslugs = split(ENVIRON["TRELLIS_SLUGS"], order, " ")
+            for (i = 1; i <= nslugs; i++) shipped[order[i]] = 1
+            section = "top"
+            lineno = 0
+            while ((rc = (getline raw < path)) > 0) {
+              lineno++
+              line = raw
+              if (lineno == 1 && bom != "" && substr(line, 1, length(bom)) == bom) line = substr(line, length(bom) + 1)
+              sub(/\r$/, "", line)
+              sub(/^[ \t]+/, "", line)
+              sub(/[ \t]+$/, "", line)
+              if (line == "" || substr(line, 1, 1) == "#") continue
+
+              if (substr(line, 1, 1) == "[") {
+                if (line ~ /^\[[ \t]*rules[ \t]*\]([ \t]*#.*)?$/) {
+                  if (rules_opened) note(lineno, "rules-again", "#", 0)
+                  rules_opened = 1
+                  section = "rules"
+                } else {
+                  section = "other"
+                  note(lineno, "other-table", "#", 0)
+                }
+                continue
+              }
+              if (section == "other") continue
+
+              is_row = (line ~ /^(inv|floor)-[a-z-]+[ \t]*=[ \t]*[{][ \t]*active[ \t]*=[ \t]*(true|false)[ \t]*[}]([ \t]*#.*)?$/)
+              slug = ""
+              value = ""
+              if (is_row) {
+                match(line, /^(inv|floor)-[a-z-]+/)
+                slug = substr(line, 1, RLENGTH)
+                value = line
+                sub(/^[^{]*[{][ \t]*active[ \t]*=[ \t]*/, "", value)
+                value = (substr(value, 1, 4) == "true") ? "true" : "false"
+              }
+              shipped_false = (is_row && value == "false" && (slug in shipped))
+              key = "#"
+              rest = ""
+              if (match(line, /^[A-Za-z0-9_-]+[ \t]*=/)) {
+                match(line, /^[A-Za-z0-9_-]+/)
+                key = substr(line, 1, RLENGTH)
+                rest = substr(line, RLENGTH + 1)
+                sub(/^[ \t]*=[ \t]*/, "", rest)
+              }
+
+              if (section == "top") {
+                if (line ~ /^(inv|floor)-[a-z-]+[ \t]*=/) {
+                  match(line, /^(inv|floor)-[a-z-]+/)
+                  note(lineno, "row-above-rules", substr(line, 1, RLENGTH), shipped_false)
+                } else if (key == "#") {
+                  note(lineno, "top-level-line", "#", 0)
+                } else if (key == "governed") {
+                  # The opt-out read at the top of this file already exited on
+                  # the one shape that opts out, so a governed line reaching
+                  # here did not, unless it is the first and says true.
+                  if (governed_seen || governed_value(rest) != "true") note(lineno, "governed", "#", 0)
+                  governed_seen = 1
+                } else if (key != "strictness" && key != "seeded_from") {
+                  note(lineno, "unknown-key", key, 0)
+                }
+                continue
+              }
+
+              if (!is_row) {
+                if (key == "governed") note(lineno, "governed", "#", 0)
+                else note(lineno, "malformed-row", key, 0)
+                continue
+              }
+              if (value == "true") continue
+              if (!(slug in shipped)) note(lineno, "unknown-slug", slug, 0)
+              else if (substr(slug, 1, 6) == "floor-") note(lineno, "floor-row", slug, 1)
+              else off[slug] = 1
+            }
+            if (rc < 0) {
+              print "#unreadable"
+              exit
+            }
+
+            out = ""
+            for (i = 1; i <= nslugs; i++)
+              if (order[i] in off) out = out (out == "" ? "" : ", ") order[i]
+            print "off " out
+
+            # THE WARNING CAP (KTD4), in the one place it is applied. A
+            # symlinked file draws one count and nothing it holds. Otherwise the
+            # attempts are named first (pass 1) and then the rest (pass 2), five
+            # in all, and one count record covers every entry left.
+            attempts = 0
+            for (i = 1; i <= n; i++) if (e_attempt[i]) attempts++
+            if (symlink == "yes") {
+              if (n > 0) print "warn symlink-count " n " " attempts
+              exit
+            }
+            said = 0
+            for (pass = 1; pass <= 2; pass++) {
+              for (i = 1; i <= n && said < named_max; i++) {
+                if (e_attempt[i] != (pass == 1)) continue
+                said++
+                nm = e_name[i]
+                if (nm != "#" && length(nm) > name_max) nm = substr(nm, 1, name_max) "..."
+                print "warn " e_kind[i] " " e_line[i] " " nm
+              }
+            }
+            if (n > said) print "warn more " (n - said) " " (attempts - (attempts < named_max ? attempts : named_max))
+          }
+        '
+      )"
+    fi
+  fi
+  case "$classified" in
+    off*) ;;
+    *)
+      emit "TRELLIS_RULES_NOT_LOADED — this project's .trellis/rules.toml exists but could not be read ($toml), so the Trellis plugin hook cannot tell which rules it switches off or whether it declares governed = false, and NO rules were injected. Check the file's permissions. Tell the user before doing substantive work."
+      exit 0
+      ;;
+  esac
+  rules_off="$(printf '%s\n' "$classified" | sed -n 's/^off //p')"
+  rules_warnings="$(printf '%s\n' "$classified" | sed -n 's/^warn //p')"
+fi
+
 payload="$(
   printf '%s\n' "$rules_prose"
-  printf '\n## Project rule activation\n\n'
-  if [ -n "$reconciled" ]; then
-    printf 'Rows from this project'"'"'s .trellis/rules.toml, RECONCILED against the rules this payload ships (%s) — the file on disk still differs. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n' "$repair_summary"
-  elif [ "${rows_are_default:-no}" = yes ]; then
-    printf 'Rows: this project has no .trellis/rules.toml, so these are the shipped defaults — every rule active, adaptive posture (decision-0070). Write .trellis/rules.toml to change them. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
-  else
-    printf 'Rows from this project'"'"'s .trellis/rules.toml. Apply a rule only when its row says active = true; the two floor rules apply regardless of their row.\n\n'
-  fi
-  if [ -n "$reconciled" ]; then
-    printf '%s\n' "$reconciled"
-  else
-    cat "$toml"
-  fi
-  if [ -n "$reconciled" ]; then
-    printf '\n## Rule activation was reconciled this session\n\n'
-    printf 'This project'"'"'s .trellis/rules.toml did not match the rules this payload ships (%s). The rows above are the reconciled set and are what governs this session; the file on disk still differs. Reconciliation: %s.\n\n' "$slug_report" "$repair_summary"
-    printf 'Write .trellis/rules.toml with exactly the rows shown above, so the file matches what governs. Nothing is lost by this: a row the payload does not ship is commented out with the reason and the date, its line kept rather than taken out, and every value the project chose is preserved verbatim. Tell the user what you reconciled, row by row, before doing substantive work — a repair they did not see is the failure this reconciliation exists to prevent. If a quarantined slug is one a newer Trellis release added, the installed plugin is the stale side: `claude plugin update trellis@kodhama`, restart the session, and uncomment the row.\n'
+  if [ "$rows_present" = yes ]; then
+    # THE WARNINGS (KTD4), rendered first because their bytes decide below
+    # whether the file is shown, and printed last. They arrive in the order and
+    # bound the classifier already applied. Every template is a printf format
+    # literal, so the destructive-instruction and deletion scans read it; the
+    # line, slug and key arrive as arguments, and for the two count lines the
+    # counts do. None quotes the raw line, and none asks for the file to change.
+    # Case arms open with a parenthesis: bash 3.2 otherwise reads a bare pattern
+    # paren as the end of this command substitution.
+    rules_warning_block=""
+    rules_warning_bytes=0
+    if [ -n "$rules_warnings" ]; then
+      rules_warning_block="$(printf '%s\n' "$rules_warnings" | while read -r kind line name; do
+        case "$kind" in
+          (nul-byte)
+            printf 'Trellis warning: .trellis/rules.toml contains a NUL byte, so none of its rows take effect and it is not shown; every rule applies.\n'
+            ;;
+          (unknown-slug)
+            printf 'Trellis warning: line %s of .trellis/rules.toml sets %s to active = false, but this plugin ships no rule by that name, so the row is ignored; another plugin version may ship it.\n' "$line" "$name"
+            ;;
+          (floor-row)
+            printf 'Trellis warning: line %s of .trellis/rules.toml sets the floor rule %s to active = false, but floor rules cannot be switched off, so the row is ignored and the rule applies.\n' "$line" "$name"
+            ;;
+          (row-above-rules)
+            printf 'Trellis warning: line %s of .trellis/rules.toml is a row for %s above the [rules] table, so it is ignored; rows count only under [rules].\n' "$line" "$name"
+            ;;
+          (rules-again)
+            printf 'Trellis warning: line %s of .trellis/rules.toml opens [rules] a second time; the rows under it still count.\n' "$line"
+            ;;
+          (other-table)
+            printf 'Trellis warning: line %s of .trellis/rules.toml opens a table other than [rules], so every line under it is ignored.\n' "$line"
+            ;;
+          (governed)
+            printf 'Trellis warning: line %s of .trellis/rules.toml sets governed but does not opt out; only one governed = false line, above every table, opts a project out, so this project stays governed.\n' "$line"
+            ;;
+          (unknown-key)
+            printf 'Trellis warning: line %s of .trellis/rules.toml sets %s, which is not a key this file defines, so it is ignored and switches no rule off; a row under [rules] such as slug = { active = false } switches a rule off.\n' "$line" "$name"
+            ;;
+          (top-level-line)
+            printf 'Trellis warning: line %s of .trellis/rules.toml is not an entry this file defines, so it is ignored and switches no rule off.\n' "$line"
+            ;;
+          (malformed-row)
+            if [ "$name" = "#" ]; then
+              printf 'Trellis warning: line %s of .trellis/rules.toml is a malformed row, so it is ignored and switches no rule off.\n' "$line"
+            else
+              printf 'Trellis warning: line %s of .trellis/rules.toml is a malformed row naming %s, so it is ignored and switches no rule off; any rule it names still applies.\n' "$line" "$name"
+            fi
+            ;;
+          (more)
+            if [ "$line" = 1 ]; then
+              if [ "$name" = 1 ]; then
+                printf 'Trellis warning: .trellis/rules.toml has 1 more ignored entry, and it tries to switch a rule off.\n'
+              else
+                printf 'Trellis warning: .trellis/rules.toml has 1 more ignored entry, and it does not try to switch a rule off.\n'
+              fi
+            elif [ "$name" = 0 ]; then
+              printf 'Trellis warning: .trellis/rules.toml has %s more ignored entries, none of which tries to switch a rule off.\n' "$line"
+            elif [ "$name" = 1 ]; then
+              printf 'Trellis warning: .trellis/rules.toml has %s more ignored entries, 1 of which tries to switch a rule off.\n' "$line"
+            else
+              printf 'Trellis warning: .trellis/rules.toml has %s more ignored entries, %s of which try to switch a rule off.\n' "$line" "$name"
+            fi
+            ;;
+          (symlink-count)
+            if [ "$line" = 1 ]; then
+              if [ "$name" = 1 ]; then
+                printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its 1 ignored entry is counted but not named; it tries to switch a rule off.\n'
+              else
+                printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its 1 ignored entry is counted but not named; it does not try to switch a rule off.\n'
+              fi
+            elif [ "$name" = 0 ]; then
+              printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its %s ignored entries are counted but not named; none of them tries to switch a rule off.\n' "$line"
+            elif [ "$name" = 1 ]; then
+              printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its %s ignored entries are counted but not named; 1 of them tries to switch a rule off.\n' "$line"
+            else
+              printf 'Trellis warning: .trellis/rules.toml is a symbolic link, so its %s ignored entries are counted but not named; %s of them try to switch a rule off.\n' "$line" "$name"
+            fi
+            ;;
+        esac
+      done)"
+      rules_warning_bytes="$(printf '%s\n' "$rules_warning_block" | wc -c | tr -d '[:space:]')"
+    fi
+    printf '\n## Project rule activation\n\n'
+    # THE COMPUTED SENTENCE (KTD1). It names the rules the file switches off, in
+    # rules.md order, so the model is told the effective result even where the
+    # file below still shows a row this hook ignored.
+    if [ -z "$rules_off" ]; then
+      printf 'The project file .trellis/rules.toml switches no rule off, so every rule above applies.\n'
+    else
+      printf 'The project file .trellis/rules.toml switches these rules off: %s. Every other rule above applies.\n' "$rules_off"
+    fi
+    # THE FILE, OR THE LINE THAT STANDS IN FOR IT. A file reached through a
+    # symbolic link is never shown, at any size. Any other file is echoed
+    # verbatim, with a newline supplied when it has none, only while its bytes
+    # plus the bytes of the warning block fit B; past that, one line. A file
+    # holding a NUL byte is neither, and an empty file has nothing to show.
+    if [ "$rules_echo" = yes ]; then
+      if [ "$rules_symlink" = yes ]; then
+        printf '\n'
+        printf 'The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off.\n'
+      elif [ "$((toml_size + rules_warning_bytes))" -gt "$rules_echo_max" ]; then
+        printf '\n'
+        printf 'The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n'
+      elif [ "$toml_size" -gt 0 ]; then
+        printf '\n'
+        cat "$toml"
+        [ -z "$(tail -c 1 "$toml")" ] || printf '\n'
+      fi
+    fi
+    if [ -n "$rules_warning_block" ]; then
+      printf '\n%s\n' "$rules_warning_block"
+    fi
   fi
   # The path-B arm of TRL-34. Delivery is unaffected -- the rules payload is
   # fine and the session IS governed -- so an unreadable version stamp degrades
@@ -1518,18 +1449,20 @@ payload="$(
   if [ -n "$current" ]; then
     printf '\nDelivered by the Trellis plugin (%s). No overlay is vendored in this project.\n' "$current"
   else
-    printf '\nDelivered by the Trellis plugin. Its own version stamp could not be read (%s %s), so this readout cannot name which payload build it came from; the rules and rows above are complete and govern this session. No overlay is vendored in this project.\n' "$ref" "$stamp_defect"
+    printf '\nDelivered by the Trellis plugin. Its own version stamp could not be read (%s %s), so this readout cannot name which payload build it came from; the rules above are complete and govern this session. No overlay is vendored in this project.\n' "$ref" "$stamp_defect"
   fi
 )"
 
-# A bounded payload, like the Codex hook's MAX_CONTEXT_BYTES. Without this a
-# runaway rules.toml becomes a multi-megabyte injection: measured, a 5 MB file
-# produced 4.8 MB of valid JSON and exit 0, which quietly consumes the session's
-# context instead of failing. Refuse loudly instead.
+# A bounded payload, like the Codex hook's MAX_CONTEXT_BYTES. It once caught a
+# runaway rules.toml — measured, a 5 MB file produced 4.8 MB of valid JSON and
+# exit 0 — and since TRL-97 no project file can reach it: the file is echoed
+# only while it and its warnings fit $rules_echo_max bytes, and its warnings are
+# bounded. What is left for it is a plugin payload that has outgrown the budget
+# on its own.
 limit=32768
 size=$(printf '%s' "$payload" | wc -c | tr -d '[:space:]')
 if [ "$size" -gt "$limit" ]; then
-  emit "TRELLIS_RULES_NOT_LOADED — the assembled Trellis rules are ${size} bytes, over the ${limit}-byte injection budget, so nothing was injected. This usually means .trellis/rules.toml has grown far beyond a row list. Tell the user before doing substantive work."
+  emit "TRELLIS_RULES_NOT_LOADED — the assembled Trellis rules are ${size} bytes, over the ${limit}-byte injection budget, so nothing was injected. The project file is echoed only while it and its warnings fit ${rules_echo_max} bytes, and its warnings are bounded, so this is a plugin payload that has outgrown the budget: reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix. Tell the user before doing substantive work."
   exit 0
 fi
 
