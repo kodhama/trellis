@@ -32,7 +32,7 @@ date: 2026-09-03
 
 > **Dated note, 2026-09-14 — TRL-99 (PR #315):** The provenance's "whose CI guard now fails the higher-numbered claimant at the PR" no longer holds: that guard was deleted, and a new record is named by date and slug, so no id is claimed. `AGENTS.md`'s *Operating method* states how a record is named now.
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** Point 3's "one file that is *both*", `.trellis/rules.toml` when `rows_are_default=yes` repoints `$toml` at the payload's own preset, no longer exists: the preset retires, and a vendored bundle with no project file delivers every rule without reading any rows. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** Point 3's "one file that is *both*", `.trellis/rules.toml` when `rows_are_default=yes` repoints `$toml` at the payload's own preset, no longer exists: the preset retires, and a vendored bundle with no project file delivers every rule without reading any rows. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 

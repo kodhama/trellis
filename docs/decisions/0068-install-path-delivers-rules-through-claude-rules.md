@@ -10,7 +10,7 @@ date: 2026-07-30
 
 # 0068 — the install path delivers rules through `.claude/rules/`, Claude only
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** D5's added sentence making "the `strictness` key in `.trellis/rules.toml`" authoritative over the posture sentence no longer holds: `strictness` is ignored and the rendered footer carries no activation sentence. The `decision-0088` frontmatter segment's "the render now selects the header from .trellis/rules.toml's strictness" no longer holds either, since one header ships. D9's "a bare install yields exactly `floor-transparency` and `floor-intent-gate`" no longer holds: a rule applies unless its row says `active = false`. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** D5's added sentence making "the `strictness` key in `.trellis/rules.toml`" authoritative over the posture sentence no longer holds: `strictness` is ignored and the rendered footer carries no activation sentence. The `decision-0088` frontmatter segment's "the render now selects the header from .trellis/rules.toml's strictness" no longer holds either, since one header ships. D9's "a bare install yields exactly `floor-transparency` and `floor-intent-gate`" no longer holds: a rule applies unless its row says `active = false`. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 

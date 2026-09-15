@@ -11,7 +11,7 @@ date: 2026-09-03
 
 # 0088 — the install path renders the posture the project's own rows ask for
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** D1's header selection from `strictness`, D2's fall-through to `trellis-b.md` with its `rules-b.toml` seed, D4's copied strictness parser and its pair guard, and D5's second content read no longer hold: `install.sh` reads no `strictness` and renders the one shipped header, `trellis.md`. D3 stands in part: the installer still renders over an unreadable file and says so, but the disclosure now says no opt-out in the file could be honoured and every rule applies, not that the adaptive header was rendered. The frontmatter segment's "Also STANDS in full" no longer holds for D1, D2 and D4. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** D1's header selection from `strictness`, D2's fall-through to `trellis-b.md` with its `rules-b.toml` seed, D4's copied strictness parser and its pair guard, and D5's second content read no longer hold: `install.sh` reads no `strictness` and renders the one shipped header, `trellis.md`. D3 stands in part: the installer still renders over an unreadable file and says so, but the disclosure now says no opt-out in the file could be honoured and every rule applies, not that the adaptive header was rendered. The frontmatter segment's "Also STANDS in full" no longer holds for D1, D2 and D4. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 

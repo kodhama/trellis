@@ -22,7 +22,7 @@ date: 2026-08-30
 
 # 0084 — Codex reaches reconciliation parity; `parseRulesToml` becomes a classifier
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** §1, §2, §4 and §6 no longer hold: `parseRulesToml` no longer classifies a file for reconciliation, Codex neither reconciles nor writes quarantine comments, and the over-budget provenance degradation retires with provenance. The four conditions §1 kept fatal no longer fail closed: an invalid `strictness` is ignored, and a malformed row, an unknown top-level key, a second or foreign section or a bad `governed` line is ignored with a warning. §5's byte-identity guard retires with the two reconcilers it paired. §3's empty-slug-set guard stands. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** §1, §2, §4 and §6 no longer hold: `parseRulesToml` no longer classifies a file for reconciliation, Codex neither reconciles nor writes quarantine comments, and the over-budget provenance degradation retires with provenance. The four conditions §1 kept fatal no longer fail closed: an invalid `strictness` is ignored, and a malformed row, an unknown top-level key, a second or foreign section or a bad `governed` line is ignored with a warning. §5's byte-identity guard retires with the two reconcilers it paired. §3's empty-slug-set guard stands. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 

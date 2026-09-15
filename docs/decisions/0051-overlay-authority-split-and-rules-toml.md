@@ -25,7 +25,7 @@ date: 2026-07-19
 > already have one and for `install.sh`. Rule 1's rejection of a per-session
 > hook rested on "no reader exists" — a reader exists now.
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** Rule 2's posture-as-seed and its normative shape no longer hold: `seeded_from` and `strictness` are ignored, no preset seeds the file, and `[rules]` no longer needs "one row per assessable catalog slug", because a rule with no row applies and only a row set `active = false` has effect. Rule 7's "`strictness` is one instance-level key" and the 2026-07-24 pointer's preset reset go with them. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** Rule 2's posture-as-seed and its normative shape no longer hold: `seeded_from` and `strictness` are ignored, no preset seeds the file, and `[rules]` no longer needs "one row per assessable catalog slug", because a rule with no row applies and only a row set `active = false` has effect. Rule 7's "`strictness` is one instance-level key" and the 2026-07-24 pointer's preset reset go with them. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 

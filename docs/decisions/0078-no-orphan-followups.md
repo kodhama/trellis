@@ -16,7 +16,7 @@ date: 2026-08-28
 
 # 0078 — `inv-no-orphan-followups`: a deferral with no consumer is not tracked work
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** The Consequences' render chain no longer includes "the preset rows in `rules-a.toml` / `rules-b.toml` and this repo's own `.trellis/rules.toml`", and "**without a row the rule ships but is inactive**" no longer holds: both presets retire, and a rule with no row applies. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** The Consequences' render chain no longer includes "the preset rows in `rules-a.toml` / `rules-b.toml` and this repo's own `.trellis/rules.toml`", and "**without a row the rule ships but is inactive**" no longer holds: both presets retire, and a rule with no row applies. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 > **Decided: mint it.** The maintainer ruled before drafting began, and ruled twice — that the row
 > is added rather than merged into a neighbour, and that combining moral cousins belongs to a

@@ -10,7 +10,7 @@ date: 2026-07-31
 
 # 0070 — adoption is the consent act, and every path has one
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** D2's seeding "from `reference/rules-b.toml`", which made the curl path "deliver 14/14 at posture B", no longer holds: `rules-b.toml` retires, and `install.sh` seeds a missing file with a comment line and an empty `[rules]` table, under which every rule applies. D4's accept bullet no longer seeds from `rules-b.toml` either, and the `decision-0083` frontmatter segment's consent reading for reconciliation writes has no subject, since neither hook asks for one. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** D2's seeding "from `reference/rules-b.toml`", which made the curl path "deliver 14/14 at posture B", no longer holds: `rules-b.toml` retires, and `install.sh` seeds a missing file with a comment line and an empty `[rules]` table, under which every rule applies. D4's accept bullet no longer seeds from `rules-b.toml` either, and the `decision-0083` frontmatter segment's consent reading for reconciliation writes has no subject, since neither hook asks for one. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 

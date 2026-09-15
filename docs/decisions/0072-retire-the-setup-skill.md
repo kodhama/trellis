@@ -10,7 +10,7 @@ date: 2026-08-02
 
 # 0072 — retire `/trellis:setup`
 
-> **Dated note, 2026-09-15 — TRL-97 (PR #315):** Point 2's three shapes no longer hold: no preset ships to copy, since `rules-a.toml` and `rules-b.toml` retire; `strictness` is ignored, so there is no posture to edit in place; and re-enabling after `governed = false` writes a comment line and an empty `[rules]` table instead of "a complete preset". The frontmatter pointers' "it remains the advice wherever the posture or the row set matters" goes with them. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
+> **Dated note, 2026-09-15 — TRL-97 (PR #316):** Point 2's three shapes no longer hold: no preset ships to copy, since `rules-a.toml` and `rules-b.toml` retire; `strictness` is ignored, so there is no posture to edit in place; and re-enabling after `governed = false` writes a comment line and an empty `[rules]` table instead of "a complete preset". The frontmatter pointers' "it remains the advice wherever the posture or the row set matters" goes with them. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
 ## Context
 
