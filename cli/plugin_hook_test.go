@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -334,7 +335,7 @@ func TestStalenessHook(t *testing.T) {
 		// check reduced to its prefix patterns fails here. marker is the text
 		// that must not reach the output.
 		t.Run("near misses are not quoted", func(t *testing.T) {
-			for _, tc := range []struct{ line, marker string }{
+			for i, tc := range []struct{ line, marker string }{
 				{"payload@CANARYTOKEN", "CANARYTOKEN"},
 				{"payload@deadbeefCANARY", "CANARY"},
 				{"payload@abc:CANARY", "CANARY"},
@@ -351,7 +352,10 @@ func TestStalenessHook(t *testing.T) {
 				{"1.2.3-CANARY", "CANARY"},
 				{"1.2." + strings.Repeat("3", 29), strings.Repeat("3", 29)},
 			} {
-				t.Run(tc.line, func(t *testing.T) {
+				// Named by index, not by the line: t.TempDir() puts the subtest name
+				// in the project path, which the legacy nudge prints, so a name
+				// holding the marker would match the path rather than a quote.
+				t.Run("case "+strconv.Itoa(i), func(t *testing.T) {
 					ctx := nudge(t, run(t, ".trellis/version", tc.line))
 					if strings.Contains(ctx, tc.marker) {
 						t.Errorf("a line that is not a stamp reached the legacy nudge: %q\n%s", tc.line, ctx)
