@@ -1,6 +1,6 @@
 {
   "name": "trellis",
-  "version": "0.24.1",
+  "version": "0.24.2",
   "description": "A governance layer for agentic software development: compose a small set of invariants onto your project and keep your agents honest.",
   "skills": "./skills/",
   "hooks": "./hooks/codex-hooks.json"

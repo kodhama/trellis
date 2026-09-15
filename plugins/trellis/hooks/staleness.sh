@@ -80,6 +80,15 @@
 
 root="${CLAUDE_PROJECT_DIR:-.}"
 plugin="${CLAUDE_PLUGIN_ROOT:-/nonexistent}"
+# Droid resolves the command in hooks.json to this script but, as of 0.219.0,
+# leaves this sentinel in the hook environment. Only recover that known host
+# failure from the executed hook's location. Other bad roots still reach the
+# payload gateway and fail loudly as broken installs.
+if [ "$plugin" = "/PLUGIN_ROOT_NOT_EXPANDED_ERROR" ]; then
+  if plugin_from_hook="$(unset CDPATH; cd -- "${BASH_SOURCE[0]%/*}/.." 2>/dev/null && pwd -P)"; then
+    plugin="$plugin_from_hook"
+  fi
+fi
 
 # The installed plugin's own version stamp is read further down, after the
 # payload gateway is defined — a shell function called above its definition

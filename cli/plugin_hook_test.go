@@ -3033,6 +3033,89 @@ func TestTruncatedRulesMdIsRefusedByItsOwnTerminator(t *testing.T) {
 	})
 }
 
+// TestPluginRootSentinelFallsBackToHookLocation models Droid's host boundary:
+// the host resolves hooks.json's command well enough to execute this file, but
+// leaves CLAUDE_PLUGIN_ROOT set to a sentinel instead of the installed bundle.
+// The copied hook is important. Executing the source-tree hook would let a
+// fallback pass by reading the checkout rather than the installed fixture.
+func TestPluginRootSentinelFallsBackToHookLocation(t *testing.T) {
+	pluginRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "hooks"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "reference"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hookBody, err := os.ReadFile("../plugins/trellis/hooks/staleness.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hook := filepath.Join(pluginRoot, "hooks", "staleness.sh")
+	if err := os.WriteFile(hook, hookBody, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range payloadFiles() {
+		if err := os.WriteFile(filepath.Join(pluginRoot, "reference", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	proj := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(proj, ".trellis"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(proj, ".trellis", "rules.toml"), []byte(configOnlyProjectRules), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(pluginEnv string) string {
+		t.Helper()
+		cmd := exec.Command(hook)
+		cmd.Dir = proj
+		cmd.Env = append(os.Environ(),
+			"CLAUDE_PROJECT_DIR="+proj,
+			"CLAUDE_PLUGIN_ROOT="+pluginEnv,
+		)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("a hook must never fail the session, but the hook exited non-zero (%v); stdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
+		}
+		return nudgeContext(t, strings.TrimSpace(stdout.String()))
+	}
+
+	ctx := run("/PLUGIN_ROOT_NOT_EXPANDED_ERROR")
+	if strings.Contains(ctx, "TRELLIS_RULES_NOT_LOADED") {
+		t.Fatalf("Droid's plugin-root sentinel must not turn an intact installed payload into a governance blackout:\n%s", ctx)
+	}
+	if !strings.Contains(ctx, rulesLoadedSentinel) {
+		t.Errorf("the copied hook did not load the copied rules payload:\n%s", ctx)
+	}
+	if !governedSwitchingOff(ctx, configOnlyProjectRow) {
+		t.Errorf("the project file was not classified after the hook self-located:\n%s", ctx)
+	}
+	pluginRootReal, err := filepath.EvalSymlinks(pluginRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPointer := filepath.Join(pluginRootReal, "reference", "invariants.md")
+	if !strings.Contains(ctx, "`"+wantPointer+"`") {
+		t.Errorf("the invariants pointer must name the installed payload, want %q in:\n%s", wantPointer, ctx)
+	}
+	if strings.Contains(ctx, "/PLUGIN_ROOT_NOT_EXPANDED_ERROR") {
+		t.Errorf("the host sentinel leaked into delivered context after the hook self-located:\n%s", ctx)
+	}
+
+	nearMiss := run("/PLUGIN_ROOT_NOT_EXPANDED_ERROR/")
+	if !strings.Contains(nearMiss, "TRELLIS_RULES_NOT_LOADED") {
+		t.Errorf("only Droid's exact sentinel may self-locate; a different invalid root must stay loud:\n%s", nearMiss)
+	}
+	if strings.Contains(nearMiss, rulesLoadedSentinel) {
+		t.Errorf("a near-miss sentinel must not read the intact payload beside the running hook:\n%s", nearMiss)
+	}
+}
+
 // TestPluginRootWithABackslashStillDeliversTheRules is the eighth instance of
 // the silent-read class: `@rules.md` expanded through `while ((getline line <
 // rules) > 0)` with the return value discarded.
