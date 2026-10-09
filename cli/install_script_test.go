@@ -1693,11 +1693,12 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// operand to avoid counting a `$var` that was being PRINTED. That
 		// stopping rule was the wrong instrument and cost two shapes the old
 		// guard caught (below); prose is excluded here instead, at the match.
-		// A prefix's value may not hold `$(`: in `x="$(LC_ALL=C sed …`, the
-		// command sits inside the substitution, and a prefix that swallowed
+		// A prefix's value may hold `$(` only as a substitution closed within the
+		// word, such as `X="$(pwd)"`: in `x="$(LC_ALL=C sed …`, the command sits
+		// inside an open substitution, and a prefix that swallowed
 		// `x="$(LC_ALL=C ` matched at the line start and left the whole command
 		// one assignment word with no operand (TRL-100).
-		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=(?:[^ \t$]|\$[^(])*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
+		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=(?:[^ \t$]|\$[^(]|\$\([^) \t]*\))*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
 		// Quoted runs and bare runs, concatenated: `"$git_root"/CLAUDE.md` is one
 		// word to the shell and must be one word here too.
 		word := regexp.MustCompile(`(?:'[^']*'|"[^"]*"|[^\s'"]+)+`)

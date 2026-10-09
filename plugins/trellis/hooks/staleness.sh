@@ -1162,18 +1162,18 @@ if [ "$rows_present" = yes ]; then
       # any other, so its rows take effect and its warnings are named, but it is
       # not shown: one line stands in for it, as for a symbolic link. Echoed, it
       # reached the two hosts differently, raw here and as U+FFFD on Codex, which
-      # also charged the bound three bytes for each such byte. The awk deletes
-      # every well-formed multibyte sequence (RFC 3629: no overlong form, no
-      # surrogate, nothing past U+10FFFF), so any byte left at or above 0x80 is
-      # one a UTF-8 decoder rejects: exactly the files codex-context.mjs flags in
-      # readRequired, where decoding replaces such a byte with U+FFFD and the
-      # text no longer re-encodes to the bytes read. An awk that fails reads as
-      # invalid, so it hides the file rather than echoing what it could not check.
+      # also charged the bound three bytes for each such byte. The awk matches
+      # each line, whole, against ASCII and the well-formed multibyte sequences
+      # (RFC 3629: no overlong form, no surrogate, nothing past U+10FFFF), so a
+      # line that fails holds a byte a UTF-8 decoder rejects: exactly the files
+      # codex-context.mjs flags in readRequired, where decoding replaces such a
+      # byte with U+FFFD and the text no longer re-encodes to the bytes read. One
+      # anchored match stays linear on a long line, where deleting each sequence
+      # with gsub took seconds on a one-line file near the read bound. An awk
+      # that fails reads as invalid, so it hides the file rather than echoing
+      # what it could not check.
       if ! LC_ALL=C awk '
-        {
-          gsub(/[\302-\337][\200-\277]|\340[\240-\277][\200-\277]|[\341-\354\356\357][\200-\277][\200-\277]|\355[\200-\237][\200-\277]|\360[\220-\277][\200-\277][\200-\277]|[\361-\363][\200-\277][\200-\277][\200-\277]|\364[\200-\217][\200-\277][\200-\277]/, "")
-          if ($0 ~ /[\200-\377]/) { bad = 1; exit }
-        }
+        $0 !~ /^([\001-\177]|[\302-\337][\200-\277]|\340[\240-\277][\200-\277]|[\341-\354\356\357][\200-\277][\200-\277]|\355[\200-\237][\200-\277]|\360[\220-\277][\200-\277][\200-\277]|[\361-\363][\200-\277][\200-\277][\200-\277]|\364[\200-\217][\200-\277][\200-\277])*$/ { bad = 1; exit }
         END { exit bad }
       ' "$toml" 2>/dev/null; then
         rules_utf8=no
