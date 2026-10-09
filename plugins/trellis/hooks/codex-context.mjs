@@ -309,11 +309,15 @@ function readRequired(projectRoot, relativePath, options = {}) {
       total += count;
     }
     if (total > maxBytes) return overBound;
-    const value = buffer.subarray(0, total).toString("utf8");
+    const bytes = buffer.subarray(0, total);
+    const value = bytes.toString("utf8");
     if (value.length === 0 && options.emptyIsValid !== true) {
       return { error: options.emptyError ?? "empty-file" };
     }
-    return { value };
+    // Decoding replaces every byte that is not valid UTF-8 with U+FFFD, so the
+    // text re-encodes to the bytes read exactly when they were valid UTF-8.
+    // Only the project file reads this (TRL-100, activationSection).
+    return { value, utf8: Buffer.from(value, "utf8").equals(bytes) };
   } catch {
     return { error: "unreadable-file" };
   } finally {
@@ -602,7 +606,7 @@ function ruleWarnings(entries, symlink) {
 }
 
 // B, the bound on what the project file may add to the context (TRL-97). The file
-// is echoed verbatim under the framing only while its decoded bytes plus the bytes
+// is echoed verbatim under the framing only while its bytes plus the bytes
 // of its warning block (every warning line with its newline, the count line
 // included) fit this; otherwise one line stands in for it, and the computed
 // sentence still states which rules it switches off. staleness.sh shares the
@@ -641,13 +645,13 @@ const RULES_ECHO_MAX_BYTES = 1800;
 // but nothing read from it is shown, at any size: one line stands in for it, and
 // its warnings are one count (ruleWarnings). A NUL byte keeps its own handling.
 //
-// The bound charges the file what it would add to the context: its bytes once
-// decoded, not as read. The two differ only for a byte that is not valid UTF-8,
-// which decodes to U+FFFD, three bytes; charging the bytes read let a file of
-// such bytes fit the bound and still push the context past MAX_CONTEXT_BYTES,
-// costing the session every rule. staleness.sh charges the bytes read, and its
-// budget is never reached, so the hosts differ only for such a file (TRL-100).
-function activationSection(rulesToml, slugs, symlink) {
+// A file that is not valid UTF-8 (`utf8` false) is classified like any other and
+// its warnings are named, but it is not shown: one line stands in for it, after
+// the symbolic link and before the bound (TRL-100). Echoed, it reached the hosts
+// differently, raw on staleness.sh and as U+FFFD here, three bytes the bound had
+// to charge for each such byte. So every file the bound sees is valid UTF-8, its
+// bytes as read are what it adds to the context, and the hosts charge alike.
+function activationSection(rulesToml, slugs, symlink, utf8) {
   const nulByte = rulesToml.includes("\u0000");
   const { off, entries } = nulByte
     ? { off: [], entries: [{ kind: "nul-byte", attempt: false }] }
@@ -665,11 +669,18 @@ function activationSection(rulesToml, slugs, symlink) {
   } else if (symlink) {
     segment =
       "The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off.\n";
+  } else if (!utf8) {
+    segment =
+      "The project file is not valid UTF-8, so its contents are not shown here; the sentence above names every rule it switches off.\n";
   } else if (Buffer.byteLength(rulesToml, "utf8") + warningBytes > RULES_ECHO_MAX_BYTES) {
     segment =
       "The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n";
   } else if (rulesToml !== "") {
-    segment = rulesToml.endsWith("\n") ? rulesToml : `${rulesToml}\n`;
+    // Every C0 control byte but tab, LF and CR is shown as a space, as
+    // staleness.sh's json_escape shows it (TRL-100). A space is one byte, as
+    // the control byte was, so the bound above is unchanged.
+    const shown = rulesToml.replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/gu, " ");
+    segment = shown.endsWith("\n") ? shown : `${shown}\n`;
   }
   const parts = [`${sentence}\n`];
   if (segment !== "") parts.push(segment);
@@ -764,22 +775,36 @@ try {
   // as top-level, and a raw multiline match honoured it anywhere in the file, so
   // a misplaced line silently disabled all sixteen rules instead of reaching
   // the classifier, which warns that it does not opt out.
-  const raw = fs
+  //
+  // Lines end at LF and nowhere else, as they do for sed and grep (TRL-100). A
+  // JavaScript `m` regex also ends a line at a lone CR, U+2028 and U+2029, so
+  // a CR-only file opted out here while the shell saw one line and governed, and
+  // a U+2028 inside a line could start a header or a governed line on this host
+  // alone. So the file is split on "\n" and each line is matched whole, with no
+  // `m` flag anywhere.
+  const lines = fs
     .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
     .replace(/^\uFEFF/, "")
-    .split(/^[ \t\v\f]*\[/m)[0];
-  // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
-  // read as an opt-out on both hosts and silently disabled every rule —
-  // a typo is supposed to be reported as one, not govern nothing.
+    .split("\n");
+  const header = lines.findIndex((line) => /^[ \t\v\f\r]*\[/.test(line));
+  const head = header === -1 ? lines : lines.slice(0, header);
+  // Every top-level `governed =` line counts, parsed or not, as the shell's
+  // `grep -c` counts it: a second, malformed `governed = x y` line makes the file
+  // malformed, so there is no single opt-out (TRL-100). Only then is the one line
+  // asked whether it says exactly `false`, with an optional comment that may
+  // follow the value with no space before it (`governed=false#declined`).
   // ASCII horizontal whitespace only, matching the shell's `[[:space:]]` under
   // the C locale. `\s` and `[^\S...]` accept NBSP; POSIX `[[:space:]]` under
   // C.UTF-8 does not — so an NBSP-indented opt-out was honoured on Codex and not
   // on Claude, and the decision claimed both matched the same inputs. That is the
   // third time these two have diverged (classes, then BOM, now locale), which is
   // why the class is now written out rather than borrowed from a shorthand.
-  const gov = /^[ \t\v\f\r]*governed[ \t\v\f\r]*=[ \t\v\f\r]*(\S*)[ \t\v\f\r]*(#[^\r\n]*)?$/gm;
-  const values = [...raw.matchAll(gov)].map((m) => m[1]);
-  if (values.length === 1 && values[0] === "false") {
+  const governedLines = head.filter((line) => /^[ \t\v\f\r]*governed[ \t\v\f\r]*=/.test(line));
+  // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
+  // read as an opt-out on both hosts and silently disabled every rule —
+  // a typo is supposed to be reported as one, not govern nothing.
+  const optOut = /^[ \t\v\f\r]*governed[ \t\v\f\r]*=[ \t\v\f\r]*false[ \t\v\f\r]*(#[\s\S]*)?$/;
+  if (governedLines.length === 1 && optOut.test(governedLines[0])) {
     process.exit(0);
   }
 } catch {
@@ -790,6 +815,7 @@ if (configResult.error) {
   process.exit(0);
 }
 const rulesToml = configResult.value;
+const rulesUtf8 = configResult.utf8;
 
 // The `.trellis/internal/` DIRECTORY decides the mode, not any file inside it.
 // Present -> vendored: every file within is required, and a missing one is a
@@ -1226,7 +1252,7 @@ for (const component of [".trellis", PROJECT_CONFIG]) {
 // One assembly for both branches (KTD7). The prose ends with the header's
 // end marker and its newline, so the blank line before the heading is the one
 // staleness.sh prints too.
-const section = activationSection(rulesToml, slugs, rulesSymlink);
+const section = activationSection(rulesToml, slugs, rulesSymlink, rulesUtf8);
 const context =
   `${trellis.replace("@rules.md", rules)}\n${section.text}\n` +
   `Trellis hook loaded installed overlay: ${stamp}\n`;

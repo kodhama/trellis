@@ -293,18 +293,145 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		toml:    "governed = false\n[rules]\n\x00\n",
 		outcome: outcomeUngoverned,
 	}, {
+		// TRL-100. Lines end at LF on both hosts: a CR-only file is one line, so
+		// its governed line holds the whole file and does not opt out.
+		name:     "CR-only line endings do not opt out",
+		toml:     "governed = false\r[rules]\rinv-minimal-first = { active = true }\r",
+		warnings: []string{warnGoverned(1)},
+	}, {
+		name:    "a CR before the first header still ends the top level",
+		toml:    "governed = false\n\r[rules]\ngoverned = true\n",
+		outcome: outcomeUngoverned,
+	}, {
+		name:     "a second, malformed governed line does not opt out",
+		toml:     "governed = false\ngoverned = x y\n[rules]\n",
+		warnings: []string{warnGoverned(1), warnGoverned(2)},
+	}, {
+		name:    "governed=false with a comment and no space before it opts out",
+		toml:    "governed=false#declined\n[rules]\n",
+		outcome: outcomeUngoverned,
+	}, {
+		// U+2028 and U+2029 end a line only for a JavaScript `m` regex, never for
+		// the shell, so they are bytes inside a line on both hosts.
+		name:    "a header after U+2028 is not a header",
+		toml:    "# note [x]\ngoverned = false\n",
+		outcome: outcomeUngoverned,
+	}, {
+		name:     "governed = false after U+2028 is not a governed line",
+		toml:     "x = 1 governed = false\n[rules]\n",
+		warnings: []string{warnUnknownKey(1, "x")},
+	}, {
+		name:     "governed = false followed by U+2029 does not opt out",
+		toml:     "governed = false \n[rules]\n",
+		warnings: []string{warnGoverned(1)},
+	}, {
+		// Under a UTF-8 locale macOS sed's [[:space:]] matches NBSP and U+2028,
+		// so an unpinned head split ended the top level at such a line on the
+		// Claude hook alone.
+		name:       "an NBSP before [rules] does not end the top level under a UTF-8 locale",
+		toml:       "governed = false\n\u00a0[rules]\ngoverned = true\n",
+		warnings:   []string{warnGoverned(1), warnTopLevelLine(2), warnGoverned(3)},
+		utf8Locale: true,
+	}, {
+		name:       "U+2028 before [rules] does not end the top level under a UTF-8 locale",
+		toml:       "governed = false\n\u2028[rules]\ngoverned = true\n",
+		warnings:   []string{warnGoverned(1), warnTopLevelLine(2), warnGoverned(3)},
+		utf8Locale: true,
+	}, {
+		// Under a UTF-8 locale macOS sed stops at a line-1 byte that is not valid
+		// UTF-8, which left the Claude hook no governed line to read.
+		name:       "an opt-out with a Latin-1 comment opts out under a UTF-8 locale",
+		toml:       "governed = false  # d\xe9clin\xe9\n",
+		outcome:    outcomeUngoverned,
+		utf8Locale: true,
+	}, {
+		// Every C0 control byte but tab, LF and CR is shown as a space on both
+		// hosts; the classifier sees the byte, so the row holding one is malformed.
+		name:     "C0 control bytes in a shown file are shown as spaces",
+		toml:     "# form\ffeed, vertical\vtab, escape\x1b, bell\a\n[rules]\ninv-minimal-first = { active = false }\ninv-bounded-context = { active = false }\x0c\n",
+		off:      []string{"inv-minimal-first"},
+		warnings: []string{warnMalformedRow(4, "inv-bounded-context")},
+	}, {
 		name:     "a NUL byte and no opt-out",
 		toml:     optOut + "\x00\n",
 		segment:  segmentNone,
 		warnings: []string{warnNulByte()},
 	}, {
+		// The governed = false read sees a NUL byte as a byte on both hosts: a
+		// shell substitution once dropped it, so the Claude hook read these as
+		// opt-outs where Codex governed (TRL-100, found in review).
+		name:     "a NUL byte after governed = false does not opt out",
+		toml:     "governed = false\x00\n[rules]\ninv-minimal-first = { active = false }\n",
+		segment:  segmentNone,
+		warnings: []string{warnNulByte()},
+	}, {
+		name:     "a NUL byte inside false does not opt out",
+		toml:     "governed = fa\x00lse\n",
+		segment:  segmentNone,
+		warnings: []string{warnNulByte()},
+	}, {
+		// A line led by a NUL byte is not a governed line, so the one above it
+		// still opts out.
+		name:    "a NUL byte before a second governed line leaves the opt-out alone",
+		toml:    "governed = false\n\x00governed = true\n[rules]\n",
+		outcome: outcomeUngoverned,
+	}, {
 		// A byte that is not valid UTF-8 costs nothing either: under a UTF-8 locale
 		// the Claude hook's JSON escaping once stopped at it and dropped the rest of
-		// the file, every warning and the footer.
+		// the file, every warning and the footer. Its rows count and its warnings
+		// are named, and since TRL-100 one line stands in for the file itself.
 		name:     "a Latin-1 byte in a comment keeps the whole section",
 		toml:     "# Cr\xe9\xe9 par l'\xe9quipe\n[rules]\nfloor-intent-gate = { active = false }\ninv-minimal-first = { active = false }\n",
 		off:      []string{"inv-minimal-first"},
+		segment:  segmentInvalidUTF8,
 		warnings: []string{warnFloorRow(3, "floor-intent-gate")},
+	}, {
+		// The two decoders agree on what is not valid UTF-8 (RFC 3629): an
+		// overlong form, an encoded surrogate, a code point past U+10FFFF and a
+		// truncated sequence each hide the file.
+		name:    "an overlong slash is not valid UTF-8",
+		toml:    optOut + "# \xc0\xaf\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "an encoded surrogate is not valid UTF-8",
+		toml:    optOut + "# \xed\xa0\x80\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "a code point past U+10FFFF is not valid UTF-8",
+		toml:    optOut + "# \xf4\x90\x80\x80\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "an overlong three-byte form is not valid UTF-8",
+		toml:    optOut + "# \xe0\x80\xaf\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "an overlong four-byte form is not valid UTF-8",
+		toml:    optOut + "# \xf0\x80\x80\xaf\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "a truncated sequence at the end of the file is not valid UTF-8",
+		toml:    optOut + "# \xe2\x82",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		// The checks read bytes, not the decoded text: a U+FFFD the file spells
+		// out is valid, and so is each edge of the well-formed ranges (U+0800,
+		// U+D7FF either side of the surrogates' U+E000, a four-byte character
+		// led by F1, U+10FFFF), so the file is shown.
+		name: "valid multibyte characters at every boundary, U+FFFD and U+10FFFF included, are shown",
+		toml: optOut + "# \ufffd \U0001F600 \U0010FFFF \u00e9 \u0800 \ud7ff \ue000 \U00040000\n",
+		off:  []string{"inv-minimal-first"},
+	}, {
+		// Precedence: a NUL byte hides the file and its rows before UTF-8 is read.
+		name:     "a NUL byte beside a Latin-1 byte draws only the NUL warning",
+		toml:     optOut + "# \xe9\x00\n",
+		segment:  segmentNone,
+		warnings: []string{warnNulByte()},
 	}, {
 		// Q2: five named warnings in total, then one count line.
 		name: "twelve malformed rows name five and count the rest",
@@ -449,13 +576,20 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		off:     []string{"inv-minimal-first"},
 		segment: segmentTooLarge,
 	}, {
-		// Code review round 2: a Latin-1 comment fits B as read, but each of its
-		// bytes enters the Codex context as three, and a context over
-		// MAX_CONTEXT_BYTES would cost the session every rule.
-		name:         "a Latin-1 file that fits B only as read still delivers on Codex",
-		toml:         optOut + "# " + strings.Repeat("\xe9", rulesShowMaxBytes-len(optOut)-3) + "\n",
-		off:          []string{"inv-minimal-first"},
-		decodedOverB: true,
+		// TRL-97 code review round 2 found that each of these bytes entered the
+		// Codex context as three, U+FFFD, so a file that fit B as read could cost
+		// a Codex session every rule. Such a file is no longer shown at all, so
+		// neither host charges it to B (TRL-100).
+		name:    "a Latin-1 file that fits B as read is not shown",
+		toml:    optOut + "# " + strings.Repeat("\xe9", rulesShowMaxBytes-len(optOut)-3) + "\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		// Precedence: the invalid-UTF-8 line before the too-large line.
+		name:    "a Latin-1 file over B draws the invalid-UTF-8 line",
+		toml:    optOut + "# " + strings.Repeat("\xe9", rulesShowMaxBytes) + "\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
 	}, {
 		name:     "the largest echoed section fits the Codex context with its margin",
 		toml:     largestEcho,
@@ -524,6 +658,13 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		segment:  segmentSymlink,
 		warnings: []string{warnSymlinkCounted(3, 2)},
 		absent:   []string{canaryKey},
+	}, {
+		// Precedence: the symlink line before the invalid-UTF-8 line.
+		name:    "a symlinked file that is not valid UTF-8 draws the symlink line",
+		toml:    optOut + "# \xe9\n",
+		link:    linkFile,
+		off:     []string{"inv-minimal-first"},
+		segment: segmentSymlink,
 	}, {
 		name:     "a symlinked file holding a NUL byte keeps the NUL handling",
 		toml:     credentials + "\x00\n",

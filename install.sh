@@ -335,14 +335,14 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-636c5a58205b9acc1aeb06d49a977bfca4685347e26932185cc2cd26da9f1884  .claude-plugin/plugin.json
-e878c51562e025db31e541845ca8cbcfa955230c58254de01e300dd23f2de2f6  .codex-plugin/plugin.json
+d546d3f4ed276c8e90e7088df136771404454ccc54052ce92d2d5f2408b1a8d1  .claude-plugin/plugin.json
+5f52c08c4d9ba1193bf29a71de67587b9e19883ad4674e10fb9abd07d46e89aa  .codex-plugin/plugin.json
 48f314c3dcc2b04d89bce408cadbb95ddd572b401e45418eb433fc6b1f2f845e  README.md
-35cb6510464522cca5b330a32ba46dc546df65bc221aa9032befdd8c391091ff  VERSION
-2319b531e8f83ea8df800a7d2ac9e1e756876d98dab7689504e12590d63fc156  hooks/codex-context.mjs
+b85c292d28415562c1969f65be506494ca680b601ee64c562d7ef7aafff4bb0a  VERSION
+6c304d0d1172a2548532feb17f49f494b85dcffb500f6274ace80405d77c182b  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a741930673c1fb723ae6cce9421d49579c7eb5bc2dd0385a2b53be8b1d1b27f5  hooks/hooks.json
-877bf8e1194d23ebfa4b6b6f5d2d09c6c08a1cd745bddd5d81865d25222cc287  hooks/staleness.sh
+d50626f41a51e2629695ae98942b06b7a4a2d1ef95dccd01b5235ca782565e50  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 79e4af76e405dcc4cc4e153b1e8e913796c5d92679916d62348007cb343064f8  reference/block-codex.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-head.md
@@ -475,25 +475,29 @@ say_seed() {
 if [ "$scope" = "project" ]; then
   # decision-0070 D5, read BEFORE every other branch, exactly where the hook
   # reads it: an explicit refusal outranks every default and every other
-  # branch. The three lines below are the hook's own matcher, copied because
+  # branch. The five lines below are the hook's own matcher, copied because
   # the hook lives inside the bundle this script vendors and cannot be shared;
   # a test pins the two copies to each other (decision-0028: a guard per pair).
   # What they establish: a file whose HEAD (the lines before any [table])
   # carries exactly ONE top-level `governed` assignment, and it says false. A
   # `governed = false` under [rules] is not a top-level key and does not opt
   # out — the hook governs such a project normally, and so this script renders
-  # for it; the same narrowed divergence the hook records against Codex.
+  # for it, as the Codex hook does too (TRL-97).
   # An unreadable file leaves $governed_head empty, so it is never an opt-out
-  # here — nor in the hook, whose sed fails the same way; that case is handled
+  # here — nor in the hook, whose read fails the same way; that case is handled
   # in the render branch below. Regular-and-readable BEFORE the open: a FIFO at
   # that path (review found it)
-  # would block the sed forever waiting for a writer, ahead of the non-regular
+  # would block the read forever waiting for a writer, ahead of the non-regular
   # handling the seed step already has. The hook takes the same guard on its
   # own copy of this read (TRL-43, this change); the parity test pins the
-  # guard lines too, so the two cannot drift apart again.
+  # guard lines too, so the two cannot drift apart again. Both seds run in the C
+  # locale, as the hook's do (TRL-100): under a UTF-8 locale macOS sed's
+  # [[:space:]] matches NBSP and U+2028, and a line-1 byte that is not valid
+  # UTF-8 stops it with nothing read. tr turns each NUL byte into 0x01 first,
+  # because the substitution drops a NUL, as the hook says.
   governed_head=""
   if [ -f "$git_root/.trellis/rules.toml" ] && [ -r "$git_root/.trellis/rules.toml" ]; then
-    governed_head="$(sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+    governed_head="$(LC_ALL=C tr '\000' '\001' < "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
   fi
   governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*governed[[:space:]]*=' 2>/dev/null || true)"
   if [ -f "$git_root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
