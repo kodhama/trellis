@@ -16,6 +16,12 @@
         "source": "github",
         "repo": "EveryInc/compound-engineering-plugin"
       }
+    },
+    "grove": {
+      "source": {
+        "source": "github",
+        "repo": "kodhama/grove"
+      }
     }
   }
 }
