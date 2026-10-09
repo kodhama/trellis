@@ -359,11 +359,48 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 	}, {
 		// A byte that is not valid UTF-8 costs nothing either: under a UTF-8 locale
 		// the Claude hook's JSON escaping once stopped at it and dropped the rest of
-		// the file, every warning and the footer.
+		// the file, every warning and the footer. Its rows count and its warnings
+		// are named, and since TRL-100 one line stands in for the file itself.
 		name:     "a Latin-1 byte in a comment keeps the whole section",
 		toml:     "# Cr\xe9\xe9 par l'\xe9quipe\n[rules]\nfloor-intent-gate = { active = false }\ninv-minimal-first = { active = false }\n",
 		off:      []string{"inv-minimal-first"},
+		segment:  segmentInvalidUTF8,
 		warnings: []string{warnFloorRow(3, "floor-intent-gate")},
+	}, {
+		// The two decoders agree on what is not valid UTF-8 (RFC 3629): an
+		// overlong form, an encoded surrogate, a code point past U+10FFFF and a
+		// truncated sequence each hide the file.
+		name:    "an overlong slash is not valid UTF-8",
+		toml:    optOut + "# \xc0\xaf\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "an encoded surrogate is not valid UTF-8",
+		toml:    optOut + "# \xed\xa0\x80\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "a code point past U+10FFFF is not valid UTF-8",
+		toml:    optOut + "# \xf4\x90\x80\x80\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "a truncated sequence at the end of the file is not valid UTF-8",
+		toml:    optOut + "# \xe2\x82",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		// The checks read bytes, not the decoded text: a U+FFFD the file spells
+		// out, a four-byte character and U+10FFFF are valid, so the file is shown.
+		name: "valid multibyte characters, U+FFFD and U+10FFFF included, are shown",
+		toml: optOut + "# \ufffd \U0001F600 \U0010FFFF \u00e9\n",
+		off:  []string{"inv-minimal-first"},
+	}, {
+		// Precedence: a NUL byte hides the file and its rows before UTF-8 is read.
+		name:     "a NUL byte beside a Latin-1 byte draws only the NUL warning",
+		toml:     optOut + "# \xe9\x00\n",
+		segment:  segmentNone,
+		warnings: []string{warnNulByte()},
 	}, {
 		// Q2: five named warnings in total, then one count line.
 		name: "twelve malformed rows name five and count the rest",
@@ -508,13 +545,20 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		off:     []string{"inv-minimal-first"},
 		segment: segmentTooLarge,
 	}, {
-		// Code review round 2: a Latin-1 comment fits B as read, but each of its
-		// bytes enters the Codex context as three, and a context over
-		// MAX_CONTEXT_BYTES would cost the session every rule.
-		name:         "a Latin-1 file that fits B only as read still delivers on Codex",
-		toml:         optOut + "# " + strings.Repeat("\xe9", rulesShowMaxBytes-len(optOut)-3) + "\n",
-		off:          []string{"inv-minimal-first"},
-		decodedOverB: true,
+		// TRL-97 code review round 2 found that each of these bytes entered the
+		// Codex context as three, U+FFFD, so a file that fit B as read could cost
+		// a Codex session every rule. Such a file is no longer shown at all, so
+		// neither host charges it to B (TRL-100).
+		name:    "a Latin-1 file that fits B as read is not shown",
+		toml:    optOut + "# " + strings.Repeat("\xe9", rulesShowMaxBytes-len(optOut)-3) + "\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		// Precedence: the invalid-UTF-8 line before the too-large line.
+		name:    "a Latin-1 file over B draws the invalid-UTF-8 line",
+		toml:    optOut + "# " + strings.Repeat("\xe9", rulesShowMaxBytes) + "\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
 	}, {
 		name:     "the largest echoed section fits the Codex context with its margin",
 		toml:     largestEcho,
@@ -583,6 +627,13 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		segment:  segmentSymlink,
 		warnings: []string{warnSymlinkCounted(3, 2)},
 		absent:   []string{canaryKey},
+	}, {
+		// Precedence: the symlink line before the invalid-UTF-8 line.
+		name:    "a symlinked file that is not valid UTF-8 draws the symlink line",
+		toml:    optOut + "# \xe9\n",
+		link:    linkFile,
+		off:     []string{"inv-minimal-first"},
+		segment: segmentSymlink,
 	}, {
 		name:     "a symlinked file holding a NUL byte keeps the NUL handling",
 		toml:     credentials + "\x00\n",

@@ -309,11 +309,15 @@ function readRequired(projectRoot, relativePath, options = {}) {
       total += count;
     }
     if (total > maxBytes) return overBound;
-    const value = buffer.subarray(0, total).toString("utf8");
+    const bytes = buffer.subarray(0, total);
+    const value = bytes.toString("utf8");
     if (value.length === 0 && options.emptyIsValid !== true) {
       return { error: options.emptyError ?? "empty-file" };
     }
-    return { value };
+    // Decoding replaces every byte that is not valid UTF-8 with U+FFFD, so the
+    // text re-encodes to the bytes read exactly when they were valid UTF-8.
+    // Only the project file reads this (TRL-100, activationSection).
+    return { value, utf8: Buffer.from(value, "utf8").equals(bytes) };
   } catch {
     return { error: "unreadable-file" };
   } finally {
@@ -602,7 +606,7 @@ function ruleWarnings(entries, symlink) {
 }
 
 // B, the bound on what the project file may add to the context (TRL-97). The file
-// is echoed verbatim under the framing only while its decoded bytes plus the bytes
+// is echoed verbatim under the framing only while its bytes plus the bytes
 // of its warning block (every warning line with its newline, the count line
 // included) fit this; otherwise one line stands in for it, and the computed
 // sentence still states which rules it switches off. staleness.sh shares the
@@ -641,13 +645,13 @@ const RULES_ECHO_MAX_BYTES = 1800;
 // but nothing read from it is shown, at any size: one line stands in for it, and
 // its warnings are one count (ruleWarnings). A NUL byte keeps its own handling.
 //
-// The bound charges the file what it would add to the context: its bytes once
-// decoded, not as read. The two differ only for a byte that is not valid UTF-8,
-// which decodes to U+FFFD, three bytes; charging the bytes read let a file of
-// such bytes fit the bound and still push the context past MAX_CONTEXT_BYTES,
-// costing the session every rule. staleness.sh charges the bytes read, and its
-// budget is never reached, so the hosts differ only for such a file (TRL-100).
-function activationSection(rulesToml, slugs, symlink) {
+// A file that is not valid UTF-8 (`utf8` false) is classified like any other and
+// its warnings are named, but it is not shown: one line stands in for it, after
+// the symbolic link and before the bound (TRL-100). Echoed, it reached the hosts
+// differently, raw on staleness.sh and as U+FFFD here, three bytes the bound had
+// to charge for each such byte. So every file the bound sees is valid UTF-8, its
+// bytes as read are what it adds to the context, and the hosts charge alike.
+function activationSection(rulesToml, slugs, symlink, utf8) {
   const nulByte = rulesToml.includes("\u0000");
   const { off, entries } = nulByte
     ? { off: [], entries: [{ kind: "nul-byte", attempt: false }] }
@@ -665,6 +669,9 @@ function activationSection(rulesToml, slugs, symlink) {
   } else if (symlink) {
     segment =
       "The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off.\n";
+  } else if (!utf8) {
+    segment =
+      "The project file is not valid UTF-8, so its contents are not shown here; the sentence above names every rule it switches off.\n";
   } else if (Buffer.byteLength(rulesToml, "utf8") + warningBytes > RULES_ECHO_MAX_BYTES) {
     segment =
       "The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n";
@@ -808,6 +815,7 @@ if (configResult.error) {
   process.exit(0);
 }
 const rulesToml = configResult.value;
+const rulesUtf8 = configResult.utf8;
 
 // The `.trellis/internal/` DIRECTORY decides the mode, not any file inside it.
 // Present -> vendored: every file within is required, and a missing one is a
@@ -1244,7 +1252,7 @@ for (const component of [".trellis", PROJECT_CONFIG]) {
 // One assembly for both branches (KTD7). The prose ends with the header's
 // end marker and its newline, so the blank line before the heading is the one
 // staleness.sh prints too.
-const section = activationSection(rulesToml, slugs, rulesSymlink);
+const section = activationSection(rulesToml, slugs, rulesSymlink, rulesUtf8);
 const context =
   `${trellis.replace("@rules.md", rules)}\n${section.text}\n` +
   `Trellis hook loaded installed overlay: ${stamp}\n`;

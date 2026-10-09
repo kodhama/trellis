@@ -25,13 +25,14 @@ package main
 //   - a symbolic link is classified and never shown (expectedSymlinkLine,
 //     warnSymlinkCounted)
 //
+// TRL-100 added one more: a file that is not valid UTF-8 is classified and
+// never shown (expectedInvalidUTF8Line), so no echoed file holds a byte the two
+// hosts would show differently.
+//
 // The rows themselves are in rules_rows_parity_cases_test.go.
 //
-// Out of scope on purpose: CR-only line endings and invalid UTF-8, the two
-// divergences TRL-97's follow-up issue records, and every shape where no hook
-// classifies the file (the stand-down paths, KTD7). Two rows hold invalid
-// UTF-8 anyway: one pins that it never truncates the Claude context, and one
-// (decodedOverB) that it never costs a Codex session its rules.
+// Out of scope on purpose: every shape where no hook classifies the file (the
+// stand-down paths, KTD7).
 
 import (
 	"fmt"
@@ -40,6 +41,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // rulesShowMaxBytes is B, the bound both hooks share (codex-context.mjs
@@ -87,6 +89,12 @@ func expectedTooLargeLine() string {
 // any size.
 func expectedSymlinkLine() string {
 	return "The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off."
+}
+
+// expectedInvalidUTF8Line stands in for a file holding a byte that is not valid
+// UTF-8, at any size (TRL-100).
+func expectedInvalidUTF8Line() string {
+	return "The project file is not valid UTF-8, so its contents are not shown here; the sentence above names every rule it switches off."
 }
 
 // The warning texts (KTD4). Each names the line and the slug, the key, or only
@@ -192,6 +200,7 @@ const (
 	segmentEcho rulesSegment = iota
 	segmentTooLarge
 	segmentSymlink
+	segmentInvalidUTF8
 	segmentNone
 )
 
@@ -237,13 +246,6 @@ type rulesRowsCase struct {
 	// the Codex context must fit the cap on a plugin root of
 	// codexPluginRootMaxBytes.
 	largest bool
-	// decodedOverB marks an echoed file that fits B as read but not as decoded.
-	// Codex decodes the file as UTF-8, so each byte that is not valid UTF-8
-	// enters its context as U+FFFD, three bytes, and Codex charges B what enters
-	// its context: it shows the too-large line where Claude echoes the file. The
-	// hosts' regions differ here, as they do for invalid UTF-8 in any shown file
-	// (TRL-100); both still deliver every rule.
-	decodedOverB bool
 	// utf8Locale runs both hooks under LC_ALL=en_US.UTF-8, where an unpinned
 	// [[:space:]] matches NBSP and U+2028 on macOS (TRL-100).
 	utf8Locale bool
@@ -256,25 +258,21 @@ func (c rulesRowsCase) wantOutcome() rulesOutcome {
 	return c.outcome
 }
 
-// expectedSegment is the file part of the region on host: the file verbatim
-// (with a newline supplied when it has none), the too-large line, the symlink
-// line, or nothing.
-func (c rulesRowsCase) expectedSegment(host string) string {
-	segment := c.segment
-	if c.decodedOverB && host == "codex" {
-		segment = segmentTooLarge
-	}
-	switch segment {
+// expectedSegment is the file part of the region: the file verbatim (with a
+// newline supplied when it has none), the too-large line, the symlink line,
+// the invalid-UTF-8 line, or nothing. checkBoundPremise keeps every echoed
+// file valid UTF-8.
+func (c rulesRowsCase) expectedSegment() string {
+	switch c.segment {
 	case segmentTooLarge:
 		return expectedTooLargeLine() + "\n"
 	case segmentSymlink:
 		return expectedSymlinkLine() + "\n"
+	case segmentInvalidUTF8:
+		return expectedInvalidUTF8Line() + "\n"
 	case segmentNone:
 		return ""
 	}
-	// The hook output is decoded as JSON, which turns every byte that is not
-	// valid UTF-8 into U+FFFD, one per byte; converting through runes does the
-	// same, and leaves a valid file unchanged.
 	// Both hosts show every C0 control byte but tab, LF and CR as a space
 	// (TRL-100), a JSON string being unable to carry one unescaped.
 	file := strings.Map(func(r rune) rune {
@@ -282,8 +280,8 @@ func (c rulesRowsCase) expectedSegment(host string) string {
 			return ' '
 		}
 		return r
-	}, string([]rune(c.toml)))
-	if file == ""|| strings.HasSuffix(file, "\n") {
+	}, c.toml)
+	if file == "" || strings.HasSuffix(file, "\n") {
 		return file
 	}
 	return file + "\n"
@@ -291,9 +289,9 @@ func (c rulesRowsCase) expectedSegment(host string) string {
 
 // expectedRegion is everything between the heading's blank line and the host's
 // footer: the sentence, the segment, then the warnings, one blank line apart.
-func (c rulesRowsCase) expectedRegion(host string) string {
+func (c rulesRowsCase) expectedRegion() string {
 	parts := []string{expectedActivationSentence(c.off) + "\n"}
-	if seg := c.expectedSegment(host); seg != "" {
+	if seg := c.expectedSegment(); seg != "" {
 		parts = append(parts, seg)
 	}
 	if len(c.warnings) > 0 {
@@ -303,12 +301,17 @@ func (c rulesRowsCase) expectedRegion(host string) string {
 }
 
 // checkBoundPremise keeps the table honest about the bound: a row that declares
-// the echo or the too-large line must be on that side of B, so a golden cannot
-// pin the wrong branch by mistake. The raw bytes decide for every row; a
-// decodedOverB row must also cross B once decoded.
+// the echo, the too-large line or the invalid-UTF-8 line must be on that side of
+// B and of UTF-8 validity, so a golden cannot pin the wrong branch by mistake.
 func (c rulesRowsCase) checkBoundPremise(t *testing.T) {
 	t.Helper()
-	if c.wantOutcome() != outcomeDeliver || (c.link != linkNone && c.link != linkAncestor) || (c.segment != segmentEcho && c.segment != segmentTooLarge) {
+	if c.wantOutcome() != outcomeDeliver || (c.link != linkNone && c.link != linkAncestor) || (c.segment != segmentEcho && c.segment != segmentTooLarge && c.segment != segmentInvalidUTF8) {
+		return
+	}
+	if !utf8.ValidString(c.toml) {
+		if c.segment != segmentInvalidUTF8 {
+			t.Fatalf("premise: the file is not valid UTF-8, so the row must declare segmentInvalidUTF8, not %d", c.segment)
+		}
 		return
 	}
 	charged := len(c.toml) + warningBlockBytes(c.warnings)
@@ -318,12 +321,6 @@ func (c rulesRowsCase) checkBoundPremise(t *testing.T) {
 	}
 	if c.segment != want {
 		t.Fatalf("premise: the file and its warnings are %d bytes against a bound of %d, so the row must declare segment %d, not %d", charged, rulesShowMaxBytes, want, c.segment)
-	}
-	if c.decodedOverB {
-		decoded := len(string([]rune(c.toml))) + warningBlockBytes(c.warnings)
-		if c.segment != segmentEcho || decoded <= rulesShowMaxBytes {
-			t.Fatalf("premise: a decodedOverB row is echoed as read and over the bound decoded; it declares segment %d and decodes to %d bytes", c.segment, decoded)
-		}
 	}
 }
 
@@ -505,12 +502,12 @@ func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRules
 		t.Fatalf("%s: the context carries no %q section:\n%s", host, activationHeading, r.context)
 	}
 
-	want := c.expectedRegion(host)
+	want := c.expectedRegion()
 	sentence, segment, warnings := splitActivationRegion(r.region)
 	if wantSentence := expectedActivationSentence(c.off); sentence != wantSentence {
 		t.Errorf("%s: computed sentence\n got: %q\nwant: %q", host, sentence, wantSentence)
 	}
-	if wantSegment := c.expectedSegment(host); segment != wantSegment {
+	if wantSegment := c.expectedSegment(); segment != wantSegment {
 		t.Errorf("%s: file segment\n got: %q\nwant: %q", host, segment, wantSegment)
 	}
 	if strings.Join(warnings, "\n") != strings.Join(c.warnings, "\n") {
@@ -522,7 +519,7 @@ func assertRulesRowsHost(t *testing.T, host string, c rulesRowsCase, r hostRules
 
 	// R15: nothing the hook itself wrote asks for the file to change. The echoed
 	// file is the project's own text and is excluded.
-	hookText := strings.Replace(r.region, c.expectedSegment(host), "", 1)
+	hookText := strings.Replace(r.region, c.expectedSegment(), "", 1)
 	if m := writeInstructionRe.FindString(hookText); m != "" {
 		t.Errorf("%s: the hook's framing or warnings say %q, and nothing may ask for .trellis/rules.toml to change:\n%s", host, m, hookText)
 	}
@@ -640,9 +637,7 @@ func TestBothHostsClassifyRulesRowsIdentically(t *testing.T) {
 				if claude.outcome != codex.outcome {
 					t.Fatalf("the hosts disagree about the outcome: claude %q, codex %q", claude.outcome, codex.outcome)
 				}
-				// A decodedOverB row pins each host to its own region above, and
-				// the two differ by design.
-				if claude.outcome == outcomeDeliver && !c.decodedOverB && claude.region != codex.region {
+				if claude.outcome == outcomeDeliver && claude.region != codex.region {
 					t.Errorf("the hosts delivered different activation sections for the same file\nclaude: %q\ncodex:  %q", claude.region, codex.region)
 				}
 			})

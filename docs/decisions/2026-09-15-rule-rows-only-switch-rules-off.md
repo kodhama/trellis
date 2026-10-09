@@ -21,6 +21,8 @@ date: 2026-09-15
 
 # Rule rows only switch rules off
 
+> **Dated note, 2026-10-09 — TRL-100 (PR #322):** Point 4's "on Codex, which decodes it as UTF-8, a byte that is not valid UTF-8 counts as the three bytes of the replacement character that stands in for it" no longer holds, and nor does "shown unchanged" for every file that fits. A file holding a byte that is not valid UTF-8 is still classified, so its rows take effect and its warnings are named, but it is never shown: one line says so, checked after the symbolic link and before the 1800-byte bound. A shown file's C0 control bytes other than tab, LF and CR appear as spaces on both hosts. The Consequences entry saying the parity table leaves five divergences to TRL-100 no longer holds: both hooks read the file's lines at LF only and in the C locale, and agree on all five. `plugins/trellis/hooks/staleness.sh` and `plugins/trellis/hooks/codex-context.mjs` (`activationSection`) carry the current behaviour, and `TestBothHostsClassifyRulesRowsIdentically` (`cli/rules_rows_parity_test.go`) pins it.
+
 ## Context
 
 `.trellis/rules.toml` carried three things, and only the rows decided which rules applied. A valid
