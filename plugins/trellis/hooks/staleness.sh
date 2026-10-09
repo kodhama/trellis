@@ -322,9 +322,16 @@ bom="$(printf '\357\273\277')"
 # empty, so it is never an opt-out: a path the hook cannot read cannot be a
 # project's refusal. What it IS is decided where the rows are read (path B).
 # The `-f` and `-r` tests are stat(2) and access(2); neither opens the path.
+# Both seds run in the C locale, as the grep below does (TRL-100): under a UTF-8
+# locale macOS sed's [[:space:]] matches NBSP and U+2028, ending the top level
+# where the Codex hook does not, and a line-1 byte that is not valid UTF-8 stops
+# it with nothing read, so an opt-out beside a Latin-1 comment governed. tr
+# turns each NUL byte into 0x01 first, because the substitution below drops a
+# NUL, which read `governed = false` followed by one as an opt-out where the
+# Codex hook, seeing the byte, governs (TRL-100).
 governed_head=""
 if [ -f "$root/.trellis/rules.toml" ] && [ -r "$root/.trellis/rules.toml" ]; then
-  governed_head="$(sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+  governed_head="$(LC_ALL=C tr '\000' '\001' < "$root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
 fi
 # Exactly ONE top-level assignment counts. Two — `governed = false` and
 # `governed = true` — is a malformed file, and opting out on whichever came first
@@ -1105,9 +1112,7 @@ rules_file_max=1048576
 # newline, the count line included) fit this; otherwise one line in the payload
 # block below stands in for it. The Codex context budget is the tighter of the
 # two hosts, so it sets the value, and both hosts share it so the activation
-# sections stay identical. They differ only for a byte that is not valid UTF-8:
-# this hook charges the bytes read, and Codex the three bytes such a byte decodes
-# to, so Codex can show the too-large line where this hook echoes (TRL-100).
+# sections stay identical.
 rules_echo_max=1800
 # The warning cap (KTD4), codex-context.mjs WARNINGS_NAMED and WARNING_NAME_MAX.
 # It is applied in one place, at the end of the classifier below: five warnings
@@ -1123,6 +1128,7 @@ rules_warning_name_max=40
 rules_off=""
 rules_warnings=""
 rules_echo=yes
+rules_utf8=yes
 rules_symlink=no
 toml_size=0
 if [ "$rows_present" = yes ]; then
@@ -1155,6 +1161,26 @@ if [ "$rows_present" = yes ]; then
       classified="$(printf 'off \nwarn nul-byte 0 #\n')"
       rules_echo=no
     else
+      # A byte that is not valid UTF-8 (TRL-100). Such a file is classified like
+      # any other, so its rows take effect and its warnings are named, but it is
+      # not shown: one line stands in for it, as for a symbolic link. Echoed, it
+      # reached the two hosts differently, raw here and as U+FFFD on Codex, which
+      # also charged the bound three bytes for each such byte. The awk matches
+      # each line, whole, against ASCII and the well-formed multibyte sequences
+      # (RFC 3629: no overlong form, no surrogate, nothing past U+10FFFF), so a
+      # line that fails holds a byte a UTF-8 decoder rejects: exactly the files
+      # codex-context.mjs flags in readRequired, where decoding replaces such a
+      # byte with U+FFFD and the text no longer re-encodes to the bytes read. One
+      # anchored match stays linear on a long line, where deleting each sequence
+      # with gsub took seconds on a one-line file near the read bound. An awk
+      # that fails reads as invalid, so it hides the file rather than echoing
+      # what it could not check.
+      if ! LC_ALL=C awk '
+        $0 !~ /^([\001-\177]|[\302-\337][\200-\277]|\340[\240-\277][\200-\277]|[\341-\354\356\357][\200-\277][\200-\277]|\355[\200-\237][\200-\277]|\360[\220-\277][\200-\277][\200-\277]|[\361-\363][\200-\277][\200-\277][\200-\277]|\364[\200-\217][\200-\277][\200-\277])*$/ { bad = 1; exit }
+        END { exit bad }
+      ' "$toml" 2>/dev/null; then
+        rules_utf8=no
+      fi
       # The classifier. It prints one `off <slugs>` line, the switched-off
       # rules in rules.md order, then one `warn <kind> <line> <name>` record per
       # named warning in the order it is shown, already bounded, then at most one
@@ -1429,11 +1455,16 @@ payload="$(
     # symbolic link is never shown, at any size. Any other file is echoed
     # verbatim, with a newline supplied when it has none, only while its bytes
     # plus the bytes of the warning block fit B; past that, one line. A file
-    # holding a NUL byte is neither, and an empty file has nothing to show.
+    # that is not valid UTF-8 is never shown either, after the symbolic link
+    # and before the bound. A file holding a NUL byte is neither, and an empty
+    # file has nothing to show.
     if [ "$rules_echo" = yes ]; then
       if [ "$rules_symlink" = yes ]; then
         printf '\n'
         printf 'The project file is a symbolic link, so its contents are not shown here; the sentence above names every rule it switches off.\n'
+      elif [ "$rules_utf8" = no ]; then
+        printf '\n'
+        printf 'The project file is not valid UTF-8, so its contents are not shown here; the sentence above names every rule it switches off.\n'
       elif [ "$((toml_size + rules_warning_bytes))" -gt "$rules_echo_max" ]; then
         printf '\n'
         printf 'The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n'

@@ -1693,7 +1693,13 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// operand to avoid counting a `$var` that was being PRINTED. That
 		// stopping rule was the wrong instrument and cost two shapes the old
 		// guard caught (below); prose is excluded here instead, at the match.
-		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
+		// A prefix's value may hold `$(` only as a substitution with no space or
+		// `)` inside, closed within the word, such as `X="$(pwd)"`: in
+		// `x="$(LC_ALL=C sed …`, the command sits
+		// inside an open substitution, and a prefix that swallowed
+		// `x="$(LC_ALL=C ` matched at the line start and left the whole command
+		// one assignment word with no operand (TRL-100).
+		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=(?:[^ \t$]|\$[^(]|\$\([^) \t]*\))*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
 		// Quoted runs and bare runs, concatenated: `"$git_root"/CLAUDE.md` is one
 		// word to the shell and must be one word here too.
 		word := regexp.MustCompile(`(?:'[^']*'|"[^"]*"|[^\s'"]+)+`)
@@ -1865,10 +1871,11 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 				importGate = r
 			}
 		}
-		// The governed read is the hook's own head-of-file sed, over the file as
-		// an operand — the form the pair guard compares byte for byte.
-		if governed == "" || !strings.Contains(governed, `sed "1s/^$bom//" "$git_root/.trellis/rules.toml"`) {
-			t.Errorf("one permitted content read must be the hook's governed_head sed over \"$git_root/.trellis/rules.toml\"; reads were:\n%s", strings.Join(reads, "\n"))
+		// The governed read is the hook's own head-of-file read, the file
+		// redirected into tr (TRL-100: a NUL survives as 0x01) and then the BOM
+		// sed — the form the pair guard compares byte for byte.
+		if governed == "" || !strings.Contains(governed, `tr '\000' '\001' < "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" 2>/dev/null |`) {
+			t.Errorf("one permitted content read must be the hook's governed_head read of \"$git_root/.trellis/rules.toml\"; reads were:\n%s", strings.Join(reads, "\n"))
 		}
 		if marker == "" || !strings.Contains(marker, `"^\(`) {
 			t.Errorf("one permitted content read must be the column-0-anchored opening marker (optionally BOM-prefixed); reads were:\n%s", strings.Join(reads, "\n"))
@@ -2641,7 +2648,7 @@ func TestInstallScriptGovernedParserMatchesHook(t *testing.T) {
 			case l == `governed_head=""`,
 				strings.HasPrefix(l, `if [ -f "$root/.trellis/rules.toml" ] && [ -r `),
 				strings.HasPrefix(l, `if [ -f "$git_root/.trellis/rules.toml" ] && [ -r `),
-				strings.HasPrefix(l, `governed_head="$(sed `),
+				strings.HasPrefix(l, `governed_head="$(LC_ALL=C tr `),
 				strings.HasPrefix(l, `governed_n="$(printf `),
 				strings.HasPrefix(l, `printf '%s\n' "$governed_head" | LC_ALL=C grep -qE`):
 				got = append(got, strings.ReplaceAll(l, `"$root/`, `"$git_root/`))
