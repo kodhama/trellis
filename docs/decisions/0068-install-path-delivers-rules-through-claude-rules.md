@@ -462,7 +462,7 @@ graded PASS were false.** They are corrected here rather than quietly restated.
 | 5 | The platform boundary is stated with its real cause | **PASS** — POSIX `sh`, not the symlink; #210 |
 | 6 | Scope creep resisted and named | **PASS** — D13 leaves the bundle untouched and says so |
 | 7 | Every declared dependency is argued, not just listed | **WAS FALSE, NOW PASS** — `decision-0053` and `decision-0058` were in `depends_on` and appeared nowhere in the body. Now D5 and D6 |
-| 8 | No gated draft is cited as settled ground | **WAS FALSE, NOW PASS** — an earlier draft leaned on an unmerged `decision-0067`; removed per `decision-0065:209-220` |
+| 8 | No gated draft is cited as settled ground | **WAS FALSE, NOW PASS** — an earlier draft leaned on an unmerged `decision-0067`; removed per `decision-0065:211-222` |
 | 9 | The maintainer's rulings are in the record, including one that reversed the author | **PASS** — frontmatter carries all three, and marks the wording exception as granted-but-unnecessary |
 | 10 | Double-delivery risk surfaced | **PASS** — measured rather than deferred, so it became D10 |
 | 11 | A withdrawn design is struck, not deleted | **PARTIAL** — D2 and D10 record their withdrawals, but an open question was deleted rather than struck; corrected with a note rather than reconstructed |

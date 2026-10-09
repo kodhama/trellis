@@ -204,7 +204,7 @@ decision, with Codex's own scope model measured rather than assumed by analogy.
   configures … and continues to never touch `.trellis/`"* (D2) — and `:115-116`'s
   *"a project that never adopted Trellis is never governed by surprise"* (D4),
   the second narrowed to preserve *by surprise* while releasing *never governed*.
-  **`:18-19`'s "setup writes exactly one file … ever" is NOT superseded**; D2 does
+  **`:20-21`'s "setup writes exactly one file … ever" is NOT superseded**; D2 does
   not change what `/trellis:setup` writes. This bullet named it until 2026-07-31,
   which left this record contradicting both D2 above and 0065's own pointer.
 - `/trellis:setup` stops being the thing that turns rules **on** and becomes the
