@@ -12,6 +12,8 @@ date: 2026-08-29
 
 # 0079 — Retire the spec stage; planning moves to superpowers
 
+> **Dated note, 2026-10-09 — TRL-64 (PR #322):** The Consequences sentence *"This record parks nothing"* did not hold. Point 3 migrated `spec-0002` §1–§3 and §4 only; its §5 worked fragments, its seven acceptance criteria and its six open questions were deleted with `specs/` and carried nowhere. `core/schemas/typed-artifacts.md` now gives each of them a home, in its `## Worked instances`, `## Acceptance criteria` and `## Open questions` sections.
+
 ## Context
 
 `decision-0011` added a **spec (behavioral-contract) stage between decisions and build**, and
