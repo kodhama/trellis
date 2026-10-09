@@ -889,7 +889,7 @@ if (trellis.split("@rules.md").length - 1 !== 1) {
   fail(sources.prose, "invalid-placeholder-count");
   process.exit(0);
 }
-// TRL-52. decision-0065:106-111 defines the plugin-native delivery as the
+// TRL-52. decision-0065:108-113 defines the plugin-native delivery as the
 // resolved @rules.md import PLUS one more edit: "the one edit repoints the
 // invariants pointer at the plugin's own copy, which is where the file is in
 // this mode and which therefore cannot go stale." That rule is scoped to a
