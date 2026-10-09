@@ -11,3 +11,6 @@ coverage/
 .idea/
 .vscode/
 .context/compound-engineering/
+# Supervision bindings and handoffs (grove) — one folder per session name,
+# rebuilt by setup every session, never repo truth.
+.context/supervision/
