@@ -22,10 +22,11 @@ date: 2026-08-29
 >
 > *Amended in place 2026-10-09 (TRL-64): the migration above carried nothing of `spec-0002`'s
 > `## 5. Worked fragments`, `## Acceptance criteria` or `## Open questions`. The three sections at
-> the end of this file now give each of those items a home, as a pointer where another artifact
-> already carries it. Three references the migration left pointing at things this file is not
-> (`§4`, `§4.5`, "this spec") now name their real targets, §2's note on `decision-0016` now says
-> what that record says, and §2 cites AC3 again. No field rule changed.*
+> the end of this file are additions, not migrated text: they give each of those items a home, as
+> a pointer where another artifact already carries it. Three references the migration left
+> pointing at things this file is not (`§4`, `§4.5`, "this spec") now name their real targets,
+> §2's note on `decision-0016` now says that record was revised to match, and §2 cites AC3 again.
+> No field rule changed.*
 
 ## 1. The signature-catalog schema (`trellis-product`, one, shipped)
 
@@ -75,9 +76,9 @@ has a rule behind it.
 Frontmatter: `id: profile-<instance>` (e.g. `profile-rpi-team`), `type: expression-profile`,
 `scope: core-methodology`, `depends_on: [signature-catalog-v1, invariants-v1]`, `owner`.
 
-**Instance-level fields (the delivery choice — `research-0007`).** `decision-0016` colocated
+**Instance-level fields (the delivery choice — `research-0007`).** `decision-0016` first colocated
 "delivery axes A/B" under *each invariant*; this schema **sharpens** that (the one revision
-`decision-0016` records `spec-0002` forcing): Axis A and Axis B are **instance-level**, not per-gene —
+`decision-0016` records `spec-0002` forcing, since folded into that record): Axis A and Axis B are **instance-level**, not per-gene —
 
 | Field | Req | Rule |
 |---|---|---|
@@ -135,32 +136,34 @@ not a property already shown.
 
 `spec-0002` carried seven. **The numbering is `spec-0002`'s and is kept**, because
 `profiles/trellis-self.md` cites AC7 by that name and §1's `(AC1)` and §2's `(AC3)` resolve here.
-Five are enforced elsewhere and appear as pointers. AC6 and AC7 grade this schema itself rather
-than an artifact written against it, so no rubric check can carry them, and they are stated here.
+Five live elsewhere and appear as pointers. AC6 and AC7 grade this schema itself rather than an
+artifact written against it, so no rubric check can carry them, and they are stated here.
 
-| | Where it is enforced |
+| | Where it lives now |
 |---|---|
 | **AC1** — the catalog covers every assessable invariant, with goal + examples | rubric check 8 |
 | **AC2** — every profile gene resolves to a catalog entry | rubric check 9 |
 | **AC3** — no silent "honored": `confidence` + `evidence`, or fail | rubric check 10 |
 | **AC4** — no profile sets `C2: none` on an intent-locus gate | rubric check 11 |
-| **AC5** — D2 ratification is real: Apply consumes only a ratified profile, and a ratified profile depends only on a ratified catalog | §3 above states both clauses, and rubric check 5's lifecycle proviso carries the structural half. `decision-0082` retired `status` for this repo's own artifacts and left this product-layer lifecycle standing |
+| **AC5** — the human ratification gate is real: Apply consumes only a ratified profile, and a ratified profile depends only on a ratified catalog | §3 above states both clauses. Rubric check 5's proviso applies them where a methodology declares a status lifecycle; no corpus check exercises it today, because this repo's own artifacts carry no `status` (`decision-0082`, which left this product-layer lifecycle standing) |
 
 - **AC6 — Trellis-lite needs no bespoke artifact.** The behavioral subset is expressible purely as
-  a profile, `payload_depth: expressed-only` with every pipeline gene `active: false`, so a lighter
-  Trellis is a fill of this schema, not a new artifact type. **A proposal to mint a standalone
-  "lite" rule list fails this criterion.**
-- **AC7 — one object, four consumers.** The same profile schema is what Assess writes, the human
-  ratifies, Apply reads, and a cross-instance diff compares. **No consumer may require a field the
-  others do not produce**, so a field added to serve one consumer alone fails this criterion. It is
-  the standing test on every amendment to §2, and the round-trip test
-  `profiles/trellis-self.md`'s open questions name.
+  a profile with `payload_depth: expressed-only` and every pipeline gene `active: false`, proving a
+  lighter Trellis is a special case of this schema, not a separate thing.
+- **AC7 — one object, four consumers.** The *same* profile schema is what Assess writes, the human
+  ratifies, Apply reads, and a cross-instance diff compares — no consumer needs a field the others
+  don't produce. `profiles/trellis-self.md`'s open questions name its round-trip as the test that
+  Assess works.
 
 ## Open questions
 
-**Each item is a constraint on the next change that authors a catalog or a profile, or amends this
-schema.** That author must read this file, which is what makes it the consumer
-(`inv-no-orphan-followups`). None is a debt owed to a component that does not exist yet.
+**These are open design questions, not deferred work.** Each constrains the next change that
+authors a catalog or a profile, or amends this schema, and that change is written against this
+file, so its author must read them. That is the address `profiles/trellis-self.md` counts as
+honored for `inv-no-orphan-followups` — *"every artifact's `## Open questions` rides a consumer
+that must read it"* — and the section rubric check 6 requires of every other typed artifact here.
+It is not the *"someone reading this file later"* that the invariant rules out, because the reader
+is required, not merely possible. None is a debt owed to a component that does not exist yet.
 
 - **Axis-B granularity.** §2 makes Axis A/B instance-level, and `decision-0016` now states that form
   itself, so there is no open tension with it. What stays open: if `+latent` genes ever need
@@ -187,6 +190,6 @@ schema.** That author must read this file, which is what makes it the consumer
   not done here; **the next change that touches the catalog, the profile and the rubric together**
   should carry it.
 
-`spec-0002`'s sixth question, where the catalog's detection heuristics live, is not repeated here.
+`spec-0002`'s fourth question, where the catalog's detection heuristics live, is not repeated here.
 It is `core/catalog/signature-catalog-v1.md`'s own open question, *"Structured signatures"*, and a
 second copy would fork a live entry (`decision-0028`).
