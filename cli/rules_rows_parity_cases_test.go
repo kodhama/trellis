@@ -357,6 +357,25 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		segment:  segmentNone,
 		warnings: []string{warnNulByte()},
 	}, {
+		// The governed = false read sees a NUL byte as a byte on both hosts: a
+		// shell substitution once dropped it, so the Claude hook read these as
+		// opt-outs where Codex governed (TRL-100, found in review).
+		name:     "a NUL byte after governed = false does not opt out",
+		toml:     "governed = false\x00\n[rules]\ninv-minimal-first = { active = false }\n",
+		segment:  segmentNone,
+		warnings: []string{warnNulByte()},
+	}, {
+		name:     "a NUL byte inside false does not opt out",
+		toml:     "governed = fa\x00lse\n",
+		segment:  segmentNone,
+		warnings: []string{warnNulByte()},
+	}, {
+		// A line led by a NUL byte is not a governed line, so the one above it
+		// still opts out.
+		name:    "a NUL byte before a second governed line leaves the opt-out alone",
+		toml:    "governed = false\n\x00governed = true\n[rules]\n",
+		outcome: outcomeUngoverned,
+	}, {
 		// A byte that is not valid UTF-8 costs nothing either: under a UTF-8 locale
 		// the Claude hook's JSON escaping once stopped at it and dropped the rest of
 		// the file, every warning and the footer. Its rows count and its warnings
@@ -385,15 +404,27 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		off:     []string{"inv-minimal-first"},
 		segment: segmentInvalidUTF8,
 	}, {
+		name:    "an overlong three-byte form is not valid UTF-8",
+		toml:    optOut + "# \xe0\x80\xaf\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
+		name:    "an overlong four-byte form is not valid UTF-8",
+		toml:    optOut + "# \xf0\x80\x80\xaf\n",
+		off:     []string{"inv-minimal-first"},
+		segment: segmentInvalidUTF8,
+	}, {
 		name:    "a truncated sequence at the end of the file is not valid UTF-8",
 		toml:    optOut + "# \xe2\x82",
 		off:     []string{"inv-minimal-first"},
 		segment: segmentInvalidUTF8,
 	}, {
 		// The checks read bytes, not the decoded text: a U+FFFD the file spells
-		// out, a four-byte character and U+10FFFF are valid, so the file is shown.
-		name: "valid multibyte characters, U+FFFD and U+10FFFF included, are shown",
-		toml: optOut + "# \ufffd \U0001F600 \U0010FFFF \u00e9\n",
+		// out is valid, and so is each edge of the well-formed ranges (U+0800,
+		// U+D7FF either side of the surrogates' U+E000, a four-byte character
+		// led by F1, U+10FFFF), so the file is shown.
+		name: "valid multibyte characters at every boundary, U+FFFD and U+10FFFF included, are shown",
+		toml: optOut + "# \ufffd \U0001F600 \U0010FFFF \u00e9 \u0800 \ud7ff \ue000 \U00040000\n",
 		off:  []string{"inv-minimal-first"},
 	}, {
 		// Precedence: a NUL byte hides the file and its rows before UTF-8 is read.

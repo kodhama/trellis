@@ -325,10 +325,13 @@ bom="$(printf '\357\273\277')"
 # Both seds run in the C locale, as the grep below does (TRL-100): under a UTF-8
 # locale macOS sed's [[:space:]] matches NBSP and U+2028, ending the top level
 # where the Codex hook does not, and a line-1 byte that is not valid UTF-8 stops
-# it with nothing read, so an opt-out beside a Latin-1 comment governed.
+# it with nothing read, so an opt-out beside a Latin-1 comment governed. tr
+# turns each NUL byte into 0x01 first, because the substitution below drops a
+# NUL, which read `governed = false` followed by one as an opt-out where the
+# Codex hook, seeing the byte, governs (TRL-100).
 governed_head=""
 if [ -f "$root/.trellis/rules.toml" ] && [ -r "$root/.trellis/rules.toml" ]; then
-  governed_head="$(LC_ALL=C sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
+  governed_head="$(LC_ALL=C tr '\000' '\001' < "$root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
 fi
 # Exactly ONE top-level assignment counts. Two — `governed = false` and
 # `governed = true` — is a malformed file, and opting out on whichever came first

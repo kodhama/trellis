@@ -342,7 +342,7 @@ b85c292d28415562c1969f65be506494ca680b601ee64c562d7ef7aafff4bb0a  VERSION
 6c304d0d1172a2548532feb17f49f494b85dcffb500f6274ace80405d77c182b  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a741930673c1fb723ae6cce9421d49579c7eb5bc2dd0385a2b53be8b1d1b27f5  hooks/hooks.json
-ba0693ad4f23d0071be20de1368eae1008b7d739e1a76ab60708db899f15fba8  hooks/staleness.sh
+27649179fde1f9f950cd1281c39a4cbbe4f55532dd879a40a57eee6d73bd633c  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 79e4af76e405dcc4cc4e153b1e8e913796c5d92679916d62348007cb343064f8  reference/block-codex.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-head.md
@@ -475,14 +475,14 @@ say_seed() {
 if [ "$scope" = "project" ]; then
   # decision-0070 D5, read BEFORE every other branch, exactly where the hook
   # reads it: an explicit refusal outranks every default and every other
-  # branch. The three lines below are the hook's own matcher, copied because
+  # branch. The five lines below are the hook's own matcher, copied because
   # the hook lives inside the bundle this script vendors and cannot be shared;
   # a test pins the two copies to each other (decision-0028: a guard per pair).
   # What they establish: a file whose HEAD (the lines before any [table])
   # carries exactly ONE top-level `governed` assignment, and it says false. A
   # `governed = false` under [rules] is not a top-level key and does not opt
   # out — the hook governs such a project normally, and so this script renders
-  # for it; the same narrowed divergence the hook records against Codex.
+  # for it, as the Codex hook does too (TRL-97).
   # An unreadable file leaves $governed_head empty, so it is never an opt-out
   # here — nor in the hook, whose sed fails the same way; that case is handled
   # in the render branch below. Regular-and-readable BEFORE the open: a FIFO at
@@ -493,10 +493,11 @@ if [ "$scope" = "project" ]; then
   # guard lines too, so the two cannot drift apart again. Both seds run in the C
   # locale, as the hook's do (TRL-100): under a UTF-8 locale macOS sed's
   # [[:space:]] matches NBSP and U+2028, and a line-1 byte that is not valid
-  # UTF-8 stops it with nothing read.
+  # UTF-8 stops it with nothing read. tr turns each NUL byte into 0x01 first,
+  # because the substitution drops a NUL, as the hook says.
   governed_head=""
   if [ -f "$git_root/.trellis/rules.toml" ] && [ -r "$git_root/.trellis/rules.toml" ]; then
-    governed_head="$(LC_ALL=C sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
+    governed_head="$(LC_ALL=C tr '\000' '\001' < "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
   fi
   governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*governed[[:space:]]*=' 2>/dev/null || true)"
   if [ -f "$git_root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&

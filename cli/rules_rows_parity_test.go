@@ -37,6 +37,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -602,6 +603,15 @@ func TestBothHostsClassifyRulesRowsIdentically(t *testing.T) {
 				t.Skip("running as root: mode 0000 does not deny reads")
 			}
 			c.checkBoundPremise(t)
+			// A missing locale falls back to C, where the row tests nothing, so
+			// it is skipped by name rather than passed in silence.
+			if c.utf8Locale {
+				cmd := exec.Command("locale", "charmap")
+				cmd.Env = append(os.Environ(), "LC_ALL=en_US.UTF-8")
+				if out, err := cmd.Output(); err != nil || strings.TrimSpace(string(out)) != "UTF-8" {
+					t.Skipf("en_US.UTF-8 is not available here (locale charmap: %q, %v), so this row cannot run", strings.TrimSpace(string(out)), err)
+				}
+			}
 			results := map[string]hostRulesResult{}
 			for _, host := range []string{"claude", "codex"} {
 				t.Run(host, func(t *testing.T) {
