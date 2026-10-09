@@ -81,7 +81,7 @@ the curl path deliver 14/14 at posture B immediately, and resolves the
 `@../../.trellis/rules.toml` import that `decision-0068` measured as contributing
 "nothing, silently, no error".
 
-**This amends `decision-0065:26-29`, the plugin/install split** — *"`install.sh`
+**This amends `decision-0065:28-31`, the plugin/install split** — *"`install.sh`
 is vendoring and never configures … and continues to never touch `.trellis/`"*.
 Amended openly rather than routed around; the clause's purpose, that no path
 silently vendors an overlay, is untouched: one config file, in the project the
@@ -200,8 +200,8 @@ decision, with Codex's own scope model measured rather than assumed by analogy.
 ## Consequences
 
 - `decision-0065` gains a `superseded_in_part_by` pointer for **two** clauses:
-  `:26-29`'s plugin/install split — *"`install.sh` is vendoring and never
-  configures … and continues to never touch `.trellis/`"* (D2) — and `:113-114`'s
+  `:28-31`'s plugin/install split — *"`install.sh` is vendoring and never
+  configures … and continues to never touch `.trellis/`"* (D2) — and `:115-116`'s
   *"a project that never adopted Trellis is never governed by surprise"* (D4),
   the second narrowed to preserve *by surprise* while releasing *never governed*.
   **`:18-19`'s "setup writes exactly one file … ever" is NOT superseded**; D2 does

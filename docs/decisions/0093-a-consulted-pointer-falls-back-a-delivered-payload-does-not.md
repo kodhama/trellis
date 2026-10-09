@@ -68,13 +68,13 @@ Two constraints appear to forbid a fix, and the ruling below is that neither rea
    with (2): substitution presupposes something to substitute **for**, and this arm runs only when
    there is not.
 
-4. **The same claim in `decision-0065:191-193` is marked, not just the README's copy.** That
+4. **The same claim in `decision-0065:193-195` is marked, not just the README's copy.** That
    paragraph states *"A project that still has an overlay keeps its import transport and the hooks
    inject nothing"* — false on Codex for the same measured reason, and it is the record this one
    depends on. `decision-0065` now carries `decision-0093` in `superseded_in_part_by` for that
    clause alone. Its **discriminator** half stands (both hooks do discriminate on
    `.trellis/internal/`), as does *"a project without one has no import block and receives the
-   injection"*. Worth recording why this was missed: the neighbouring `:194-195` sentence in the
+   injection"*. Worth recording why this was missed: the neighbouring `:196-197` sentence in the
    same paragraph was re-pointed by `decision-0068` while this one was not, so the paragraph
    already looked marked. **The claim was wrong in two places and marked in neither** — correcting
    the README while leaving the record it derives from would have preserved exactly that.
@@ -100,7 +100,7 @@ honest, not permanent.
   `install.sh`'s baked `TRELLIS_BUNDLE_MANIFEST` (`decision-0028`).
 - `decision-0053` is not engaged: the shipped *prose* is unchanged. The token still ships as
   written; what changed is which address one channel resolves it to — the same class of edit
-  `decision-0065:106-111` already ratified for the plugin-native mode.
+  `decision-0065:108-113` already ratified for the plugin-native mode.
 
 ## Self-check (gate)
 

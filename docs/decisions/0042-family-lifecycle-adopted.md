@@ -10,6 +10,8 @@ date: 2026-07-08
 
 # 0042 — adopt the family lifecycle for trellis-self
 
+> **Dated note, 2026-10-09 — TRL-80 (PR #322):** The `decision-0046` frontmatter segment's "Stands: … the no-draft-on-main / draft-landing check (ratify-guard slimmed, not removed)" no longer holds: `decision-0082` deleted `ratify-guard`, its draft-landing check with it, and no ratify workflow remains under `.github/workflows/`. Point 4 of `decision-0082` states the current behaviour.
+
 ## Context
 
 `decision-0037` made statuses methodology-defined and, for this repo's

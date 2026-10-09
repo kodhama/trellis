@@ -5,7 +5,7 @@ package main
 // address it resolves to is decided per delivery channel, and until this file
 // existed one channel decided nothing.
 //
-// decision-0065:106-111 states the rule, and it is scoped to a SHAPE rather
+// decision-0065:108-113 states the rule, and it is scoped to a SHAPE rather
 // than to a host: "For a project holding `.trellis/rules.toml` and no
 // `.trellis/internal/`, the hook injects the always-loaded chain from the
 // plugin payload ... the one edit repoints the invariants pointer at the
@@ -199,7 +199,7 @@ func TestCodexRepointsTheInvariantsPointerOnThePluginPath(t *testing.T) {
 	context := codexContextFor(t, pluginRoot, project)
 
 	if strings.Contains(context, invariantsToken) {
-		t.Errorf("Codex was handed the unresolved placeholder; this mode has no .trellis/internal/ for it to name (decision-0065:106-111):\n%s", context)
+		t.Errorf("Codex was handed the unresolved placeholder; this mode has no .trellis/internal/ for it to name (decision-0065:108-113):\n%s", context)
 	}
 	want := filepath.Join(pluginRoot, "reference", "invariants.md")
 	if got := pointerIn(t, context); got != want {

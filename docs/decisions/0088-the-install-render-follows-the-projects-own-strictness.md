@@ -96,8 +96,8 @@ saying the rows are authoritative.
 - **`decision-0068` is changed in part, not superseded.** What is corrected: D5's constant-header
   ruling, the read inventory it states, and D9's clause that *"`install.sh` makes no posture
   choice"*. D9's other clause, *"writes no `rules.toml`"*, was made false by `decision-0070` D2's
-  seeding, but `0070`'s forward pointer on `0068` names only the `:104` clause, so this record's
-  pointer claims the whole of `:201` rather than leaving that half unrecorded. `0068`'s delivery mechanism, project-scope-only ruling (D1), the two payload edits, the stamp, D11
+  seeding, but `0070`'s forward pointer on `0068` names only the `:106` clause, so this record's
+  pointer claims the whole of `:203` rather than leaving that half unrecorded. `0068`'s delivery mechanism, project-scope-only ruling (D1), the two payload edits, the stamp, D11
   and the footer sentence all stand. The forward pointer on `0068` records the scope.
 - **The two deliveries now agree on the posture header of any *governed* project whose `rules.toml`
   is readable**, and a test proves it by running both against the same repository rather than

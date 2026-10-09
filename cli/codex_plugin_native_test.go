@@ -270,7 +270,7 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 // TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead above has no case
 // for because `invariants.md` is not READ by this hook at all. It is pointed
 // at — the plugin-native arm rewrites the shipped token to the plugin's own
-// copy (TRL-52, decision-0065:106-111) — and until this test existed nothing
+// copy (TRL-52, decision-0065:108-113) — and until this test existed nothing
 // observed what happens when that copy is not there.
 //
 // Three cases, and each pins something the other two cannot:
