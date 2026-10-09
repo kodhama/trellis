@@ -145,7 +145,7 @@ artifact written against it, so no rubric check can carry them, and they are sta
 | **AC2** — every profile gene resolves to a catalog entry | rubric check 9 |
 | **AC3** — no silent "honored": `confidence` + `evidence`, or fail | rubric check 10 |
 | **AC4** — no profile sets `C2: none` on an intent-locus gate | rubric check 11 |
-| **AC5** — the human ratification gate is real: Apply consumes only a ratified profile, and a ratified profile depends only on a ratified catalog | §3 above states both clauses. Rubric check 5's proviso applies them where a methodology declares a status lifecycle; no corpus check exercises it today, because this repo's own artifacts carry no `status` (`decision-0082`, which left this product-layer lifecycle standing) |
+| **AC5** — the human ratification gate is real: Apply consumes only a ratified profile, and a ratified profile depends only on a ratified catalog | §3 above states both clauses. Rubric check 5's proviso carries the second where a methodology declares a status lifecycle (no gated artifact `depends_on` a draft one). No corpus check exercises either today: this repo declares no lifecycle, and its artifacts' legacy `status:` lines are not read (`decision-0082`, which left this product-layer lifecycle standing) |
 
 - **AC6 — Trellis-lite needs no bespoke artifact.** The behavioral subset is expressible purely as
   a profile with `payload_depth: expressed-only` and every pipeline gene `active: false`, proving a
@@ -184,12 +184,13 @@ is required, not merely possible. None is a debt owed to a component that does n
   is related to, but not the same as, `decision-0082`'s open question *"Should `spec-0002`'s profile
   lifecycle follow?"*: retiring the lifecycle would moot it, and keeping the lifecycle brings it
   back.
-- **The `C1` / `C2` field names.** `decision-0038` deferred renaming `default_C1` / `default_C2` to
-  `default_strength` / `default_gatekeeper` until *"`spec-0002` is next opened"*. This file is
-  where that question now lives. The rename is a catalog, profile and rubric cascade, so it is
-  not done here; **the next change that touches the catalog, the profile and the rubric together**
-  should carry it.
+- **The `C1` / `C2` field names.** Should `default_C1` / `default_C2` become `default_strength` /
+  `default_gatekeeper`, with the profile's columns to match? `decision-0038` asked this and left it
+  to *"when `spec-0002` is next opened"*; this file is where that question now lives. The rename
+  would cascade through the catalog, the profile and the rubric, so it is not made here.
 
 `spec-0002`'s fourth question, where the catalog's detection heuristics live, is not repeated here.
 It is `core/catalog/signature-catalog-v1.md`'s own open question, *"Structured signatures"*, and a
-second copy would fork a live entry (`decision-0028`).
+second copy would fork a live entry (`decision-0028`). That entry is *"Owed to the Assess build
+(cluster 1)"*, which `profiles/trellis-self.md` counts as this repo's live orphan; pointing at it
+gives the question a home but not a consumer.
