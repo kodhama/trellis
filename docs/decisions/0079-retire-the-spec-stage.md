@@ -12,7 +12,7 @@ date: 2026-08-29
 
 # 0079 — Retire the spec stage; planning moves to superpowers
 
-> **Dated note, 2026-10-09 — TRL-64 (PR #322):** The Consequences bullet *"Trellis-core loses no shipped rule"* ends *"the rest is provenance pointers"*, and for `spec-0002` that does not hold: point 3 accounts for its §1–§3 and §4 only. Its §5 worked fragments, AC6, AC7 and five of its six open questions were deleted with `specs/` and carried nowhere, and the `AC1` and `AC3` labels that `core/schemas/typed-artifacts.md` §1 and §2 still cite lost their referent. The bullet's first sentence holds, because none of these was a rule a check enforces. `core/schemas/typed-artifacts.md`'s `## Worked instances`, `## Acceptance criteria` and `## Open questions` sections now give every one of them a home.
+> **Dated note, 2026-10-09 — TRL-64 (PR #323):** The Consequences bullet *"Trellis-core loses no shipped rule"* ends *"the rest is provenance pointers"*, and for `spec-0002` that does not hold: point 3 accounts for its §1–§3 and §4 only. Its §5 worked fragments, AC6, AC7 and five of its six open questions were deleted with `specs/` and carried nowhere, and the `AC1` and `AC3` labels that `core/schemas/typed-artifacts.md` §1 and §2 still cite lost their referent. The bullet's first sentence holds, because none of these was a rule a check enforces. `core/schemas/typed-artifacts.md`'s `## Worked instances`, `## Acceptance criteria` and `## Open questions` sections now give every one of them a home.
 
 ## Context
 
