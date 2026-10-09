@@ -244,6 +244,9 @@ type rulesRowsCase struct {
 	// hosts' regions differ here, as they do for invalid UTF-8 in any shown file
 	// (TRL-100); both still deliver every rule.
 	decodedOverB bool
+	// utf8Locale runs both hooks under LC_ALL=en_US.UTF-8, where an unpinned
+	// [[:space:]] matches NBSP and U+2028 on macOS (TRL-100).
+	utf8Locale bool
 }
 
 func (c rulesRowsCase) wantOutcome() rulesOutcome {
@@ -272,8 +275,15 @@ func (c rulesRowsCase) expectedSegment(host string) string {
 	// The hook output is decoded as JSON, which turns every byte that is not
 	// valid UTF-8 into U+FFFD, one per byte; converting through runes does the
 	// same, and leaves a valid file unchanged.
-	file := string([]rune(c.toml))
-	if file == "" || strings.HasSuffix(file, "\n") {
+	// Both hosts show every C0 control byte but tab, LF and CR as a space
+	// (TRL-100), a JSON string being unable to carry one unescaped.
+	file := strings.Map(func(r rune) rune {
+		if r < 0x20 && r != '\t' && r != '\n' && r != '\r' {
+			return ' '
+		}
+		return r
+	}, string([]rune(c.toml)))
+	if file == ""|| strings.HasSuffix(file, "\n") {
 		return file
 	}
 	return file + "\n"
@@ -598,6 +608,9 @@ func TestBothHostsClassifyRulesRowsIdentically(t *testing.T) {
 			results := map[string]hostRulesResult{}
 			for _, host := range []string{"claude", "codex"} {
 				t.Run(host, func(t *testing.T) {
+					if c.utf8Locale {
+						t.Setenv("LC_ALL", "en_US.UTF-8")
+					}
 					project, path := writeRulesRowsProject(t, c)
 					if c.unreadable {
 						if err := os.Chmod(path, 0o000); err != nil {

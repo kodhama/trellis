@@ -322,9 +322,13 @@ bom="$(printf '\357\273\277')"
 # empty, so it is never an opt-out: a path the hook cannot read cannot be a
 # project's refusal. What it IS is decided where the rows are read (path B).
 # The `-f` and `-r` tests are stat(2) and access(2); neither opens the path.
+# Both seds run in the C locale, as the grep below does (TRL-100): under a UTF-8
+# locale macOS sed's [[:space:]] matches NBSP and U+2028, ending the top level
+# where the Codex hook does not, and a line-1 byte that is not valid UTF-8 stops
+# it with nothing read, so an opt-out beside a Latin-1 comment governed.
 governed_head=""
 if [ -f "$root/.trellis/rules.toml" ] && [ -r "$root/.trellis/rules.toml" ]; then
-  governed_head="$(sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+  governed_head="$(LC_ALL=C sed "1s/^$bom//" "$root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
 fi
 # Exactly ONE top-level assignment counts. Two — `governed = false` and
 # `governed = true` — is a malformed file, and opting out on whichever came first

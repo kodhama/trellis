@@ -1693,7 +1693,11 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// operand to avoid counting a `$var` that was being PRINTED. That
 		// stopping rule was the wrong instrument and cost two shapes the old
 		// guard caught (below); prose is excluded here instead, at the match.
-		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=[^ \t]*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
+		// A prefix's value may not hold `$(`: in `x="$(LC_ALL=C sed …`, the
+		// command sits inside the substitution, and a prefix that swallowed
+		// `x="$(LC_ALL=C ` matched at the line start and left the whole command
+		// one assignment word with no operand (TRL-100).
+		reader := regexp.MustCompile(`(^|[;|&(){]|\$\()[ \t]*([A-Za-z_][A-Za-z0-9_]*=(?:[^ \t$]|\$[^(])*[ \t]+)*(grep|sed|awk|cat|head|tail|wc|cut|tr|sort|od|read)[ \t]|<\s*['"$]`)
 		// Quoted runs and bare runs, concatenated: `"$git_root"/CLAUDE.md` is one
 		// word to the shell and must be one word here too.
 		word := regexp.MustCompile(`(?:'[^']*'|"[^"]*"|[^\s'"]+)+`)
@@ -2641,7 +2645,7 @@ func TestInstallScriptGovernedParserMatchesHook(t *testing.T) {
 			case l == `governed_head=""`,
 				strings.HasPrefix(l, `if [ -f "$root/.trellis/rules.toml" ] && [ -r `),
 				strings.HasPrefix(l, `if [ -f "$git_root/.trellis/rules.toml" ] && [ -r `),
-				strings.HasPrefix(l, `governed_head="$(sed `),
+				strings.HasPrefix(l, `governed_head="$(LC_ALL=C sed `),
 				strings.HasPrefix(l, `governed_n="$(printf `),
 				strings.HasPrefix(l, `printf '%s\n' "$governed_head" | LC_ALL=C grep -qE`):
 				got = append(got, strings.ReplaceAll(l, `"$root/`, `"$git_root/`))

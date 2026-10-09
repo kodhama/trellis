@@ -669,7 +669,11 @@ function activationSection(rulesToml, slugs, symlink) {
     segment =
       "The project file and its warnings are too large to show here; the sentence above names every rule it switches off.\n";
   } else if (rulesToml !== "") {
-    segment = rulesToml.endsWith("\n") ? rulesToml : `${rulesToml}\n`;
+    // Every C0 control byte but tab, LF and CR is shown as a space, as
+    // staleness.sh's json_escape shows it (TRL-100). A space is one byte, as
+    // the control byte was, so the bound above is unchanged.
+    const shown = rulesToml.replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/gu, " ");
+    segment = shown.endsWith("\n") ? shown : `${shown}\n`;
   }
   const parts = [`${sentence}\n`];
   if (segment !== "") parts.push(segment);
@@ -764,22 +768,36 @@ try {
   // as top-level, and a raw multiline match honoured it anywhere in the file, so
   // a misplaced line silently disabled all sixteen rules instead of reaching
   // the classifier, which warns that it does not opt out.
-  const raw = fs
+  //
+  // Lines end at LF and nowhere else, as they do for sed and grep (TRL-100). A
+  // JavaScript `m` regex also ends a line at a lone CR, U+2028 and U+2029, so
+  // a CR-only file opted out here while the shell saw one line and governed, and
+  // a U+2028 inside a line could start a header or a governed line on this host
+  // alone. So the file is split on "\n" and each line is matched whole, with no
+  // `m` flag anywhere.
+  const lines = fs
     .readFileSync(path.join(projectRoot, PROJECT_CONFIG), "utf8")
     .replace(/^\uFEFF/, "")
-    .split(/^[ \t\v\f]*\[/m)[0];
-  // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
-  // read as an opt-out on both hosts and silently disabled every rule —
-  // a typo is supposed to be reported as one, not govern nothing.
+    .split("\n");
+  const header = lines.findIndex((line) => /^[ \t\v\f\r]*\[/.test(line));
+  const head = header === -1 ? lines : lines.slice(0, header);
+  // Every top-level `governed =` line counts, parsed or not, as the shell's
+  // `grep -c` counts it: a second, malformed `governed = x y` line makes the file
+  // malformed, so there is no single opt-out (TRL-100). Only then is the one line
+  // asked whether it says exactly `false`, with an optional comment that may
+  // follow the value with no space before it (`governed=false#declined`).
   // ASCII horizontal whitespace only, matching the shell's `[[:space:]]` under
   // the C locale. `\s` and `[^\S...]` accept NBSP; POSIX `[[:space:]]` under
   // C.UTF-8 does not — so an NBSP-indented opt-out was honoured on Codex and not
   // on Claude, and the decision claimed both matched the same inputs. That is the
   // third time these two have diverged (classes, then BOM, now locale), which is
   // why the class is now written out rather than borrowed from a shorthand.
-  const gov = /^[ \t\v\f\r]*governed[ \t\v\f\r]*=[ \t\v\f\r]*(\S*)[ \t\v\f\r]*(#[^\r\n]*)?$/gm;
-  const values = [...raw.matchAll(gov)].map((m) => m[1]);
-  if (values.length === 1 && values[0] === "false") {
+  const governedLines = head.filter((line) => /^[ \t\v\f\r]*governed[ \t\v\f\r]*=/.test(line));
+  // The value must be the COMPLETE token. Unanchored, `governed = falsehood`
+  // read as an opt-out on both hosts and silently disabled every rule —
+  // a typo is supposed to be reported as one, not govern nothing.
+  const optOut = /^[ \t\v\f\r]*governed[ \t\v\f\r]*=[ \t\v\f\r]*false[ \t\v\f\r]*(#[\s\S]*)?$/;
+  if (governedLines.length === 1 && optOut.test(governedLines[0])) {
     process.exit(0);
   }
 } catch {

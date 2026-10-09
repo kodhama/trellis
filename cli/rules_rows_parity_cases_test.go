@@ -293,6 +293,65 @@ func rulesRowsCases(t *testing.T) []rulesRowsCase {
 		toml:    "governed = false\n[rules]\n\x00\n",
 		outcome: outcomeUngoverned,
 	}, {
+		// TRL-100. Lines end at LF on both hosts: a CR-only file is one line, so
+		// its governed line holds the whole file and does not opt out.
+		name:     "CR-only line endings do not opt out",
+		toml:     "governed = false\r[rules]\rinv-minimal-first = { active = true }\r",
+		warnings: []string{warnGoverned(1)},
+	}, {
+		name:    "a CR before the first header still ends the top level",
+		toml:    "governed = false\n\r[rules]\ngoverned = true\n",
+		outcome: outcomeUngoverned,
+	}, {
+		name:     "a second, malformed governed line does not opt out",
+		toml:     "governed = false\ngoverned = x y\n[rules]\n",
+		warnings: []string{warnGoverned(1), warnGoverned(2)},
+	}, {
+		name:    "governed=false with a comment and no space before it opts out",
+		toml:    "governed=false#declined\n[rules]\n",
+		outcome: outcomeUngoverned,
+	}, {
+		// U+2028 and U+2029 end a line only for a JavaScript `m` regex, never for
+		// the shell, so they are bytes inside a line on both hosts.
+		name:    "a header after U+2028 is not a header",
+		toml:    "# note [x]\ngoverned = false\n",
+		outcome: outcomeUngoverned,
+	}, {
+		name:     "governed = false after U+2028 is not a governed line",
+		toml:     "x = 1 governed = false\n[rules]\n",
+		warnings: []string{warnUnknownKey(1, "x")},
+	}, {
+		name:     "governed = false followed by U+2029 does not opt out",
+		toml:     "governed = false \n[rules]\n",
+		warnings: []string{warnGoverned(1)},
+	}, {
+		// Under a UTF-8 locale macOS sed's [[:space:]] matches NBSP and U+2028,
+		// so an unpinned head split ended the top level at such a line on the
+		// Claude hook alone.
+		name:       "an NBSP before [rules] does not end the top level under a UTF-8 locale",
+		toml:       "governed = false\n\u00a0[rules]\ngoverned = true\n",
+		warnings:   []string{warnGoverned(1), warnTopLevelLine(2), warnGoverned(3)},
+		utf8Locale: true,
+	}, {
+		name:       "U+2028 before [rules] does not end the top level under a UTF-8 locale",
+		toml:       "governed = false\n\u2028[rules]\ngoverned = true\n",
+		warnings:   []string{warnGoverned(1), warnTopLevelLine(2), warnGoverned(3)},
+		utf8Locale: true,
+	}, {
+		// Under a UTF-8 locale macOS sed stops at a line-1 byte that is not valid
+		// UTF-8, which left the Claude hook no governed line to read.
+		name:       "an opt-out with a Latin-1 comment opts out under a UTF-8 locale",
+		toml:       "governed = false  # d\xe9clin\xe9\n",
+		outcome:    outcomeUngoverned,
+		utf8Locale: true,
+	}, {
+		// Every C0 control byte but tab, LF and CR is shown as a space on both
+		// hosts; the classifier sees the byte, so the row holding one is malformed.
+		name:     "C0 control bytes in a shown file are shown as spaces",
+		toml:     "# form\ffeed, vertical\vtab, escape\x1b, bell\a\n[rules]\ninv-minimal-first = { active = false }\ninv-bounded-context = { active = false }\x0c\n",
+		off:      []string{"inv-minimal-first"},
+		warnings: []string{warnMalformedRow(4, "inv-bounded-context")},
+	}, {
 		name:     "a NUL byte and no opt-out",
 		toml:     optOut + "\x00\n",
 		segment:  segmentNone,

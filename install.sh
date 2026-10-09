@@ -335,14 +335,14 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-636c5a58205b9acc1aeb06d49a977bfca4685347e26932185cc2cd26da9f1884  .claude-plugin/plugin.json
-e878c51562e025db31e541845ca8cbcfa955230c58254de01e300dd23f2de2f6  .codex-plugin/plugin.json
+d546d3f4ed276c8e90e7088df136771404454ccc54052ce92d2d5f2408b1a8d1  .claude-plugin/plugin.json
+5f52c08c4d9ba1193bf29a71de67587b9e19883ad4674e10fb9abd07d46e89aa  .codex-plugin/plugin.json
 48f314c3dcc2b04d89bce408cadbb95ddd572b401e45418eb433fc6b1f2f845e  README.md
-35cb6510464522cca5b330a32ba46dc546df65bc221aa9032befdd8c391091ff  VERSION
-2319b531e8f83ea8df800a7d2ac9e1e756876d98dab7689504e12590d63fc156  hooks/codex-context.mjs
+b85c292d28415562c1969f65be506494ca680b601ee64c562d7ef7aafff4bb0a  VERSION
+a919d86f49a6e1872e39110276daa9d388454979f3996a719f9b6c50b0f773b6  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a741930673c1fb723ae6cce9421d49579c7eb5bc2dd0385a2b53be8b1d1b27f5  hooks/hooks.json
-877bf8e1194d23ebfa4b6b6f5d2d09c6c08a1cd745bddd5d81865d25222cc287  hooks/staleness.sh
+6c592b5ba7e3a78a3bc8574cea790794d88ad5ea50db5d3ae64d69a576f17ac1  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 79e4af76e405dcc4cc4e153b1e8e913796c5d92679916d62348007cb343064f8  reference/block-codex.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-head.md
@@ -490,10 +490,13 @@ if [ "$scope" = "project" ]; then
   # would block the sed forever waiting for a writer, ahead of the non-regular
   # handling the seed step already has. The hook takes the same guard on its
   # own copy of this read (TRL-43, this change); the parity test pins the
-  # guard lines too, so the two cannot drift apart again.
+  # guard lines too, so the two cannot drift apart again. Both seds run in the C
+  # locale, as the hook's do (TRL-100): under a UTF-8 locale macOS sed's
+  # [[:space:]] matches NBSP and U+2028, and a line-1 byte that is not valid
+  # UTF-8 stops it with nothing read.
   governed_head=""
   if [ -f "$git_root/.trellis/rules.toml" ] && [ -r "$git_root/.trellis/rules.toml" ]; then
-    governed_head="$(sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | sed -n '/^[[:space:]]*\[/q;p')"
+    governed_head="$(LC_ALL=C sed "1s/^$bom//" "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
   fi
   governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*governed[[:space:]]*=' 2>/dev/null || true)"
   if [ -f "$git_root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
