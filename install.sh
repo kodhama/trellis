@@ -342,7 +342,7 @@ b85c292d28415562c1969f65be506494ca680b601ee64c562d7ef7aafff4bb0a  VERSION
 6c304d0d1172a2548532feb17f49f494b85dcffb500f6274ace80405d77c182b  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a741930673c1fb723ae6cce9421d49579c7eb5bc2dd0385a2b53be8b1d1b27f5  hooks/hooks.json
-27649179fde1f9f950cd1281c39a4cbbe4f55532dd879a40a57eee6d73bd633c  hooks/staleness.sh
+d50626f41a51e2629695ae98942b06b7a4a2d1ef95dccd01b5235ca782565e50  hooks/staleness.sh
 a224cdcb7a0e2cb1b47c267a3d662d49f840aa49bc9390e21a5f04d451a6cd5c  reference/block-claude.md
 79e4af76e405dcc4cc4e153b1e8e913796c5d92679916d62348007cb343064f8  reference/block-codex.md
 32d15b7d14c252c97a08e1a900e01ebef31a954738fb5f888e8b47f9512bcaa6  reference/block-inline-head.md
@@ -484,10 +484,10 @@ if [ "$scope" = "project" ]; then
   # out — the hook governs such a project normally, and so this script renders
   # for it, as the Codex hook does too (TRL-97).
   # An unreadable file leaves $governed_head empty, so it is never an opt-out
-  # here — nor in the hook, whose sed fails the same way; that case is handled
+  # here — nor in the hook, whose read fails the same way; that case is handled
   # in the render branch below. Regular-and-readable BEFORE the open: a FIFO at
   # that path (review found it)
-  # would block the sed forever waiting for a writer, ahead of the non-regular
+  # would block the read forever waiting for a writer, ahead of the non-regular
   # handling the seed step already has. The hook takes the same guard on its
   # own copy of this read (TRL-43, this change); the parity test pins the
   # guard lines too, so the two cannot drift apart again. Both seds run in the C
@@ -497,7 +497,7 @@ if [ "$scope" = "project" ]; then
   # because the substitution drops a NUL, as the hook says.
   governed_head=""
   if [ -f "$git_root/.trellis/rules.toml" ] && [ -r "$git_root/.trellis/rules.toml" ]; then
-    governed_head="$(LC_ALL=C tr '\000' '\001' < "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
+    governed_head="$(LC_ALL=C tr '\000' '\001' < "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
   fi
   governed_n="$(printf '%s\n' "$governed_head" | LC_ALL=C grep -cE '^[[:space:]]*governed[[:space:]]*=' 2>/dev/null || true)"
   if [ -f "$git_root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&

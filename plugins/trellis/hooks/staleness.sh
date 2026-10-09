@@ -331,7 +331,7 @@ bom="$(printf '\357\273\277')"
 # Codex hook, seeing the byte, governs (TRL-100).
 governed_head=""
 if [ -f "$root/.trellis/rules.toml" ] && [ -r "$root/.trellis/rules.toml" ]; then
-  governed_head="$(LC_ALL=C tr '\000' '\001' < "$root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
+  governed_head="$(LC_ALL=C tr '\000' '\001' < "$root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" 2>/dev/null | LC_ALL=C sed -n '/^[[:space:]]*\[/q;p')"
 fi
 # Exactly ONE top-level assignment counts. Two — `governed = false` and
 # `governed = true` — is a malformed file, and opting out on whichever came first

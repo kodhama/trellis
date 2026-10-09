@@ -1693,8 +1693,9 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// operand to avoid counting a `$var` that was being PRINTED. That
 		// stopping rule was the wrong instrument and cost two shapes the old
 		// guard caught (below); prose is excluded here instead, at the match.
-		// A prefix's value may hold `$(` only as a substitution closed within the
-		// word, such as `X="$(pwd)"`: in `x="$(LC_ALL=C sed …`, the command sits
+		// A prefix's value may hold `$(` only as a substitution with no space or
+		// `)` inside, closed within the word, such as `X="$(pwd)"`: in
+		// `x="$(LC_ALL=C sed …`, the command sits
 		// inside an open substitution, and a prefix that swallowed
 		// `x="$(LC_ALL=C ` matched at the line start and left the whole command
 		// one assignment word with no operand (TRL-100).
@@ -1873,7 +1874,7 @@ func TestVendorGuardsAddedByReviewAreActuallyPinned(t *testing.T) {
 		// The governed read is the hook's own head-of-file read, the file
 		// redirected into tr (TRL-100: a NUL survives as 0x01) and then the BOM
 		// sed — the form the pair guard compares byte for byte.
-		if governed == "" || !strings.Contains(governed, `tr '\000' '\001' < "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" |`) {
+		if governed == "" || !strings.Contains(governed, `tr '\000' '\001' < "$git_root/.trellis/rules.toml" 2>/dev/null | LC_ALL=C sed "1s/^$bom//" 2>/dev/null |`) {
 			t.Errorf("one permitted content read must be the hook's governed_head read of \"$git_root/.trellis/rules.toml\"; reads were:\n%s", strings.Join(reads, "\n"))
 		}
 		if marker == "" || !strings.Contains(marker, `"^\(`) {
