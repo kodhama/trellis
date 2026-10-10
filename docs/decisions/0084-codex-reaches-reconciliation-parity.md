@@ -363,7 +363,7 @@ changed.
   nothing to re-present it is exactly the shape `inv-no-orphan-followups` was minted against
   (`decision-0078`) — whose own analysis names this case in `inv-self-improvement`'s violated
   example, *"a PR raises the same open question every time, with no follow-up, and it rots
-  unowned"* (`docs/decisions/0078:49`), while ruling that a deferral is not a glitch but **planned work
+  unowned"* (`docs/decisions/0078:52`), while ruling that a deferral is not a glitch but **planned work
   with no address**. It now has one: **TRL-31** (Medium, Bug, related to TRL-30 and TRL-20) is the
   named consumer that will re-present it.
 

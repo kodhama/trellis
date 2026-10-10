@@ -75,9 +75,9 @@ ratified: 2026-07-04
 >
 > Two obligations the guard cannot see: a new card in `site/invariants.html` needs its *examples*
 > rendered (`cli/sync_test.go` catches those), and the release stamp `plugins/trellis/VERSION`
-> (**unguarded — trellis#245 is still open**; without it every cached consumer keeps the old rule
-> set, `d4a2c7b`). The Codex hook is not a surface: it derives its slug set from the generated
-> `reference/rules.md` since `decision-0083`.
+> (`release-guard` catches that since trellis#245, `8f52297`: a payload change needs a newer
+> `VERSION`, or every cached consumer keeps the old rule set, `d4a2c7b`). The Codex hook is not a
+> surface: it derives its slug set from the generated `reference/rules.md` since `decision-0083`.
 
 ## Entries
 
