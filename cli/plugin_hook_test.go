@@ -101,15 +101,7 @@ func TestStalenessHook(t *testing.T) {
 			// stamp-only fixture models a shape that cannot exist — and one
 			// that, in the wild, is a silently broken install.
 			if strings.Contains(stampRel, "internal") {
-				for name, body := range map[string]string{
-					"trellis.md": payloadFile(t, "trellis.md"),
-					"rules.md":   payloadFile(t, "rules.md"),
-				} {
-					q := filepath.Join(filepath.Dir(p), name)
-					if err := os.WriteFile(q, []byte(body), 0o644); err != nil {
-						t.Fatal(err)
-					}
-				}
+				writeVendoredPayload(t, filepath.Dir(p))
 			}
 		}
 		return runHook(t, proj, pluginRoot)
@@ -668,10 +660,12 @@ func nudgeContext(t *testing.T, out string) string {
 
 // writeVendoredPayload gives a fixture the payload files a real vendored overlay
 // carries. The hook checks they exist before trusting the stamp, so a stamp-only
-// fixture models a shape that cannot exist in the wild.
+// fixture models a shape that cannot exist in the wild. invariants.md is one of
+// them (TRL-76): trellis.md points at it, and the hook reports an overlay whose
+// pointer names nothing.
 func writeVendoredPayload(t *testing.T, internalDir string) {
 	t.Helper()
-	for _, name := range []string{"trellis.md", "rules.md"} {
+	for _, name := range []string{"trellis.md", "rules.md", "invariants.md"} {
 		if err := os.WriteFile(filepath.Join(internalDir, name), []byte(payloadFile(t, name)), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -784,6 +778,101 @@ func payloadPrintfMessages(block string) []string {
 		msgs = append(msgs, sb.String())
 	}
 	return msgs
+}
+
+// overlayReportAssembly returns the shell source of path A in body, from the
+// branch's opening to the emit that sends the invariants report alone (TRL-76).
+// The report has three cells and rides three exits, so it is assembled in
+// variables rather than spelled as nine emit literals, and a guard that reads
+// only emit literals and the payload printfs never sees its remedy text. Both
+// destructive-instruction guards below scan this region as well. It opens at
+// the branch, not at the report, so a string assigned earlier on the path and
+// spliced into the report is read too.
+func overlayReportAssembly(t *testing.T, body string) string {
+	t.Helper()
+	start := strings.Index(body, "\nif [ -d \"$internal\" ]; then\n")
+	if start < 0 {
+		t.Fatal("path A's opening was not found in staleness.sh — the scan is broken")
+	}
+	rest := body[start:]
+	end := strings.Index(rest, `emit "$inv_report"`)
+	if end < 0 {
+		t.Fatal("path A's invariants report has no closing emit — the scan is broken")
+	}
+	return rest[:end]
+}
+
+// overlayReportMessages extracts the quoted text of every line in block
+// (normally overlayReportAssembly's output) that is neither a comment nor an
+// emit, which the emit scan already reads. Each line's quoted spans are joined
+// as payloadPrintfMessages joins them, so the scan does not depend on how a
+// string is assembled: a plain assignment, an append with +=, and a single-
+// quoted segment all come back. Conditions and paths come back too and are
+// inert for verb-scanning.
+func overlayReportMessages(block string) []string {
+	var msgs []string
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "emit ") {
+			continue
+		}
+		var sb strings.Builder
+		for _, span := range quotedSpanRe.FindAllString(trimmed, -1) {
+			sb.WriteString(span[1 : len(span)-1])
+		}
+		if sb.Len() > 0 {
+			msgs = append(msgs, sb.String())
+		}
+	}
+	return msgs
+}
+
+// scannedOverlayReport returns overlayReportMessages for the real script, and
+// fails unless every sentence the report can say is among them. A count would
+// leave slack, since the region holds paths and conditions as well; these are
+// the report's own words, so a region or a pattern that stops matching fails
+// here instead of passing on nothing.
+func scannedOverlayReport(t *testing.T, body string) []string {
+	t.Helper()
+	msgs := overlayReportMessages(overlayReportAssembly(t, body))
+	for _, want := range []string{
+		claudeOverlayReportClaim,
+		claudeReadThePluginCopy,
+		"The plugin's own copy could not stand in for it",
+		claudeOverlayStillGoverns,
+		overlayInvariantsRemedy + " is the likely fix.",
+		pluginReinstallRemedy,
+		"Nothing is wrong with this project",
+		"That is a fault in the plugin's install",
+	} {
+		found := false
+		for _, m := range msgs {
+			if strings.Contains(m, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("path A's invariants report says %q and the scan did not read it — the scan is broken, and a guard that reads nothing passes", want)
+		}
+	}
+	return msgs
+}
+
+// requireAllScanned fails unless every message of one channel is in msgs, the
+// slice a guard is about to scan: a channel that is computed and never appended
+// is counted but not enforced.
+func requireAllScanned(t *testing.T, channel string, part, msgs []string) {
+	t.Helper()
+	scanned := make(map[string]bool, len(msgs))
+	for _, m := range msgs {
+		scanned[m] = true
+	}
+	for _, p := range part {
+		if !scanned[p] {
+			t.Fatalf("a message of %s was computed but never entered the scanned set (msgs) — the channel is not wired into this guard's assertions:\n%s", channel, p)
+		}
+	}
 }
 
 // ungatedDestructiveMessages scans msgs against destructiveVerbs and reports,
@@ -920,19 +1009,7 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 	// slice ungatedDestructiveMessages is about to scan: every payload message
 	// computed above must actually be IN it, or the payload channel is
 	// computed but not wired into what this test asserts on.
-	for _, pm := range payloadMsgs {
-		found := false
-		for _, m := range msgs {
-			if m == pm {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatalf("a payload printf message was computed but never entered the scanned set (msgs) — "+
-				"the payload channel is computed but not wired into this guard's assertions:\n%s", pm)
-		}
-	}
+	requireAllScanned(t, "the payload printf channel", payloadMsgs, msgs)
 	// codex-context.mjs's framing and rules.toml warnings are the Codex
 	// counterpart of the payload="$( ... )" channel above. Scanned the same way,
 	// wired the same way, for the same reason: the safety argument for shipping
@@ -947,19 +1024,13 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		t.Fatalf("found only %d codex payload messages — the scan is broken, and a guard that reads nothing passes", len(codexMsgs))
 	}
 	msgs = append(msgs, codexMsgs...)
-	for _, cm := range codexMsgs {
-		found := false
-		for _, m := range msgs {
-			if m == cm {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatalf("a codex payload message was computed but never entered the scanned set (msgs) — "+
-				"the codex payload channel is computed but not wired into this guard's assertions:\n%s", cm)
-		}
-	}
+	requireAllScanned(t, "the codex payload channel", codexMsgs, msgs)
+	// TRL-76: path A's invariants report, the one agent-facing text in
+	// staleness.sh that is assembled in variables. Its two remedies are what
+	// this guard exists to read.
+	overlayMsgs := scannedOverlayReport(t, string(body))
+	msgs = append(msgs, overlayMsgs...)
+	requireAllScanned(t, "path A's invariants report", overlayMsgs, msgs)
 	violations, gated := ungatedDestructiveMessages(msgs)
 	for _, msg := range violations {
 		t.Errorf("this message instructs a mutation with no confirmation gate — an autonomous "+
@@ -1077,6 +1148,52 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 			}
 		})
 	}
+
+	// The same positive case for path A's invariants report (TRL-76): every
+	// real string there is clean, so without an injected one this guard cannot
+	// tell "nothing to gate" from "the region stopped being scanned". One case
+	// per way the text can be put together, because review got an ungated
+	// instruction past a scan that read plain name="..." assignments only.
+	const injected = "Delete .trellis/internal/ now."
+	const remedy = `inv_fix="Putting a readable invariants.md at that overlay path is the likely fix."`
+	for _, tc := range []struct {
+		name, marker, mutation string
+	}{{
+		name:     "inside an assignment",
+		marker:   remedy,
+		mutation: strings.Replace(remedy, `="`, `="`+injected+" ", 1),
+	}, {
+		name:     "appended with +=",
+		marker:   "\n  inv_also=\"\"\n",
+		mutation: "\n  inv_report+=\" " + injected + "\"\n  inv_also=\"\"\n",
+	}, {
+		name:     "in a single-quoted segment",
+		marker:   remedy,
+		mutation: remedy + "' " + injected + "'",
+	}, {
+		name:     "assigned earlier on the path and spliced in",
+		marker:   "\n  overlay_pointer=\"\"\n",
+		mutation: "\n  overlay_pointer=\"\"\n  inv_early=\"" + injected + "\"\n",
+	}} {
+		t.Run("the overlay invariants report is actually enforced: "+tc.name, func(t *testing.T) {
+			mutated := strings.Replace(string(body), tc.marker, tc.mutation, 1)
+			if mutated == string(body) {
+				t.Fatalf("premise: %q was not found in staleness.sh — the case would prove nothing", tc.marker)
+			}
+			mutatedViolations, _ := ungatedDestructiveMessages(overlayReportMessages(overlayReportAssembly(t, mutated)))
+			found := false
+			for _, v := range mutatedViolations {
+				if strings.Contains(v, injected) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("an ungated instruction (%q) injected into path A's invariants report was not caught — "+
+					"the report is not actually being scanned, only checked for the sentences it has today", injected)
+			}
+		})
+	}
 }
 
 // TestEveryDeletionInstructionIsGated: a Codex P2 on #227, and the SIXTH
@@ -1124,6 +1241,13 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 		t.Fatalf("found only %d codex payload messages — the scan is broken, and a guard that reads nothing passes", len(codexMsgs))
 	}
 	msgs = append(msgs, codexMsgs...)
+	// Path A's invariants report, assembled in variables (TRL-76) — see
+	// overlayReportAssembly. A deletion there needs its own gate like any emit's:
+	// the report is its own paragraph, and the gate in the message it rides does
+	// not speak for it.
+	overlayMsgs := scannedOverlayReport(t, string(body))
+	msgs = append(msgs, overlayMsgs...)
+	requireAllScanned(t, "path A's invariants report", overlayMsgs, msgs)
 	gated := 0
 	for _, msg := range msgs {
 		// Fix round 1 (TRL-30 task 3): case-insensitive, matching the same

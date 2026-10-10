@@ -66,7 +66,7 @@ unreadable `reference/rules-b.toml` was reported as payload incoherence while `r
 project's rows were both perfectly well (`decision-0083` records the general property at
 `:119-120`; the specific fix is in the hook). A CRLF-terminated `rules.md` was reported as
 truncated — **that one is recorded in the hook rather than in either decision**, at
-`plugins/trellis/hooks/staleness.sh:826-829` (*"an exact ASCII comparison fails — reporting
+`plugins/trellis/hooks/staleness.sh:1068-1071` (*"an exact ASCII comparison fails — reporting
 `not-last` and blacking out a COMPLETE, CORRECT payload"*), and pinned by
 `TestTruncatedRulesMdIsRefusedByItsOwnTerminator`/"a healthy CRLF payload governs and is not
 refused". Cited to its actual source, because a corpus review of an earlier draft of this record

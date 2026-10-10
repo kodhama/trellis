@@ -1002,7 +1002,7 @@ if (trellis.split("@rules.md").length - 1 !== 1) {
 // hook delivers that shape on Codex. It performed the import edit above and
 // not this one, so every plugin-native Codex session was handed
 // `.trellis/internal/invariants.md`: a directory this mode is DEFINED by not
-// having. staleness.sh:977-1005 makes the same substitution for Claude, at
+// having. staleness.sh:1206-1234 makes the same substitution for Claude, at
 // the same target; TestBothHostsRepointTheInvariantsPointerIdentically runs
 // both hooks on one project and pins them to each other, because the two
 // implementations share no line to diff (awk there, JS here) and only the
@@ -1417,7 +1417,7 @@ if (pluginVersion.defect !== "") {
 // report the same broken install, and an operator who reads both must not have
 // to reconcile two vocabularies for one fault -- which remedy applies is the
 // whole reason payload_read classifies at all ("missing and unreadable are told
-// apart because their remedies differ", staleness.sh:164).
+// apart because their remedies differ", staleness.sh:178).
 //
 // "YIELDS NOTHING TO READ", not "cannot be read", and that sentence had to move
 // together with the classification rather than after it. #295 corrected the
