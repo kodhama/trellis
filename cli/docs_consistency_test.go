@@ -110,8 +110,12 @@ func structuralSkip(root, path string) bool {
 	// its own worktree, so walking it made a local run fail on the agent's notes
 	// while CI, which never sees them, passed. The match is that exact path, not
 	// the basename: a tracked .context directory anywhere else is still walked.
+	// .context/supervision/ is grove's git-ignored bindings and handoffs (TRL-106),
+	// skipped for the same reason and by the same exact-path rule.
+	clean := filepath.Clean(path)
 	ceScratch := filepath.Join(root, ".context", "compound-engineering")
-	return name == ".git" || name == "node_modules" || filepath.Clean(path) == ceScratch || isSeparateCheckout(root, path)
+	supervision := filepath.Join(root, ".context", "supervision")
+	return name == ".git" || name == "node_modules" || clean == ceScratch || clean == supervision || isSeparateCheckout(root, path)
 }
 
 // isSeparateCheckout reports whether dir holds a checkout of its own rather than
@@ -723,5 +727,61 @@ func TestGuardWalksDoNotReadOtherCheckouts(t *testing.T) {
 	sort.Strings(rels)
 	if got, want := strings.Join(rels, ", "), "README.md"; got != want {
 		t.Errorf("docSurfacesIn read [%s]\nwant               [%s]\nsame rule, same reason (TRL-59)", got, want)
+	}
+}
+
+// TestGuardWalksSkipLocalAgentState pins structuralSkip's two git-ignored agent
+// folders at the root of the walk: Compound Engineering's scratch and grove's
+// supervision bindings and handoffs (TRL-106). A grove handoff says "setup" as a
+// live actor on every resume, so walking it turned a local run red while CI,
+// which never sees the folder, stayed green. The same folder name anywhere else
+// is still walked: the skip is the exact root path.
+func TestGuardWalksSkipLocalAgentState(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const cmd = "/plugin marketplace " + "add "
+	const own = cmd + "kodhama/stewards\n"
+	const local = cmd + "kodhama/kodhama\n"
+
+	write(".git/HEAD", "ref: refs/heads/main\n")
+	write("README.md", own)
+	write(".context/compound-engineering/notes.md", local)
+	write(".context/supervision/worker/handoff.md", local)
+	// Not at the root, so not the agent folder: still this checkout's content.
+	write("plugins/.context/supervision/kept.md", own)
+
+	want := "README.md, plugins/.context/supervision/kept.md"
+	cmds, err := marketplaceCommands(root)
+	if err != nil {
+		t.Fatalf("scanning the fixture for install commands: %v", err)
+	}
+	if got := strings.Join(keysOf(cmds), ", "); got != want {
+		t.Errorf("marketplaceCommands read [%s]\nwant                        [%s]", got, want)
+	}
+
+	surfaces, err := docSurfacesIn(root)
+	if err != nil {
+		t.Fatalf("walking the fixture for doc surfaces: %v", err)
+	}
+	var rels []string
+	for _, p := range surfaces {
+		rel, err := filepath.Rel(root, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rels = append(rels, filepath.ToSlash(rel))
+	}
+	sort.Strings(rels)
+	if got := strings.Join(rels, ", "); got != want {
+		t.Errorf("docSurfacesIn read [%s]\nwant               [%s]", got, want)
 	}
 }
