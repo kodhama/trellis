@@ -32,6 +32,8 @@ date: 2026-09-07
 
 # An authoritative overlay is reported on, never substituted for
 
+> **Dated note, 2026-10-10 — TRL-76 (PR #335):** Three passages no longer hold. The first bullet of "What is not decided here" says Claude's static chain delivers the pointer "and says nothing about it". The paragraph that opens "So this change opens a real host divergence" says "Claude stays silent about a pointer its own delivery carried". The Consequences bullet on `decision-0095` says "the cell is Codex-only as far as the *hook* is concerned". `staleness.sh`'s path A now reports a vendored overlay's dead invariants pointer on Claude and still injects nothing. An unusable copy of the overlay's own is named and classified as on Codex. An overlay with no copy is told where the plugin's usable copy can be read, which is `decision-0093` rule 2's fallback given in words because this path cannot move the pointer; where that copy is unusable too, both files are named. `plugins/trellis/README.md` states what each host reports in each vendored cell; `plugins/trellis/hooks/staleness.sh` carries the behaviour, and `TestClaudeReportsTheOverlaysOwnDeadInvariants` in `cli/invariants_pointer_test.go` pins this record's cell.
+
 ## Context
 
 Five merged changes took the invariants pointer from *"Codex names a file nothing installs"* to
