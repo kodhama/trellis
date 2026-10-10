@@ -322,6 +322,15 @@ const claudeOverlayStillGoverns = "The overlay's rules are intact and govern thi
 // hosts.
 const overlayInvariantsRemedy = "Putting a readable invariants.md at that overlay path"
 
+// pluginReinstallRemedy is the second repair, real only where the overlay has
+// no copy and the plugin's is unusable (decision-0095 point 2), on both hosts.
+const pluginReinstallRemedy = "reinstalling the Trellis plugin so its copy can stand in"
+
+// claudeReadThePluginCopy is the instruction that makes the plugin copy's path
+// a fallback rather than a fact: Claude's words for what Codex does by
+// rewriting the pointer.
+const claudeReadThePluginCopy = "read that one this session"
+
 // claudeOverlayContextFor runs staleness.sh on a vendored project and returns
 // what it said, or "" for silence. It also holds the two properties every row
 // below shares: the hook injected no rules, and it delivered no pointer of its
@@ -346,7 +355,9 @@ func claudeOverlayContextFor(t *testing.T, pluginRoot, project string) string {
 // the lead Codex uses for the same cells, the overlay's own path with its
 // classification, the claim that is true of every classification, the sentence
 // that keeps the report from reading as a governance failure, and the overlay
-// repair. It also refuses a TRELLIS_ marker, because the session is governed.
+// repair. It does not refuse a TRELLIS_ marker: the report also rides
+// TRELLIS_STALENESS_UNKNOWN, so the callers on a current stamp refuse one
+// themselves.
 func assertClaudeOverlayReportBasics(t *testing.T, report, overlayCopy, overlayWhy string) {
 	t.Helper()
 	if !strings.Contains(report, vendoredInvariantsReportLead+overlayCopy+" (it "+overlayWhy+")") {
@@ -496,9 +507,8 @@ func TestClaudeNamesThePluginCopyWhenTheOverlayHasNoInvariants(t *testing.T) {
 			if !strings.Contains(report, wantStandIn) {
 				t.Errorf("a usable plugin copy exists and the report did not say where: Codex's session on this cell ends with a working reference, and Claude's must too (decision-0093:2)\nwant: %s\ngot:  %q", wantStandIn, report)
 			}
-			const wantUse = "read that one this session"
-			if !strings.Contains(report, wantUse) {
-				t.Errorf("the report names the plugin's copy without telling the reader to use it\nwant: %q\ngot:  %q", wantUse, report)
+			if !strings.Contains(report, claudeReadThePluginCopy) {
+				t.Errorf("the report names the plugin's copy without telling the reader to use it\nwant: %q\ngot:  %q", claudeReadThePluginCopy, report)
 			}
 			if strings.Contains(report, "either") || strings.Contains(strings.ToLower(report), "reinstall") {
 				t.Errorf("the plugin's copy is usable, so nothing about it is broken and no reinstall is owed\ngot: %q", report)
@@ -548,12 +558,11 @@ func TestClaudeReportsBothCopiesWhenNeitherInvariantsCanBeRead(t *testing.T) {
 				if !strings.Contains(report, wantPlugin) {
 					t.Errorf("the plugin copy is why no stand-in was available, and which fault it has decides whether reinstalling would help\nwant: %s\ngot:  %q", wantPlugin, report)
 				}
-				if strings.Contains(report, "read that one this session") {
+				if strings.Contains(report, claudeReadThePluginCopy) {
 					t.Errorf("the report sends the reader to a plugin copy the hook has just found unusable (decision-0094:4)\ngot: %q", report)
 				}
-				const wantReinstall = "reinstalling the Trellis plugin so its copy can stand in"
-				if !strings.Contains(report, wantReinstall) {
-					t.Errorf("the report dropped the second repair; both are real on this cell (decision-0095:2)\nwant: %q\ngot:  %q", wantReinstall, report)
+				if !strings.Contains(report, pluginReinstallRemedy) {
+					t.Errorf("the report dropped the second repair; both are real on this cell (decision-0095:2)\nwant: %q\ngot:  %q", pluginReinstallRemedy, report)
 				}
 				for _, why := range invariantsClassifications() {
 					if why == "is missing" || why == tc.classification() || !strings.Contains(report, why) {
@@ -838,9 +847,8 @@ func assertOverlayOwnCopyReport(t *testing.T, pluginRoot, project, overlayCopy s
 	if strings.Contains(strings.ToLower(got.SystemMessage), "reinstall") {
 		t.Errorf("the report offers a reinstall, which cannot repair this cell: the overlay is authoritative and the plugin's copy is ineligible, not merely broken (decision-0096:2)\ngot: %q", got.SystemMessage)
 	}
-	const wantRemedy = "Putting a readable invariants.md at that overlay path"
-	if !strings.Contains(got.SystemMessage, wantRemedy) {
-		t.Errorf("the report dropped the one repair that works on this arm (decision-0096:2)\nwant: %q\ngot: %q", wantRemedy, got.SystemMessage)
+	if !strings.Contains(got.SystemMessage, overlayInvariantsRemedy) {
+		t.Errorf("the report dropped the one repair that works on this arm (decision-0096:2)\nwant: %q\ngot: %q", overlayInvariantsRemedy, got.SystemMessage)
 	}
 	// The POSITIVE half, and it is pinned because review showed it droppable in
 	// silence: deleting this sentence left the whole guard green. The negative
@@ -1280,10 +1288,7 @@ func runUnusablePluginCopyCase(t *testing.T, name string, makeOverlay func(*test
 		// BOTH clauses, because review found the second one droppable in
 		// silence: wantRemedy pinned only the first, and the strip helper
 		// needs no more than "is the likely fix." to exist somewhere.
-		for _, wantRemedy := range []string{
-			"Putting a readable invariants.md at that overlay path",
-			"reinstalling the Trellis plugin so its copy can stand in",
-		} {
+		for _, wantRemedy := range []string{overlayInvariantsRemedy, pluginReinstallRemedy} {
 			if !strings.Contains(got.SystemMessage, wantRemedy) {
 				t.Errorf("the report dropped half its remedy; both repairs are real and the reader needs both (decision-0095:2)\nwant: %q\ngot: %q", wantRemedy, got.SystemMessage)
 			}
