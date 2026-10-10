@@ -335,11 +335,11 @@ trap 'cleanup; exit 143' TERM
 # guarded by cli/install_script_test.go:TestInstallScriptBundleManifestIsCurrent.
 bundle_manifest() {
   cat <<'TRELLIS_BUNDLE_MANIFEST'
-d546d3f4ed276c8e90e7088df136771404454ccc54052ce92d2d5f2408b1a8d1  .claude-plugin/plugin.json
-5f52c08c4d9ba1193bf29a71de67587b9e19883ad4674e10fb9abd07d46e89aa  .codex-plugin/plugin.json
+97340e4ab4a749721811a34ff70a4cc41e12cc988e928144ba16433dec130b73  .claude-plugin/plugin.json
+f9eff69f7e4f1a52271d31aa2d736b57e3fdf4bc689085873d7c4f006c1325d3  .codex-plugin/plugin.json
 48f314c3dcc2b04d89bce408cadbb95ddd572b401e45418eb433fc6b1f2f845e  README.md
-b85c292d28415562c1969f65be506494ca680b601ee64c562d7ef7aafff4bb0a  VERSION
-6c304d0d1172a2548532feb17f49f494b85dcffb500f6274ace80405d77c182b  hooks/codex-context.mjs
+08e28f8503f363471bc01c1cee45ec3ed52297bb08c4544dfd79f6a77d1fa239  VERSION
+460c605f2b80996ca981ec4545b1b786b1e8261ae714904bdbac4c35607faac8  hooks/codex-context.mjs
 33bd291e8cab52f2b6f3d08eff19ca8e685c5357266f1960c31543076612f986  hooks/codex-hooks.json
 a741930673c1fb723ae6cce9421d49579c7eb5bc2dd0385a2b53be8b1d1b27f5  hooks/hooks.json
 d50626f41a51e2629695ae98942b06b7a4a2d1ef95dccd01b5235ca782565e50  hooks/staleness.sh
@@ -972,9 +972,9 @@ elif [ "$scope" = "project" ]; then
   # what makes writing here legitimate where the plugin path must ask. Never
   # overwritten: an existing rules.toml is the project's own and outranks a seed.
   #
-  # This amends decision-0065:26-29, the plugin/install split ("install.sh is
+  # This amends decision-0065:28-31, the plugin/install split ("install.sh is
   # vendoring and never configures ... and continues to never touch .trellis/") —
-  # NOT :18-19's "the setup skill writes exactly one file", which bound it and is
+  # NOT :20-21's "the setup skill writes exactly one file", which bound it and is
   # untouched. That clause was named here, and in three other places, before the
   # boundary was got right. Openly,
   # in decision-0070 D2, not by routing around it. The clause's purpose, that no
