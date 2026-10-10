@@ -2171,6 +2171,192 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		}
 	})
 
+	// TRL-12. The third pairing of static shapes: a vendored overlay beside a
+	// managed block that is not the one importing it. No rendered file is
+	// present, so neither arm above claims it, and before this arm path A
+	// exited on a current stamp in silence. A healthy overlay install carries
+	// a column-0 trellis:begin block too, the one that imports the overlay, so
+	// the arm reads each block and alarms only on one with no @-import line.
+	overlayProj := func(t *testing.T) string {
+		t.Helper()
+		proj := newProj(t, newRulesFile)
+		internal := filepath.Join(proj, ".trellis", "internal")
+		if err := os.MkdirAll(internal, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(internal, "version"), []byte(payloadFile(t, "version")), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		writeVendoredPayload(t, internal)
+		premiseAbsent(t, proj, ".claude/rules/trellis.md", ".trellis/trellis.md", ".trellis/version")
+		return proj
+	}
+	importBlock := payloadFile(t, "block-claude.md")
+	inlineBlock := payloadFile(t, "block-inline.md")
+	if !strings.Contains(importBlock, "\n@.trellis/internal/trellis.md\n") || regexp.MustCompile(`(?m)^[ \t]*@`).MatchString(inlineBlock) {
+		t.Fatal("premise: the shipped import block must carry an @-import line and the shipped inline block none — the overlay arm tells them apart by exactly that")
+	}
+	assertOverlayInlineAlarm := func(t *testing.T, out, overlay, file string) string {
+		t.Helper()
+		if strings.Contains(out, ruleSlug) {
+			t.Fatalf("two static shapes present and the hook injected a third copy; got:\n%s", out)
+		}
+		if strings.TrimSpace(out) == "" {
+			t.Fatalf("an overlay beside a block with no @-import line in %s drew SILENCE: path A absorbed a second static shape", file)
+		}
+		ctx := nudgeContext(t, strings.TrimSpace(out))
+		if !strings.Contains(ctx, "TRELLIS_STATIC_SHAPES_CONFLICT") {
+			t.Errorf("overlay-plus-inline must draw the coexistence alarm; got:\n%s", ctx)
+		}
+		if !strings.Contains(ctx, overlay) || !strings.Contains(ctx, "managed block in "+file+" ") {
+			t.Errorf("the alarm must name BOTH artifacts, the overlay (%s) and the block in %s; got:\n%s", overlay, file, ctx)
+		}
+		// The block is loaded for certain; the overlay only if a block imports
+		// it. The alarm must not flatten that into a factual "twice".
+		if strings.Contains(ctx, "TRELLIS_RULES_LOADED_TWICE") || strings.Contains(ctx, "TWICE right now") {
+			t.Errorf("the alarm asserts loaded-twice as fact — false when no block imports the overlay; got:\n%s", ctx)
+		}
+		for _, want := range []string{"explicit confirmation", "floor-intent-gate", ".trellis/rules.toml"} {
+			if !strings.Contains(ctx, want) {
+				t.Errorf("the remedy must carry %q; got:\n%s", want, ctx)
+			}
+		}
+		return ctx
+	}
+	assertSilent := func(t *testing.T, proj, why string) {
+		t.Helper()
+		if out := runIn(t, proj); out != "" {
+			t.Errorf("%s; got:\n%s", why, out)
+		}
+	}
+
+	t.Run("overlay plus an embedded block in an imported AGENTS.md: the coexistence alarm names both", func(t *testing.T) {
+		proj := overlayProj(t)
+		writeInstr(t, proj, "CLAUDE.md", "@AGENTS.md\n"+importBlock+"\n")
+		writeInstr(t, proj, "AGENTS.md", inlineBlock)
+		ctx := assertOverlayInlineAlarm(t, runIn(t, proj), ".trellis/internal/", "AGENTS.md")
+		// CLAUDE.md holds the healthy import block. Naming it as a block to
+		// delete would send the reader after the one block that is fine.
+		if strings.Contains(ctx, "CLAUDE.md") {
+			t.Errorf("the alarm blames CLAUDE.md, whose only block imports the overlay; got:\n%s", ctx)
+		}
+	})
+
+	t.Run("overlay plus an embedded block in CLAUDE.md itself: the coexistence alarm names both", func(t *testing.T) {
+		// Per block, not per file: this CLAUDE.md does hold @-import lines, in
+		// its other block.
+		proj := overlayProj(t)
+		writeInstr(t, proj, "CLAUDE.md", importBlock+"\n"+inlineBlock)
+		assertOverlayInlineAlarm(t, runIn(t, proj), ".trellis/internal/", "CLAUDE.md")
+	})
+
+	t.Run("overlay plus embedded blocks in BOTH files: every file is named", func(t *testing.T) {
+		proj := overlayProj(t)
+		writeInstr(t, proj, "CLAUDE.md", "@AGENTS.md\n"+importBlock+"\n"+inlineBlock)
+		writeInstr(t, proj, "AGENTS.md", inlineBlock)
+		assertOverlayInlineAlarm(t, runIn(t, proj), ".trellis/internal/", "CLAUDE.md and AGENTS.md")
+	})
+
+	t.Run("an embedded block cut off before its end marker still draws the alarm", func(t *testing.T) {
+		proj := overlayProj(t)
+		cut := strings.TrimSuffix(strings.TrimSpace(inlineBlock), "<!-- trellis:end -->")
+		if cut == strings.TrimSpace(inlineBlock) {
+			t.Fatal("premise: the inline block must end with its trellis:end marker for this fixture to cut it")
+		}
+		writeInstr(t, proj, "CLAUDE.md", importBlock+"\n"+cut)
+		assertOverlayInlineAlarm(t, runIn(t, proj), ".trellis/internal/", "CLAUDE.md")
+	})
+
+	t.Run("legacy flat overlay plus an embedded block: the alarm names the flat overlay", func(t *testing.T) {
+		proj := newProj(t, newRulesFile)
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "trellis.md"), []byte(payloadFile(t, "trellis.md")), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		premiseAbsent(t, proj, ".trellis/internal", ".claude/rules/trellis.md")
+		flatImport := "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\n@.trellis/trellis.md\n<!-- trellis:end -->\n"
+		writeInstr(t, proj, "CLAUDE.md", flatImport+inlineBlock)
+		ctx := assertOverlayInlineAlarm(t, runIn(t, proj), ".trellis/trellis.md", "CLAUDE.md")
+		if strings.Contains(ctx, ".trellis/internal/") {
+			t.Errorf("the remedy names .trellis/internal/, a directory this flat-layout project does not have; got:\n%s", ctx)
+		}
+	})
+
+	// The controls. Each is a healthy or out-of-scope state the arm must leave
+	// exactly as it was.
+	t.Run("a healthy overlay install, import block only, stays silent", func(t *testing.T) {
+		proj := overlayProj(t)
+		writeInstr(t, proj, "CLAUDE.md", importBlock+"\n")
+		got, err := os.ReadFile(filepath.Join(proj, "CLAUDE.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !colZeroBegin.Match(got) {
+			t.Fatal("premise: the fixture must be the @import block at column 0")
+		}
+		assertSilent(t, proj, "a healthy overlay install with a current stamp must stay silent")
+	})
+
+	t.Run("a healthy overlay install with a CRLF or BOM'd import block stays silent", func(t *testing.T) {
+		for name, body := range map[string]string{
+			"CRLF": strings.ReplaceAll(importBlock+"\n", "\n", "\r\n"),
+			"BOM":  "\xef\xbb\xbf" + importBlock + "\n",
+		} {
+			proj := overlayProj(t)
+			writeInstr(t, proj, "CLAUDE.md", body)
+			assertSilent(t, proj, name+": the import block is still the import block, whatever the checkout did to its encoding")
+		}
+	})
+
+	t.Run("a BOM'd embedded block at line 1 beside an overlay still draws the alarm", func(t *testing.T) {
+		proj := overlayProj(t)
+		writeInstr(t, proj, "CLAUDE.md", "\xef\xbb\xbf"+inlineBlock+"\n"+importBlock+"\n")
+		assertOverlayInlineAlarm(t, runIn(t, proj), ".trellis/internal/", "CLAUDE.md")
+	})
+
+	t.Run("an embedded AGENTS.md block Claude never imports stays silent beside an overlay", func(t *testing.T) {
+		// decision-0057: AGENTS.md reaches a Claude session only through the
+		// CLAUDE.md import. Without it this host loaded one shape, not two.
+		proj := overlayProj(t)
+		writeInstr(t, proj, "CLAUDE.md", importBlock+"\n")
+		writeInstr(t, proj, "AGENTS.md", inlineBlock)
+		assertSilent(t, proj, "a block this host never read is not a second static shape for it")
+	})
+
+	t.Run("the codex bootstrap block in an imported AGENTS.md is not an import-less managed block", func(t *testing.T) {
+		proj := overlayProj(t)
+		writeInstr(t, proj, "CLAUDE.md", "@AGENTS.md\n"+importBlock+"\n")
+		writeInstr(t, proj, "AGENTS.md", payloadFile(t, "block-codex.md"))
+		assertSilent(t, proj, "`trellis:codex-bootstrap:begin` is not `trellis:begin`, and that block lists every slug without importing anything")
+	})
+
+	t.Run("hybrid pin: a block with imports AND embedded rules stays silent", func(t *testing.T) {
+		// PIN, not a branch. The arm asks one question of a block, whether it
+		// has an @-import line, because that question has no false alarm on
+		// any import block Trellis ever shipped. A hand-built block that both
+		// imports the overlay and embeds the readout answers yes and is
+		// absorbed, as it was before the arm existed. Changing that is a
+		// decision, not a drive-by.
+		proj := overlayProj(t)
+		hybrid := strings.Replace(inlineBlock, "\n", "\n@.trellis/internal/trellis.md\n@.trellis/rules.toml\n", 1)
+		if !strings.Contains(hybrid, ruleSlug) || !strings.Contains(hybrid, "\n@.trellis/internal/trellis.md\n") {
+			t.Fatal("premise: the hybrid must hold both the import lines and the embedded readout")
+		}
+		writeInstr(t, proj, "CLAUDE.md", hybrid)
+		assertSilent(t, proj, "a hybrid block is outside the arm's one question — current behaviour is silence, pinned here")
+	})
+
+	t.Run("a stale overlay beside a healthy import block keeps its staleness nudge", func(t *testing.T) {
+		proj := overlayProj(t)
+		if err := os.WriteFile(filepath.Join(proj, ".trellis", "internal", "version"), []byte("payload@000000000000\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		writeInstr(t, proj, "CLAUDE.md", importBlock+"\n")
+		ctx := nudgeContext(t, strings.TrimSpace(runIn(t, proj)))
+		if !strings.Contains(ctx, "Trellis overlay may be stale") || strings.Contains(ctx, "TRELLIS_STATIC_SHAPES_CONFLICT") {
+			t.Errorf("the arm must not take the staleness nudge away from an overlay whose only block imports it; got:\n%s", ctx)
+		}
+	})
+
 	// Negative controls — decision-0073 D2's probe is DELIBERATELY narrow, and
 	// each narrowing is pinned so a well-meaning widening shows up as a red
 	// test instead of a silent behaviour change.
