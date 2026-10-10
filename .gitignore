@@ -11,3 +11,6 @@ coverage/
 .idea/
 .vscode/
 .context/compound-engineering/
+# Grove's supervision bindings and handoffs, one folder per session name: local
+# session state that names transcript paths under a real home directory.
+.context/supervision/

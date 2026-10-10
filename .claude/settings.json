@@ -2,7 +2,8 @@
   "enabledPlugins": {
     "trellis@kodhama": true,
     "compound-engineering@compound-engineering-plugin": true,
-    "superpowers@claude-plugins-official": false
+    "superpowers@claude-plugins-official": false,
+    "grove@grove": true
   },
   "extraKnownMarketplaces": {
     "kodhama": {
@@ -15,6 +16,12 @@
       "source": {
         "source": "github",
         "repo": "EveryInc/compound-engineering-plugin"
+      }
+    },
+    "grove": {
+      "source": {
+        "source": "github",
+        "repo": "kodhama/grove"
       }
     }
   }

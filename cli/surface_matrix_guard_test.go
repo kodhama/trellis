@@ -64,18 +64,22 @@ const repoRoot = ".."
 //     tree is its sibling, which is why isSeparateCheckout Lstats dir/.git
 //     instead of matching the name.
 //
-// node_modules comes along with structuralSkip and is the one part not forced by
-// the argument above, so it is stated rather than smuggled: no node_modules
-// exists in this tree and .gitignore does not mention one, and a dependency's
-// file named surfaces.json would not be Trellis carrying surface rows. The
-// alternative — a bespoke structural rule here — is the shape TRL-59 was: two
-// guard walks disagreeing about what counts as this checkout.
+// node_modules and the two git-ignored agent folders at the walk's root —
+// Compound Engineering's .context/compound-engineering/ and grove's
+// .context/supervision/ (TRL-106) — come along with structuralSkip and are the
+// parts not forced by the argument above, so they are stated rather than
+// smuggled: .gitignore keeps all three out of this checkout's content, and a
+// dependency's or an agent's file named surfaces.json would not be Trellis
+// carrying surface rows. The alternative — a bespoke structural rule here — is
+// the shape TRL-59 was: two guard walks disagreeing about what counts as this
+// checkout.
 //
 // No marking on decision-0066 is owed, and the ground is NOT that its letter
 // stretches to cover this. It is that nothing in 0066's substance moves: §1's
 // retirement stands, part 2 stands, and part 1 still fails on any surfaces.json
-// in this repository's content, outside the one residual hole named above — a
-// hole the one-name version did not have, and the honest price of the fix. What
+// in this repository's content, outside the one residual hole named above and
+// the three ignored folders just listed, which only a force-added file reaches —
+// holes the one-name version did not have, and the honest price of the fix. What
 // changed beyond that is one clause of one AC's implementation, whose cost of
 // reversal is a one-line edit. decision-0081 argues supersession authority
 // should scale with exactly that cost, on a test of "consequential AND
