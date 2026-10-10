@@ -83,9 +83,10 @@ const repoRoot = ".."
 // changed beyond that is one clause of one AC's implementation, whose cost of
 // reversal is a one-line edit. decision-0081 argues supersession authority
 // should scale with exactly that cost, on a test of "consequential AND
-// irreversible" — cited here as reasoning, not as authority, because 0081 is a
-// proposal on record rather than an applied rule ("Proposed — not taken", and
-// its catalog edit still owed). The ground above does not rest on it.
+// irreversible" — cited here as reasoning, not as authority, because 0081 is an
+// accepted argument rather than an applied rule (its dated note says so, and
+// core/catalog/signature-catalog-v1.md carries no cost-of-reversal clause).
+// The ground above does not rest on it.
 func TestNoSurfaceMatrixFile(t *testing.T) {
 	scan, err := scanForSurfaceMatrixFiles(repoRoot)
 	if err != nil {
