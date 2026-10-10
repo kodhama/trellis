@@ -103,7 +103,7 @@ var contractOutcomeTable = []contractCheckOutcomes{
 	{3, "db2436267ba7fc2e", []contractRuleOutcome{
 		{"3", outcomeImplemented, "an `id` declared by more than one file is one finding naming every file"},
 	}},
-	{4, "b528af1d8edcda16", []contractRuleOutcome{
+	{4, "7415d09a5b71ade2", []contractRuleOutcome{
 		{"4a", outcomeAccepts, "an existing artifact id in the corpus"},
 		{"4b", outcomeAccepts, "`brief-§` followed by a non-empty section token, on shape only"},
 		{"4c", outcomeAccepts, "`<repo>/<id>` whose repo is in the registry list read from the rubric; not verified against the other repository"},
@@ -149,7 +149,7 @@ var contractOutcomeTable = []contractCheckOutcomes{
 	{11, "c8ffd19e518966cc", []contractRuleOutcome{
 		{"11", outcomeImplemented, "no profile row sets `C2: none` on a slug whose catalog entry has `intent_locus: true`"},
 	}},
-	{12, "d8d6290004c415ab", []contractRuleOutcome{
+	{12, "b4dfd0b12a1c5739", []contractRuleOutcome{
 		{"12", outcomeRetired, "the rubric retired the version cross-check and keeps only its number"},
 	}},
 }

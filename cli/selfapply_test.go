@@ -207,15 +207,20 @@ func TestSharedProjectInstructionEntrypoints(t *testing.T) {
 	if _, err := os.Stat(filepath.Join("..", "research")); !os.IsNotExist(err) {
 		t.Error("research/ exists at the repository root — decision-0099 moved the notes to docs/research/")
 	}
-	// decision-0076: the retirement is undone by one line of committed config.
+	// decision-0076: one line of committed config could undo the retirement.
 	// `.claude/settings.json` enables plugins on clone (f9d0347 committed grove's
-	// entry precisely "so a fresh clone has a fleet"), and the kodhama marketplace
-	// still publishes grove — so leaving the entry would reinstall the plugin, and
-	// restore the grove:<role> subagents, on the next fresh clone. Deleting .grove/
-	// and the AGENTS.md block without this would have retired grove everywhere
-	// except the file that actually installs it.
+	// entry precisely "so a fresh clone has a fleet"), and when decision-0076 was
+	// written the kodhama marketplace still published grove — so leaving the entry
+	// would have reinstalled the plugin, and restored the grove:<role> subagents,
+	// on the next fresh clone. Deleting .grove/ and the AGENTS.md block without
+	// this would have retired grove everywhere except the file that actually
+	// installed it. That marketplace, kodhama/stewards, has listed only trellis
+	// since its 51941e4, so today the entry would name a plugin the marketplace
+	// does not list. The assertion stays: grove@kodhama is still retired
+	// (AGENTS.md's grove bullet), and the entry is what would bring it back if
+	// the marketplace listed it again.
 	if strings.Contains(readRepoFile(".claude/settings.json"), "grove@kodhama") {
-		t.Error(".claude/settings.json enables grove@kodhama — decision-0076 retired the plugin, and this entry reinstalls it on a fresh clone")
+		t.Error(".claude/settings.json enables grove@kodhama — decision-0076 retired the plugin, and it stays retired (AGENTS.md's grove bullet)")
 	}
 	for name, expectation := range boundedReferences {
 		content := readRepoFile(name)

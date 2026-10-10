@@ -173,7 +173,7 @@ and CI (`decision-0075`).
   plugin that `decision-0076` retired stays retired, with its `grove:<role>` subagent types,
   the commands it shipped and `.grove/`; `grove@grove` ships skills and no subagent types. A
   test fails if `grove@kodhama` returns to `.claude/settings.json`. Citations to
-  **grove-the-repo** (`grove/adr-00NN`) name the original grove repository, archived as
+  **grove-the-repo** (`grove/adr-00NN`, `grove#NN`) name the original grove repository, archived as
   `kodhama/grove-v0`, not the plugin's `kodhama/grove`. They are a different thing and remain
   live and load-bearing — `decision-0045` is superseded in part by `grove/adr-0010`. Do not
   "clean up" those.

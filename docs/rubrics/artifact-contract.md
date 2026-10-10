@@ -61,7 +61,9 @@ scope: trellis-meta
    - a qualified `<repo>/<id>` cross-repo reference whose `<repo>` is a member of the recognized
      registry (kodhama, trellis, grove, wisp, design-system, homebrew-tap, math-quest)
      (`decision-0044`; shape + registry-membership only — not verified against the referent's
-     actual home corpus, same treatment as `brief-§…`)
+     actual home corpus, same treatment as `brief-§…`). A `grove/` reference names the original
+     grove repository, archived as `kodhama/grove-v0`, where its `decisions/adr-*` and `charters/`
+     are; the recreated `kodhama/grove` is the supervision plugin's repository and holds neither
    - a **retired id** in the invariant-set's Identifiers registry, mapping to a successor
    - a **retired artifact id** in `decision-0079`'s retired-artifacts registry
      (`spec-0001`–`spec-0008`)
@@ -154,11 +156,11 @@ scope: trellis-meta
 
 ## Check — version cross-check (retired)
 
-12. *(Retired 2026-07-12, `grove/adr-0010` — the version cross-check is methodology semantics,
-    re-homed to the operating model of the day. That model (grove-the-plugin) retired with
-    `decision-0076`, so the check has no owner here and is not applied. Number retained so
-    external references to "rubric check 12" resolve to this pointer rather than shifting; the
-    typed checks 8–11 above are unaffected.)*
+12. *(Retired 2026-07-12, `grove/adr-0010`, which is in the archived `kodhama/grove-v0` — the
+    version cross-check is methodology semantics, re-homed to the operating model of the day. That
+    model (grove-the-plugin) retired with `decision-0076`, so the check has no owner here and is
+    not applied. Number retained so external references to "rubric check 12" resolve to this
+    pointer rather than shifting; the typed checks 8–11 above are unaffected.)*
 
 ## Honesty clause (math-quest)
 

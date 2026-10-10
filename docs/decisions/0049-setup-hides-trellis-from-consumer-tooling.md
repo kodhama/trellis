@@ -23,6 +23,8 @@ superseded_in_part_by: [decision-0065, decision-0072]  # 2026-08-02 decision-007
 > from consumer tooling. With only `rules.toml` remaining, a project lints its
 > own config.
 
+> **Dated note, 2026-10-10 — TRL-111 (PR #332):** The Provenance block's "kodhama/grove#66" no longer leads to grove's `adr-0014` pull request: `kodhama/grove` was recreated on 2026-10-01 with its own numbering, and the pull request is `kodhama/grove-v0#66`, in the archived original repository. `AGENTS.md`'s grove bullet states which repository a citation of grove-the-repo names.
+
 ## Context
 
 `/trellis:setup` writes the `.trellis/` overlay into the consumer's repo. That overlay is
