@@ -169,8 +169,9 @@ and CI (`decision-0075`).
   `.claude/settings.json` enables `grove@grove` from the `kodhama/grove` marketplace, whose
   `grove:project-lead` and `grove:story-worker` skills run supervised work here; their bindings
   and handoffs go to the gitignored `.context/supervision/`. The `grove@kodhama` plugin that
-  `decision-0076` retired stays retired, with its `grove:<role>` subagents, the commands it
-  shipped and `.grove/`, and a test fails if `grove@kodhama` returns to `.claude/settings.json`. Citations to **grove-the-repo**
+  `decision-0076` retired stays retired, with its `grove:<role>` subagent types, the commands it
+  shipped and `.grove/`; `grove@grove` ships skills and no subagent types. A test fails if
+  `grove@kodhama` returns to `.claude/settings.json`. Citations to **grove-the-repo**
   (`grove/adr-00NN`) are a different thing and remain live and load-bearing — `decision-0045`
   is superseded in part by `grove/adr-0010`. Do not "clean up" those.
 

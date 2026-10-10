@@ -17,7 +17,7 @@ date: 2026-08-27
 
 # 0076 — Grove is retired; its citations are not
 
-> **Dated note, 2026-10-09 — TRL-106 (PR #324):** Point 1's "Grove-the-plugin is retired as this repo's operating model" no longer holds for the plugin's name: `.claude/settings.json` declares `grove@grove` from the `kodhama/grove` marketplace again, the supervision plugin whose `grove:project-lead` and `grove:story-worker` skills run work in this repository. The `grove@kodhama` plugin this record retired stays retired, with its `grove:<role>` subagents, the commands it shipped and `.grove/`, and `TestSharedProjectInstructionEntrypoints` in `cli/selfapply_test.go` still fails if `grove@kodhama` returns to `.claude/settings.json`. `AGENTS.md`'s grove bullet states the current behaviour.
+> **Dated note, 2026-10-09 — TRL-106 (PR #324):** Point 1's "Grove-the-plugin is retired as this repo's operating model" no longer holds for every plugin named grove: `.claude/settings.json` declares `grove@grove` from the `kodhama/grove` marketplace, a different plugin of that name, whose `grove:project-lead` and `grove:story-worker` skills supervise work in this repository and which ships no subagent types. Point 1 still holds for `grove@kodhama`, the plugin this record retired, with its `grove:<role>` subagent types, the commands it shipped and `.grove/`, and `TestSharedProjectInstructionEntrypoints` in `cli/selfapply_test.go` still fails if `grove@kodhama` returns to `.claude/settings.json`. `AGENTS.md`'s grove bullet states the current behaviour.
 
 ## Context
 
