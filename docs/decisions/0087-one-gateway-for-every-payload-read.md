@@ -19,7 +19,7 @@ date: 2026-09-03
 > first; nothing else in this record moved.
 >
 > **`decision-0078` recorded this same mechanism and armed a trigger on it**
-> (`docs/decisions/0078-no-orphan-followups.md:149-158`): *"nothing catches two branches claiming one
+> (`docs/decisions/0078-no-orphan-followups.md:151-160`): *"nothing catches two branches claiming one
 > id… if it recurs a third time, that is the trigger to file it."* The two it counted were
 > `0077` and trellis#252's `0076`. **This is the third**, so the trigger has fired and the
 > obligation is discharged rather than noted: filed as

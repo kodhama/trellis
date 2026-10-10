@@ -99,8 +99,8 @@ ratified: 2026-07-04
 
 ## Profile
 
-*All assessable genes are active and honored natively — unsurprising for the reference organism
-(see the discount above; `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`). Each
+*All assessable genes are active, and all but two are honored natively — unsurprising for the reference organism
+(see the discount above; `inv-reference-relationship` collapsed into `floor-transparency`, `decision-0021`). The two are the `inferred` rows, `inv-deliberate-succession` and `inv-no-orphan-followups`: neither is honored natively, for the reasons their rows and the Assessment notes give. **Corrected (TRL-83, 2026-10-10):** this line said every gene was honored natively, which stopped being true when `decision-0074`'s change added the first of those rows (`326ed16`) and `decision-0078`'s the second (`d0e3949`). Each
 `evidence` points at a real artifact in this repo.*
 
 | slug | active | C1 | C2 | basis | confidence | evidence |
