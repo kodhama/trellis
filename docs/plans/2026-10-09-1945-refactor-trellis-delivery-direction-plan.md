@@ -46,8 +46,8 @@ The trigger in the Ideas entry "Simplify Trellis delivery" fired when ogham's pl
 - **Tools split by payload type.** Rule-type tools (Trellis, ogham) are vendored per repo by their own CLI. Skill-type tools (compound-engineering, grove, impeccable's skill) are installed once per machine at user scope and once in the cloud Default environment, and each repo also declares them in its committed `.claude/settings.json` so the repo is self-sufficient in its tooling. The declaration alone installs nothing in cloud, so it supplements the machine and cloud installs and does not replace them. This plan covers only Trellis's side of that split. (session-settled: user-approved — chosen over a family "stack bootstrap" product that runs every tool's installer: a cloud session never installs repo-declared plugins, and committed ids rot unnoticed, as design-system's `main` still enables `grove@kodhama`, which the kodhama marketplace no longer lists. The per-repo declaration is user-directed, 2026-10-10, relayed by majordomo: "I think the plugin should be declared in the repo, so the repo is self-sufficient in its tooling.")
 - **The family install convention lives as a doc in the kodhama repo,** and Trellis conforms to it. (session-settled: user-directed — chosen over a Kodhama Linear doc and over stating it in this plan.)
 - **One migration round, with named exemptions.** (session-settled: user-approved — chosen over migrating each repo when it is next touched, which would keep two delivery paths alive for an open-ended time.) Governs R14, R15, R16.
-- **`check` guards integrity, not freshness.** Failing CI on every new release would break each adopted repo's main branch on every release; there were 26 VERSION bumps between 2026-07-24 and 2026-10-09. (session-settled: user-approved — confirmed with the scoping synthesis.) Governs R12, R13, R21.
-- **`governed = false` remains the one recorded decline.** Without a record, a nudge or another tool's bootstrap cannot tell a declined repo from one never asked. (session-settled: user-approved — confirmed with the scoping synthesis.) Governs R3.
+- **`check` guards integrity, not freshness.** Failing CI on every new release would break each adopted repo's main branch on every release; there were 26 VERSION bumps between 2026-07-24 and 2026-10-09. (session-settled: user-approved — confirmed with the scoping synthesis.) Governs R12, R13.
+- **`governed = false` remains the one recorded decline.** Without a record, a nudge or another tool's bootstrap cannot tell a declined repo from one never asked. A `"trellis@kodhama": false` plugin entry is not a decline: no shipped code reads it, and it goes when the plugin does. (session-settled: user-directed, 2026-10-10 — chosen over counting both `governed = false` and a `false` plugin entry, as ogham D16 did.) Governs R3, R6, R14.
 - **`remove` leaves a decline behind.** A repo that removed Trellis said no, and decision-0077 holds that silence is not adoption. Without the record, the next tool that calls `install` would re-adopt the repo. ogham asked for this ("never re-seeds over a removal"). Governs R6.
 - **The CLI is the only code that knows Trellis's delivery states.** Every other caller asks the CLI and does not enumerate states itself, which closes the root cause decision-0073 named. Governs R3, R18.
 - **The invocation names the GitHub repo, not an npm package.** The npm name `trellis` belongs to an unrelated publisher (turtle.tech, an "Agentic State Engine"), and `@kodhama/trellis` does not exist; checked 2026-10-09. The `github:` form is the one ogham uses. Governs R1.
@@ -56,12 +56,12 @@ The trigger in the Ideas entry "Simplify Trellis delivery" fired when ogham's pl
 
 **The CLI and adoption**
 
-- R1. One CLI, invoked as `npx github:kodhama/trellis#v<version> <verb>`, provides `install`, `update`, `check` and `remove`. Each verb runs with no prompt and ends with one stdout line and an exit code that tell apart installed, already present, declined, migrated and error.
+- R1. One CLI, invoked as `npx github:kodhama/trellis#v<version> <verb>`, provides `install`, `update`, `check` and `remove`. Each verb runs with no prompt and ends with one stdout line and an exit code that state its outcome: for `install`, installed, already present, declined or migrated; for `check`, pass or fail; for `update` and `remove`, done; for any verb, error.
 - R2. In a repo with no Trellis state, `install` writes the rules into committed files and records the installed version in a lock. It also says what it adopted. Running `install` is the adoption act; decision-0070 D2 already holds that "running an installer inside a repository is an unambiguous adoption act".
-- R3. `install` changes nothing in a repo that already carries any Trellis state or a recorded decline, and it reports which one it found. The recorded declines are `governed = false` in `.trellis/rules.toml` and `"trellis@kodhama": false` in `enabledPlugins`.
+- R3. `install` changes nothing in a repo that already carries any Trellis state or a recorded decline, and it reports which one it found. The one recorded decline is `governed = false` in `.trellis/rules.toml`.
 - R4. `install` does not refuse because other files in the working tree are untracked or uncommitted.
 - R5. `update` re-renders the rules from the requested version, keeps the repo's opt-outs, and leaves the change as a diff for review.
-- R6. `remove` deletes every file and section Trellis wrote and records a decline, so no later `install` call re-adopts the repo silently.
+- R6. `remove` deletes every file and section Trellis wrote except `.trellis/rules.toml`, which it leaves holding `governed = false`, so no later `install` call re-adopts the repo silently.
 - R7. The rendered rules leave out every rule the repo switched off, under the opt-out semantics of `docs/decisions/2026-09-15-rule-rows-only-switch-rules-off.md`. A change to the opt-outs takes effect at the next `update`.
 
 **What a session sees**
@@ -75,20 +75,19 @@ The trigger in the Ideas entry "Simplify Trellis delivery" fired when ogham's pl
 
 - R12. `check` runs offline. It fails when the committed Trellis files differ from what the lock records as written, as a hand edit or a partial write would cause, and when the opt-outs in `.trellis/rules.toml` differ from the opt-outs the lock records as rendered, naming the rows. The existence of a newer release never fails it.
 - R13. In this repo, the committed Trellis files match what HEAD's own payload renders, and CI fails when they do not. This closes TRL-5.
-- R21. Release drift stays visible without failing CI: each release reaches every adopted repo as an update PR opened by the update routine. That PR replaces the session-start staleness nudge as the place where drift is made visible (floor-transparency).
 
 **Migration and retirement**
 
-- R14. An explicit migration mode, separate from plain `install`, converts a repo in any of decision-0073's states S0–S6 to the vendored form. It keeps the opt-out rows and removes the old overlay, inline block, rendered file or bundle, as well as the `trellis@kodhama` plugin entry.
+- R14. An explicit migration mode, separate from plain `install`, converts a repo in any of decision-0073's states S0–S6 to the vendored form. It keeps the opt-out rows and removes the old overlay, inline block, rendered file or bundle, as well as the `trellis@kodhama` plugin entry. A repo whose entry is `"trellis@kodhama": false` keeps its no: migration writes `governed = false` and strips the entry.
 - R15. One round of PRs migrates every live consumer in the inventory below. wisp and review-kit are named exemptions: TRL-104's resume brief records that both are being retired, and they keep their current state until they go. Each migration PR also wires `check` into the repo's CI where the repo has CI, and rewrites the `rules.toml` header comment that says rows govern rule activation live.
-- R16. After the round, and once the update routine (R21) and the nudge line exist, the plugin ships one last release and then retires. That last release injects nothing in a repo that carries the Trellis lock; anywhere else it says the plugin is retired and gives the CLI command. Retiring it removes the marketplace entry, `staleness.sh`, `codex-context.mjs`, `install.sh` and their tests. A decision record written by the build replaces decision-0073's closed set.
+- R16. After the round, and only once the nudge line (KOD-6) and the update routine (KOD-7) exist (see Dependencies), the plugin ships one last release and then retires. That last release injects nothing in a repo that carries the Trellis lock; anywhere else it says the plugin is retired and gives the CLI command. Retiring it removes `staleness.sh`, `codex-context.mjs`, `install.sh` and their tests from this repo, and the `trellis` entry from the kodhama marketplace in kodhama/stewards, which is a stewards change. A decision record written by the build replaces decision-0073's closed set.
 - R17. A consumer outside the inventory that still runs the plugin keeps working until the plugin retires. A migrated repo does not load the rules twice on a machine whose install runs R16's last release; on a machine with an older install, R19's uninstall is what prevents it.
 - R19. The round also ends machine-level delivery on each machine the inventory covers: it uninstalls `trellis@kodhama` at user scope from Claude Code and from Codex, and removes the Trellis lines from cloud environment setup scripts. Until then, a user-scope install keeps injecting rules and advice into migrated repos.
 
 **Callers**
 
-- R18. ogham's `init` and any other tool adopt Trellis only by calling `install` pinned to a version tag, and they read its outcome from R1's line and exit code.
-- R20. Every Trellis release creates the tag `v<version>` on its merge commit on `main`, and CI fails a release whose tag is missing. `v*` tags cannot be created, moved or deleted outside that path, so a pin always names reviewed, merged code.
+- R18. Trellis's supported way for another tool, such as ogham's `init`, to adopt it is calling `install` pinned to a version tag and reading the outcome from R1's line and exit code. Trellis makes no promise about any other path.
+- R20. Every Trellis release creates the tag `v<version>` on its merge commit on `main`, and CI fails a release whose tag is missing. `v*` tags cannot be created, moved or deleted outside that path, so a pin always names reviewed, merged code. The new tags never reuse a name from `v0.1.0`–`v0.2.30`, which already exist for the retired v0 CLI (`README.md:285`); those old tags are not a supported pin.
 
 Consumer inventory for R15, found by scanning `~/hq` and `~/projects` on 2026-10-09:
 
@@ -124,8 +123,8 @@ This plan covers Trellis's own delivery. The breakdown below is the current unde
 
 - **Kodhama family install convention** (a doc in the kodhama repo; majordomo routes it): rule-type tools vendor per repo through their CLI, and skill-type tools install per machine and in the cloud Default environment and are declared in each repo's committed settings. *Shares* the CLI shape with this plan; this plan conforms to it.
   - **Machine and cloud setup for skill-type tools** (compound-engineering, grove, impeccable's skill). *Can proceed independently of* this plan.
-  - **The nudge**: one line in the maintainer's global agent instructions that offers adoption in a repo without Trellis or ogham, asked through the question dialog and never acted on headless. *Depends on* R1 and R3. *Enables* R16: it replaces the plugin's in-session adoption offer, so the plugin does not retire before it exists.
-  - **An update routine** that runs `update` across adopted repos and opens one PR per repo. *Depends on* R1 and R5. *Enables* R16 and R21.
+  - **The nudge** (KOD-6): one line in the maintainer's global agent instructions that offers adoption in a repo without Trellis or ogham, asked through the question dialog and never acted on headless. *Depends on* R1 and R3. *Enables* R16: it replaces the plugin's in-session adoption offer, so the plugin does not retire before it exists.
+  - **An update routine** (KOD-7) that runs `update` across adopted repos and opens one PR per repo. *Depends on* R1 and R5. *Enables* R16.
 - **ogham U8** (ogham D19, replacing KTD6's own probe): *depends on* this plan's CLI being tagged.
 - **TRL-5** (this repo does not dogfood HEAD): closed by R13.
 - **Idea 5, "One delivery path"** (listed in TRL-104's resume brief; `docs/ideation/2026-09-14-repo-simplification-ideation.html`): this plan takes its place. TRL-104's other ideas are untouched. It keeps that idea's migration round and its constraint that adoption stays explicit, and it replaces "plugin-native only" with vendored files.
@@ -141,7 +140,8 @@ This plan covers Trellis's own delivery. The breakdown below is the current unde
 
 - **Assumption, measured once:** a committed `.claude/rules/*.md` file loads on turn one in a claude.ai/code session (`README.md:71-72`). R8 rests on it.
 - **Assumption, not measured:** Codex and Droid follow rules inlined in `AGENTS.md` about as well as Claude follows its rules file.
-- **A decision record is due with the build, not with this plan.** Retiring decision-0073's closed set, the plugin path of decision-0065 and decision-0071's project-scope plugin declaration meets the record test, because a wrong call could silently stop rules reaching sessions.
+- **Release drift stays visible only through the update routine.** Once the hook retires, nothing in a session reports that a repo is behind, and `check` never fails on a newer release. The routine's per-repo update PR is where drift becomes visible (floor-transparency), so R16 waits on it. The nudge line is tracked as KOD-6 and the update routine as KOD-7, both in the Kodhama team.
+- **A decision record is due with the build, not with this plan.** Retiring the delivery machinery meets the record test, because a wrong call could silently stop rules reaching sessions. Records the build must retire or note: decision-0073 (closed set), 0065 (plugin path), 0071 (project-scope plugin declaration), 0083 (hook-side reconciliation, already partly retired), 0068 (install path through `.claude/rules/`), 0070 D2 and D3 (installer and bundle as adoption acts), 0039 and 0043 (session-start staleness surface and payload stamp). Two `AGENTS.md` rules also become untrue and need rewriting in the same build: the invariants being "delivered live by the Trellis plugin at session start", and "a payload change is a release" with its `plugins/trellis/VERSION` bump.
 
 ### Outstanding Questions
 
@@ -154,6 +154,9 @@ This plan covers Trellis's own delivery. The breakdown below is the current unde
 - How to measure Codex adherence to the inlined section before claiming parity.
 
 ### Sources / Research
+
+Line numbers and file sizes cite this repo at `c4a8e99`, the branch base.
+
 
 - `docs/decisions/0073-the-delivery-shapes-are-a-closed-set.md`: the S0–S6 table (lines 108-130) and the "private, partial enumeration" diagnosis (lines 17-25).
 - `docs/decisions/0070-adoption-is-the-consent-act-not-installation.md` D1 and D2 (running an installer in the repo is the adoption act); `0071` (this repo self-applies through the released plugin); `0077` (silence is not an adoption act).
