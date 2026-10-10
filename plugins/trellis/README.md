@@ -42,10 +42,15 @@ unreadable — nothing is substituted at all: that file is the project's, at the
 chose, so the pointer stays on it and the **Codex** session is told which file is unusable and how,
 with the one repair that works on that branch (`decision-0096`). The plugin's copy is not offered
 there, because it may not stand in whatever state it is in, and reinstalling would not move the
-pointer. **On Claude neither report has a counterpart** — `staleness.sh` exits on any project with
-a `.trellis/internal/`, long before either check, while the static import chain still carries the
-pointer into the session. A Claude session in either cell is not told, and closing that gap is
-tracked separately.
+pointer. **On Claude the hook reports on the same cells and moves nothing.** The static import
+chain has carried the pointer into the session before any hook runs, so `staleness.sh` cannot
+repoint it; on a project with a `.trellis/internal/` it injects nothing and says what it found.
+Where the overlay's **own** copy is unusable — empty, unreadable, or not a file — the Claude session
+is told which file and how, with the same one repair. Where the overlay has **no** copy, the session
+is told that and where the plugin's usable copy can be read this session, which is `decision-0093`'s
+fallback given in words; where that copy is unusable too, both files are named with their faults.
+The report stands alone on a current overlay, and follows the staleness message on a stale one. The
+Claude hook reports only where the overlay's own text carries the pointer.
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
 see below. Trellis requires no

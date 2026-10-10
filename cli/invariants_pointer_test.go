@@ -120,10 +120,11 @@ func claudeContextFor(t *testing.T, pluginRoot, project string) string {
 // trimmed, WITHOUT requiring that it parse as a delivered context.
 //
 // Split out for the vendored fixtures, where staleness.sh legitimately emits
-// NOTHING -- path A opens at `if [ -d "$internal" ]` (staleness.sh:477) and
-// every route out of it exits, unconditionally at :524, long before the repoint
-// at :977. An earlier version of this comment cited :559, which is a comment
-// inside path C; review caught it. nudgeContext fails on
+// NOTHING on a healthy overlay whose stamp is current -- path A opens at
+// `if [ -d "$internal" ]` (staleness.sh:585) and every route out of it exits,
+// the last at :750, long before the repoint at :1210. An earlier
+// version of this comment cited :559, which is a comment inside path C; review
+// caught it. nudgeContext fails on
 // that empty string, which is right for every caller that expects a delivery
 // and wrong for a caller asserting the absence of one.
 func claudeStdoutFor(t *testing.T, pluginRoot, project string) string {
@@ -290,6 +291,426 @@ func TestCodexReportsTheOverlaysOwnDeadInvariantsWithoutSubstituting(t *testing.
 			}
 		})
 	}
+}
+
+// TRL-76. The four tests below are the Claude side of the vendored table, and
+// they exist because the claim that kept this side unguarded was false:
+// decision-0095's point 6 said Claude "never delivers an invariants pointer into
+// a vendored project and has nothing to report about". The HOOK delivers none.
+// The static chain does: reference/block-claude.md imports
+// .trellis/internal/trellis.md, and that file carries the pointer. So a Claude
+// session in a vendored project was handed an address nothing had checked, and
+// staleness.sh's path A exited without reading it.
+//
+// What the hook cannot do is what Codex does on the missing cell. Codex
+// assembles the vendored context itself and rewrites the token; Claude's rules
+// arrive before any hook runs, so path A injects nothing and moves nothing. The
+// three reports below are that difference stated: the cells match Codex's, and
+// decision-0093 rule 2's fallback reaches the reader as a sentence naming the
+// plugin's copy rather than as a rewritten pointer.
+
+// claudeOverlayReportClaim is where the Claude report says the pointer is. It
+// names the overlay's rules rather than "the context just injected", because on
+// this path the hook injected nothing.
+const claudeOverlayReportClaim = "so the invariants pointer in the overlay's rules names a file that yields nothing to read"
+
+// claudeOverlayStillGoverns is decision-0093 rule 1 as the reader meets it: a
+// consulted reference that is dead is not a governance failure.
+const claudeOverlayStillGoverns = "The overlay's rules are intact and govern this session normally"
+
+// overlayInvariantsRemedy is the one repair every vendored cell shares, on both
+// hosts.
+const overlayInvariantsRemedy = "Putting a readable invariants.md at that overlay path"
+
+// claudeOverlayContextFor runs staleness.sh on a vendored project and returns
+// what it said, or "" for silence. It also holds the two properties every row
+// below shares: the hook injected no rules, and it delivered no pointer of its
+// own.
+func claudeOverlayContextFor(t *testing.T, pluginRoot, project string) string {
+	t.Helper()
+	out := claudeStdoutFor(t, pluginRoot, project)
+	if out == "" {
+		return ""
+	}
+	ctx := nudgeContext(t, out)
+	if strings.Contains(ctx, rulesLoadedSentinel) {
+		t.Errorf("path A injects nothing: the host already loaded the overlay's rules, so a second copy here puts them in context twice\ngot: %q", ctx)
+	}
+	if strings.Contains(ctx, "read its entry in `") {
+		t.Errorf("path A delivered an invariants pointer of its own; it reports on the overlay's and moves nothing\ngot: %q", ctx)
+	}
+	return ctx
+}
+
+// assertClaudeOverlayReportBasics checks what all three Claude reports share:
+// the lead Codex uses for the same cells, the overlay's own path with its
+// classification, the claim that is true of every classification, the sentence
+// that keeps the report from reading as a governance failure, and the overlay
+// repair. It also refuses a TRELLIS_ marker, because the session is governed.
+func assertClaudeOverlayReportBasics(t *testing.T, report, overlayCopy, overlayWhy string) {
+	t.Helper()
+	if !strings.Contains(report, vendoredInvariantsReportLead+overlayCopy+" (it "+overlayWhy+")") {
+		t.Errorf("the report must blame the overlay's own file and say how it is unusable\nwant: %s\ngot:  %q", vendoredInvariantsReportLead+overlayCopy+" (it "+overlayWhy+")", report)
+	}
+	if !strings.Contains(report, claudeOverlayReportClaim) {
+		t.Errorf("the report does not say where the dead pointer is, in words true of every classification\nwant: %q\ngot:  %q", claudeOverlayReportClaim, report)
+	}
+	if strings.Contains(report, invariantsReportFalseClaim) {
+		t.Errorf("the report says the file %q, false for an empty one which reads fine (#295)\ngot: %q", invariantsReportFalseClaim, report)
+	}
+	if !strings.Contains(report, claudeOverlayStillGoverns) {
+		t.Errorf("the report does not tell the reader the session is still governed, so a dead consulted reference reads as a governance failure (decision-0093:1)\nwant: %q\ngot:  %q", claudeOverlayStillGoverns, report)
+	}
+	if !strings.Contains(report, overlayInvariantsRemedy) {
+		t.Errorf("the report dropped the repair that works in every vendored cell\nwant: %q\ngot:  %q", overlayInvariantsRemedy, report)
+	}
+}
+
+// TestClaudeReportsTheOverlaysOwnDeadInvariants is the twin of
+// TestCodexReportsTheOverlaysOwnDeadInvariantsWithoutSubstituting, on that
+// test's own shape table plus one row: a directory at the overlay's path.
+// Codex reads that shape as absent and the Claude hook classifies it, so here
+// it is the project's own occupied address like the other unusable rows.
+//
+// Each shape runs twice, against a healthy plugin copy and a missing one, and
+// must say the same thing both times: on this cell the hook never reads the
+// plugin's copy, so nothing about its state may reach the reader.
+func TestClaudeReportsTheOverlaysOwnDeadInvariants(t *testing.T) {
+	shapes := append(overlayOwnCopyShapes(), struct {
+		name  string
+		why   string
+		write func(t *testing.T, target string)
+	}{
+		name: "a directory at the overlay copy's path",
+		why:  "is not a readable file — a directory or a device sits at that path",
+		write: func(t *testing.T, target string) {
+			if err := os.Mkdir(target, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		},
+	})
+	for _, shape := range shapes {
+		t.Run(shape.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+			overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
+			shape.write(t, overlayCopy)
+
+			check := func(t *testing.T) string {
+				t.Helper()
+				report := claudeOverlayContextFor(t, pluginRoot, project)
+				if shape.why == "" {
+					if report != "" {
+						t.Errorf("the overlay's copy is healthy and its stamp is current, so the pointer resolves and there is nothing to say — the over-correction is as bad for a reader as the silence\ngot: %q", report)
+					}
+					return report
+				}
+				if report == "" {
+					t.Fatalf("the static chain handed this session a pointer to %s, which %s, and the hook said nothing", overlayCopy, shape.why)
+				}
+				// A current stamp leaves nothing else to say, so the report is
+				// the whole message and opens it.
+				if !strings.HasPrefix(report, vendoredInvariantsReportLead) {
+					t.Errorf("on a current stamp the report is the whole message\nwant the lead: %q\ngot: %q", vendoredInvariantsReportLead, report)
+				}
+				assertClaudeOverlayReportBasics(t, report, overlayCopy, shape.why)
+				for _, other := range invariantsClassifications() {
+					if other == strings.SplitN(shape.why, " — ", 2)[0] || !strings.Contains(report, other) {
+						continue
+					}
+					t.Errorf("the report names %q as well, so the reader is told the file is broken in more ways than it is\ngot: %q", other, report)
+				}
+				if strings.Contains(report, "TRELLIS_") {
+					t.Errorf("the session is governed and nothing else is wrong, so the report may not borrow a TRELLIS_ marker\ngot: %q", report)
+				}
+				if strings.Contains(report, pluginRoot) {
+					t.Errorf("the report names the plugin root, which the hook never reads on this cell: the overlay's address is occupied (decision-0096:1)\ngot: %q", report)
+				}
+				if strings.Contains(strings.ToLower(report), "reinstall") {
+					t.Errorf("the report offers a reinstall, which cannot repair the overlay's own file\ngot: %q", report)
+				}
+				return report
+			}
+
+			withCopy := check(t)
+			removeFileT(t, filepath.Join(pluginRoot, "reference", "invariants.md"))
+			withoutCopy := check(t)
+			if withCopy != withoutCopy {
+				t.Errorf("the report changed with the plugin copy's state, which this cell never reads\nwith a healthy plugin copy: %q\nwith none:                  %q", withCopy, withoutCopy)
+			}
+		})
+	}
+}
+
+// claudeOverlayAbsences is every shape staleness.sh's payload_read calls
+// missing at the overlay's path: no file, and a symlink whose target is gone.
+// Both are the cell decision-0093 rule 2 gives a fallback.
+func claudeOverlayAbsences() []struct {
+	name string
+	make func(t *testing.T, target string)
+} {
+	return []struct {
+		name string
+		make func(t *testing.T, target string)
+	}{{
+		name: "the overlay has no copy",
+		make: func(t *testing.T, target string) {},
+	}, {
+		name: "a symlink whose target is gone",
+		make: func(t *testing.T, target string) {
+			if err := os.Symlink(target+".gone", target); err != nil {
+				t.Fatal(err)
+			}
+		},
+	}}
+}
+
+// TestClaudeNamesThePluginCopyWhenTheOverlayHasNoInvariants is the cell where
+// Codex repoints in silence (TestCodexRepointsWhenAVendoredOverlayLacksInvariants).
+// Claude cannot rewrite a pointer the host has already loaded, so the fallback
+// arrives as a sentence: the overlay's copy is missing, and the plugin's usable
+// copy is where the reference can be read this session.
+func TestClaudeNamesThePluginCopyWhenTheOverlayHasNoInvariants(t *testing.T) {
+	for _, absence := range claudeOverlayAbsences() {
+		t.Run(absence.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+			overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
+			absence.make(t, overlayCopy)
+			pluginCopy := filepath.Join(pluginRoot, "reference", "invariants.md")
+
+			report := claudeOverlayContextFor(t, pluginRoot, project)
+			if report == "" {
+				t.Fatalf("the static chain handed this session a pointer to %s, which is missing, and the hook said nothing", overlayCopy)
+			}
+			if !strings.HasPrefix(report, vendoredInvariantsReportLead) {
+				t.Errorf("on a current stamp the report is the whole message\nwant the lead: %q\ngot: %q", vendoredInvariantsReportLead, report)
+			}
+			assertClaudeOverlayReportBasics(t, report, overlayCopy, "is missing")
+			// The fallback in words. Both halves are pinned: the address, and
+			// the instruction to use it, without which the path is a fact the
+			// reader has no reason to act on.
+			wantStandIn := "a readable copy of the same reference at " + pluginCopy
+			if !strings.Contains(report, wantStandIn) {
+				t.Errorf("a usable plugin copy exists and the report did not say where: Codex's session on this cell ends with a working reference, and Claude's must too (decision-0093:2)\nwant: %s\ngot:  %q", wantStandIn, report)
+			}
+			const wantUse = "read that one this session"
+			if !strings.Contains(report, wantUse) {
+				t.Errorf("the report names the plugin's copy without telling the reader to use it\nwant: %q\ngot:  %q", wantUse, report)
+			}
+			if strings.Contains(report, "either") || strings.Contains(strings.ToLower(report), "reinstall") {
+				t.Errorf("the plugin's copy is usable, so nothing about it is broken and no reinstall is owed\ngot: %q", report)
+			}
+			if strings.Contains(report, "TRELLIS_") {
+				t.Errorf("the session is governed and nothing else is wrong, so the report may not borrow a TRELLIS_ marker\ngot: %q", report)
+			}
+			for _, other := range invariantsClassifications() {
+				if other == "is missing" || !strings.Contains(report, other) {
+					continue
+				}
+				t.Errorf("the report names %q as well, so the reader is told the file is broken in more ways than it is\ngot: %q", other, report)
+			}
+		})
+	}
+}
+
+// TestClaudeReportsBothCopiesWhenNeitherInvariantsCanBeRead is decision-0095's
+// cell on the Claude side: the overlay has no copy and the plugin's is
+// unusable, so no address works and the reader is told which fault each file
+// has. The plugin's fault decides whether reinstalling would help, which is
+// why it is classified rather than summarised.
+func TestClaudeReportsBothCopiesWhenNeitherInvariantsCanBeRead(t *testing.T) {
+	for _, absence := range claudeOverlayAbsences() {
+		for _, tc := range invariantsFaults() {
+			if tc.why == "" {
+				continue
+			}
+			t.Run(absence.name+" / "+tc.name, func(t *testing.T) {
+				pluginRoot := writeDualHostPluginRoot(t)
+				project := newGitProject(t)
+				writeValidCodexOverlay(t, project)
+				overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
+				absence.make(t, overlayCopy)
+				pluginCopy := filepath.Join(pluginRoot, "reference", "invariants.md")
+				tc.breakIt(t, pluginCopy)
+
+				report := claudeOverlayContextFor(t, pluginRoot, project)
+				if report == "" {
+					t.Fatalf("neither %s nor %s can be read, and the hook said nothing about the pointer the static chain delivered", overlayCopy, pluginCopy)
+				}
+				assertClaudeOverlayReportBasics(t, report, overlayCopy, "is missing")
+				// The pair, not two separate contains-checks: a report that
+				// attached the plugin's fault to the overlay's path would pass
+				// those.
+				wantPlugin := "The plugin's own copy could not stand in for it: there is " + invariantsReportLead + pluginCopy + " either (it " + tc.why + ")"
+				if !strings.Contains(report, wantPlugin) {
+					t.Errorf("the plugin copy is why no stand-in was available, and which fault it has decides whether reinstalling would help\nwant: %s\ngot:  %q", wantPlugin, report)
+				}
+				if strings.Contains(report, "read that one this session") {
+					t.Errorf("the report sends the reader to a plugin copy the hook has just found unusable (decision-0094:4)\ngot: %q", report)
+				}
+				const wantReinstall = "reinstalling the Trellis plugin so its copy can stand in"
+				if !strings.Contains(report, wantReinstall) {
+					t.Errorf("the report dropped the second repair; both are real on this cell (decision-0095:2)\nwant: %q\ngot:  %q", wantReinstall, report)
+				}
+				for _, why := range invariantsClassifications() {
+					if why == "is missing" || why == tc.classification() || !strings.Contains(report, why) {
+						continue
+					}
+					t.Errorf("the report names %q as well, so the reader is told the two files are broken in more ways than they are\ngot: %q", why, report)
+				}
+			})
+		}
+	}
+}
+
+// TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns pins
+// where the report goes. Path A has three exits that say the overlay governs:
+// the silent one on a current stamp, the stale-overlay nudge, and
+// TRELLIS_STALENESS_UNKNOWN. The hook emits one message, so on the last two
+// the report is appended. The exits that refuse or name a conflict keep their
+// own message: each is the larger problem and names its own repair.
+func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *testing.T) {
+	// build returns a vendored project whose overlay copy of invariants.md is
+	// zero-byte when dead is set and the shipped file when it is not.
+	build := func(t *testing.T, dead bool) (pluginRoot, project, overlayCopy string) {
+		t.Helper()
+		pluginRoot = writeDualHostPluginRoot(t)
+		project = newGitProject(t)
+		writeValidCodexOverlay(t, project)
+		overlayCopy = filepath.Join(project, ".trellis", "internal", "invariants.md")
+		body := payloadFile(t, "invariants.md")
+		if dead {
+			body = ""
+		}
+		writeFileT(t, overlayCopy, body)
+		return pluginRoot, project, overlayCopy
+	}
+	const staleLead = "Trellis overlay may be stale"
+	const nothingWrong = "Nothing is wrong with this project"
+
+	t.Run("beside the stale-overlay nudge", func(t *testing.T) {
+		pluginRoot, project, overlayCopy := build(t, true)
+		writeFileT(t, filepath.Join(project, ".trellis", "internal", "version"), "payload@000000000000\n")
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, staleLead) {
+			t.Fatalf("a stale overlay must still draw its nudge first\ngot: %q", report)
+		}
+		assertClaudeOverlayReportBasics(t, report, overlayCopy, "is empty")
+	})
+	t.Run("a stale overlay with a healthy copy says nothing about invariants", func(t *testing.T) {
+		pluginRoot, project, _ := build(t, false)
+		writeFileT(t, filepath.Join(project, ".trellis", "internal", "version"), "payload@000000000000\n")
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, staleLead) || strings.Contains(report, vendoredInvariantsReportLead) {
+			t.Errorf("want the staleness nudge alone\ngot: %q", report)
+		}
+	})
+	t.Run("beside TRELLIS_STALENESS_UNKNOWN", func(t *testing.T) {
+		pluginRoot, project, overlayCopy := build(t, true)
+		removeFileT(t, filepath.Join(pluginRoot, "reference", "version"))
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, "TRELLIS_STALENESS_UNKNOWN") {
+			t.Fatalf("an unreadable plugin stamp must still be reported first\ngot: %q", report)
+		}
+		assertClaudeOverlayReportBasics(t, report, overlayCopy, "is empty")
+		// The message this report rides says nothing is wrong with the
+		// project. With a dead pointer in it, that sentence would contradict
+		// the paragraph below it.
+		if strings.Contains(report, nothingWrong) {
+			t.Errorf("the message says %q and then reports a fault in this project's overlay\ngot: %q", nothingWrong, report)
+		}
+		if !strings.Contains(report, "no rules are missing") {
+			t.Errorf("the reassurance that survives must stay: the rules did load\ngot: %q", report)
+		}
+	})
+	t.Run("TRELLIS_STALENESS_UNKNOWN with a healthy copy keeps its own words", func(t *testing.T) {
+		pluginRoot, project, _ := build(t, false)
+		removeFileT(t, filepath.Join(pluginRoot, "reference", "version"))
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.Contains(report, nothingWrong) || strings.Contains(report, vendoredInvariantsReportLead) {
+			t.Errorf("a healthy overlay must keep the unchanged message\ngot: %q", report)
+		}
+	})
+	t.Run("a broken overlay keeps its refusal", func(t *testing.T) {
+		pluginRoot, project, _ := build(t, true)
+		removeFileT(t, filepath.Join(project, ".trellis", "internal", "rules.md"))
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, "TRELLIS_RULES_NOT_LOADED") || strings.Contains(report, vendoredInvariantsReportLead) {
+			t.Errorf("an overlay whose rules cannot load is the larger problem and is reported alone\ngot: %q", report)
+		}
+	})
+	t.Run("a second managed block keeps its conflict", func(t *testing.T) {
+		pluginRoot, project, _ := build(t, true)
+		writeFileT(t, filepath.Join(project, "CLAUDE.md"), "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\nrules written out here\n<!-- trellis:end -->\n")
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, "TRELLIS_STATIC_SHAPES_CONFLICT") || strings.Contains(report, vendoredInvariantsReportLead) {
+			t.Errorf("a block with no @-import line beside the overlay is a conflict whose repair may delete the overlay, and is reported alone\ngot: %q", report)
+		}
+	})
+}
+
+// TestClaudeSaysNothingWhenTheVendoredProseCarriesNoPointer and the test after
+// it are the pointer-presence check, mirrored from Codex's pair for the same
+// reason: the report states as fact that the overlay's rules carry a pointer,
+// and an overlay is the project's own text. One that edited the pointer out
+// must not be told to repair a file nothing names, and one that moved it into
+// rules.md must not go unreported.
+func TestClaudeSaysNothingWhenTheVendoredProseCarriesNoPointer(t *testing.T) {
+	for name, replacement := range map[string]string{
+		"the pointer is edited out": "`the invariants reference`",
+		// The pointer is the backticked token, on both hosts: Codex matches
+		// INVARIANTS_TOKEN and nothing looser, so a bare mention of the path
+		// is prose here too.
+		"the path is named without its backticks": strings.Trim(invariantsToken, "`"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			writeValidCodexOverlay(t, project)
+
+			prose := filepath.Join(project, ".trellis", "internal", "trellis.md")
+			before := readFileT(t, prose)
+			if !strings.Contains(before, invariantsToken) {
+				t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer, so removing it proves nothing")
+			}
+			writeFileT(t, prose, strings.ReplaceAll(before, invariantsToken, replacement))
+			if strings.Contains(readFileT(t, filepath.Join(project, ".trellis", "internal", "rules.md")), invariantsToken) {
+				t.Fatal("fixture drift: the vendored rules carry the pointer, so this overlay still delivers it")
+			}
+			// Every other precondition for the report holds.
+			writeFileT(t, filepath.Join(project, ".trellis", "internal", "invariants.md"), "")
+
+			if report := claudeOverlayContextFor(t, pluginRoot, project); report != "" {
+				t.Errorf("neither half of the overlay carries the invariants pointer, so there is no dead pointer to report\ngot: %q", report)
+			}
+		})
+	}
+}
+
+func TestClaudeReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf(t *testing.T) {
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+
+	prose := filepath.Join(project, ".trellis", "internal", "trellis.md")
+	proseBody := readFileT(t, prose)
+	if !strings.Contains(proseBody, invariantsToken) {
+		t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer, so moving it proves nothing")
+	}
+	writeFileT(t, prose, strings.ReplaceAll(proseBody, invariantsToken, "`the invariants reference`"))
+	rules := filepath.Join(project, ".trellis", "internal", "rules.md")
+	writeFileT(t, rules, "Consult "+invariantsToken+" when a rule seems ambiguous.\n\n"+readFileT(t, rules))
+	overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
+	writeFileT(t, overlayCopy, "")
+
+	report := claudeOverlayContextFor(t, pluginRoot, project)
+	if report == "" {
+		t.Fatal("the overlay's rules.md carries a pointer this hook can prove dead, and the hook said nothing: the presence check reads only trellis.md, while the host loads both")
+	}
+	assertClaudeOverlayReportBasics(t, report, overlayCopy, "is empty")
 }
 
 // overlayOwnCopyShapes is every state the overlay's OWN copy can be in while
@@ -879,13 +1300,16 @@ func runUnusablePluginCopyCase(t *testing.T, name string, makeOverlay func(*test
 
 		// The asymmetry is deliberate and is pinned here rather than left
 		// as a reading of the other hook: staleness.sh's path A exits at
-		// the vendored branch, so Claude never delivers an invariants
-		// pointer into a vendored project and has nothing to report about.
-		// A vendored row in the pair guard would therefore have to assert
-		// Claude delivers NOTHING, contradicting that guard's own delivery
-		// assertion — which is why this cell is guarded here instead.
+		// the vendored branch, so the Claude HOOK never delivers an
+		// invariants pointer into a vendored project. The static chain
+		// does, and what the hook says about that pointer is
+		// TestClaudeReportsBothCopiesWhenNeitherInvariantsCanBeRead's
+		// subject on this cell (TRL-76). A vendored row in the pair guard
+		// would still have to assert Claude injects NOTHING, contradicting
+		// that guard's own delivery assertion — which is why this cell is
+		// guarded here instead.
 		if out := claudeStdoutFor(t, pluginRoot, project); strings.Contains(out, "read its entry in `") {
-			t.Errorf("staleness.sh delivered an invariants pointer into a vendored project; this cell is Codex-only by construction and the pair guard's shape depends on it:\n%s", out)
+			t.Errorf("staleness.sh delivered an invariants pointer into a vendored project; its path A reports and injects nothing, and the pair guard's shape depends on it:\n%s", out)
 		}
 	})
 }
@@ -1232,7 +1656,7 @@ func assertInvariantsReport(t *testing.T, host, report, target string, fault inv
 //
 //     An earlier version of this comment said a marker is "a refusal, not a
 //     note", and review measured that false: TRELLIS_STALENESS_UNKNOWN
-//     (staleness.sh:518 and :658) is a note on a session that IS governed —
+//     (staleness.sh:732 and :887) is a note on a session that IS governed —
 //     "Nothing is wrong with this project and no rules are missing". The
 //     injects-nothing half is true of every marker and carries the argument on
 //     its own; the refusal half did not, and overstating it here would have

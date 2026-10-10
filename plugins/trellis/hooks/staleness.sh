@@ -16,8 +16,8 @@
 #      installs) always draws the nudge: the layout itself is stale, and
 #      the nudge carries the manual migration steps (decision-0072 retired
 #      the setup skill, which used to be the vehicle). With the status command
-#      retired (decision-0043), this hook is the only drift surface (decision-0035: drift is made
-#      visible, not silent).
+#      retired (decision-0043), this hook is the only drift surface (decision-0035). It injects
+#      nothing here, and reports an overlay invariants pointer that names no readable file (TRL-76).
 #
 #   B. Config only (.trellis/rules.toml present, no .trellis/internal/ directory) —
 #      plugin-native delivery. The rules are injected from the installed plugin's
@@ -606,6 +606,7 @@ if [ -d "$internal" ]; then
   # broken; a reader gains nothing from that and the remedy is identical.
   overlay=""
   overlay_line=""
+  overlay_pointer=""
   for f in version trellis.md rules.md; do
     if ! payload_read "$internal/$f"; then
       emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f $payload_why, so the managed block's imports cannot load the rules and this hook cannot tell which rules the surviving files represent. The hook will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
@@ -618,6 +619,12 @@ if [ -d "$internal" ]; then
     if [ "$f" = version ]; then
       overlay="$(printf '%s\n' "$payload_text" | head -n1 | tr -d '[:space:]')"
       overlay_line="$(printf '%s\n' "$payload_text" | head -n1 | LC_ALL=C sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    else
+      # TRL-76: either half can carry the invariants pointer, because the host
+      # loads both (the managed block imports trellis.md, which imports
+      # rules.md). The report further down speaks only for a pointer one of
+      # them holds.
+      case "$payload_text" in *'`.trellis/internal/invariants.md`'*) overlay_pointer=1 ;; esac
     fi
   done
   # A non-empty file can still hold nothing but whitespace on its first line.
@@ -658,6 +665,61 @@ if [ -d "$internal" ]; then
     emit "TRELLIS_STATIC_SHAPES_CONFLICT — this project has BOTH a vendored .trellis/internal/ overlay and a Trellis managed block in $importless_files that holds no @-import line. This hook found no managed block that imports the overlay (it reads CLAUDE.md, and AGENTS.md when CLAUDE.md imports it), so the block named above is what the host loaded and the overlay is not what delivers the rules here. If an @.trellis/internal/trellis.md import somewhere else does load the overlay, and the block embeds the rules readout, the same rules are in context twice — read the block and the instructions files to tell. Keep at most one static shape: to keep the block, delete .trellis/internal/, keeping .trellis/rules.toml. Check three things before that deletion. First, read the block: if it does not embed the rules readout between its markers, STOP and tell the user what it holds, because deleting the overlay would then leave this project with no rules loaded. Second, if the block points at .trellis/internal/invariants.md, as older blocks do, that pointer is dead once the overlay is gone; the same reference is reference/invariants.md in the installed Trellis plugin, so tell the user. Third, another harness may read the overlay: a Codex bootstrap block (trellis:codex-bootstrap) in AGENTS.md falls back to the .trellis/internal/ files, so look for one and tell the user what else relies on the overlay. Do NOT delete the block to keep the overlay unless a managed block that imports the overlay is in place first: without one, deleting the block leaves this project with no rules loaded. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
     exit 0
   fi
+  # TRL-76. The invariants pointer reaches a vendored Claude session through the
+  # static chain, in the overlay's own text, and until this read existed nothing
+  # on this path asked whether anything is at the address. A missing or unusable
+  # .trellis/internal/invariants.md was silent here while codex-context.mjs
+  # reported it on the same project (decision-0095, decision-0096).
+  #
+  # REPORT-ONLY. This path injects nothing, so it cannot move the pointer the
+  # way path B and Codex do: the host loaded the overlay's text before this hook
+  # ran. The cells are Codex's, and so are the file each one blames and the words
+  # that classify it. Where Codex rewrites the token, this names the usable copy.
+  #
+  #   the overlay's own copy is unusable (empty, unreadable, not a file)
+  #       The address is the project's and it is occupied, so nothing stands in
+  #       for it (decision-0096 point 1). The plugin's copy is not read.
+  #   the overlay has no copy (payload_read's `missing`)
+  #       decision-0093 rule 2 lets the plugin's copy stand in when it is usable
+  #       (decision-0094 point 4), so that copy is read, through the gateway, and
+  #       named as where the reference can be read this session.
+  #   the overlay has no copy and the plugin's is unusable
+  #       Both files are named and classified: which fault the plugin's copy has
+  #       decides whether reinstalling would help (decision-0095 point 2).
+  #
+  # One shape lands in a different cell on the two hosts. Codex asks isFile, so a
+  # directory at the overlay's path is absent to it and takes the fallback;
+  # payload_read classifies it "is not a readable file", so here it is the first
+  # cell. TRL-77 carries what Codex should call that shape.
+  #
+  # Guarded on $overlay_pointer, as Codex's arm is: an overlay is the project's
+  # own text, and one that edited the pointer out must not be told to repair a
+  # file nothing names. Not failed closed and no TRELLIS_ marker: the reference
+  # is consulted on demand, and the session is governed (decision-0093 rule 1).
+  #
+  # Placed after the refusal and the two conflicts above, which keep their own
+  # message. Each is the larger problem, and a conflict's repair may delete the
+  # overlay this report would ask the reader to complete.
+  overlay_inv="$internal/invariants.md"
+  inv_report=""
+  if [ -n "$overlay_pointer" ] && ! payload_read "$overlay_inv"; then
+    inv_report="Trellis warning: this project's vendored overlay has no readable $overlay_inv (it $payload_why), so the invariants pointer in the overlay's rules names a file that yields nothing to read."
+    inv_fix="Putting a readable invariants.md at that overlay path is the likely fix."
+    if [ "$payload_status" = missing ]; then
+      plugin_inv="$plugin/reference/invariants.md"
+      if payload_read "$plugin_inv"; then
+        inv_report="$inv_report The installed Trellis plugin carries a readable copy of the same reference at $plugin_inv; read that one this session when a rule sends you to the overlay's."
+      else
+        inv_report="$inv_report The plugin's own copy could not stand in for it: there is no readable $plugin_inv either (it $payload_why)."
+        inv_fix="Putting a readable invariants.md at that overlay path, or reinstalling the Trellis plugin so its copy can stand in (\`claude plugin update trellis@kodhama\`), is the likely fix."
+      fi
+    fi
+    inv_report="$inv_report The overlay's rules are intact and govern this session normally; that reference is consulted on demand, so only a rule that turns out ambiguous needs it. $inv_fix"
+  fi
+  # The hook emits one message, so beside another one the report is a second
+  # paragraph of it.
+  inv_also=""
+  [ -z "$inv_report" ] || inv_also="$(printf '\n\n%s' "$inv_report")"
   # TRL-101: the stamp is quoted only when it has a stamp's shape.
   overlay_said="stamp is $overlay"
   overlay_named=" ($overlay)"
@@ -671,11 +733,19 @@ if [ -d "$internal" ]; then
   # over-correction this change is as concerned with as the silence. What is
   # withheld is a WARNING, and the fix is to say so.
   if [ -z "$current" ]; then
-    emit "TRELLIS_STALENESS_UNKNOWN — this session is governed by the vendored overlay at .trellis/internal/, and that is intact. What this hook could NOT do is check whether the overlay is stale: the installed Trellis plugin's own version stamp ($ref) $stamp_defect, so there is nothing to compare this project's stamp$overlay_named against. Nothing is wrong with this project and no rules are missing. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix."
+    # TRL-76: "Nothing is wrong with this project" is false beside a report of
+    # a dead pointer in it, so that half is said only when there is none.
+    project_state="Nothing is wrong with this project and no rules are missing."
+    [ -z "$inv_report" ] || project_state="That is a fault in the plugin's install, and no rules are missing."
+    emit "TRELLIS_STALENESS_UNKNOWN — this session is governed by the vendored overlay at .trellis/internal/, and that is intact. What this hook could NOT do is check whether the overlay is stale: the installed Trellis plugin's own version stamp ($ref) $stamp_defect, so there is nothing to compare this project's stamp$overlay_named against. $project_state Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix.$inv_also"
     exit 0
   fi
   if [ "$overlay" != "$current" ]; then
-    emit "Trellis overlay may be stale: this project's .trellis/internal/version $overlay_said, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Until then this session is governed by the vendored copy."
+    emit "Trellis overlay may be stale: this project's .trellis/internal/version $overlay_said, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Until then this session is governed by the vendored copy.$inv_also"
+  elif [ -n "$inv_report" ]; then
+    # A current stamp used to end this path in silence, which is what hid the
+    # dead pointer: the report is then the whole message.
+    emit "$inv_report"
   fi
   exit 0
 fi

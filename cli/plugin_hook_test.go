@@ -100,10 +100,13 @@ func TestStalenessHook(t *testing.T) {
 			// present before treating the old transport as healthy, so a
 			// stamp-only fixture models a shape that cannot exist — and one
 			// that, in the wild, is a silently broken install.
+			// invariants.md is among them (TRL-76): trellis.md points at it, and
+			// the hook reports an overlay whose pointer names nothing.
 			if strings.Contains(stampRel, "internal") {
 				for name, body := range map[string]string{
-					"trellis.md": payloadFile(t, "trellis.md"),
-					"rules.md":   payloadFile(t, "rules.md"),
+					"trellis.md":    payloadFile(t, "trellis.md"),
+					"rules.md":      payloadFile(t, "rules.md"),
+					"invariants.md": payloadFile(t, "invariants.md"),
 				} {
 					q := filepath.Join(filepath.Dir(p), name)
 					if err := os.WriteFile(q, []byte(body), 0o644); err != nil {
@@ -668,10 +671,12 @@ func nudgeContext(t *testing.T, out string) string {
 
 // writeVendoredPayload gives a fixture the payload files a real vendored overlay
 // carries. The hook checks they exist before trusting the stamp, so a stamp-only
-// fixture models a shape that cannot exist in the wild.
+// fixture models a shape that cannot exist in the wild. invariants.md is one of
+// them (TRL-76): trellis.md points at it, and the hook reports an overlay whose
+// pointer names nothing.
 func writeVendoredPayload(t *testing.T, internalDir string) {
 	t.Helper()
-	for _, name := range []string{"trellis.md", "rules.md"} {
+	for _, name := range []string{"trellis.md", "rules.md", "invariants.md"} {
 		if err := os.WriteFile(filepath.Join(internalDir, name), []byte(payloadFile(t, name)), 0o644); err != nil {
 			t.Fatal(err)
 		}
