@@ -87,7 +87,7 @@ Amended openly rather than routed around; the clause's purpose, that no path
 silently vendors an overlay, is untouched: one config file, in the project the
 user ran the installer in.
 
-*(An earlier version named `:18-19`, "setup writes exactly one file … ever". Wrong
+*(An earlier version named `:18-19` (now `:20-21`), "setup writes exactly one file … ever". Wrong
 clause — it binds the SKILL, and D2 does not change what `/trellis:setup` writes.
 `decision-0065`'s forward pointer was corrected first, which left this decision
 and its own pointer contradicting each other about which invariant still stands.)*
