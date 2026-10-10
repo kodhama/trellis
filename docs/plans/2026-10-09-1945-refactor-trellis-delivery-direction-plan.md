@@ -31,7 +31,7 @@ Trellis reaches a session today through a plugin whose hook decides at session s
 
 **The rules a session sees depend on the machine, not the repo.** On 2026-10-09 the repo's HEAD was plugin 0.24.2, while this machine's installed copies were 0.22.0 or 0.23.1 (TRL-5 triage comment). `installed_plugins.json` holds 113 project-scope Trellis records at 0.22.0 and 31 at 0.11.0.
 
-**Cloud and Codex sessions are second-class.** A claude.ai/code session installs no plugin a repo declares in `enabledPlugins`, so it gets Trellis only when an environment setup script installs it (`plugins/trellis/README.md:62-71`). Codex support is "not supported yet" (`README.md:135-142`). A committed `.claude/rules/trellis.md`, by contrast, loaded on turn one in cloud (`README.md:71-72`).
+**Cloud and Codex sessions are second-class.** A claude.ai/code session installs no plugin a repo declares in `enabledPlugins`, so it gets Trellis only when an environment setup script installs it (`plugins/trellis/README.md:62-71`). Codex support is "not supported yet" (`plugins/trellis/README.md:135-142`). A committed `.claude/rules/trellis.md`, by contrast, loaded on turn one in cloud (`plugins/trellis/README.md:71-72`).
 
 **Every component re-derives the delivery state.** decision-0073 found five components each holding "a private, partial enumeration" of the seven states S0–S6 and made itself their single home. ogham's plan unit U8 was about to become a sixth copy: as planned, it probes S0–S6 itself and writes `.trellis/rules.toml` and `.claude/settings.json` entries (kodhama/ogham PR #1, KTD6).
 
@@ -56,9 +56,9 @@ The trigger in the Ideas entry "Simplify Trellis delivery" fired when ogham's pl
 
 **The CLI and adoption**
 
-- R1. One CLI, invoked as `npx github:kodhama/trellis#v<version> <verb>`, provides `install`, `update`, `check` and `remove`. Each verb runs with no prompt and ends with one stdout line and an exit code that state its outcome: for `install`, installed, already present, declined or migrated; for `check`, pass or fail; for `update` and `remove`, done; for any verb, error.
+- R1. One CLI, invoked as `npx github:kodhama/trellis#v<version> <verb>`, provides `install`, `update`, `check` and `remove`. Each verb runs with no prompt and ends with one stdout line and an exit code that state its outcome: for `install`, installed, already present or declined; for migration (R14), migrated; for `check`, pass or fail; for `update` and `remove`, done; for any verb, error.
 - R2. In a repo with no Trellis state, `install` writes the rules into committed files and records the installed version in a lock. It also says what it adopted. Running `install` is the adoption act; decision-0070 D2 already holds that "running an installer inside a repository is an unambiguous adoption act".
-- R3. `install` changes nothing in a repo that already carries any Trellis state or a recorded decline, and it reports which one it found. The one recorded decline is `governed = false` in `.trellis/rules.toml`.
+- R3. `install` changes nothing in a repo that already carries any Trellis state or a recorded decline, and it reports which one it found. On a decline, the line says how a person reverses it: delete `governed = false` from `.trellis/rules.toml`, then run `install`. `install` itself never overrides a decline. The one recorded decline is `governed = false` in `.trellis/rules.toml`.
 - R4. `install` does not refuse because other files in the working tree are untracked or uncommitted.
 - R5. `update` re-renders the rules from the requested version, keeps the repo's opt-outs, and leaves the change as a diff for review.
 - R6. `remove` deletes every file and section Trellis wrote except `.trellis/rules.toml`, which it leaves holding `governed = false`, so no later `install` call re-adopts the repo silently.
@@ -68,8 +68,8 @@ The trigger in the Ideas entry "Simplify Trellis delivery" fired when ogham's pl
 
 - R8. Rules reach Claude Code (laptop and cloud), Codex and Droid from the repo's committed files alone, from the first turn, with nothing installed on the machine or in the cloud environment.
 - R9. Each host loads the rules exactly once. A repo whose `CLAUDE.md` imports `AGENTS.md` does not also get a separate Claude copy, and a repo nested inside another adopted repo, such as the repos under `~/hq`, does not inherit a second copy from its parent.
-- R10. For Codex and Droid, which cannot import a file from `AGENTS.md`, the rules are inlined in one marked section of `AGENTS.md`. That section sits beside other tools' marked sections and never wraps them. It stays near today's inline block (7,065 bytes) so it fits within Codex's 32 KiB `AGENTS.md` limit alongside ogham's inline core (ogham D20).
-- R11. No hook or startup script runs in any session for Trellis.
+- R10. For Codex and Droid, which cannot import a file from `AGENTS.md`, the rules are inlined in one marked section of `AGENTS.md`. That section sits beside other tools' marked sections and never wraps them. It stays near today's inline block (7,065 bytes) so it fits within Codex's 32 KiB `AGENTS.md` limit alongside ogham's inline core (ogham D20). `install`, `update` and `check` warn when the `AGENTS.md` content Codex reads exceeds 32 KiB, as ogham's KTD2 does.
+- R11. On a machine where the round ran (R19), no hook or startup script runs in any session for Trellis.
 
 **Integrity**
 
@@ -78,16 +78,16 @@ The trigger in the Ideas entry "Simplify Trellis delivery" fired when ogham's pl
 
 **Migration and retirement**
 
-- R14. An explicit migration mode, separate from plain `install`, converts a repo in any of decision-0073's states S0–S6 to the vendored form. It keeps the opt-out rows and removes the old overlay, inline block, rendered file or bundle, as well as the `trellis@kodhama` plugin entry. A repo whose entry is `"trellis@kodhama": false` keeps its no: migration writes `governed = false` and strips the entry.
-- R15. One round of PRs migrates every live consumer in the inventory below. wisp and review-kit are named exemptions: TRL-104's resume brief records that both are being retired, and they keep their current state until they go. Each migration PR also wires `check` into the repo's CI where the repo has CI, and rewrites the `rules.toml` header comment that says rows govern rule activation live.
-- R16. After the round, and only once the nudge line (KOD-6) and the update routine (KOD-7) exist (see Dependencies), the plugin ships one last release and then retires. That last release injects nothing in a repo that carries the Trellis lock; anywhere else it says the plugin is retired and gives the CLI command. Retiring it removes `staleness.sh`, `codex-context.mjs`, `install.sh` and their tests from this repo, and the `trellis` entry from the kodhama marketplace in kodhama/stewards, which is a stewards change. A decision record written by the build replaces decision-0073's closed set.
+- R14. An explicit migration mode, separate from plain `install`, converts a repo in any of decision-0073's states S0–S6 to the vendored form. It keeps the opt-out rows and removes the old overlay, inline block, rendered file or bundle, as well as every Trellis plugin entry: `trellis@kodhama` in `.claude/settings.json` and `trellis@stewards` in a committed `.factory/settings.json` (Droid). A repo whose entry is `false` keeps its no: migration writes `governed = false` and strips the entry.
+- R15. One round of PRs migrates every live consumer in the inventory below. wisp and review-kit are named exemptions: TRL-104's resume brief records that both are being retired, and they keep their current state until they go. Each migration PR also wires `check` into the repo's CI where the repo has CI, running the version the lock records rather than one written into the workflow, so `update` never edits CI files; it also rewrites the `rules.toml` header comment that says rows govern rule activation live.
+- R16. After the round, and only once the nudge line (KOD-6) and the update routine (KOD-7) exist (see Dependencies), the plugin ships one last release and then retires. That last release injects nothing in a repo that carries the Trellis lock; anywhere else it delivers the rules as before and also says the plugin is retiring and gives the CLI command. Retiring it removes `staleness.sh`, `codex-context.mjs`, `install.sh` and their tests from this repo, and the `trellis` entry from the kodhama marketplace in kodhama/stewards, which is a stewards change. A decision record written by the build replaces decision-0073's closed set.
 - R17. A consumer outside the inventory that still runs the plugin keeps working until the plugin retires. A migrated repo does not load the rules twice on a machine whose install runs R16's last release; on a machine with an older install, R19's uninstall is what prevents it.
-- R19. The round also ends machine-level delivery on each machine the inventory covers: it uninstalls `trellis@kodhama` at user scope from Claude Code and from Codex, and removes the Trellis lines from cloud environment setup scripts. Until then, a user-scope install keeps injecting rules and advice into migrated repos.
+- R19. The round also ends machine-level delivery on each machine the inventory covers: it uninstalls `trellis@kodhama` at user scope from Claude Code and from Codex, uninstalls `trellis@stewards` at user scope from Droid and removes it from untracked project `.factory/settings.json` files, and removes the Trellis lines from cloud environment setup scripts. Until then, a user-scope install keeps injecting rules and advice into migrated repos.
 
 **Callers**
 
 - R18. Trellis's supported way for another tool, such as ogham's `init`, to adopt it is calling `install` pinned to a version tag and reading the outcome from R1's line and exit code. Trellis makes no promise about any other path.
-- R20. Every Trellis release creates the tag `v<version>` on its merge commit on `main`, and CI fails a release whose tag is missing. `v*` tags cannot be created, moved or deleted outside that path, so a pin always names reviewed, merged code. The new tags never reuse a name from `v0.1.0`–`v0.2.30`, which already exist for the retired v0 CLI (`README.md:285`); those old tags are not a supported pin.
+- R20. Every Trellis release creates the tag `v<version>` on its merge commit on `main`, and CI fails a release whose tag is missing. `v*` tags cannot be created, moved or deleted outside that path, so a pin always names reviewed, merged code. The new tags never reuse a name from `v0.1.0`–`v0.2.30`, which already exist for the retired v0 CLI (the repo's tag list; root `README.md:285` describes that CLI); those old tags are not a supported pin.
 
 Consumer inventory for R15, found by scanning `~/hq` and `~/projects` on 2026-10-09:
 
@@ -114,7 +114,7 @@ The scan covered one machine. Consumer repos elsewhere, such as a consultant-mod
 - AE8. **Covers R9.** **Given** a repo whose `CLAUDE.md` is exactly `@AGENTS.md`, **when** a Claude session starts, **then** the rules appear once.
 - AE9. **Covers R6, R3.** **Given** `remove` has run in a repo, **when** ogham's `init` later calls `install`, **then** the stdout line says declined and nothing is re-adopted.
 - AE10. **Covers R12.** **Given** someone commits `<slug> = { active = false }` to `rules.toml` without running `update`, **when** `check` runs, **then** it fails and names that row.
-- AE11. **Covers R19, R9.** **Given** a migrated repo on a machine where the round ran, **when** a Codex session starts, **then** no Trellis hook runs and the rules appear once, from `AGENTS.md`.
+- AE11. **Covers R19, R9.** **Given** a migrated repo on a machine where the round ran, **when** a Codex or Droid session starts, **then** no Trellis hook runs and the rules appear once, from `AGENTS.md`.
 
 <!-- ce-section: work-relationships -->
 ### How This Work Fits Together
@@ -138,10 +138,10 @@ This plan covers Trellis's own delivery. The breakdown below is the current unde
 
 ### Dependencies / Assumptions
 
-- **Assumption, measured once:** a committed `.claude/rules/*.md` file loads on turn one in a claude.ai/code session (`README.md:71-72`). R8 rests on it.
+- **Assumption, measured once:** a committed `.claude/rules/*.md` file loads on turn one in a claude.ai/code session (`plugins/trellis/README.md:71-72`). R8 rests on it.
 - **Assumption, not measured:** Codex and Droid follow rules inlined in `AGENTS.md` about as well as Claude follows its rules file.
 - **Release drift stays visible only through the update routine.** Once the hook retires, nothing in a session reports that a repo is behind, and `check` never fails on a newer release. The routine's per-repo update PR is where drift becomes visible (floor-transparency), so R16 waits on it. The nudge line is tracked as KOD-6 and the update routine as KOD-7, both in the Kodhama team.
-- **A decision record is due with the build, not with this plan.** Retiring the delivery machinery meets the record test, because a wrong call could silently stop rules reaching sessions. Records the build must retire or note: decision-0073 (closed set), 0065 (plugin path), 0071 (project-scope plugin declaration), 0083 (hook-side reconciliation, already partly retired), 0068 (install path through `.claude/rules/`), 0070 D2 and D3 (installer and bundle as adoption acts), 0039 and 0043 (session-start staleness surface and payload stamp). Two `AGENTS.md` rules also become untrue and need rewriting in the same build: the invariants being "delivered live by the Trellis plugin at session start", and "a payload change is a release" with its `plugins/trellis/VERSION` bump.
+- **A decision record is due with the build, not with this plan.** Retiring the delivery machinery meets the record test, because a wrong call could silently stop rules reaching sessions. Records the build must retire or note: decision-0073 (closed set), 0065 (plugin path), 0071 (project-scope plugin declaration), 0083 (hook-side reconciliation, already partly retired), 0068 (install path through `.claude/rules/`), 0070 D2 and D3 (installer and bundle as adoption acts), 0039 and 0043 (session-start staleness surface and payload stamp). The stewards change in R16 also notes the kodhama family records this makes untrue: kodhama-0002 (Trellis's channel matrix), kodhama-0007 rule 5 (end-user CLI channel retired), kodhama-0008 rule 4 (principles arrive through plugins) and kodhama-0030 D1 (the marketplace lists only `trellis`). Two `AGENTS.md` rules also become untrue and need rewriting in the same build: the invariants being "delivered live by the Trellis plugin at session start", and "a payload change is a release" with its `plugins/trellis/VERSION` bump.
 
 ### Outstanding Questions
 
@@ -152,6 +152,7 @@ This plan covers Trellis's own delivery. The breakdown below is the current unde
 - The lock's format, and the exact mapping from outcomes to exit codes (R1).
 - Whether migration is a flag on `install` or a verb of its own (R14).
 - How to measure Codex adherence to the inlined section before claiming parity.
+- Whether Claude Code loads a parent directory's `.claude/rules/`; one measurement settles where `~/hq`'s Claude copy may live without reaching nested repos (R9).
 
 ### Sources / Research
 
