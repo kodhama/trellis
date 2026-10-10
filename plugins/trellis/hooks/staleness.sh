@@ -501,10 +501,10 @@ if [ -f "$root/.trellis/rules.toml" ] && [ "${governed_n:-0}" -eq 1 ] &&
   #
   # TWO COMPLETE LITERALS on purpose, not a base plus an interpolated note.
   # The destructive/deletion guards in cli/plugin_hook_test.go scan `emit "…"`
-  # literals; prose assembled into a variable and spliced in is agent-facing
+  # literals, the payload assembly and path A's invariants report (TRL-76).
+  # Prose built in a variable anywhere else and spliced in is agent-facing
   # text those guards never see — a blind spot in a declared guard (this run's
-  # review found it as such). Every string that reaches an agent lives inside
-  # an emit literal, even at the cost of repeating the base message.
+  # review found it as such). So: a literal, at the cost of repeating the base.
   if [ -n "$inline_file" ]; then
     emit "TRELLIS_NOT_GOVERNING — this project declares governed = false in .trellis/rules.toml, so Trellis does not govern here: no rule applies, including the two floor- rules. DISREGARD any Trellis rules already loaded this session — from .claude/rules/trellis.md, or from a managed block importing .trellis/internal/. Those are read by the host at launch, before any hook runs, so they could not be withheld. This project also carries a Trellis managed block in $inline_files (the inline shape, in each file named): any rules embedded between its markers were likewise loaded at launch and must be disregarded too — and if the block holds only @-import lines, it may be delivering nothing at all. To stop them being loaded at all, run /trellis:remove."
   elif [ -f "$root/.claude/rules/trellis.md" ] || [ -d "$root/.trellis/internal" ] || [ -f "$root/.trellis/trellis.md" ]; then
@@ -635,8 +635,8 @@ if [ -d "$internal" ]; then
   # The coexistence check's third pairing (TRL-12): the overlay PLUS a managed
   # block that holds no @-import line, with no rendered file to claim either
   # arm above path A. decision-0073 D1 classes it as a conflicting combination
-  # every reader must name, and on a CURRENT stamp the lines below emit nothing
-  # at all, the silence the coexistence check exists to end. It sits here, not
+  # every reader must name, and on a CURRENT stamp the lines below say nothing
+  # of it, the silence the coexistence check exists to end. It sits here, not
   # beside its two siblings, so it speaks only for an overlay the loop above
   # found intact: a broken one already drew its own refusal, and so does the
   # legacy flat layout further down, with or without its stamp. Before the
@@ -692,10 +692,10 @@ if [ -d "$internal" ]; then
   # payload_read classifies it "is not a readable file", so here it is the first
   # cell. TRL-77 carries what Codex should call that shape.
   #
-  # Guarded on $overlay_pointer, as Codex's arm is: an overlay is the project's
-  # own text, and one that edited the pointer out must not be told to repair a
-  # file nothing names. Not failed closed and no TRELLIS_ marker: the reference
-  # is consulted on demand, and the session is governed (decision-0093 rule 1).
+  # Guarded on $overlay_pointer, as Codex's own-copy arm is: an overlay is the
+  # project's own text, and one that edited the pointer out must not be told to
+  # repair a file nothing names. Not failed closed and no TRELLIS_ marker: the
+  # reference is read on demand, the session governed (decision-0093 rule 1).
   #
   # Placed after the refusal and the two conflicts above, which keep their own
   # message. Each is the larger problem, and a conflict's repair may delete the
@@ -886,7 +886,7 @@ if [ -f "$rendered" ]; then
   # literals rather than a base plus an interpolated note, for the reason the
   # governed=false branch above gives: the destructive-instruction guards in
   # cli/plugin_hook_test.go scan `emit "…"` literals, and prose assembled into
-  # a variable and spliced in is agent-facing text those guards never see.
+  # a variable here and spliced in is agent-facing text those guards never see.
   if [ -z "$current" ]; then
     emit "TRELLIS_STALENESS_UNKNOWN — Trellis rules are already loaded from .claude/rules/trellis.md (the curl install path), so this hook injected nothing; that file and .trellis/rules.toml govern this session, and the file is complete. What this hook could NOT do is check whether it is stale: the installed Trellis plugin's own version stamp ($ref) $stamp_defect, so there is nothing to compare the file's own stamp ($rendered_stamp) against. Reinstalling or updating the plugin (\`claude plugin update trellis@kodhama\`) is the likely fix."
     exit 0

@@ -41,6 +41,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -332,9 +333,11 @@ const pluginReinstallRemedy = "reinstalling the Trellis plugin so its copy can s
 const claudeReadThePluginCopy = "read that one this session"
 
 // claudeOverlayContextFor runs staleness.sh on a vendored project and returns
-// what it said, or "" for silence. It also holds the two properties every row
-// below shares: the hook injected no rules, and it delivered no pointer of its
-// own.
+// what it said, or "" for silence. It also holds the three properties every row
+// below shares: the hook injected no rules, it delivered no pointer of its own,
+// and it injected none of the reference it read. The last is the difference
+// between naming the plugin's copy and standing it in: path A reads that copy to
+// classify it, and the text it read must stay out of the context.
 func claudeOverlayContextFor(t *testing.T, pluginRoot, project string) string {
 	t.Helper()
 	out := claudeStdoutFor(t, pluginRoot, project)
@@ -347,6 +350,16 @@ func claudeOverlayContextFor(t *testing.T, pluginRoot, project string) string {
 	}
 	if strings.Contains(ctx, "read its entry in `") {
 		t.Errorf("path A delivered an invariants pointer of its own; it reports on the overlay's and moves nothing\ngot: %q", ctx)
+	}
+	reference := strings.TrimSpace(payloadFile(t, "invariants.md"))
+	if len(reference) > 200 {
+		reference = reference[:200]
+	}
+	if reference == "" {
+		t.Fatal("fixture drift: the shipped invariants.md is empty, so its absence from the context proves nothing")
+	}
+	if strings.Contains(ctx, reference) {
+		t.Errorf("path A injected the invariants reference it read; it names where the reference is and injects nothing\ngot: %q", ctx)
 	}
 	return ctx
 }
@@ -375,6 +388,33 @@ func assertClaudeOverlayReportBasics(t *testing.T, report, overlayCopy, overlayW
 	if !strings.Contains(report, overlayInvariantsRemedy) {
 		t.Errorf("the report dropped the repair that works in every vendored cell\nwant: %q\ngot:  %q", overlayInvariantsRemedy, report)
 	}
+	// The report is the last paragraph of whatever message carries it. It is
+	// assembled in variables, which the source-level guards in
+	// plugin_hook_test.go read by region; this reads what the hook actually
+	// said, so a verb spliced in from anywhere is seen. Absolute paths are
+	// dropped first: a temp directory is named after its test.
+	if at := strings.Index(report, vendoredInvariantsReportLead); at >= 0 {
+		own := absolutePathRe.ReplaceAllString(report[at:], " ")
+		if _, mutating := ungatedDestructiveMessages([]string{own}); mutating != 0 {
+			t.Errorf("the report instructs a mutation; it advises a repair and may carry none of %q, gated or not\ngot: %q", destructiveVerbs, own)
+		}
+	}
+}
+
+// absolutePathRe matches one absolute path, as the reports quote them.
+var absolutePathRe = regexp.MustCompile(`/\S+`)
+
+// otherClassifications returns every classification the report names beyond
+// the ones its cell allows. A report that lists more has told the reader the
+// file is broken in more ways than it is.
+func otherClassifications(report string, allowed ...string) []string {
+	var extra []string
+	for _, c := range invariantsClassifications() {
+		if !slices.Contains(allowed, c) && strings.Contains(report, c) {
+			extra = append(extra, c)
+		}
+	}
+	return extra
 }
 
 // TestClaudeReportsTheOverlaysOwnDeadInvariants is the twin of
@@ -426,10 +466,7 @@ func TestClaudeReportsTheOverlaysOwnDeadInvariants(t *testing.T) {
 					t.Errorf("on a current stamp the report is the whole message\nwant the lead: %q\ngot: %q", vendoredInvariantsReportLead, report)
 				}
 				assertClaudeOverlayReportBasics(t, report, overlayCopy, shape.why)
-				for _, other := range invariantsClassifications() {
-					if other == strings.SplitN(shape.why, " — ", 2)[0] || !strings.Contains(report, other) {
-						continue
-					}
+				for _, other := range otherClassifications(report, strings.SplitN(shape.why, " — ", 2)[0]) {
 					t.Errorf("the report names %q as well, so the reader is told the file is broken in more ways than it is\ngot: %q", other, report)
 				}
 				if strings.Contains(report, "TRELLIS_") {
@@ -516,10 +553,7 @@ func TestClaudeNamesThePluginCopyWhenTheOverlayHasNoInvariants(t *testing.T) {
 			if strings.Contains(report, "TRELLIS_") {
 				t.Errorf("the session is governed and nothing else is wrong, so the report may not borrow a TRELLIS_ marker\ngot: %q", report)
 			}
-			for _, other := range invariantsClassifications() {
-				if other == "is missing" || !strings.Contains(report, other) {
-					continue
-				}
+			for _, other := range otherClassifications(report, "is missing") {
 				t.Errorf("the report names %q as well, so the reader is told the file is broken in more ways than it is\ngot: %q", other, report)
 			}
 		})
@@ -564,10 +598,7 @@ func TestClaudeReportsBothCopiesWhenNeitherInvariantsCanBeRead(t *testing.T) {
 				if !strings.Contains(report, pluginReinstallRemedy) {
 					t.Errorf("the report dropped the second repair; both are real on this cell (decision-0095:2)\nwant: %q\ngot:  %q", pluginReinstallRemedy, report)
 				}
-				for _, why := range invariantsClassifications() {
-					if why == "is missing" || why == tc.classification() || !strings.Contains(report, why) {
-						continue
-					}
+				for _, why := range otherClassifications(report, "is missing", tc.classification()) {
 					t.Errorf("the report names %q as well, so the reader is told the two files are broken in more ways than they are\ngot: %q", why, report)
 				}
 			})
@@ -608,6 +639,9 @@ func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *te
 			t.Fatalf("a stale overlay must still draw its nudge first\ngot: %q", report)
 		}
 		assertClaudeOverlayReportBasics(t, report, overlayCopy, "is empty")
+		if !strings.Contains(report, "\n\n"+vendoredInvariantsReportLead) {
+			t.Errorf("beside another message the report is its own paragraph\ngot: %q", report)
+		}
 	})
 	t.Run("a stale overlay with a healthy copy says nothing about invariants", func(t *testing.T) {
 		pluginRoot, project, _ := build(t, false)
@@ -625,6 +659,9 @@ func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *te
 			t.Fatalf("an unreadable plugin stamp must still be reported first\ngot: %q", report)
 		}
 		assertClaudeOverlayReportBasics(t, report, overlayCopy, "is empty")
+		if !strings.Contains(report, "\n\n"+vendoredInvariantsReportLead) {
+			t.Errorf("beside another message the report is its own paragraph\ngot: %q", report)
+		}
 		// The message this report rides says nothing is wrong with the
 		// project. With a dead pointer in it, that sentence would contradict
 		// the paragraph below it.
@@ -651,12 +688,29 @@ func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *te
 			t.Errorf("an overlay whose rules cannot load is the larger problem and is reported alone\ngot: %q", report)
 		}
 	})
-	t.Run("a second managed block keeps its conflict", func(t *testing.T) {
+	t.Run("an overlay with no stamp keeps its refusal", func(t *testing.T) {
 		pluginRoot, project, _ := build(t, true)
-		writeFileT(t, filepath.Join(project, "CLAUDE.md"), "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\nrules written out here\n<!-- trellis:end -->\n")
+		writeFileT(t, filepath.Join(project, ".trellis", "internal", "version"), " \npayload@000000000000\n")
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, "TRELLIS_RULES_NOT_LOADED") || strings.Contains(report, vendoredInvariantsReportLead) {
+			t.Errorf("an overlay whose stamp cannot be read is the larger problem and is reported alone\ngot: %q", report)
+		}
+	})
+	const inlineBlock = "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\nrules written out here\n<!-- trellis:end -->\n"
+	t.Run("a block with no import keeps its conflict", func(t *testing.T) {
+		pluginRoot, project, _ := build(t, true)
+		writeFileT(t, filepath.Join(project, "CLAUDE.md"), inlineBlock)
 		report := claudeOverlayContextFor(t, pluginRoot, project)
 		if !strings.HasPrefix(report, "TRELLIS_STATIC_SHAPES_CONFLICT") || strings.Contains(report, vendoredInvariantsReportLead) {
 			t.Errorf("a block with no @-import line beside the overlay is a conflict whose repair may delete the overlay, and is reported alone\ngot: %q", report)
+		}
+	})
+	t.Run("a second block beside the importing one keeps its conflict", func(t *testing.T) {
+		pluginRoot, project, _ := build(t, true)
+		writeFileT(t, filepath.Join(project, "CLAUDE.md"), payloadFile(t, "block-claude.md")+"\n"+inlineBlock)
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, "TRELLIS_STATIC_SHAPES_CONFLICT") || !strings.Contains(report, "a second Trellis managed block") || strings.Contains(report, vendoredInvariantsReportLead) {
+			t.Errorf("a spare block beside the one that imports the overlay is a conflict with its own repair, and is reported alone\ngot: %q", report)
 		}
 	})
 }
@@ -1661,7 +1715,7 @@ func assertInvariantsReport(t *testing.T, host, report, target string, fault inv
 //
 //     An earlier version of this comment said a marker is "a refusal, not a
 //     note", and review measured that false: TRELLIS_STALENESS_UNKNOWN
-//     (staleness.sh:732 and :887) is a note on a session that IS governed —
+//     (staleness.sh:740 and :891) is a note on a session that IS governed —
 //     "Nothing is wrong with this project and no rules are missing". The
 //     injects-nothing half is true of every marker and carries the argument on
 //     its own; the refusal half did not, and overstating it here would have
