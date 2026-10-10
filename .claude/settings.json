@@ -2,7 +2,8 @@
   "enabledPlugins": {
     "trellis@kodhama": true,
     "compound-engineering@compound-engineering-plugin": true,
-    "superpowers@claude-plugins-official": false
+    "superpowers@claude-plugins-official": false,
+    "grove@grove": true
   },
   "extraKnownMarketplaces": {
     "kodhama": {
