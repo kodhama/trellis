@@ -72,6 +72,9 @@ func versionStampCases() []versionStampCase {
 		// starts in one read and ends in the next is the shape that loses its
 		// first half if the scan forgets a line between reads.
 		{name: "a stamp that straddles two reads", body: func(s string) string { return strings.Repeat("\n", 4090) + s + "\n" }},
+		// The classic post-crash zero-fill. Command substitution drops every NUL,
+		// so staleness.sh never sees the tail, and the scan here skips them too.
+		{name: "a zero-filled tail after the stamp", body: func(s string) string { return s + "\n" + strings.Repeat("\x00", 64) }},
 
 		// The four classes a file can fail to yield anything in.
 		{name: "no file", breakIt: removeFileT, defect: "is missing"},
@@ -99,12 +102,19 @@ func versionStampCases() []versionStampCase {
 		{name: "a hash one digit too long", body: func(s string) string { return s + "0\n" }, defect: notAStamp},
 		{name: "whitespace inside the stamp", body: func(s string) string { return s[:12] + " " + s[12:] + "\n" }, defect: notAStamp},
 		{name: "whitespace before the stamp", body: func(s string) string { return " " + s + "\n" }, defect: notAStamp},
+		// Only a TRAILING carriage return is a line ending. One inside the line
+		// is content on both hosts, neither dropped nor read as a line break.
+		{name: "a carriage return inside the stamp", body: func(s string) string { return s[:12] + "\r" + s[12:] + "\n" }, defect: notAStamp},
+		{name: "a carriage return between the stamp and garbage", body: func(s string) string { return s + "\rGARBAGE\n" }, defect: notAStamp},
 		{name: "a line of spaces", body: func(string) string { return "   \n" }, defect: notAStamp},
 
 		// More than one line of content, wherever the real stamp sits in it.
 		{name: "a stamp followed by garbage", body: func(s string) string { return s + "\nGARBAGE\n" }, defect: multiLine},
 		{name: "a stamp followed by a decoy stamp", body: func(s string) string { return s + "\npayload@ffffffffffff\n" }, defect: multiLine},
 		{name: "a stamp preceded by garbage", body: func(s string) string { return "GARBAGE\n" + s + "\n" }, defect: multiLine},
+		// A line that cannot be a stamp still counts as a line, even when the scan
+		// kept none of its bytes because whitespace led it.
+		{name: "a garbage line with leading whitespace before the stamp", body: func(s string) string { return " GARBAGE\n" + s + "\n" }, defect: multiLine},
 		// The second line is only counted when the file ends, which is a
 		// different check from the one a newline triggers.
 		{name: "a stamp followed by garbage with no final newline", body: func(s string) string { return s + "\nGARBAGE" }, defect: multiLine},
