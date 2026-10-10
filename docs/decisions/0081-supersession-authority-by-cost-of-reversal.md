@@ -16,7 +16,7 @@ date: 2026-08-28
 
 # 0081 — Supersession authority scaled by cost of reversal *(proposal, not a decision)*
 
-> **Dated note, 2026-10-10 — TRL-68 (PR #330):** The title's "*(proposal, not a decision)*" and the Decision section's opening words, "**Proposed — not taken.**", no longer hold: the maintainer accepted this record on 2026-08-29, it merged in PR #252, and under `decision-0082` that merge is the acceptance. The acceptance covers the argument that supersession authority scales with cost of reversal. It covers no catalog change: the catalog edit this record proposes has not landed and is still owed, and Open questions 1 to 6 stay open. `AGENTS.md` states this standing on the "Before you…" row that routes here.
+> **Dated note, 2026-10-10 — TRL-68 (PR #331):** The title's "*(proposal, not a decision)*" and the Decision section's opening words, "**Proposed — not taken.**", no longer hold: the maintainer accepted this record on 2026-08-29, it merged in PR #252, and under `decision-0082` that merge is the acceptance. The acceptance covers the argument that supersession authority scales with cost of reversal. It covers no catalog change and does not settle Recommendation 1's extend-or-mint question: the catalog edit this record proposes has not landed and is still owed. `AGENTS.md` states this standing on the "Before you…" row that routes here.
 
 > **Evidence is as of 2026-08-28; line cites do not resolve against `main`.** This record was
 > authored on a branch cut before `decision-0079` (which deleted `specs/` and trimmed `AGENTS.md`
