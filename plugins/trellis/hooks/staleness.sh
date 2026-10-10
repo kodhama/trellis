@@ -421,12 +421,15 @@ grep -qE "^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$" "$root/CLAUDE.md" 2>/dev
 # file: one file can hold both kinds. A block cut off before its trellis:end
 # marker runs to the next begin marker or the end of the file. Same column-0
 # anchor and optional BOM as the probe's grep below, and bytes not characters
-# (LC_ALL=C).
+# (LC_ALL=C). One difference from the probe: a CR ends a line here too (below),
+# so a marker that follows a bare CR inside an LF file opens a block here that
+# the probe does not see.
 #
 # An import is an @ followed by a path character, at the start of a line or
 # after a blank: the host follows one written as a list item or after prose,
 # and no shipped inline block has such a token anywhere. "@ the desk",
-# "@-import" and an address are not imports. Every CR becomes a line end
+# "@-import" and an address are not imports; "@alice" is read as one, so a
+# hand-edited block that names a handle is absorbed like the hybrid below. Every CR becomes a line end
 # first, so a CRLF checkout reads the same and a CR-only file is not one long
 # line with a begin marker and no import in it. The line is padded with a blank
 # on each side so one bracket expression stands for "start or blank" and "end
@@ -445,7 +448,7 @@ block_kinds() {
     inside && index($0, "<!-- trellis:end") == 1 { close_block(); next }
     inside {
       line = " " $0 " "
-      if (line ~ /[ \t]@[A-Za-z0-9._~\/]/) imports = 1
+      if (line ~ /[ \t]@[A-Za-z0-9_.~\/]/) imports = 1
       if (line ~ /[ \t]@(\.\/)?\.trellis\/internal\/(trellis|rules)\.md[ \t]/) overlay = 1
     }
     END {

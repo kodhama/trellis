@@ -2196,8 +2196,8 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 	}
 	importBlock := payloadFile(t, "block-claude.md")
 	inlineBlock := payloadFile(t, "block-inline.md")
-	if !strings.Contains(importBlock, "\n@.trellis/internal/trellis.md\n") || regexp.MustCompile(`(?m)^[ \t]*@`).MatchString(inlineBlock) {
-		t.Fatal("premise: the shipped import block must carry an @.trellis/internal/ line and the shipped inline block no @-import line — the check tells them apart by exactly that")
+	if !strings.Contains(importBlock, "\n@.trellis/internal/trellis.md\n") || regexp.MustCompile(`(?m)(^|[ \t])@[A-Za-z0-9_.~/]`).MatchString(inlineBlock) {
+		t.Fatal("premise: the shipped import block must carry an @.trellis/internal/trellis.md line and the shipped inline block no @-import anywhere on a line — the check tells them apart by exactly that")
 	}
 	// assertOverlayInlineAlarm: importer and importless are the file lists
 	// the alarm must name for each kind of block, as the hook joins them.
@@ -2279,6 +2279,27 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 		}
 		// The block is the one thing this host loaded. A remedy that deleted
 		// it "to keep the overlay" would leave the project with no rules.
+		// The deletion is a CHECKED step only if the checks come before it is
+		// carried out: after the remedy is named, in order, and ahead of the
+		// sentence that asks for confirmation.
+		last := -1
+		for _, step := range []string{
+			"to keep the block, delete .trellis/internal/",
+			"Check three things before that deletion.",
+			"First, read the block",
+			"Second, if the block points at",
+			"that pointer is dead once the overlay is gone",
+			"Third, another harness may read the overlay",
+			"look for one and tell the user what else relies on the overlay",
+			"Do NOT delete the block to keep the overlay",
+			"explicit confirmation",
+		} {
+			at := strings.Index(ctx, step)
+			if at <= last {
+				t.Errorf("the alarm must carry %q, after the step before it; got:\n%s", step, ctx)
+			}
+			last = at
+		}
 		if strings.Contains(ctx, "imported by the managed block") || strings.Contains(ctx, "from EACH of") || strings.Contains(ctx, "TWICE right now") {
 			t.Errorf("the alarm claims an importer, offers to delete the block, or asserts loaded-twice as fact; got:\n%s", ctx)
 		}
@@ -2418,9 +2439,10 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 
 	t.Run("a block whose imports do not reach the overlay's header is not its importer", func(t *testing.T) {
 		// The first message says which block imports the overlay, so only an
-		// @.trellis/internal/trellis.md line, the header that carries the
-		// rules, counts as doing it.
-		for _, line := range []string{"@docs/house-rules.md", "@.trellis/internal/invariants.md", "@.trellis/internal/trellis.md.bak", "@.trellis/internal/trellis-old.md", "@vendor/.trellis/internal/trellis.md"} {
+		// import of the overlay's header or of its rules.md counts as doing
+		// it: not another file beside them, not a longer name, not a path
+		// that merely ends the same way, not a code span.
+		for _, line := range []string{"@docs/house-rules.md", "@.trellis/internal/invariants.md", "@.trellis/internal/trellis.md.bak", "@.trellis/internal/trellis-old.md", "@vendor/.trellis/internal/trellis.md", "`@.trellis/internal/trellis.md`", "path=@.trellis/internal/trellis.md"} {
 			proj := overlayProj(t)
 			other := "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\n" + line + "\n<!-- trellis:end -->\n"
 			writeInstr(t, proj, "CLAUDE.md", other+inlineBlock)
@@ -2466,15 +2488,17 @@ func TestStalenessHookHandlesInlineManagedBlock(t *testing.T) {
 	})
 
 	t.Run("a block with other imports only is neither kind: beside the import block it stays silent", func(t *testing.T) {
-		proj := overlayProj(t)
-		other := "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\n@docs/house-rules.md\n<!-- trellis:end -->\n"
-		writeInstr(t, proj, "CLAUDE.md", importBlock+"\n"+other)
-		assertSilent(t, proj, "a block that imports something is not the self-contained inline shape")
+		for _, line := range []string{"@docs/house-rules.md", "@~/notes.md", "@/srv/house-rules.md", "@_shared/rules.md", "@2026/rules.md", "@./rules.md", "See @docs/house-rules.md for the rest."} {
+			proj := overlayProj(t)
+			other := "<!-- trellis:begin (managed by trellis — edit .trellis/, not this block) -->\n" + line + "\n<!-- trellis:end -->\n"
+			writeInstr(t, proj, "CLAUDE.md", importBlock+"\n"+other)
+			assertSilent(t, proj, line+": a block that imports something is not the self-contained inline shape")
+		}
 	})
 
 	t.Run("an indented embedded block beside the import block is prose, not a block", func(t *testing.T) {
-		// Same column-0 anchor as the probe: the content read must not find a
-		// block the probe would not.
+		// Same column-0 anchor as the probe: an indented marker opens no block
+		// for either of them.
 		proj := overlayProj(t)
 		writeInstr(t, proj, "CLAUDE.md", importBlock+"\n\n    "+strings.ReplaceAll(inlineBlock, "\n", "\n    ")+"\n")
 		assertSilent(t, proj, "an indented marker is outside S4's column-0 signature")
