@@ -1,0 +1,19 @@
+# This repo's override of grove's story-worker routing table.
+# Keyed by operation id; an override may set only `performers` and `fallback`.
+# Setup merges it over the skill's own routing.toml before binding.
+#
+# Trellis uses the Compound Engineering skills for every fix and its review loop
+# (TRL-108). The skill's table suggests the built-in `code-review` first for the
+# floor review, so a worker here would review with it unless told otherwise;
+# this points the floor review at `ce-code-review` instead.
+#
+# `review-escalation` already suggests `ce-code-review`, so both review
+# operations now bind the same skill. One `ce-code-review` run from a fresh
+# subagent serves both; a worker does not run it twice.
+#
+# The list replaces the table's suggestions, `code-review` and then `review`,
+# rather than adding to them. If `ce-code-review` is missing from a session,
+# setup does not fall back to either; it sends `review` to discovery.
+
+[operation.review]
+performers = ["ce-code-review"]
