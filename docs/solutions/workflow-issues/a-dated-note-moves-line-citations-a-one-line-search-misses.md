@@ -40,7 +40,7 @@ The same review found a second fault. `decision-0084:366` cited `decision-0078` 
      ':(exclude)docs/plans' ':(exclude)docs/superpowers' ':(exclude)docs/ideation'
    ```
 
-   It returned 83 hits on the branch of PR #327, and `decision-0087:65` was among them. Read the lines above each hit to see which record it cites.
+   It returned 83 hits at `60c3640`, the head of PR #327 before this document was added, and `decision-0087:65` was among them. This document's own examples add 4 more. Read the lines above each hit to see which record it cites.
 
 2. **Open the target, never add the delta.** For each citation, open the cited record at the new line numbers and read the text. Adding two to the old number keeps any error the old number already had.
 
