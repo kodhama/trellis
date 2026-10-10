@@ -56,9 +56,10 @@
 # that file is itself proof the project adopted Trellis.
 #
 # The paths are mutually exclusive, and where they cannot be — a project holding
-# BOTH a static overlay and a rendered file — the coexistence branch reports it
-# rather than pretending otherwise. An earlier version of this note claimed
-# exclusivity "by construction", which was false for exactly that state.
+# BOTH a static overlay and a rendered file, or a managed block beside either —
+# the coexistence check reports it rather than pretending otherwise. An earlier
+# version of this note claimed exclusivity "by construction", which was false
+# for exactly that state.
 # Order matters: A before C, so a project MIGRATING off a vendored overlay still
 # gets its staleness nudge (decision-0035: drift is made visible, not silent).
 #
@@ -414,8 +415,9 @@ grep -qE "^($bom)?[[:space:]]*@AGENTS\.md[[:space:]]*$" "$root/CLAUDE.md" 2>/dev
 # apart. Every import block Trellis shipped has one and no inline block ever
 # had any. So each block is asked two things, and the function prints a word
 # for each kind the file holds: "importing" for a block with an
-# @.trellis/internal/ line, "importless" for a block with no @-import line at
-# all. A block with other imports only is neither. Asked per BLOCK, not per
+# @.trellis/internal/trellis.md line, the header that carries the rules, and
+# "importless" for a block with no @-import line at all. A block with other
+# imports only is neither. Asked per BLOCK, not per
 # file: one file can hold both kinds. A block cut off before its trellis:end
 # marker runs to the next begin marker or the end of the file. Same column-0
 # anchor and optional BOM as the probe's grep below, and bytes not characters
@@ -433,7 +435,7 @@ block_kinds() {
     }
     inside && index($0, "<!-- trellis:end") == 1 { close_block(); next }
     inside && /^[ \t]*@[^ \t\r]/ { imports = 1 }
-    inside && /^[ \t]*@\.trellis\/internal\// { overlay = 1 }
+    inside && /^[ \t]*@\.trellis\/internal\/trellis\.md/ { overlay = 1 }
     END {
       close_block()
       if (importless) print "importless"
@@ -608,23 +610,33 @@ if [ -d "$internal" ]; then
     emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/version carries no stamp on its first line, so this hook cannot tell which rules the surviving files represent and will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
     exit 0
   }
-  # The coexistence check's third pairing (TRL-12): the overlay, imported by
-  # one managed block, PLUS a second block that holds no @-import line, with no
-  # rendered file to claim either arm above path A. On a CURRENT stamp the
-  # lines below emit nothing at all, the silence the coexistence check exists
-  # to end. It sits here, not beside its two siblings, so it speaks only for
-  # an overlay the loop above found intact: over a broken one the remedy would
-  # delete the one block that still delivers rules, and that overlay already
-  # drew its own refusal. Before the stamp compare, so a stale overlay does not
-  # trade this for the staleness nudge. Both kinds are required. An overlay no
-  # block imports beside an inline block is a layout the retired setup skill
-  # wrote for an instructions file with no @import, the rules are in context
-  # once there, and it stays as quiet as it was. Not "twice" as fact: the hook
-  # sees that the second block has no import line, not what it embeds. A
-  # hand-built block that both imports and embeds is not caught; the test pins
-  # that.
+  # The coexistence check's third pairing (TRL-12): the overlay PLUS a managed
+  # block that holds no @-import line, with no rendered file to claim either
+  # arm above path A. decision-0073 D1 classes it as a conflicting combination
+  # every reader must name, and on a CURRENT stamp the lines below emit nothing
+  # at all, the silence the coexistence check exists to end. It sits here, not
+  # beside its two siblings, so it speaks only for an overlay the loop above
+  # found intact: a broken one already drew its own refusal, and so does the
+  # legacy flat layout further down, with or without its stamp. Before the
+  # stamp compare, so a stale overlay does not trade this for the staleness
+  # nudge.
+  #
+  # TWO COMPLETE LITERALS, by whether a probed block imports the overlay,
+  # because the safe deletion differs. With an importer the second block is the
+  # spare copy. With none, the block is the one thing this host loaded:
+  # the retired setup skill left that layout wherever it refreshed an inline
+  # install, and "delete the block to keep the overlay" there would leave the
+  # project with no rules. Neither says "twice" as fact: the hook sees that a
+  # block has no import line, not what it embeds, and it reads two files, not
+  # every import the host follows. A hand-built block that both imports and
+  # embeds is not caught, nor is a block cut off before its end marker with an
+  # @-line below it; the tests pin both.
   if [ -n "$importless_files" ] && [ -n "$importing_files" ]; then
-    emit "TRELLIS_STATIC_SHAPES_CONFLICT — this project has BOTH a vendored .trellis/internal/ overlay, imported by the managed block in $importing_files, and a second Trellis managed block in $importless_files that holds no @-import line. The host loads both before any hook runs. If the second block embeds the rules readout between its markers, the same rules are in context twice — read it to tell. To keep one copy, delete the block that holds no @-import line from EACH of $importless_files, leaving the block that imports the overlay in place: delete from its trellis:begin marker through its own trellis:end marker or, where it has none, up to the next trellis:begin marker or the end of the file. Leaving one behind leaves this conflict live. BEFORE deleting anything, read each such block for rows set to active = false and add any that .trellis/rules.toml lacks, so the project keeps the rules it switched off; and if a block is in AGENTS.md, tell the user that other harnesses read that file directly and may rely on it. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
+    emit "TRELLIS_STATIC_SHAPES_CONFLICT — this project has BOTH a vendored .trellis/internal/ overlay, imported by the managed block in $importing_files, and a second Trellis managed block in $importless_files that holds no @-import line. The host loads both before any hook runs. If the second block embeds the rules readout between its markers, the same rules are in context twice — read it to tell. To keep one copy, delete the block that holds no @-import line from EACH of $importless_files, leaving the block that imports the overlay in place (check first that the importing block is live text, not a quoted example): delete from its trellis:begin marker through its own trellis:end marker. Where it has no trellis:end marker, show the user where its text stops and let them say — never delete on to another marker or to the end of the file on your own. Leaving one behind leaves this conflict live. If such a block sets a row to active = false that .trellis/rules.toml does not, show the user both and let them choose which stands — never pick one silently. If a block is in AGENTS.md, tell the user that other harnesses read that file directly and may rely on it. Show the user the exact lines you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
+    exit 0
+  fi
+  if [ -n "$importless_files" ]; then
+    emit "TRELLIS_STATIC_SHAPES_CONFLICT — this project has BOTH a vendored .trellis/internal/ overlay and a Trellis managed block in $importless_files that holds no @-import line. This hook found no managed block that imports the overlay (it reads CLAUDE.md, and AGENTS.md when CLAUDE.md imports it), so the block named above is what the host loaded and the overlay is not what delivers the rules here. If an @.trellis/internal/trellis.md import somewhere else does load the overlay, and the block embeds the rules readout, the same rules are in context twice — read the block and the instructions files to tell. Keep at most one static shape: to keep the block, delete .trellis/internal/, keeping .trellis/rules.toml. Do NOT delete the block to keep the overlay unless a managed block that imports the overlay is in place first: without one, deleting the block leaves this project with no rules loaded. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
     exit 0
   fi
   # TRL-101: the stamp is quoted only when it has a stamp's shape.
