@@ -34,6 +34,8 @@ date: 2026-09-03
 
 > **Dated note, 2026-09-15 — TRL-97 (PR #316):** Point 3's "one file that is *both*", `.trellis/rules.toml` when `rows_are_default=yes` repoints `$toml` at the payload's own preset, no longer exists: the preset retires, and a vendored bundle with no project file delivers every rule without reading any rows. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
+> **Dated note, 2026-10-10 — TRL-39 (PR #334):** The first open question no longer holds: its "On the plugin-native path `codex-context.mjs` refuses outright (`invalid-version`)" is no longer true, and the disagreement it records is settled. The maintainer decided on TRL-39 that both hosts govern and annotate, so on that path Codex now delivers the rules and reports a plugin `reference/version` it cannot name as `staleness.sh` does there; a vendored overlay's own `.trellis/internal/version` is still required. `plugins/trellis/hooks/codex-context.mjs` (`pluginStamp`) carries the behaviour, and `TestBothHostsReportABadVersionStampIdentically` in `cli/version_stamp_parity_test.go` pins the two hosts to each other.
+
 ## Context
 
 `decision-0083` and `decision-0084` shipped a run of fixes that shared one shape:

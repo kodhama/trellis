@@ -47,7 +47,7 @@ The same review found a second fault. `decision-0084:366` cited `decision-0078` 
 3. **Use the last note's PR as the precedent for what is live.** `git show <merge commit> -- docs/decisions` on the PR that added the record's previous note shows which citations that PR moved. PR #316 (`6f292aa`) moved exactly the citations into `decision-0078` and `decision-0083` that PR #327 had to move again.
 
 4. **Leave dated citations alone.** These are not live under `AGENTS.md`, and PR #316 left them too:
-   - a citation that dates itself, as `decision-0087:48-49` does with "line numbers as of this record";
+   - a citation that dates itself, as `decision-0087:50-51` does with "line numbers as of this record";
    - a sweep table, as at `decision-0092:211`;
    - a record's account of a past review, as at `decision-0089:236-240`;
    - anything under `docs/plans/`, `docs/superpowers/` or `docs/ideation/`.
