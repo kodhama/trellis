@@ -113,6 +113,15 @@ const DEFECT_NOT_A_FILE = "is not a readable file — a directory or a device si
 const DEFECT_UNREADABLE =
   "exists but could not be read — a permission mode, a stale ACL, or a symlink whose target is gone";
 const DEFECT_EMPTY = "is empty";
+// The two classifications staleness.sh gives a version stamp it read and could
+// not accept (its $stamp_defect), mirrored the same way and for the same reason.
+const DEFECT_NOT_A_STAMP = "is not a Trellis payload stamp";
+const DEFECT_STAMP_MULTILINE =
+  "carries more than one line of content, where a payload stamp is exactly one";
+// What the context footer says in place of a stamp that could not be named.
+// Shorter than a stamp, so a bad stamp never lengthens the context (see the
+// warning it is paired with, below).
+const NO_READABLE_STAMP = "no readable stamp";
 
 // payloadDefect answers "does this path yield something to read", and says
 // WHICH way it does not. "" means it does. It is this hook's half of
@@ -203,6 +212,87 @@ function payloadDefect(value) {
     } catch {
       // The answer is already decided; a descriptor that will not close cannot
       // change it, and this hook must never throw on the way to its one write.
+    }
+  }
+}
+
+// pluginStamp reads the plugin's own reference/version the way staleness.sh
+// reads it, and returns { stamp, defect } with exactly one of them set (TRL-39).
+// It never fails the session: the stamp is provenance, not part of the rules,
+// and refusing a healthy rules payload over it is the failure direction
+// decision-0086 records. The plugin-native branch is its only caller; a
+// vendored overlay's own stamp is still required and strict.
+//
+// The file-level classes are payloadDefect's. For a file that yields content,
+// staleness.sh drops NULs (command substitution), strips trailing spaces, tabs
+// and CRs from each line, skips blank lines, and accepts exactly one remaining
+// line that is `payload@` and twelve lowercase hex digits. So a CRLF checkout,
+// trailing whitespace and blank lines are a healthy stamp here too, and nothing
+// else is forgiven: not leading or internal whitespace, not a second line.
+//
+// Scanned a chunk at a time, holding at most one candidate stamp, for the
+// reason payloadDefect gives: nothing here needs the file in memory.
+function pluginStamp(absolute) {
+  const defect = payloadDefect(absolute);
+  if (defect !== "") return { stamp: "", defect };
+  const STAMP_LENGTH = "payload@".length + 12;
+  let fd;
+  try {
+    fd = fs.openSync(absolute, "r");
+  } catch {
+    return { stamp: "", defect: DEFECT_UNREADABLE };
+  }
+  try {
+    const chunk = Buffer.alloc(4096);
+    let contentLines = 0;
+    let candidate = "";
+    // The line being read: its bytes that are not strippable whitespace, and
+    // whether it can still be a stamp. It cannot once whitespace is followed by
+    // more content (leading or internal whitespace) or it runs too long.
+    let line = "";
+    let trailing = false;
+    let possible = true;
+    const endLine = () => {
+      if (line !== "" || !possible) {
+        contentLines += 1;
+        if (contentLines === 1) candidate = possible ? line : "";
+      }
+      line = "";
+      trailing = false;
+      possible = true;
+    };
+    for (;;) {
+      let read;
+      try {
+        read = fs.readSync(fd, chunk, 0, chunk.length, null);
+      } catch {
+        return { stamp: "", defect: DEFECT_UNREADABLE };
+      }
+      if (read === 0) break;
+      for (let i = 0; i < read; i += 1) {
+        const byte = chunk[i];
+        if (byte === 0x00) continue;
+        if (byte === 0x0a) {
+          endLine();
+          if (contentLines > 1) return { stamp: "", defect: DEFECT_STAMP_MULTILINE };
+        } else if (byte === 0x20 || byte === 0x09 || byte === 0x0d) {
+          trailing = true;
+        } else if (trailing || line.length === STAMP_LENGTH) {
+          possible = false;
+        } else {
+          line += String.fromCharCode(byte);
+        }
+      }
+    }
+    endLine();
+    if (contentLines > 1) return { stamp: "", defect: DEFECT_STAMP_MULTILINE };
+    if (/^payload@[0-9a-f]{12}$/u.test(candidate)) return { stamp: candidate, defect: "" };
+    return { stamp: "", defect: DEFECT_NOT_A_STAMP };
+  } finally {
+    try {
+      fs.closeSync(fd);
+    } catch {
+      // As in payloadDefect: the answer is already decided.
     }
   }
 }
@@ -844,8 +934,11 @@ const PAYLOAD_EMPTY_CLASS = {
   version: "invalid-version",
 };
 
+// The stamp is in this loop for a vendored overlay only (TRL-39). An overlay's
+// own stamp is required like the rest of it; the plugin's is provenance, read by
+// pluginStamp below, and no shape of it costs the session its rules.
 const payload = {};
-for (const key of ["prose", "rules", "version"]) {
+for (const key of vendored ? ["prose", "rules", "version"] : ["prose", "rules"]) {
   const result = readRequired(sources.root, sources[key], {
     emptyError: PAYLOAD_EMPTY_CLASS[key] ?? "empty-file",
   });
@@ -856,17 +949,18 @@ for (const key of ["prose", "rules", "version"]) {
   payload[key] = result.value;
 }
 
-// `let`, uniquely among the three: the invariants repoint below rewrites it
-// in place on the plugin-native branch (TRL-52). The rules body and the
-// version stamp are delivered exactly as read and stay `const`.
+// `let`, uniquely among the delivered files: the invariants repoint below
+// rewrites it in place on the plugin-native branch (TRL-52). The rules body is
+// delivered exactly as read and stays `const`.
 let trellis = payload.prose;
 const rules = payload.rules;
-const version = payload.version;
+const stampPath = path.join(sources.root, sources.version);
+const pluginVersion = vendored ? { stamp: "", defect: "" } : pluginStamp(stampPath);
 
 // The three length/shape checks that follow are now the SECOND lock on the
 // same door — readRequired refuses a zero-byte file before they run. They stay
-// because they catch what emptiness cannot: a version stamp that is present
-// and malformed, and prose that is non-empty and truncated.
+// because they catch what emptiness cannot: an overlay's version stamp that is
+// present and malformed, and prose that is non-empty and truncated.
 if (trellis.length === 0) {
   fail(sources.prose, "empty-prose");
   process.exit(0);
@@ -875,10 +969,15 @@ if (rules.length === 0) {
   fail(sources.rules, "empty-prose");
   process.exit(0);
 }
-if (!/^payload@[0-9a-f]{12}\n?$/u.test(version)) {
+if (vendored && !/^payload@[0-9a-f]{12}\n?$/u.test(payload.version)) {
   fail(sources.version, "invalid-version");
   process.exit(0);
 }
+// What the footer names: the overlay's stamp as read, or the plugin's, or the
+// stand-in for a plugin stamp that could not be named.
+const stamp = vendored
+  ? payload.version.replace(/\n$/u, "")
+  : pluginVersion.stamp || NO_READABLE_STAMP;
 // sources.prose, not a hardcoded path. This named .trellis/internal/trellis.md
 // on BOTH branches, so on the plugin-native path it reported a failure against
 // a file that was never read — the file actually read is
@@ -1232,7 +1331,6 @@ if (slugs.length === 0) {
   process.exit(0);
 }
 
-const stamp = version.endsWith("\n") ? version.slice(0, -1) : version;
 // A rules file reached through a symbolic link is classified and never shown
 // (TRL-97): a repository can commit .trellis/rules.toml, or the directory
 // holding it, as a link to any file the user can read, a credentials file
@@ -1279,6 +1377,25 @@ const response = {
 // hold at once. Joined with a space: with one warning the string is
 // byte-identical to what that warning shipped alone.
 const warnings = [];
+// TRL-39. The plugin's own stamp could not be named, and that is all that is
+// wrong: the rules were delivered whole. This is staleness.sh's path-B
+// provenance line, with its path and its classification in the same words
+// (TestBothHostsReportABadVersionStampIdentically pins the pair). It is NOT
+// that hook's TRELLIS_STALENESS_UNKNOWN, which reports a comparison against a
+// project's own stamp that could not be made; this hook compares no stamps.
+//
+// On systemMessage and not in the context, with a stand-in in the footer that
+// is shorter than a stamp, because the context budget is measured to a few
+// hundred bytes (RULES_ECHO_MAX_BYTES). A sentence carrying an absolute path
+// could push the largest admitted section over it, and the bad stamp would
+// refuse the session after all.
+if (pluginVersion.defect !== "") {
+  warnings.push(
+    `Trellis warning: this plugin payload's own version stamp could not be read (${stampPath} ${pluginVersion.defect}), so the context just injected cannot name which payload build it came from. ` +
+      "The rules themselves were delivered and govern this session normally. " +
+      "Reinstalling or updating the Trellis plugin is the likely fix.",
+  );
+}
 // TRL-69, decided at the repoint above. The pointer was rewritten to a file
 // that cannot be read, which makes this a half-installed plugin payload. Said
 // on the channel fail() and the rules.toml warnings already use, rather than left

@@ -174,13 +174,20 @@ func TestCodexVendoredProseOutranksThePlugins(t *testing.T) {
 // paths, "so on the plugin-native path it reported a failure against a file that
 // was never read".
 //
-// One case per REACHABLE `fail(sources.*)` call site: the payload read loop
-// (exercised once per role, since the label it reports is `sources[key]` and the
-// role is what varies), invalid-placeholder-count, invalid-version,
+// One case per `fail(sources.*)` call site this branch can REACH: the payload
+// read loop (exercised once per role, since the label it reports is
+// `sources[key]` and the role is what varies), invalid-placeholder-count,
 // invalid-rules and no-slugs-in-payload. The two `empty-prose` post-checks are
 // the second lock on a door readRequired already shut; a zero-byte file is
 // refused at the read and reported from the loop, so the `empty-prose` CLASS is
 // covered there.
+//
+// `sources.version` is not among them since TRL-39: on this branch the stamp is
+// classified and reported, never required, so no shape of reference/version
+// reaches a fail(). TestCodexPluginNativeGovernsOnABadVersionStamp below and
+// TestBothHostsReportABadVersionStampIdentically hold that. The vendored
+// branch still refuses on its own `.trellis/internal/version`
+// (TestCodexHookFailureVocabularyAndIsolation).
 //
 // The vendored half of the vocabulary is deliberately not repeated here; it is
 // pinned literally next door.
@@ -218,18 +225,6 @@ func TestCodexPluginNativePayloadFaultsNameTheFileActuallyRead(t *testing.T) {
 		},
 		label: "reference/rules.md",
 		class: "invalid-rules",
-	}, {
-		name:    "a missing version stamp names reference/version",
-		breakIt: func(t *testing.T, ref func(string) string) { removeFileT(t, ref("version")) },
-		label:   "reference/version",
-		class:   "missing-file",
-	}, {
-		name: "a malformed version stamp names reference/version",
-		breakIt: func(t *testing.T, ref func(string) string) {
-			writeFileT(t, ref("version"), "plugin@abcdef123456\n")
-		},
-		label: "reference/version",
-		class: "invalid-version",
 	}, {
 		// The site furthest from the read: a rules payload that is well-formed
 		// enough to pass the sentinel gate but carries no backticked rule tags, so
@@ -361,6 +356,85 @@ func TestCodexReportsAPluginPayloadMissingItsInvariantsCopy(t *testing.T) {
 			// the preceding sentence's full stop.
 			if !strings.Contains(got.SystemMessage, ". "+floorWarning) {
 				t.Errorf("the two warnings are not joined by a single space after the payload warning\ngot: %q", got.SystemMessage)
+			}
+		})
+	}
+}
+
+// TestCodexPluginNativeGovernsOnABadVersionStamp is TRL-39's Codex half: what
+// the cross-host table cannot see because only this host has it.
+//
+//   - The report costs the context NOTHING. The stamp's stand-in is shorter than
+//     a stamp and the sentence rides systemMessage, so a bad stamp can never push
+//     a delivery over MAX_CONTEXT_BYTES. That budget is measured to a few hundred
+//     bytes of headroom (RULES_ECHO_MAX_BYTES), and a report inside the context
+//     would turn a bad stamp back into a refusal for the largest project files:
+//     the defect, by another route.
+//   - It JOINS the other warnings a successful delivery can carry, one space
+//     apart, and none is dropped.
+func TestCodexPluginNativeGovernsOnABadVersionStamp(t *testing.T) {
+	floorWarning := warnFloorRow(2, "floor-intent-gate")
+	for _, tc := range []struct {
+		name    string
+		breakIt func(t *testing.T, ref string)
+		defect  string
+	}{{
+		name:    "a missing stamp",
+		breakIt: removeFileT,
+		defect:  "is missing",
+	}, {
+		name:    "an empty stamp",
+		breakIt: func(t *testing.T, ref string) { writeFileT(t, ref, "") },
+		defect:  "is empty",
+	}, {
+		name:    "a malformed stamp",
+		breakIt: func(t *testing.T, ref string) { writeFileT(t, ref, "plugin@abcdef123456\n") },
+		defect:  "is not a Trellis payload stamp",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := writeConfigOnlyProject(t)
+			writeFileT(t, filepath.Join(project, ".trellis", "rules.toml"), "[rules]\nfloor-intent-gate = { active = false }\n")
+			ref := filepath.Join(pluginRoot, "reference", "version")
+			invariants := filepath.Join(pluginRoot, "reference", "invariants.md")
+
+			// The baseline is taken on THIS plugin root before the fault, so the
+			// two contexts differ by the footer alone.
+			healthy := codexContextFor(t, pluginRoot, project)
+
+			tc.breakIt(t, ref)
+			removeFileT(t, invariants)
+			raw, got := runCodexHook(t, pluginRoot, startupInput(t, project))
+			if got.HookSpecificOutput == nil {
+				t.Fatalf("the rules payload is intact, so the session must be governed: %s", raw)
+			}
+			context := got.HookSpecificOutput.AdditionalContext
+
+			if !strings.HasSuffix(context, codexNoStampFooter) {
+				t.Errorf("want the context to end %q, got:\n%s", codexNoStampFooter, context)
+			}
+			if len(context) > len(healthy) {
+				t.Errorf("a bad stamp made the context longer (%d bytes, healthy %d); the report must not spend the context budget", len(context), len(healthy))
+			}
+			if i := strings.LastIndex(healthy, "Trellis hook loaded installed overlay: "); i < 0 || !strings.HasPrefix(context, healthy[:i]) {
+				t.Errorf("a bad stamp changed the delivery ahead of the footer:\n%s", context)
+			}
+
+			// The whole warning, not its opening: the two closing sentences are
+			// what tell the user the session is still governed and what to do.
+			stampWarning := fmt.Sprintf("Trellis warning: this plugin payload's %s%s %s), so the context just injected %s. "+
+				"The rules themselves were delivered and govern this session normally. "+
+				"Reinstalling or updating the Trellis plugin is the likely fix.", stampReportLead, ref, tc.defect, stampReportTail)
+			if !strings.HasPrefix(got.SystemMessage, stampWarning) {
+				t.Errorf("want systemMessage to lead with the stamp report\nwant prefix: %s\ngot: %s", stampWarning, got.SystemMessage)
+			}
+			// Three independent conditions, three warnings, each joined to the
+			// last by one space after its full stop.
+			if !strings.Contains(got.SystemMessage, ". Trellis warning: this plugin payload has no readable "+invariants) {
+				t.Errorf("the invariants warning was dropped or not joined by one space\ngot: %q", got.SystemMessage)
+			}
+			if !strings.HasSuffix(got.SystemMessage, ". "+floorWarning) {
+				t.Errorf("the floor warning was dropped or not joined by one space\ngot: %q", got.SystemMessage)
 			}
 		})
 	}
