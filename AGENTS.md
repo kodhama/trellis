@@ -93,7 +93,7 @@ asked for a PR, open it. An agent still may not merge on his behalf without his 
 |---|---|
 | write or change an artifact — frontmatter, per-type body sections | `decision-0082` (no `status`; the merge is the acceptance) · `decision-0042` (family lifecycle) · `decision-0037` (`owner: agent` carries *authorship*, not accountability — that stays with the maintainer) |
 | supersede a record, in full or in part | the rules above — `superseded_by` for a full retirement by a successor record, a dated note for a partial retirement or for a full one with no successor |
-| retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal) · `decision-0074` |
+| retire something, or draw a boundary with what came before | `decision-0081` (supersession authority scales with cost of reversal; an accepted argument, its catalog edit not landed) · `decision-0074` |
 | change a source that has derivatives — the catalog, the CLI's command set | `decision-0028` (update derivatives in the same change; a guard per pair) |
 | record a significant choice | only when it meets the record test above, named by date and slug as the naming rule above says — the four strategic forks are `0001–0004` |
 | plan a build between a decision and the code | the **Compound Engineering** skills (`ce-brainstorm` or `ce-plan`, then `ce-work`, `ce-code-review`, `ce-commit-push-pr`) — `decision-0097`; the spec stage retired in `decision-0079`, and `specs/` with it |
