@@ -230,6 +230,12 @@ function payloadDefect(value) {
 // trailing whitespace and blank lines are a healthy stamp here too, and nothing
 // else is forgiven: not leading or internal whitespace, not a second line.
 //
+// The hosts still part on one test, and it is that hook's defect rather than a
+// tolerance to copy (TRL-112): its hex check is the range `[!0-9a-f]`, which
+// bash 3.2 reads by the locale's collation, so under a UTF-8 locale it passes
+// uppercase A to E. The bytes are tested here, as that hook tests them under
+// LC_ALL=C.
+//
 // Scanned a chunk at a time, holding at most one candidate stamp, for the
 // reason payloadDefect gives: nothing here needs the file in memory.
 function pluginStamp(absolute) {

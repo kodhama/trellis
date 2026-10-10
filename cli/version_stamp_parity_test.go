@@ -18,6 +18,13 @@ package main
 // the table below runs both on one project and pins them to each other on what
 // they can be compared on: whether the rules arrived, whether the stamp was
 // named, and the classification each gives the file.
+//
+// Three shapes have no row, because the hosts do not agree on them yet. That
+// is a defect in staleness.sh, filed as TRL-112: a hash with uppercase A to E
+// under a UTF-8 locale on bash 3.2, a second line holding a lone non-UTF-8
+// byte, and a file whose only line is `#multi`. Both hosts deliver the rules on
+// all three and differ on how the stamp is reported. The uppercase row below
+// carries an F, which that hook rejects under a UTF-8 locale too.
 
 import (
 	"os"
