@@ -780,6 +780,60 @@ func payloadPrintfMessages(block string) []string {
 	return msgs
 }
 
+// overlayReportAssembly returns the shell source of path A's invariants report
+// in body: from the read of the overlay's copy to the emit that sends the report
+// alone (TRL-76). The report has three cells and rides three exits, so it is
+// assembled in variables rather than spelled as nine emit literals, and a guard
+// that reads only emit literals and the payload printfs never sees its remedy
+// text. Both destructive-instruction guards below scan this region as well.
+func overlayReportAssembly(t *testing.T, body string) string {
+	t.Helper()
+	start := strings.Index(body, `overlay_inv="$internal/invariants.md"`)
+	if start < 0 {
+		t.Fatal("path A's invariants report was not found in staleness.sh — the scan is broken")
+	}
+	rest := body[start:]
+	end := strings.Index(rest, `emit "$inv_report"`)
+	if end < 0 {
+		t.Fatal("path A's invariants report has no closing emit — the scan is broken")
+	}
+	return rest[:end]
+}
+
+// shellAssignmentRe matches one double-quoted shell assignment, name="...".
+var shellAssignmentRe = regexp.MustCompile(`\b[a-z_]+="((?:[^"\\]|\\.)*)"`)
+
+// overlayReportMessages extracts the text of every double-quoted assignment in
+// block (normally overlayReportAssembly's output). It reads the region rather
+// than a list of variable names, so a variable added to the report later is
+// scanned without anyone remembering to name it here. A path or an empty
+// initialiser comes back too and is inert for verb-scanning.
+func overlayReportMessages(block string) []string {
+	var msgs []string
+	for _, m := range shellAssignmentRe.FindAllStringSubmatch(block, -1) {
+		if m[1] != "" {
+			msgs = append(msgs, m[1])
+		}
+	}
+	return msgs
+}
+
+// requireAllScanned fails unless every message of one channel is in msgs, the
+// slice a guard is about to scan: a channel that is computed and never appended
+// is counted but not enforced.
+func requireAllScanned(t *testing.T, channel string, part, msgs []string) {
+	t.Helper()
+	scanned := make(map[string]bool, len(msgs))
+	for _, m := range msgs {
+		scanned[m] = true
+	}
+	for _, p := range part {
+		if !scanned[p] {
+			t.Fatalf("a message of %s was computed but never entered the scanned set (msgs) — the channel is not wired into this guard's assertions:\n%s", channel, p)
+		}
+	}
+}
+
 // ungatedDestructiveMessages scans msgs against destructiveVerbs and reports,
 // for each message that instructs one, whether it carries the confirmation
 // gate the message is required to. gated is every message that hit a verb
@@ -954,6 +1008,15 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 				"the codex payload channel is computed but not wired into this guard's assertions:\n%s", cm)
 		}
 	}
+	// TRL-76: path A's invariants report, the one agent-facing text in
+	// staleness.sh that is assembled in variables. Its two remedies are what
+	// this guard exists to read.
+	overlayMsgs := overlayReportMessages(overlayReportAssembly(t, string(body)))
+	if len(overlayMsgs) < minOverlayReportMessages {
+		t.Fatalf("found only %d strings in path A's invariants report — the scan is broken, and a guard that reads nothing passes", len(overlayMsgs))
+	}
+	msgs = append(msgs, overlayMsgs...)
+	requireAllScanned(t, "path A's invariants report", overlayMsgs, msgs)
 	violations, gated := ungatedDestructiveMessages(msgs)
 	for _, msg := range violations {
 		t.Errorf("this message instructs a mutation with no confirmation gate — an autonomous "+
@@ -1071,7 +1134,37 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 			}
 		})
 	}
+
+	// The same positive case for path A's invariants report (TRL-76): every
+	// real string there is clean, so without an injected one this guard cannot
+	// tell "nothing to gate" from "the region stopped being scanned".
+	t.Run("the overlay invariants report is actually enforced, not merely counted", func(t *testing.T) {
+		const marker = `inv_fix="Putting a readable invariants.md at that overlay path is the likely fix."`
+		const injected = "Delete .trellis/internal/ now"
+		mutated := strings.Replace(string(body), marker, strings.Replace(marker, `="`, `="`+injected+". ", 1), 1)
+		if mutated == string(body) {
+			t.Fatalf("premise: %q was not found in staleness.sh — the case would prove nothing", marker)
+		}
+		mutatedViolations, _ := ungatedDestructiveMessages(overlayReportMessages(overlayReportAssembly(t, mutated)))
+		found := false
+		for _, v := range mutatedViolations {
+			if strings.Contains(v, injected) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("an ungated instruction (%q) injected into path A's invariants report was not caught — "+
+				"the report is not actually being scanned, only its string count is being checked", injected)
+		}
+	})
 }
+
+// minOverlayReportMessages is a floor on what overlayReportMessages finds in
+// the real script: the report's opening, its three continuations, the two
+// remedies and the two project-state sentences. A drop means the region or the
+// assignment pattern stopped matching, not that the report got shorter.
+const minOverlayReportMessages = 8
 
 // TestEveryDeletionInstructionIsGated: a Codex P2 on #227, and the SIXTH
 // appearance of one class on this PR — every finding here has been a remedy that
@@ -1118,6 +1211,16 @@ func TestEveryDeletionInstructionIsGated(t *testing.T) {
 		t.Fatalf("found only %d codex payload messages — the scan is broken, and a guard that reads nothing passes", len(codexMsgs))
 	}
 	msgs = append(msgs, codexMsgs...)
+	// Path A's invariants report, assembled in variables (TRL-76) — see
+	// overlayReportAssembly. A deletion there needs its own gate like any emit's:
+	// the report is its own paragraph, and the gate in the message it rides does
+	// not speak for it.
+	overlayMsgs := overlayReportMessages(overlayReportAssembly(t, string(body)))
+	if len(overlayMsgs) < minOverlayReportMessages {
+		t.Fatalf("found only %d strings in path A's invariants report — the scan is broken, and a guard that reads nothing passes", len(overlayMsgs))
+	}
+	msgs = append(msgs, overlayMsgs...)
+	requireAllScanned(t, "path A's invariants report", overlayMsgs, msgs)
 	gated := 0
 	for _, msg := range msgs {
 		// Fix round 1 (TRL-30 task 3): case-insensitive, matching the same
