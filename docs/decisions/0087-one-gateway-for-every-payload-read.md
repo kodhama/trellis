@@ -62,7 +62,7 @@ against a deliberately broken input, one file at a time, as they thought of it.
 **Some were the inverse** — a guard that over-corrected and refused a *healthy* payload. An
 unreadable `reference/rules-b.toml` was reported as payload incoherence while `rules.md` and the
 project's rows were both perfectly well (`decision-0083` records the general property at
-`:117-118`; the specific fix is in the hook). A CRLF-terminated `rules.md` was reported as
+`:119-120`; the specific fix is in the hook). A CRLF-terminated `rules.md` was reported as
 truncated — **that one is recorded in the hook rather than in either decision**, at
 `plugins/trellis/hooks/staleness.sh:826-829` (*"an exact ASCII comparison fails — reporting
 `not-last` and blacking out a COMPLETE, CORRECT payload"*), and pinned by

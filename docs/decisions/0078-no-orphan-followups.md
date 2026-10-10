@@ -18,7 +18,7 @@ date: 2026-08-28
 
 > **Dated note, 2026-09-15 — TRL-97 (PR #316):** The Consequences' render chain no longer includes "the preset rows in `rules-a.toml` / `rules-b.toml` and this repo's own `.trellis/rules.toml`", and "**without a row the rule ships but is inactive**" no longer holds: both presets retire, and a rule with no row applies. `decision-2026-09-15-rule-rows-only-switch-rules-off` states the current behaviour.
 
-> **Dated note, 2026-10-10 — TRL-83 (PR #327):** The Consequences' statement that trellis#245 "is **still open**: there is no `release-guard.yml` in `.github/workflows/`" no longer holds, and so trellis#245 is no longer one of the "two live counter-instances" the profile row was said to name: it merged on 2026-09-05 as `8f52297`. `.github/workflows/release-guard.yml` carries the guard, and `AGENTS.md` states the rule under "A payload change is a release".
+> **Dated note, 2026-10-10 — TRL-83 (PR #327):** The Consequences' statement that trellis#245 "is **still open**: there is no `release-guard.yml` in `.github/workflows/`" no longer holds, and nor does what rests on it: the bump is no longer "discharged by hand", and trellis#245 is no longer one of "the two counter-instances this repo holds" (Decision point 4; "two live counter-instances" in Consequences). trellis#245 merged on 2026-09-05 as `8f52297`. `.github/workflows/release-guard.yml` carries the guard, `AGENTS.md` states the rule under "A payload change is a release", and `profiles/trellis-self.md` records the counter-instances as they stand.
 
 > **Decided: mint it.** The maintainer ruled before drafting began, and ruled twice — that the row
 > is added rather than merged into a neighbour, and that combining moral cousins belongs to a
