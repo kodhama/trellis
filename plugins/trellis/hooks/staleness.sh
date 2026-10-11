@@ -716,10 +716,10 @@ if [ -d "$internal" ]; then
     fi
     inv_report="$inv_report The overlay's rules are intact and govern this session normally; that reference is consulted on demand, so only a rule that turns out ambiguous needs it. $inv_fix"
   fi
-  # The hook emits one message, so beside another one the report is a second
-  # paragraph of it.
-  inv_also=""
-  [ -z "$inv_report" ] || inv_also="$(printf '\n\n%s' "$inv_report")"
+  # The hook emits one message, so beside another the report is a second paragraph.
+  # The stale nudge says to delete the overlay, so there the repair is called its alternative.
+  inv_also="" inv_or_migrate=""
+  [ -z "$inv_report" ] || { inv_also="$(printf '\n\n%s' "$inv_report")"; inv_or_migrate=" That repair is the alternative to migrating as described above, not a step after it."; }
   # TRL-101: the stamp is quoted only when it has a stamp's shape.
   overlay_said="stamp is $overlay"
   overlay_named=" ($overlay)"
@@ -741,7 +741,7 @@ if [ -d "$internal" ]; then
     exit 0
   fi
   if [ "$overlay" != "$current" ]; then
-    emit "Trellis overlay may be stale: this project's .trellis/internal/version $overlay_said, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Until then this session is governed by the vendored copy.$inv_also"
+    emit "Trellis overlay may be stale: this project's .trellis/internal/version $overlay_said, but the installed Trellis plugin ships $current. This project still carries a vendored overlay, which the plugin no longer writes or refreshes. To move it onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml rows. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Until then this session is governed by the vendored copy.$inv_also$inv_or_migrate"
   elif [ -n "$inv_report" ]; then
     # A current stamp used to end this path in silence, which is what hid the
     # dead pointer: the report is then the whole message.

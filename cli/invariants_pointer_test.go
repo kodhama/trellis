@@ -327,6 +327,21 @@ const overlayInvariantsRemedy = "Putting a readable invariants.md at that overla
 // no copy and the plugin's is unusable (decision-0095 point 2), on both hosts.
 const pluginReinstallRemedy = "reinstalling the Trellis plugin so its copy can stand in"
 
+// claudeNoStandInSentence is Codex's sentence for the own-copy cell, and the
+// lead ruled it out of the Claude report (TRL-76, ruling 1): on Claude the
+// plugin's copy does stand in, in words, when the overlay has none, so the
+// sentence would be false of the hook that prints it.
+const claudeNoStandInSentence = "the plugin's own copy does not stand in for it"
+
+// claudeStaleNudgeLead opens the stale-overlay nudge, and claudeRepairOrMigrate
+// is what the report adds beside it and nowhere else. The nudge says to delete
+// the overlay to migrate and the report says to complete it; the two are
+// alternatives, and a reader given both in one message is told so.
+const (
+	claudeStaleNudgeLead  = "Trellis overlay may be stale"
+	claudeRepairOrMigrate = "That repair is the alternative to migrating as described above, not a step after it."
+)
+
 // claudeReadThePluginCopy is the instruction that makes the plugin copy's path
 // a fallback rather than a fact: Claude's words for what Codex does by
 // rewriting the pointer.
@@ -387,6 +402,12 @@ func assertClaudeOverlayReportBasics(t *testing.T, report, overlayCopy, overlayW
 	}
 	if !strings.Contains(report, overlayInvariantsRemedy) {
 		t.Errorf("the report dropped the repair that works in every vendored cell\nwant: %q\ngot:  %q", overlayInvariantsRemedy, report)
+	}
+	if strings.Contains(report, claudeNoStandInSentence) {
+		t.Errorf("the report says %q, which is Codex's sentence and false here: this hook names the plugin's copy as the stand-in when the overlay has none\ngot: %q", claudeNoStandInSentence, report)
+	}
+	if stale, said := strings.HasPrefix(report, claudeStaleNudgeLead), strings.HasSuffix(report, " "+claudeRepairOrMigrate); stale != said {
+		t.Errorf("the report must end by calling its repair the alternative to migrating beside the stale-overlay nudge, and only there (beside the nudge: %v, said: %v)\nwant the last sentence: %q\ngot: %q", stale, said, claudeRepairOrMigrate, report)
 	}
 	// The report is the last paragraph of whatever message carries it. It is
 	// assembled in variables, which the source-level guards in
@@ -628,7 +649,7 @@ func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *te
 		writeFileT(t, overlayCopy, body)
 		return pluginRoot, project, overlayCopy
 	}
-	const staleLead = "Trellis overlay may be stale"
+	const staleLead = claudeStaleNudgeLead
 	const nothingWrong = "Nothing is wrong with this project"
 
 	t.Run("beside the stale-overlay nudge", func(t *testing.T) {
@@ -643,12 +664,28 @@ func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *te
 			t.Errorf("beside another message the report is its own paragraph\ngot: %q", report)
 		}
 	})
+	t.Run("a stale overlay with no copy is pointed at the plugin's and told the repair is the alternative", func(t *testing.T) {
+		pluginRoot, project, overlayCopy := build(t, false)
+		removeFileT(t, overlayCopy)
+		writeFileT(t, filepath.Join(project, ".trellis", "internal", "version"), "payload@000000000000\n")
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, staleLead) {
+			t.Fatalf("a stale overlay must still draw its nudge first\ngot: %q", report)
+		}
+		// The basics hold the last sentence to this exit; this row is the one
+		// the lead named, where the nudge's deletion and the report's repair
+		// sit closest: the plugin's copy is usable either way.
+		assertClaudeOverlayReportBasics(t, report, overlayCopy, "is missing")
+		if !strings.Contains(report, claudeReadThePluginCopy) {
+			t.Errorf("the report names no usable plugin copy beside the stale nudge\nwant: %q\ngot:  %q", claudeReadThePluginCopy, report)
+		}
+	})
 	t.Run("a stale overlay with a healthy copy says nothing about invariants", func(t *testing.T) {
 		pluginRoot, project, _ := build(t, false)
 		writeFileT(t, filepath.Join(project, ".trellis", "internal", "version"), "payload@000000000000\n")
 		report := claudeOverlayContextFor(t, pluginRoot, project)
-		if !strings.HasPrefix(report, staleLead) || strings.Contains(report, vendoredInvariantsReportLead) {
-			t.Errorf("want the staleness nudge alone\ngot: %q", report)
+		if !strings.HasPrefix(report, staleLead) || strings.Contains(report, vendoredInvariantsReportLead) || strings.Contains(report, claudeRepairOrMigrate) {
+			t.Errorf("want the staleness nudge alone and unchanged\ngot: %q", report)
 		}
 	})
 	t.Run("beside TRELLIS_STALENESS_UNKNOWN", func(t *testing.T) {
