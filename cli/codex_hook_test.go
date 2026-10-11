@@ -806,7 +806,7 @@ func TestCodexBootstrapPayloadContract(t *testing.T) {
 // predicate, every freshly installed project got a permanent false "not governed"
 // warning, and the whole suite stayed green. install.sh:888-893 says so in a
 // comment and prints `<!-- trellis:rendered-begin -->` / `<!-- trellis:rendered-footer -->`
-// instead; staleness.sh:619-621 matches those as whole lines.
+// instead; staleness.sh:852-854 matches those as whole lines.
 //
 // block-codex.md carried the old shape: generated prose counted as delivered only
 // when the sentinel was followed by "the fixed footer whose first nonblank line is

@@ -16,6 +16,8 @@ date: 2026-09-07
 
 # A vendored delivery names its own dead pointer, and blames the overlay
 
+> **Dated note, 2026-10-10 — TRL-76 (PR #335):** Three clauses of point 6 no longer hold: its opening "This cell is Codex-only", its "so Claude never delivers an invariants pointer into a vendored project and has nothing to report about", and its closing "so "Codex-only" cannot quietly stop being true". The static import chain delivers that pointer into a vendored Claude session, and `staleness.sh`'s path A now reports on this cell: it names the overlay's missing file and the plugin's unusable copy, each with its fault, and still injects nothing. The check point 6 placed in `TestCodexDoesNotFallBackOnAnUnusablePluginCopy` is kept, and now says only that the Claude hook delivers no pointer of its own. The Consequences bullet on `claudeContextFor` says the vendored fixtures need raw stdout "because that hook legitimately emits **nothing** there"; it still emits nothing on a healthy vendored fixture, and emits this report on that test's own. `plugins/trellis/README.md` states what each host reports in each vendored cell; `plugins/trellis/hooks/staleness.sh` carries the behaviour, and `TestClaudeReportsBothCopiesWhenNeitherInvariantsCanBeRead` in `cli/invariants_pointer_test.go` pins it.
+
 ## Context
 
 Four merged changes took the invariants pointer from *"Codex names a file nothing installs"* to
@@ -120,13 +122,13 @@ blames is what the branch decides.**
    both embed the plugin root's absolute path and track its length — the error
    `decision-0094`:148-151 recorded paying for in this same series. The report cannot grow the
    context, so it cannot tip a governed session into a refusal. That is the trade
-   `staleness.sh:1497` records paying for on the other host and fixed
+   `staleness.sh:1683` records paying for on the other host and fixed
    by ordering its report after the budget check; here the ordering is not needed because the
    channel is separate.
 
 6. **This cell is Codex-only, and that is now a test rather than a reading.** `staleness.sh`'s
-   path A opens at `if [ -d "$internal" ]` (`:482`) and every route out of it exits,
-   unconditionally at `:529`, long before the repoint at `:1403`, so Claude
+   path A opens at `if [ -d "$internal" ]` (`:585`) and every route out of it exits,
+   unconditionally at `:750`, long before the repoint at `:1210`, so Claude
    never delivers an invariants pointer into a vendored project and has nothing to report about.
    **This is why the guard is not `TestBothHostsReportAMissingInvariantsTarget`**: that guard's
    subject is host symmetry on a *config-only* project, and every row of it asserts both hosts
