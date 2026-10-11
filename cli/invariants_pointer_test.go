@@ -123,7 +123,7 @@ func claudeContextFor(t *testing.T, pluginRoot, project string) string {
 // Split out for the vendored fixtures, where staleness.sh legitimately emits
 // NOTHING on a healthy overlay whose stamp is current -- path A opens at
 // `if [ -d "$internal" ]` (staleness.sh:585) and every route out of it exits,
-// the last at :750, long before the repoint at :1210. An earlier
+// the last at :771, long before the repoint at :1231. An earlier
 // version of this comment cited :559, which is a comment inside path C; review
 // caught it. nudgeContext fails on
 // that empty string, which is right for every caller that expects a delivery
@@ -793,7 +793,7 @@ func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *te
 // reason: the report states as fact that the overlay's rules carry a pointer,
 // and an overlay is the project's own text. One that edited the pointer out
 // must not be told to repair a file nothing names, and one that moved it into
-// rules.md must not go unreported.
+// rules.md, behind the header's import, must not go unreported.
 func TestClaudeSaysNothingWhenTheVendoredProseCarriesNoPointer(t *testing.T) {
 	for name, replacement := range map[string]string{
 		"the pointer is edited out": "`the invariants reference`",
@@ -826,27 +826,206 @@ func TestClaudeSaysNothingWhenTheVendoredProseCarriesNoPointer(t *testing.T) {
 	}
 }
 
-func TestClaudeReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf(t *testing.T) {
-	pluginRoot := writeDualHostPluginRoot(t)
-	project := newGitProject(t)
-	writeValidCodexOverlay(t, project)
+// vendoredRulesImport is the line the overlay's trellis.md imports its rules
+// with, as every overlay Trellis wrote carries it.
+const vendoredRulesImport = "\n@rules.md\n"
 
+// rulesImportAs returns the overlay's trellis.md with its import line rewritten
+// to line.
+func rulesImportAs(line string) func(prose string) string {
+	return func(prose string) string {
+		return strings.Replace(prose, vendoredRulesImport, "\n"+line+"\n", 1)
+	}
+}
+
+// withoutRulesImport returns the overlay's trellis.md with its import line gone.
+func withoutRulesImport(prose string) string {
+	return strings.Replace(prose, vendoredRulesImport, "\n", 1)
+}
+
+// writeOverlayWithThePointerInTheRulesHalf writes a vendored overlay whose
+// invariants pointer sits in rules.md alone, over an empty invariants.md, so
+// every precondition for the report holds but the one the caller reshapes: how
+// trellis.md imports rules.md. It returns the overlay copy's path.
+func writeOverlayWithThePointerInTheRulesHalf(t *testing.T, project string, reshape func(prose string) string) string {
+	t.Helper()
+	writeValidCodexOverlay(t, project)
 	prose := filepath.Join(project, ".trellis", "internal", "trellis.md")
 	proseBody := readFileT(t, prose)
-	if !strings.Contains(proseBody, invariantsToken) {
-		t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer, so moving it proves nothing")
+	if !strings.Contains(proseBody, invariantsToken) || !strings.Contains(proseBody, vendoredRulesImport) {
+		t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer and the @rules.md import line, so moving one and reshaping the other proves nothing")
 	}
-	writeFileT(t, prose, strings.ReplaceAll(proseBody, invariantsToken, "`the invariants reference`"))
+	writeFileT(t, prose, reshape(strings.ReplaceAll(proseBody, invariantsToken, "`the invariants reference`")))
 	rules := filepath.Join(project, ".trellis", "internal", "rules.md")
 	writeFileT(t, rules, "Consult "+invariantsToken+" when a rule seems ambiguous.\n\n"+readFileT(t, rules))
 	overlayCopy := filepath.Join(project, ".trellis", "internal", "invariants.md")
 	writeFileT(t, overlayCopy, "")
+	return overlayCopy
+}
 
-	report := claudeOverlayContextFor(t, pluginRoot, project)
-	if report == "" {
-		t.Fatal("the overlay's rules.md carries a pointer this hook can prove dead, and the hook said nothing: the presence check reads only trellis.md, while the host loads both")
+// The host reaches rules.md through the import in the overlay's trellis.md, so
+// each row is an import the host follows: the shapes block_kinds reads as one
+// in a managed block (plugin_hook_test.go's hand-reshaped import blocks).
+func TestClaudeReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf(t *testing.T) {
+	for name, reshape := range map[string]func(prose string) string{
+		"as shipped":  func(prose string) string { return prose },
+		"indented":    rulesImportAs("  @rules.md"),
+		"a list item": rulesImportAs("- @rules.md"),
+		"mid-line":    rulesImportAs("The rules: @rules.md are imported here"),
+		"dot-slash":   rulesImportAs("@./rules.md"),
+		// A tab is a blank on either side of the import, as a space is.
+		"between tabs": rulesImportAs("The rules:\t@rules.md\tare imported here"),
+		"CRLF":         func(prose string) string { return strings.ReplaceAll(prose, "\n", "\r\n") },
+		// Every CR ends a line, so an import that follows a bare CR starts one.
+		"CR-only": func(prose string) string { return strings.ReplaceAll(prose, "\n", "\r") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			overlayCopy := writeOverlayWithThePointerInTheRulesHalf(t, project, reshape)
+
+			report := claudeOverlayContextFor(t, pluginRoot, project)
+			if report == "" {
+				t.Fatal("the overlay's rules.md carries a pointer this hook can prove dead, its trellis.md imports rules.md, and the hook said nothing: the host loads both halves")
+			}
+			assertClaudeOverlayReportBasics(t, report, overlayCopy, "is empty")
+		})
 	}
-	assertClaudeOverlayReportBasics(t, report, overlayCopy, "is empty")
+}
+
+// TestClaudeSaysNothingWhenTheRulesHalfIsNotImported is TRL-114. A pointer that
+// sits in rules.md alone reaches the session only while the overlay's
+// trellis.md imports rules.md. Where it does not, the pointer was never
+// delivered, and a report on it sends the reader to repair a file nothing
+// named. Every row but the deleted line holds text that contains the import's
+// characters or ends like it, and is not one.
+func TestClaudeSaysNothingWhenTheRulesHalfIsNotImported(t *testing.T) {
+	for name, reshape := range map[string]func(prose string) string{
+		"the import line is deleted":          withoutRulesImport,
+		"the import alone in a code span":     rulesImportAs("`@rules.md`"),
+		"the import is glued to a word":       rulesImportAs("path=@rules.md"),
+		"a backup of the file is imported":    rulesImportAs("@rules.md.bak"),
+		"another rules.md is imported":        rulesImportAs("@docs/rules.md"),
+		"the file is named without its @":     rulesImportAs("rules.md"),
+		"the import is glued to what follows": rulesImportAs("@rules.md, the rules"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			writeOverlayWithThePointerInTheRulesHalf(t, project, reshape)
+
+			if report := claudeOverlayContextFor(t, pluginRoot, project); report != "" {
+				t.Errorf("the overlay's trellis.md does not import rules.md, so the pointer in rules.md never reached the session and there is no dead pointer to report\ngot: %q", report)
+			}
+		})
+	}
+}
+
+// TestClaudeReadsTheRulesImportFromTheHeaderAlone is the other half of where
+// the import is looked for. rules.md is not a file the host reads on its own,
+// so an import written in rules.md itself delivers nothing.
+func TestClaudeReadsTheRulesImportFromTheHeaderAlone(t *testing.T) {
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := newGitProject(t)
+	writeOverlayWithThePointerInTheRulesHalf(t, project, withoutRulesImport)
+	rules := filepath.Join(project, ".trellis", "internal", "rules.md")
+	writeFileT(t, rules, "@rules.md\n\n"+readFileT(t, rules))
+
+	if report := claudeOverlayContextFor(t, pluginRoot, project); report != "" {
+		t.Errorf("only rules.md names the import, and nothing loads rules.md to read it, so the pointer in rules.md never reached the session\ngot: %q", report)
+	}
+}
+
+// TestClaudeReadsTheRulesImportUnderAUTF8Locale pins LC_ALL=C on the import
+// read. The header is the project's own text. Under a UTF-8 locale a byte that
+// is not valid UTF-8 stops an unpinned tr, the read comes back empty and the
+// import is missed, so a delivered dead pointer would go unreported.
+func TestClaudeReadsTheRulesImportUnderAUTF8Locale(t *testing.T) {
+	cmd := exec.Command("locale", "charmap")
+	cmd.Env = append(os.Environ(), "LC_ALL=en_US.UTF-8")
+	if out, err := cmd.Output(); err != nil || strings.TrimSpace(string(out)) != "UTF-8" {
+		t.Skipf("en_US.UTF-8 is not available here (locale charmap: %q, %v), so this test cannot run", strings.TrimSpace(string(out)), err)
+	}
+	t.Setenv("LC_ALL", "en_US.UTF-8")
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := newGitProject(t)
+	writeOverlayWithThePointerInTheRulesHalf(t, project, func(prose string) string {
+		return strings.Replace(prose, vendoredRulesImport, "\ncaf\xe9 in Latin-1\n@rules.md\n", 1)
+	})
+
+	if report := claudeOverlayContextFor(t, pluginRoot, project); !strings.HasPrefix(report, vendoredInvariantsReportLead) {
+		t.Errorf("the header imports rules.md beside a byte that is not valid UTF-8, and the hook did not report the dead pointer rules.md delivers\nwant the lead: %q\ngot: %q", vendoredInvariantsReportLead, report)
+	}
+}
+
+// TestClaudeImportReadKnownLimits pins the two ways the import read is known to
+// be wrong, which the comment on it in staleness.sh names, so that changing
+// either is a choice and not an accident. Neither row says the behaviour is
+// right.
+func TestClaudeImportReadKnownLimits(t *testing.T) {
+	// The host's import parser skips code blocks and code spans, and drops
+	// HTML comments. The hook reads lines, as block_kinds does, and credits
+	// each of these, so the dead pointer is reported though it never arrived.
+	for name, line := range map[string]string{
+		"a fenced code block":        "```\n@rules.md\n```",
+		"an indented code block":     "    @rules.md",
+		"a code span holding blanks": "`import @rules.md here`",
+		"an HTML comment":            "<!-- @rules.md -->",
+	} {
+		t.Run("credited though the host skips it: "+name, func(t *testing.T) {
+			pluginRoot := writeDualHostPluginRoot(t)
+			project := newGitProject(t)
+			writeOverlayWithThePointerInTheRulesHalf(t, project, rulesImportAs(line))
+
+			if report := claudeOverlayContextFor(t, pluginRoot, project); !strings.HasPrefix(report, vendoredInvariantsReportLead) {
+				t.Errorf("this shape was credited as an import when the limit was written down; if the hook now skips it, move the row to TestClaudeSaysNothingWhenTheRulesHalfIsNotImported and correct the comment in staleness.sh\ngot: %q", report)
+			}
+		})
+	}
+
+	// A managed block that imports the overlay's rules.md itself delivers it
+	// whatever the header imports. The hook asks the header alone.
+	t.Run("not credited: a managed block imports rules.md past a header that does not", func(t *testing.T) {
+		pluginRoot := writeDualHostPluginRoot(t)
+		project := newGitProject(t)
+		block := payloadFile(t, "block-claude.md")
+		if !strings.Contains(block, "\n@.trellis/internal/trellis.md\n") {
+			t.Fatal("fixture drift: the shipped import block no longer imports .trellis/internal/trellis.md on a line of its own, so repointing it proves nothing")
+		}
+		writeFileT(t, filepath.Join(project, "CLAUDE.md"), strings.Replace(block, "\n@.trellis/internal/trellis.md\n", "\n@.trellis/internal/rules.md\n", 1)+"\n")
+		writeOverlayWithThePointerInTheRulesHalf(t, project, func(prose string) string { return prose })
+		if report := claudeOverlayContextFor(t, pluginRoot, project); !strings.HasPrefix(report, vendoredInvariantsReportLead) {
+			t.Fatalf("premise: with the header's import in place this project draws the report, so the silence below is the import's doing\ngot: %q", report)
+		}
+
+		prose := filepath.Join(project, ".trellis", "internal", "trellis.md")
+		writeFileT(t, prose, withoutRulesImport(readFileT(t, prose)))
+		if report := claudeOverlayContextFor(t, pluginRoot, project); report != "" {
+			t.Errorf("this delivery went unreported when the limit was written down; if the hook now credits a block's own import of rules.md, pin that as a report and correct the comment in staleness.sh\ngot: %q", report)
+		}
+	})
+}
+
+// TestClaudeReportsAPointerInTheHeaderWithoutTheRulesImport holds the import
+// test to the half it is about. The host loads trellis.md whatever that file
+// imports, so a pointer in it is delivered and a dead one is reported. Only the
+// lead is asserted: what else the hook should say about an overlay that
+// imports no rules is not this test's to pin.
+func TestClaudeReportsAPointerInTheHeaderWithoutTheRulesImport(t *testing.T) {
+	pluginRoot := writeDualHostPluginRoot(t)
+	project := newGitProject(t)
+	writeValidCodexOverlay(t, project)
+	prose := filepath.Join(project, ".trellis", "internal", "trellis.md")
+	proseBody := readFileT(t, prose)
+	if !strings.Contains(proseBody, invariantsToken) || !strings.Contains(proseBody, vendoredRulesImport) {
+		t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer and the @rules.md import line, so dropping the import proves nothing")
+	}
+	writeFileT(t, prose, withoutRulesImport(proseBody))
+	writeFileT(t, filepath.Join(project, ".trellis", "internal", "invariants.md"), "")
+
+	if report := claudeOverlayContextFor(t, pluginRoot, project); !strings.HasPrefix(report, vendoredInvariantsReportLead) {
+		t.Errorf("the overlay's trellis.md carries a pointer this hook can prove dead, and the host loads that file whether or not it imports rules.md\nwant the lead: %q\ngot: %q", vendoredInvariantsReportLead, report)
+	}
 }
 
 // overlayOwnCopyShapes is every state the overlay's OWN copy can be in while
@@ -1788,7 +1967,7 @@ func assertInvariantsReport(t *testing.T, host, report, target string, fault inv
 //
 //     An earlier version of this comment said a marker is "a refusal, not a
 //     note", and review measured that false: TRELLIS_STALENESS_UNKNOWN
-//     (staleness.sh:740 and :891) is a note on a session that IS governed —
+//     (staleness.sh:761 and :912) is a note on a session that IS governed —
 //     "Nothing is wrong with this project and no rules are missing". The
 //     injects-nothing half is true of every marker and carries the argument on
 //     its own; the refusal half did not, and overstating it here would have

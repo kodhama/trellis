@@ -1002,7 +1002,7 @@ if (trellis.split("@rules.md").length - 1 !== 1) {
 // hook delivers that shape on Codex. It performed the import edit above and
 // not this one, so every plugin-native Codex session was handed
 // `.trellis/internal/invariants.md`: a directory this mode is DEFINED by not
-// having. staleness.sh:1206-1234 makes the same substitution for Claude, at
+// having. staleness.sh:1227-1255 makes the same substitution for Claude, at
 // the same target; TestBothHostsRepointTheInvariantsPointerIdentically runs
 // both hooks on one project and pins them to each other, because the two
 // implementations share no line to diff (awk there, JS here) and only the

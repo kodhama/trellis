@@ -122,13 +122,13 @@ blames is what the branch decides.**
    both embed the plugin root's absolute path and track its length — the error
    `decision-0094`:148-151 recorded paying for in this same series. The report cannot grow the
    context, so it cannot tip a governed session into a refusal. That is the trade
-   `staleness.sh:1683` records paying for on the other host and fixed
+   `staleness.sh:1704` records paying for on the other host and fixed
    by ordering its report after the budget check; here the ordering is not needed because the
    channel is separate.
 
 6. **This cell is Codex-only, and that is now a test rather than a reading.** `staleness.sh`'s
    path A opens at `if [ -d "$internal" ]` (`:585`) and every route out of it exits,
-   unconditionally at `:750`, long before the repoint at `:1210`, so Claude
+   unconditionally at `:771`, long before the repoint at `:1231`, so Claude
    never delivers an invariants pointer into a vendored project and has nothing to report about.
    **This is why the guard is not `TestBothHostsReportAMissingInvariantsTarget`**: that guard's
    subject is host symmetry on a *config-only* project, and every row of it asserts both hosts
