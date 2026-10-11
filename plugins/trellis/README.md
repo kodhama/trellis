@@ -50,7 +50,7 @@ is told which file and how, with the same one repair. Where the overlay has **no
 is told that and where the plugin's usable copy can be read this session, which is `decision-0093`'s
 fallback given in words; where that copy is unusable too, both files are named with their faults.
 The report stands alone on a current overlay, and follows the staleness message on a stale one,
-where it adds that its repair is the alternative to migrating and not a step after it. The Claude
+where it adds which repair is the alternative to migrating and not a step after it. The Claude
 hook reports only where the overlay's own text carries the pointer.
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —

@@ -845,6 +845,7 @@ func scannedOverlayReport(t *testing.T, body string) []string {
 		"Nothing is wrong with this project",
 		"That is a fault in the plugin's install",
 		claudeRepairOrMigrate,
+		claudeRepairOrMigrateBothDead,
 	} {
 		found := false
 		for _, m := range msgs {
@@ -1165,8 +1166,8 @@ func TestEveryDestructiveInstructionIsGated(t *testing.T) {
 		mutation: strings.Replace(remedy, `="`, `="`+injected+" ", 1),
 	}, {
 		name:     "appended with +=",
-		marker:   "\n  inv_also=\"\" inv_or_migrate=\"\"\n",
-		mutation: "\n  inv_report+=\" " + injected + "\"\n  inv_also=\"\" inv_or_migrate=\"\"\n",
+		marker:   "\n  inv_also=\"\"\n",
+		mutation: "\n  inv_report+=\" " + injected + "\"\n  inv_also=\"\"\n",
 	}, {
 		name:     "in a single-quoted segment",
 		marker:   remedy,

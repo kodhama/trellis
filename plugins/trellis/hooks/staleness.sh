@@ -701,25 +701,25 @@ if [ -d "$internal" ]; then
   # message. Each is the larger problem, and a conflict's repair may delete the
   # overlay this report would ask the reader to complete.
   overlay_inv="$internal/invariants.md"
-  inv_report=""
+  inv_report="" inv_or_migrate=""
   if [ -n "$overlay_pointer" ] && ! payload_read "$overlay_inv"; then
     inv_report="Trellis warning: this project's vendored overlay has no readable $overlay_inv (it $payload_why), so the invariants pointer in the overlay's rules names a file that yields nothing to read."
-    inv_fix="Putting a readable invariants.md at that overlay path is the likely fix."
+    inv_fix="Putting a readable invariants.md at that overlay path is the likely fix." inv_or_migrate=" That repair is the alternative to migrating as described above, not a step after it."
     if [ "$payload_status" = missing ]; then
       plugin_inv="$plugin/reference/invariants.md"
       if payload_read "$plugin_inv"; then
         inv_report="$inv_report The installed Trellis plugin carries a readable copy of the same reference at $plugin_inv; read that one this session when a rule sends you to the overlay's."
       else
         inv_report="$inv_report The plugin's own copy could not stand in for it: there is no readable $plugin_inv either (it $payload_why)."
-        inv_fix="Putting a readable invariants.md at that overlay path, or reinstalling the Trellis plugin so its copy can stand in (\`claude plugin update trellis@kodhama\`), is the likely fix."
+        inv_fix="Putting a readable invariants.md at that overlay path, or reinstalling the Trellis plugin so its copy can stand in (\`claude plugin update trellis@kodhama\`), is the likely fix." inv_or_migrate=" Putting that file in place is the alternative to migrating as described above, not a step after it; migrating needs the reinstall, because the rules then point at the plugin's copy."
       fi
     fi
     inv_report="$inv_report The overlay's rules are intact and govern this session normally; that reference is consulted on demand, so only a rule that turns out ambiguous needs it. $inv_fix"
   fi
   # The hook emits one message, so beside another the report is a second paragraph.
-  # The stale nudge says to delete the overlay, so there the repair is called its alternative.
-  inv_also="" inv_or_migrate=""
-  [ -z "$inv_report" ] || { inv_also="$(printf '\n\n%s' "$inv_report")"; inv_or_migrate=" That repair is the alternative to migrating as described above, not a step after it."; }
+  # The stale nudge says to delete the overlay: there $inv_or_migrate says which repair is its alternative.
+  inv_also=""
+  [ -z "$inv_report" ] || inv_also="$(printf '\n\n%s' "$inv_report")"
   # TRL-101: the stamp is quoted only when it has a stamp's shape.
   overlay_said="stamp is $overlay"
   overlay_named=" ($overlay)"

@@ -337,9 +337,16 @@ const claudeNoStandInSentence = "the plugin's own copy does not stand in for it"
 // is what the report adds beside it and nowhere else. The nudge says to delete
 // the overlay to migrate and the report says to complete it; the two are
 // alternatives, and a reader given both in one message is told so.
+//
+// Where the plugin's copy is dead too, the report offers two repairs and only
+// one of them is an alternative: after migrating, the rules point at the
+// plugin's copy, so the reinstall is then needed. That cell says so in its own
+// sentence, and claudePluginCopyAlsoDead is how a report shows it is that cell.
 const (
-	claudeStaleNudgeLead  = "Trellis overlay may be stale"
-	claudeRepairOrMigrate = "That repair is the alternative to migrating as described above, not a step after it."
+	claudeStaleNudgeLead          = "Trellis overlay may be stale"
+	claudeRepairOrMigrate         = "That repair is the alternative to migrating as described above, not a step after it."
+	claudeRepairOrMigrateBothDead = "Putting that file in place is the alternative to migrating as described above, not a step after it; migrating needs the reinstall, because the rules then point at the plugin's copy."
+	claudePluginCopyAlsoDead      = "The plugin's own copy could not stand in for it"
 )
 
 // claudeReadThePluginCopy is the instruction that makes the plugin copy's path
@@ -406,8 +413,19 @@ func assertClaudeOverlayReportBasics(t *testing.T, report, overlayCopy, overlayW
 	if strings.Contains(report, claudeNoStandInSentence) {
 		t.Errorf("the report says %q, which is Codex's sentence and false here: this hook names the plugin's copy as the stand-in when the overlay has none\ngot: %q", claudeNoStandInSentence, report)
 	}
-	if stale, said := strings.HasPrefix(report, claudeStaleNudgeLead), strings.HasSuffix(report, " "+claudeRepairOrMigrate); stale != said {
-		t.Errorf("the report must end by calling its repair the alternative to migrating beside the stale-overlay nudge, and only there (beside the nudge: %v, said: %v)\nwant the last sentence: %q\ngot: %q", stale, said, claudeRepairOrMigrate, report)
+	stale := strings.HasPrefix(report, claudeStaleNudgeLead)
+	wantLast := claudeRepairOrMigrate
+	if strings.Contains(report, claudePluginCopyAlsoDead) {
+		wantLast = claudeRepairOrMigrateBothDead
+	}
+	for _, sentence := range []string{claudeRepairOrMigrate, claudeRepairOrMigrateBothDead} {
+		want := stale && sentence == wantLast
+		if got := strings.HasSuffix(report, " "+sentence); got != want {
+			t.Errorf("beside the stale-overlay nudge, and only there, the report ends by saying which repair is the alternative to migrating; this cell's sentence is %q (beside the nudge: %v)\nends with %q: %v, want %v\ngot: %q", wantLast, stale, sentence, got, want, report)
+		}
+		if !want && strings.Contains(report, sentence) {
+			t.Errorf("the report says %q, which is not this exit's or this cell's sentence\ngot: %q", sentence, report)
+		}
 	}
 	// The report is the last paragraph of whatever message carries it. It is
 	// assembled in variables, which the source-level guards in
@@ -680,11 +698,29 @@ func TestTheOverlayInvariantsReportRidesEveryExitThatSaysTheOverlayGoverns(t *te
 			t.Errorf("the report names no usable plugin copy beside the stale nudge\nwant: %q\ngot:  %q", claudeReadThePluginCopy, report)
 		}
 	})
+	t.Run("a stale overlay with no copy and a dead plugin copy is told the reinstall is not the alternative", func(t *testing.T) {
+		pluginRoot, project, overlayCopy := build(t, false)
+		removeFileT(t, overlayCopy)
+		writeFileT(t, filepath.Join(pluginRoot, "reference", "invariants.md"), "")
+		writeFileT(t, filepath.Join(project, ".trellis", "internal", "version"), "payload@000000000000\n")
+		report := claudeOverlayContextFor(t, pluginRoot, project)
+		if !strings.HasPrefix(report, staleLead) {
+			t.Fatalf("a stale overlay must still draw its nudge first\ngot: %q", report)
+		}
+		// Two repairs are offered here, and the basics hold the last sentence
+		// to this cell's: after migrating, plugin delivery reads the same dead
+		// copy, so calling "that repair" the alternative would be false of
+		// the reinstall.
+		assertClaudeOverlayReportBasics(t, report, overlayCopy, "is missing")
+		if !strings.Contains(report, claudePluginCopyAlsoDead) || !strings.Contains(report, pluginReinstallRemedy) {
+			t.Fatalf("fixture drift: this row must reach the cell where both copies are dead\ngot: %q", report)
+		}
+	})
 	t.Run("a stale overlay with a healthy copy says nothing about invariants", func(t *testing.T) {
 		pluginRoot, project, _ := build(t, false)
 		writeFileT(t, filepath.Join(project, ".trellis", "internal", "version"), "payload@000000000000\n")
 		report := claudeOverlayContextFor(t, pluginRoot, project)
-		if !strings.HasPrefix(report, staleLead) || strings.Contains(report, vendoredInvariantsReportLead) || strings.Contains(report, claudeRepairOrMigrate) {
+		if !strings.HasPrefix(report, staleLead) || strings.Contains(report, vendoredInvariantsReportLead) || strings.Contains(report, "the alternative to migrating") {
 			t.Errorf("want the staleness nudge alone and unchanged\ngot: %q", report)
 		}
 	})
