@@ -838,6 +838,11 @@ func rulesImportAs(line string) func(prose string) string {
 	}
 }
 
+// withoutRulesImport returns the overlay's trellis.md with its import line gone.
+func withoutRulesImport(prose string) string {
+	return strings.Replace(prose, vendoredRulesImport, "\n", 1)
+}
+
 // writeOverlayWithThePointerInTheRulesHalf writes a vendored overlay whose
 // invariants pointer sits in rules.md alone, over an empty invariants.md, so
 // every precondition for the report holds but the one the caller reshapes: how
@@ -888,13 +893,11 @@ func TestClaudeReportsWhenTheVendoredPointerArrivesThroughTheRulesHalf(t *testin
 // sits in rules.md alone reaches the session only while the overlay's
 // trellis.md imports rules.md. Where it does not, the pointer was never
 // delivered, and a report on it sends the reader to repair a file nothing
-// named. Each row but the first holds text that ends like the import or
-// contains it, and is not one.
+// named. Every row but the deleted line holds text that contains the import's
+// characters or ends like it, and is not one.
 func TestClaudeSaysNothingWhenTheRulesHalfIsNotImported(t *testing.T) {
 	for name, reshape := range map[string]func(prose string) string{
-		"the import line is deleted": func(prose string) string {
-			return strings.Replace(prose, vendoredRulesImport, "\n", 1)
-		},
+		"the import line is deleted":          withoutRulesImport,
 		"the import is quoted in a code span": rulesImportAs("`@rules.md`"),
 		"the import is glued to a word":       rulesImportAs("path=@rules.md"),
 		"a backup of the file is imported":    rulesImportAs("@rules.md.bak"),
@@ -926,7 +929,7 @@ func TestClaudeReportsAPointerInTheHeaderWithoutTheRulesImport(t *testing.T) {
 	if !strings.Contains(proseBody, invariantsToken) || !strings.Contains(proseBody, vendoredRulesImport) {
 		t.Fatal("fixture drift: the vendored prose no longer carries the invariants pointer and the @rules.md import line, so dropping the import proves nothing")
 	}
-	writeFileT(t, prose, strings.Replace(proseBody, vendoredRulesImport, "\n", 1))
+	writeFileT(t, prose, withoutRulesImport(proseBody))
 	writeFileT(t, filepath.Join(project, ".trellis", "internal", "invariants.md"), "")
 
 	if report := claudeOverlayContextFor(t, pluginRoot, project); !strings.HasPrefix(report, vendoredInvariantsReportLead) {

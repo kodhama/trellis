@@ -631,12 +631,12 @@ if [ -d "$internal" ]; then
       # earlier, imports rules.md. An overlay is the project's own text, and a
       # header that dropped the import delivers nothing from rules.md. The
       # import is read as block_kinds reads one: an @ path that starts a line
-      # or follows a blank, with every CR a line end. Not credited: a managed
-      # block that imports .trellis/internal/rules.md itself, past a header
-      # that does not. No block Trellis shipped does, so that pointer goes
-      # unreported.
+      # or follows a blank, with every CR a line end. One delivery is not
+      # credited: a managed block that imports .trellis/internal/rules.md
+      # itself while the header does not. No block Trellis shipped does that,
+      # so a dead pointer delivered that way goes unreported.
       if [ "$f" = trellis.md ] && printf '%s\n' "$payload_text" | LC_ALL=C tr '\r' '\n' |
-         LC_ALL=C awk '{ if ((" " $0 " ") ~ /[ \t]@(\.\/)?rules\.md[ \t]/) found = 1 } END { exit !found }'; then
+         LC_ALL=C awk '(" " $0 " ") ~ /[ \t]@(\.\/)?rules\.md[ \t]/ { found = 1 } END { exit !found }'; then
         rules_imported=1
       fi
       if [ "$f" = trellis.md ] || [ -n "$rules_imported" ]; then
