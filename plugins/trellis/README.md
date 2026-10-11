@@ -51,7 +51,8 @@ is told that and where the plugin's usable copy can be read this session, which 
 fallback given in words; where that copy is unusable too, both files are named with their faults.
 The report stands alone on a current overlay, and follows the staleness message on a stale one,
 where it adds which repair is the alternative to migrating and not a step after it. The Claude
-hook reports only where the overlay's own text carries the pointer.
+hook reports only where the overlay's own text delivers the pointer: its `trellis.md` carries it, or
+its `rules.md` does and `trellis.md` imports that file.
 
 Native Codex delivery requires local **Node.js 20** or newer, and is unsupported either way —
 see below. Trellis requires no

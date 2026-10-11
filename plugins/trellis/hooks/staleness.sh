@@ -607,6 +607,7 @@ if [ -d "$internal" ]; then
   overlay=""
   overlay_line=""
   overlay_pointer=""
+  rules_imported=""
   for f in version trellis.md rules.md; do
     if ! payload_read "$internal/$f"; then
       emit "TRELLIS_RULES_NOT_LOADED — this project's vendored overlay is incomplete: .trellis/internal/$f $payload_why, so the managed block's imports cannot load the rules and this hook cannot tell which rules the surviving files represent. The hook will not inject over a broken overlay. To migrate onto plugin-delivered rules, delete .trellis/internal/ and the managed block from this project's instructions file, keeping .trellis/rules.toml. Show the user the exact paths you would delete and get explicit confirmation before deleting anything (floor-intent-gate): this hook advises, it never authorises a deletion, and the files are tracked. Tell the user before doing substantive work."
@@ -624,7 +625,23 @@ if [ -d "$internal" ]; then
       # loads both (the managed block imports trellis.md, which imports
       # rules.md). The report further down speaks only for a pointer one of
       # them holds.
-      case "$payload_text" in *'`.trellis/internal/invariants.md`'*) overlay_pointer=1 ;; esac
+      #
+      # TRL-114: rules.md is loaded only through that second import, so a
+      # pointer in it counts only when trellis.md, read one turn of this loop
+      # earlier, imports rules.md. An overlay is the project's own text, and a
+      # header that dropped the import delivers nothing from rules.md. The
+      # import is read as block_kinds reads one: an @ path that starts a line
+      # or follows a blank, with every CR a line end. Not credited: a managed
+      # block that imports .trellis/internal/rules.md itself, past a header
+      # that does not. No block Trellis shipped does, so that pointer goes
+      # unreported.
+      if [ "$f" = trellis.md ] && printf '%s\n' "$payload_text" | LC_ALL=C tr '\r' '\n' |
+         LC_ALL=C awk '{ if ((" " $0 " ") ~ /[ \t]@(\.\/)?rules\.md[ \t]/) found = 1 } END { exit !found }'; then
+        rules_imported=1
+      fi
+      if [ "$f" = trellis.md ] || [ -n "$rules_imported" ]; then
+        case "$payload_text" in *'`.trellis/internal/invariants.md`'*) overlay_pointer=1 ;; esac
+      fi
     fi
   done
   # A non-empty file can still hold nothing but whitespace on its first line.
