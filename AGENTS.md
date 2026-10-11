@@ -167,8 +167,8 @@ and CI (`decision-0075`).
   all three current `feature/*` branches are, no `decision/*` branch is.
 - **Grove the supervision plugin is declared; the old grove fleet stays retired.**
   `.claude/settings.json` enables `grove@grove` from the `kodhama/grove` marketplace, whose
-  `grove:project-lead` and `grove:story-worker` skills run supervised work in local Claude Code
-  sessions (project-scope plugins do not reach cloud sessions, `plugins/trellis/README.md`); their
+  `grove:project-lead` and `grove:story-worker` skills run supervised work. The declaration reaches
+  local Claude Code sessions (`plugins/trellis/README.md`); Codex needs a user-level install. Their
   bindings and handoffs go to the gitignored `.context/supervision/`. The `grove@kodhama`
   plugin that `decision-0076` retired stays retired, with its `grove:<role>` subagent types,
   the commands it shipped and `.grove/`; `grove@grove` ships skills and no subagent types. A
