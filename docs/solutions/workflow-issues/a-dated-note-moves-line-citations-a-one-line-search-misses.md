@@ -36,11 +36,13 @@ The same review found a second fault. `decision-0084:366` cited `decision-0078` 
 1. **Search for bare tokens as well as attached ones.** A citation can continue on the next line, or follow an earlier citation as `` `:127-128` `` with no id beside it. This lists every bare line-range token outside the plans:
 
    ```bash
-   git grep -nE '(^|[ (])`:[0-9]{2,3}(-[0-9]{1,3})?`' -- . \
+   git grep -nIE '`:[0-9]+((-|–)[0-9]+)?`|(^|[^[:alnum:]_:.[?`]):[0-9]+((-|–)[0-9]+)?([^[:alnum:]_:]|$)' -- . \
      ':(exclude)docs/plans' ':(exclude)docs/superpowers' ':(exclude)docs/ideation'
    ```
 
-   It returned 83 hits at `60c3640`, the head of PR #327 before this document was added, and `decision-0087:65` was among them. This document's own examples add 4 more. Read the lines above each hit to see which record it cites.
+   A bare token is a `:NN` or `:NN-MM` that does not directly follow an id or a file name. The pattern's first half takes a token in backticks wherever it sits: after punctuation (`` **`:20-21` ``, `` /`:679-682` ``), with a one-digit start (`` `:9-11` ``) or with an en dash (`` `:164–165` ``). Its second half takes a token with no backticks, as in a frontmatter or code comment (`at :151-160 ONLY`). That half skips a colon that follows a letter, a digit, a closing backtick or one of `_ : . [ ?`, which is how an attached citation (`README.md:32`, `` `decision-0094`:5 ``) and code (`s[:5]`) read.
+
+   It returned 111 hits at `3b5aee1`, the commit on `main` that PR #327 merged onto, and `decision-0087:65` was among them. Put the commit before `--` to run it there; `-I` skips binary files, so the count is the same in a UTF-8 locale and in the C locale. An earlier form of this command, `` (^|[ (])`:[0-9]{2,3}(-[0-9]{1,3})?` ``, returned 83 at the same commit: it took a token only in backticks, after a space or `(`, starting with two or three digits, so it missed each shape above. Read the lines above each hit to see which record it cites.
 
 2. **Open the target, never add the delta.** For each citation, open the cited record at the new line numbers and read the text. Adding two to the old number keeps any error the old number already had.
 
