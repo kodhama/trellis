@@ -18,7 +18,7 @@ execution: code
 - **Authority order:** the Product Contract's requirements win on behaviour; a KTD wins on mechanism within them; a unit overrides neither.
 - **Execution profile:** one worker at a time, one unit per PR, each PR small enough to review on a phone. The maintainer merges every PR.
 - **Stop conditions:** a unit stops and asks its lead when a requirement looks wrong against the code, when a KTD cannot hold, or when R16's gate (KOD-6 and KOD-7) is not met.
-- **Open blockers:** one question is with the maintainer: whether `install --migrate` refuses S6 although R14 names it (the Migration conversions table). The plan is written on the recommended answer, which amends R14 to S0–S5. The CLI's language (KTD1) and migration as a flag (KTD10) were settled on 2026-10-18.
+- **Open blockers:** none. The CLI's language (KTD1), migration as a flag (KTD10) and R14's narrowing to S0–S5 were settled on 2026-10-18.
 
 ---
 
@@ -81,7 +81,7 @@ The trigger in the Ideas entry "Simplify Trellis delivery" fired when ogham's pl
 
 **Migration and retirement**
 
-- R14. An explicit migration mode, separate from plain `install`, converts a repo in any of decision-0073's states S0–S6 to the vendored form. It keeps the opt-out rows and removes the old overlay, inline block, rendered file or bundle, as well as every Trellis plugin entry: `trellis@kodhama` in `.claude/settings.json` and `trellis@stewards` in a committed `.factory/settings.json` (Droid). A repo whose entry is `false` keeps its no: migration writes `governed = false` and strips the entry.
+- R14. An explicit migration mode, separate from plain `install`, converts a repo in any of decision-0073's states S0–S5 to the vendored form. On S6 (morph) it changes nothing and exits with an error telling the person to roll back first. It keeps the opt-out rows and removes the old overlay, inline block, rendered file or bundle, as well as every Trellis plugin entry: `trellis@kodhama` in `.claude/settings.json` and `trellis@stewards` in a committed `.factory/settings.json` (Droid). A repo whose entry is `false` keeps its no: migration writes `governed = false` and strips the entry. *The maintainer approved this wording on 2026-10-18, through the lead; it amends the confirmed R14, which named S0–S6.*
 - R15. One round of PRs migrates every live consumer in the inventory below. wisp and review-kit are named exemptions: TRL-104's resume brief records that both are being retired, and they keep their current state until they go. Each migration PR also wires `check` into the repo's CI where the repo has CI, running the version the lock records rather than one written into the workflow, so `update` never edits CI files; it also rewrites the `rules.toml` header comment that says rows govern rule activation live.
 - R16. After the round, and only once the nudge line (KOD-6) and the update routine (KOD-7) exist (see Dependencies), the plugin ships one last release and then retires. That last release injects nothing in a repo that carries the Trellis lock; anywhere else it delivers the rules as before and also says the plugin is retiring and gives the CLI command. Retiring it removes `staleness.sh`, `codex-context.mjs`, `install.sh` and their tests from this repo, and the `trellis` entry from the kodhama marketplace in kodhama/stewards, which is a stewards change. A decision record written by the build replaces decision-0073's closed set.
 - R17. A consumer outside the inventory that still runs the plugin keeps working until the plugin retires. A migrated repo does not load the rules twice on a machine whose install runs R16's last release; on a machine with an older install, R19's uninstall is what prevents it.
@@ -294,7 +294,7 @@ stateDiagram-v2
 |---|---|---|---|---|---|
 | none | `installed` / writes all | same as `install` | `error` / "run install" | `done` / nothing, with a note | `fail` / "not installed" |
 | `declined` | `declined` / nothing | `declined` / nothing | `error` / "declined; see install" | `done` / deletes any other Trellis file left behind, keeps `rules.toml` | `pass` if no other Trellis file, else `fail` naming it, with "run remove" |
-| S0–S6, codex-bootstrap | `already-present <state>` / nothing | `migrated` / converts (table below) | `error` / "run install --migrate" | `error` / "run install --migrate" | `fail` / names state |
+| S0–S6, codex-bootstrap | `already-present <state>` / nothing | `migrated` / converts (table below; S6 is `error`) | `error` / "run install --migrate" | `error` / "run install --migrate" | `fail` / names state |
 | `vendored-incomplete` | `error` / "run install --migrate" | `migrated` / completes the write | `error` / "run install --migrate" | `done` / removes what exists, writes `governed = false` | `fail` / names files |
 | `vendored` | `already-present` / nothing | `already-present` / nothing | `done` / re-renders | `done` / removes, writes `governed = false` | `pass`, or `fail` naming files and rows |
 
@@ -308,7 +308,7 @@ stateDiagram-v2
 | S2 / S4 (overlay, inline blocks) | `.trellis/internal/` and the blocks in all five instruction files `/trellis:remove` names | install; the section takes the old `AGENTS.md` block's place |
 | S3 (flat overlay, no `rules.toml`) | the overlay and `.trellis/version` | create `rules.toml` from the overlay's rows, then install |
 | S5 (bundle) | `.claude/skills/trellis/` | install |
-| S6 (morph) | nothing | `error`: "roll back first"; no inventory repo is S6. This departs from R14's "any of S0–S6" and waits on the maintainer (Goal Capsule, Open blockers) |
+| S6 (morph) | nothing | `error`: "roll back first" (R14); no inventory repo is S6 |
 | codex-bootstrap block | the block | install |
 
 **Unit order and the release points.**
