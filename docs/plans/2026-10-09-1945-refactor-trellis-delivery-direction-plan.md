@@ -16,7 +16,7 @@ execution: code
 - **Means:** A Trellis CLI, run as `npx github:kodhama/trellis#v<version> install|update|check|remove`, writes the rules into files the repo commits. The Claude plugin, both session-start hooks, `install.sh` and decision-0073's closed set of seven delivery states retire after one migration round.
 - **Product authority:** the maintainer (`gundisalwa`), through the Simplify Trellis project, issue TRL-107. The requirements were confirmed in dialogue on 2026-10-09, and merging this file is the approval. The Kodhama family install convention, the machine and cloud setup for skill-type tools, and ogham's U8 change are not active scope (see How This Work Fits Together). The build plan (Planning Contract onward) is TRL-117; its units become TRL-113's build stories.
 - **Authority order:** the Product Contract's requirements win on behaviour; a KTD wins on mechanism within them; a unit overrides neither.
-- **Execution profile:** one worker at a time, one unit per PR, each PR small enough to review on a phone. The maintainer merges every PR.
+- **Execution profile:** one worker at a time, one unit per PR, each PR small enough to review on a phone. U12 is the exception: one PR per consumer repo, each its own story; U13 has no PR. The maintainer merges every PR.
 - **Stop conditions:** a unit stops and asks its lead when a requirement looks wrong against the code, when a KTD cannot hold, or when R16's gate (KOD-6 and KOD-7) is not met.
 - **Open blockers:** none. The CLI's language (KTD1), migration as a flag (KTD10) and R14's narrowing to S0–S5 were settled on 2026-10-18.
 
@@ -233,7 +233,7 @@ Line numbers in this section and below cite this repo at `f42c0a1`. Several of t
 - KTD14. **One version line, and every release is tagged (R20).**
   - **Single version:** `package.json` `version` and `plugins/trellis/VERSION` hold one number, and a parity test enforces it until U19 removes the plugin. The first CLI release follows the current 0.24.8, so it is v0.25.0, which collides with no `v0.1.0`–`v0.2.30` tag.
   - **Tagging:** a workflow on pushes to `main` creates `v<version>` on the merge commit whenever the version changed. A job fails when the version on `main` has no tag.
-  - **Release guard:** in U9, the first release, `release-guard` widens from `plugins/trellis/` to `bin/`, `lib/` and `payload/`, and to `package.json`'s runtime fields only (`name`, `bin`, `files`, `engines`), compared field by field. The guard's `plugin.json` rule, which counts any changed line other than `"version":` (`release-guard.yml:77-84`), would not do here, because a dev-dependency bump changes lines too. A Dependabot bump of a dev dependency (`.github/dependabot.yml`) is therefore no release. Before U9 the CLI paths are unreleased: no tag names them, nothing pins them, and widening the guard earlier would make every unit from U2 to U8 a release of a stub CLI and spend v0.25.0 before U9.
+  - **Release guard:** in U9, the first release, `release-guard` widens from `plugins/trellis/` to `bin/`, `lib/` and `payload/`, and to `package.json`'s runtime fields only, compared field by field: `name`, `bin`, `files`, `engines`, the dependency fields (`dependencies`, `optionalDependencies`, `peerDependencies`, `bundleDependencies`), and the install-time scripts npm runs for a `github:` package (`preinstall`, `install`, `postinstall`, `prepare`, `prepack`, `postpack`). Each of those changes what `npx github:` runs; the other scripts and `devDependencies` do not. The guard's `plugin.json` rule, which counts any changed line other than `"version":` (`release-guard.yml:77-84`), would not do here, because a dev-dependency bump changes lines too. A Dependabot bump of a dev dependency (`.github/dependabot.yml`) is therefore no release. Before U9 the CLI paths are unreleased: no tag names them, nothing pins them, and widening the guard earlier would make every unit from U2 to U8 a release of a stub CLI and spend v0.25.0 before U9.
   - **Protection:** a tag ruleset protects `refs/tags/v*` with GitHub Actions as its only bypass, so only a workflow can create, move or delete those tags. Workflows change only through reviewed PRs to `main`, so a tag names reviewed, merged code. No such ruleset exists today; the repo has only "main protection". The ruleset is a repository setting, and the maintainer applies it.
 - KTD15. **The 32 KiB warning (R10)** goes to stderr when the section's end marker sits past byte 32,768 of the root `AGENTS.md`. Codex caps the combined `AGENTS.md` chain, which runs from the git root down to the working directory, so measuring at the root is a floor; the warning says so. A root `AGENTS.override.md` also draws a warning, because Codex reads it in place of `AGENTS.md`.
 - KTD16. **No claim of Codex parity.** The direction doc's assumption that Codex and Droid follow inlined rules about as well as Claude stays unmeasured. The decision record says so, and U9 adds an entry to the Trellis Ideas doc. The entry's trigger is "a reported Codex or Droid miss of an inlined rule, or any plan to claim parity". That entry is the consumer that brings the measurement back.
@@ -308,7 +308,7 @@ stateDiagram-v2
 | S2 / S4 (overlay, inline blocks) | `.trellis/internal/` and the blocks in all five instruction files `/trellis:remove` names | install; the section takes the old `AGENTS.md` block's place |
 | S3 (flat overlay, no `rules.toml`) | the overlay and `.trellis/version` | create `rules.toml` from the overlay's rows, then install |
 | S5 (bundle) | `.claude/skills/trellis/` | install |
-| S6 (morph) | nothing | `error`: "roll back first" (R14); no inventory repo is S6 |
+| S6 (morph) | nothing | `error`: "roll back first" (R14). The line adds that a morph already reversed leaves a stale tag, cleared with `git tag -d trellis-pre-morph`. No inventory repo is S6 |
 | codex-bootstrap block | the block | install |
 
 **Unit order and the release points.**
@@ -356,13 +356,15 @@ A record retired in part gets a dated note; only the unit that makes its last li
 | 0068 | D6 and D10: the Claude hook's stand-down | U15 | dated note |
 | 0068 | D11 (`:245-258`, `/trellis:remove` deletes the rendered file first): the last live point | U19 | `superseded_by` |
 | 0083 | §4's clauses that keep hook behaviour standing, §6 (Codex derives its slugs from `reference/rules.md`) and the byte-cap finding. §5's "an empty file still governs every rule" stays true under R7; §1–§3 are already retired by TRL-97's note, and §7 is a dated inventory | U18 | dated note |
-| 0039 | rule 1 (`SessionStart` as the only agent-facing staleness surface): no surface remains; rule 2 is already superseded by 0043 | U18 | dated note |
+| 0039 | nothing. Rule 1 binds any future agent-facing staleness surface, KOD-7's update routine included, and stays true once the hooks are gone; rule 2 is already superseded by 0043 | U18 | none: U18 checks only that no live citation into 0039 names a hook as the current surface |
 | 0053 | point 1 (`:61-65`): "per-row subset assembly at refresh retires", and fragments leaving the shipped payload | U6 | dated note; U2 also corrects the comment at `cli/payload.go:35-37` that says the fragments retired |
 | 0069 | D3 (`install.sh` refuses to render over a hand-built overlay) | U16 | dated note |
 | 0069 | D1 (`:63-65`): "a future prune that deletes either must supersede this record", where "either" is the manual copy path or `staleness.sh`'s path A | U15 | `superseded_by`, as D1 itself requires. U4's record states that the manual copy path retires with `reference/` in U19 |
 | 0077 | D2: the hook's announcement | U15, U18 | dated notes |
 | `2026-09-15-rule-rows-only-switch-rules-off` | points 3–5 and 7–10 (hooks and installer) | U16, U15, U18 | dated notes |
 | 0084, 0087, 0091, 0093–0096, 0072, 0088, `2026-09-15-droid-plugin-root-sentinel-self-locates` | hook and installer behaviour each describes | U16, U15, U18, U19 | dated notes; each unit confirms which points are untrue |
+
+A unit that finds it makes a record's last live point untrue writes `superseded_by` naming U4's record instead of a dated note, because U4's record is the successor that retires it (AGENTS.md's supersession rule). This applies to the grouped rows above too.
 
 These AGENTS.md lines get rewritten in the units shown:
 
@@ -385,7 +387,7 @@ These AGENTS.md lines get rewritten in the units shown:
 ### Risks
 
 - **Codex and Droid get the rules twice during the round.** `codex-context.mjs` keys vendored mode on `.trellis/internal/` only (`:916-921`), so on a machine with an old install, a migrated repo's Codex sessions read the section and get the injection as well. R17 accepts this. U13 ends it per machine, and U14 ends it everywhere.
-- **The retirement reaches consumers outside the inventory.** U15, U18 and U19 are plugin releases (Retirement order), so a consumer the scan missed stops receiving the rules from the plugin at U15 on Claude Code and at U18 on Codex. U14's retiring notice is their only warning.
+- **The retirement reaches consumers outside the inventory.** U16, U15 and U18 are plugin releases (Retirement order), so a consumer the scan missed stops receiving the rules from the plugin at U15 on Claude Code and at U18 on Codex. U14's retiring notice is their only warning.
 - **Tag protection depends on a setting no PR can carry.** Until the maintainer applies the ruleset, a hand-made `v*` tag could name unreviewed code. U1's done-signal includes the ruleset.
 - **A deletion-heavy retirement.** U16, U15, U18 and U19 remove about 4,400 lines of scripts and about 12,900 lines of tests between them. Each PR deletes one component and its tests, and the corpus conformance and coverage gates (`cli-ci.yml:83`, floor 90) run on each.
 
@@ -418,7 +420,7 @@ These AGENTS.md lines get rewritten in the units shown:
 | U12 | The migration round | one PR in each consumer repo | U11 |
 | U13 | Machine-level delivery ends | a checklist the maintainer runs | U12 |
 | U14 | The plugin's last release | `staleness.sh`, `codex-context.mjs`, their tests | U13, KOD-6, KOD-7 |
-| U16 | Retire install.sh | `install.sh`, `cli/install_script_test.go`, records | U14 |
+| U16 | Retire install.sh | `install.sh`, `cli/install_script_test.go`, its live references, VERSION, records | U14 |
 | U15 | Retire staleness.sh | `plugins/trellis/hooks/staleness.sh`, its tests, records | U16 |
 | U18 | Retire codex-context.mjs | the rest of `plugins/trellis/hooks/`, its tests, records | U15 |
 | U19 | Retire the plugin package | `plugins/trellis/`, `release-guard.yml`, records | U18 |
@@ -507,7 +509,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
   - S0 with `"trellis@kodhama": false` is flagged as carrying a plugin-entry decline.
   - A block whose first line carries a BOM, or whose lines end in CRLF, is still found.
   - A repo with both an overlay and a lock reports the old state together with `vendored`.
-  - A leftover `trellis-pre-morph` tag alone is not S6.
+  - A `trellis-pre-morph` tag with no `.trellis/rollback` reads as S6, because the probe cannot tell a stale tag from a standing morph whose rollback file is gone (decision-0073 D1's S6 row; the remove skill decides it by reading the instruction files, `plugins/trellis/skills/remove/SKILL.md:226-233`). The tag reaches the function as an input, so it stays pure.
 - **Verification:** every state in KTD11 has a fixture, and decision-0073's table rows map one to one onto the probe's outputs.
 
 ### U6. `install`
@@ -597,6 +599,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
 - **Test scenarios:**
   - A PR that changes `lib/` without a version bump fails `release-guard`.
   - A PR that changes only a dev dependency in `package.json` passes `release-guard` with no bump.
+  - A PR that adds a `prepare` script or a runtime dependency fails `release-guard` without a bump.
   - `TestInstallScriptBundleManifestIsCurrent` passes on the regenerated manifest.
 
   The tests in U3, U6–U8 and U20 cover what is released.
@@ -613,7 +616,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
   - Covers AE3. A spore-shaped fixture (S2 overlay, S4 blocks in `CLAUDE.md` and `AGENTS.md`, plugin declared) ends vendored with its rows unchanged, and the overlay, both blocks and the plugin entry gone. The line is `migrated`.
   - S0 with a `false` entry ends with `governed = false`, without the entry, and with the line `declined`.
   - S3 (mq-source shape, no `rules.toml`) gets a `rules.toml` carrying the overlay's opt-outs.
-  - S6 prints `error` and changes nothing.
+  - S6 prints `error` and changes nothing, from `.trellis/rollback` and from the tag alone.
   - `vendored-incomplete` gets its missing files and its lock.
   - A migration killed after the old artifacts are removed and before the lock is written is completed by a second `install --migrate`.
   - A block's `active = false` rows that disagree with `rules.toml` are reported on stderr, and `rules.toml` wins.
@@ -683,9 +686,9 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
 
 ### Retirement order
 
-After U14, the retirement runs one component per PR: `install.sh` first (U16), because its bundle manifest pins the hooks' bytes (`install.sh:337-357`, guarded by `TestInstallScriptBundleManifestIsCurrent` at `cli/install_script_test.go:233`); then `staleness.sh` (U15), then `codex-context.mjs` (U18), then the plugin package (U19), then the stewards marketplace (U17). Each PR deletes one component with its tests, so every guard that pinned it goes with it (decision-0028).
+After U14, the retirement runs one component per PR: `install.sh` first (U16), because its bundle manifest pins the hooks' bytes (`install.sh:337-357`, guarded by `TestInstallScriptBundleManifestIsCurrent` at `cli/install_script_test.go:233`); then `staleness.sh` (U15), then `codex-context.mjs` (U18), then the plugin package (U19), then the stewards marketplace (U17). Each PR deletes one component with its tests, so every guard that pinned it goes with it (decision-0028). Each also rewrites every live reference to that component its search finds, under `plugins/trellis/` or not. Dated text is a decision record, a plan or a dated inventory (AGENTS.md); `docs/solutions/`, READMEs, code comments and hook messages are live.
 
-Every change under `plugins/trellis/` is still a plugin release while `release-guard` keys on that path, so U15, U18 and U19 each bump `plugins/trellis/VERSION` and `package.json` together. Installs that still pull from the kodhama marketplace receive those releases, so each one leaves the plugin consistent: `hooks.json` and `codex-hooks.json` register only hooks that exist. These releases are the retirement that R17 names: a consumer outside the inventory stops receiving the rules from the plugin at U15 on Claude Code and at U18 on Codex.
+Every change under `plugins/trellis/` is still a plugin release while `release-guard` keys on that path, so U16, U15 and U18 each bump `plugins/trellis/VERSION` and `package.json` together. U19 bumps neither: it deletes `VERSION`, and the same PR stops `release-guard` keying on `plugins/trellis/`. U14 stays R16's "one last release": the last one that changes what the plugin delivers. U16, U15 and U18 are the retirement R16 then names, each removing a component, and AGENTS.md's release rule makes each a version bump. Installs that still pull from the kodhama marketplace receive those releases, so each one leaves the plugin consistent: `hooks.json` and `codex-hooks.json` register only hooks that exist. These releases are the retirement that R17 names: a consumer outside the inventory stops receiving the rules from the plugin at U15 on Claude Code and at U18 on Codex.
 
 ### U16. Retire install.sh
 
@@ -694,12 +697,14 @@ Every change under `plugins/trellis/` is still a plugin release while `release-g
 - **Dependencies:** U14, after the round is complete.
 - **Files:**
   - delete `install.sh` and `cli/install_script_test.go`;
-  - update `package.json`'s `lint:shell` script, `README.md`'s install section, and every other live reference the search below finds;
+  - update `package.json`'s `lint:shell` script and `README.md`'s install section;
+  - in `plugins/trellis/`: the two `staleness.sh` messages that say "Re-run install.sh" (`:889`, `:916`) now name `install --migrate`, the comments that cite `install.sh` as a mirror, the remove skill's line (`skills/remove/SKILL.md:35`, `:140`) and `README.md`; then `plugins/trellis/VERSION` and `package.json` `version` (a release);
+  - every other live reference the search below finds;
   - write the U16 rows of the Record schedule.
-- **Approach:** nothing under `plugins/trellis/` changes, so this PR is no plugin release.
+- **Approach:** a consumer outside the inventory with an `install.sh` render still sees the hook's messages, so they must not point at a script that is gone.
 - **Test scenarios:**
   - `go test -count=1 ./...` passes with the installer tests gone, and the coverage floor holds.
-  - No file still references `install.sh` except dated records and plans.
+  - No live file still references `install.sh`; only dated text does.
 - **Verification:** a repo-wide search for `install.sh` finds only dated text, and the conformance test passes with the new notes.
 
 ### U15. Retire staleness.sh
@@ -711,6 +716,7 @@ Every change under `plugins/trellis/` is still a plugin release while `release-g
   - delete `plugins/trellis/hooks/staleness.sh`, its registration in `plugins/trellis/hooks/hooks.json`, `cli/plugin_hook_test.go` and `cli/version_stamp_parity_test.go`, whose pair no longer exists;
   - narrow `cli/rules_rows_parity_test.go` and `cli/invariants_pointer_test.go` to the readers that remain;
   - update `package.json`'s `lint:shell` script, `plugins/trellis/VERSION` and `package.json` `version` (a release);
+  - rewrite the live references the search finds: `codex-context.mjs`'s comments that name `staleness.sh` as its pair (about 23, e.g. `:36`, `:54-55`), `plugins/trellis/README.md`, `AGENTS.md`, and `docs/solutions/conventions/shell-reads-of-project-files-match-node-byte-for-byte.md`, which loses its shell side;
   - write the U15 rows of the Record schedule.
 - **Test scenarios:**
   - The rows corpus still passes against `lib/rows.mjs` and `codex-context.mjs`.
@@ -726,12 +732,12 @@ Every change under `plugins/trellis/` is still a plugin release while `release-g
 - **Files:**
   - delete the rest of `plugins/trellis/hooks/`, `cli/codex_hook_test.go`, `cli/codex_plugin_native_test.go` and `cli/invariants_pointer_test.go`;
   - re-point `cli/rules_rows_parity_cases_test.go` at `lib/rows.mjs`, or move the cases into `test/`;
-  - update `eslint.config.mjs`, `package.json`'s `format`, `lint:js` and `version`, `plugins/trellis/VERSION` (a release), `core/catalog/signature-catalog-v1.md:80` with `cli/assets/invariants.md`, and `AGENTS.md:37-38` and `:137-140`;
+  - update `eslint.config.mjs`, `package.json`'s `format`, `lint:js` and `version`, `plugins/trellis/VERSION` (a release), `core/catalog/signature-catalog-v1.md:80` with `cli/assets/invariants.md`, `AGENTS.md:37-38` and `:137-140`, and every other live reference the search finds, `docs/solutions/` included;
   - write the U18 rows of the Record schedule.
 - **Test scenarios:**
   - The rows corpus still passes against `lib/rows.mjs`.
   - `go test -count=1 ./...` passes with the hook tests gone, and the coverage floor holds.
-  - No file still references `codex-context.mjs` except dated records and plans.
+  - No live file still references `codex-context.mjs`; only dated text does.
 - **Verification:** a repo-wide search for `codex-context.mjs` finds only dated text, and the conformance test passes with the new notes.
 
 ### U19. Retire the plugin package
@@ -780,10 +786,10 @@ Every change under `plugins/trellis/` is still a plugin release while `release-g
 
 ## Definition of Done
 
-- U1–U20 are merged, each through its own reviewed PR, with its listed verification observed. U13 is the exception: it has no PR, and the maintainer's confirmation on TRL-113 is its record.
+- U1–U20 are merged, each through its own reviewed PR, with its listed verification observed. U12 merges as one reviewed PR per consumer repo. U13 has no PR, and the maintainer's confirmation on TRL-113 is its record.
 - ogham's lead was told when v0.25.0 was tagged (U9).
 - TRL-5 closed with U11, and TRL-110 closed with U14's release.
 - Every inventory repo except wisp and review-kit reads as `vendored` or `declined`, and runs `check` in CI where it has CI (R15).
-- No file outside dated records and plans refers to `staleness.sh`, `codex-context.mjs`, `install.sh` or `plugins/trellis/`.
+- No live file refers to `staleness.sh`, `codex-context.mjs`, `install.sh` or `plugins/trellis/`. Dated text (records, plans, dated inventories) may.
 - Every record in the Record schedule carries its note or `superseded_by`, and every live citation into it was corrected in the same PR.
 - No abandoned-attempt code remains in any unit's diff.
