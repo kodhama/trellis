@@ -211,7 +211,7 @@ Line numbers in this section and below cite this repo at `f42c0a1`. Several of t
 - KTD8. **How the CLI writes files.**
   - It works only on the working tree. It never reads HEAD or touches the git index, and it never refuses because a file is uncommitted, `AGENTS.md` included (R4). This settles ogham's open question: ogham writes its own block into `AGENTS.md`, leaves it uncommitted, then calls `install`, and Trellis keeps ogham's bytes exactly and reports `installed`. R18 and AE4 rely on this, and ogham's KTD6 already assumes it.
   - It writes each file to a temporary file in the same directory, then renames it into place. The order is fixed: `invariants.md`, the Claude copy, the `AGENTS.md` section, `rules.toml`, and the lock last. `rules.toml` comes late because a bare `rules.toml` reads as S0 (`0073:115`), so a crash right after writing it first would leave a state the probe cannot tell from an old one. Any crash therefore leaves at least one new artifact and no lock. That is a named state (KTD11): `install --migrate` completes it, and `check` fails on it and names the files.
-  - Migration removes the old artifacts first, then writes the new ones in the same order, lock last. A crash part-way leaves a mixed state; the probe names both its old and its new parts, and `install --migrate` completes it.
+  - Migration writes the new artifacts first, in the same order, then removes the old ones, then writes the lock. The old artifacts can be the only record of what the new ones must carry: S3's opt-outs live in the flat overlay, and a `false` plugin entry is the only sign that the repo declined. So `rules.toml` holds those opt-outs and any `governed = false` before any old artifact goes. A crash before the removal leaves a mixed state; the probe names both its old and its new parts, and `install --migrate` completes it from inputs still present. A crash after it leaves `vendored-incomplete`, whose `rules.toml` already carries them.
   - It replaces its own section in place. A new section goes at the end of `AGENTS.md`, or where an old block stood during migration, and never inside another tool's markers. The file keeps its line endings and BOM.
   - It resolves the repo root with `git rev-parse --show-toplevel`. Outside a git repo it reports `error`.
   - When two runs overlap, the last writer wins. The README says so.
@@ -232,10 +232,10 @@ Line numbers in this section and below cite this repo at `f42c0a1`. Several of t
   - The R15 rewrite of the header comment ("Rows govern rule activation live…") replaces that exact line only. Any other header gets a stderr warning.
 - KTD14. **One version line, and every release is tagged (R20).**
   - **Single version:** `package.json` `version` and `plugins/trellis/VERSION` hold one number, and a parity test enforces it until U19 removes the plugin. The first CLI release follows the current 0.24.8, so it is v0.25.0, which collides with no `v0.1.0`–`v0.2.30` tag.
-  - **Tagging:** a workflow on pushes to `main` creates `v<version>` on the merge commit whenever the version changed. A job fails when the version on `main` has no tag.
+  - **Tagging:** a workflow on pushes to `main` creates `v<version>` on the merge commit when the version has no tag. A job fails when the version on `main` has no tag. Both start at 0.25.0: a version below it is pre-CLI, so the workflow neither creates nor requires its tag. Without that floor, U1's own merge would tag v0.24.8 on a commit with no CLI.
   - **Release guard:** in U9, the first release, `release-guard` widens from `plugins/trellis/` to `bin/`, `lib/` and `payload/`, and to `package.json`'s runtime fields only, compared field by field: `name`, `bin`, `files`, `engines`, the dependency fields (`dependencies`, `optionalDependencies`, `peerDependencies`, `bundleDependencies`), and the install-time scripts npm runs for a `github:` package (`preinstall`, `install`, `postinstall`, `prepare`, `prepack`, `postpack`). Each of those changes what `npx github:` runs; the other scripts and `devDependencies` do not. The guard's `plugin.json` rule, which counts any changed line other than `"version":` (`release-guard.yml:77-84`), would not do here, because a dev-dependency bump changes lines too. A Dependabot bump of a dev dependency (`.github/dependabot.yml`) is therefore no release. Before U9 the CLI paths are unreleased: no tag names them, nothing pins them, and widening the guard earlier would make every unit from U2 to U8 a release of a stub CLI and spend v0.25.0 before U9.
   - **Protection:** a tag ruleset protects `refs/tags/v*` with GitHub Actions as its only bypass, so only a workflow can create, move or delete those tags. Workflows change only through reviewed PRs to `main`, so a tag names reviewed, merged code. No such ruleset exists today; the repo has only "main protection". The ruleset is a repository setting, and the maintainer applies it.
-- KTD15. **The 32 KiB warning (R10)** goes to stderr when the section's end marker sits past byte 32,768 of the root `AGENTS.md`. Codex caps the combined `AGENTS.md` chain, which runs from the git root down to the working directory, so measuring at the root is a floor; the warning says so. A root `AGENTS.override.md` also draws a warning, because Codex reads it in place of `AGENTS.md`.
+- KTD15. **The 32 KiB warning (R10)** goes to stderr when an `AGENTS.md` chain Codex can read passes byte 32,768. Codex caps the combined chain from the git root down to the working directory. The CLI therefore measures the whole root `AGENTS.md`, and each chain from it to a tracked nested `AGENTS.md` (`git ls-files`). The warning names the longest chain, and says whether the Trellis section's end marker itself lies past the cap, in which case Codex loses rules, or only content after it does. A root `AGENTS.override.md` also draws a warning, because Codex reads it in place of `AGENTS.md`.
 - KTD16. **No claim of Codex parity.** The direction doc's assumption that Codex and Droid follow inlined rules about as well as Claude stays unmeasured. The decision record says so, and U9 adds an entry to the Trellis Ideas doc. The entry's trigger is "a reported Codex or Droid miss of an inlined rule, or any plan to claim parity". That entry is the consumer that brings the measurement back.
 - KTD17. **CI wiring.**
   - **Consumers:** each migrated repo's CI runs `npx -y "github:kodhama/trellis#v$(node -p "require('./.trellis/lock.json').version")" check`, inside a shell guard that skips the step when `.trellis/lock.json` is absent, so a repo that later runs `remove` keeps a green CI. A migration that ends `declined` wires no step. The version comes from the lock, so `update` never edits CI (R15). Only the fetch needs the network; `check` itself runs offline (R12).
@@ -436,7 +436,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
 - **Files:** `.github/workflows/release-tag.yml` (new), `package.json` (`version`), `cli/plugin_package_test.go` (parity of `package.json` and `plugins/trellis/VERSION`), `AGENTS.md` (the release rule gains the tag).
 - **Approach:**
   1. Set `package.json` `version` to the plugin's current VERSION. Add it to `TestPluginPackageParity` (`cli/plugin_package_test.go:218`). `release-guard` keys on `plugins/trellis/` only, so this edit is no release.
-  2. Add the tag workflow. On a push to `main` whose version has no tag, it tags the pushed commit. A second job fails when the version on `main` is untagged.
+  2. Add the tag workflow. On a push to `main` whose version has no tag, it tags the pushed commit. A second job fails when the version on `main` is untagged. Both skip versions below 0.25.0 (KTD14), so this PR's merge at 0.24.8 tags nothing.
   3. Ask the maintainer to apply the tag ruleset, with GitHub Actions as its only bypass.
   4. Leave `release-guard` as it is. U9 widens it (KTD14).
 - **Execution note:** this is mostly workflow configuration. The proof is the first merged release creating its tag; until then, check the workflow's logic in a branch run on a fork or with `act`.
@@ -444,6 +444,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
   - A PR that bumps `package.json` but not `plugins/trellis/VERSION` fails the parity test.
   - The tag job, given a version equal to an existing tag, does nothing and succeeds.
   - The missing-tag job, on a `main` whose version has no tag, fails and names the version.
+  - Both jobs, given 0.24.8, do nothing and succeed.
 - **Verification:** the next merged release creates its `v*` tag, and the ruleset is shown as active under the repository's rules.
 
 ### U2. Payload for vendored delivery
@@ -529,6 +530,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
   - A rows file switching two rules off renders without those two rules, and the lock lists them.
   - A CRLF `AGENTS.md` with a BOM keeps both after install.
   - A section ending past byte 32,768 prints the warning on stderr, and stdout stays one line.
+  - A section ending early in a root `AGENTS.md` over 32,768 bytes, and a root plus nested `AGENTS.md` chain over 32,768 bytes, each draw the warning, which says the section itself is within the cap.
   - Killing the run at each point of KTD8's write order, before the lock, leaves a repo that U5 classifies as `vendored-incomplete`, never as S0.
 - **Verification:** run in a scratch repo, the outputs open in Claude Code with the rules in context once, and the test suite covers KTD5's cases 1 and 2.
 
@@ -561,7 +563,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
   - A CRLF checkout of a correct install passes.
   - A declined repo with no other Trellis file passes; a declined repo that still has a lock fails with "run remove".
   - A lock written by a newer schema prints `error`.
-  - An `AGENTS.md` whose section ends past byte 32,768 draws KTD15's warning on stderr, and stdout stays one line (R10).
+  - An `AGENTS.md` chain past byte 32,768 draws KTD15's warning on stderr, and stdout stays one line (R10).
 - **Verification:** `check` makes no network call (the tests run with networking stubbed), and every R12 failure names its file or row.
 
 ### U8. `update` and `remove`
@@ -579,7 +581,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
   - `remove` keeps `seeded_from`, `strictness` and every row, and replaces an existing `governed = true` line rather than adding a second.
   - `update` with no lock prints `error` with "run install --migrate".
   - Duplicated section markers make both verbs print `error` and write nothing.
-  - `update` that leaves the section ending past byte 32,768 draws KTD15's warning on stderr, and stdout stays one line (R10).
+  - `update` that leaves an `AGENTS.md` chain past byte 32,768 draws KTD15's warning on stderr, and stdout stays one line (R10).
   - `remove` in a declined repo that still has a lock deletes it and the other leftovers, and keeps `rules.toml`.
   - `remove` in a `vendored-incomplete` repo deletes what exists and writes `governed = false`.
   - `update` in a declined repo prints `error` and writes nothing.
@@ -618,7 +620,7 @@ U-IDs are stable: U18–U20 were added after the first review, so the table list
   - S3 (mq-source shape, no `rules.toml`) gets a `rules.toml` carrying the overlay's opt-outs.
   - S6 prints `error` and changes nothing, from `.trellis/rollback` and from the tag alone.
   - `vendored-incomplete` gets its missing files and its lock.
-  - A migration killed after the old artifacts are removed and before the lock is written is completed by a second `install --migrate`.
+  - A migration killed after the new artifacts are written and before the old ones are removed, and one killed after the removal and before the lock, are each completed by a second `install --migrate`. At both kill-points an S3 fixture keeps its opt-outs, and an S0 fixture with a `false` entry ends `declined`.
   - A block's `active = false` rows that disagree with `rules.toml` are reported on stderr, and `rules.toml` wins.
   - The header line "Rows govern rule activation live…" is rewritten; a different header draws a warning.
   - After migration, every old probe in `staleness.sh` and `codex-context.mjs` finds no block it would ask to delete.
