@@ -26,7 +26,7 @@ execution: code
 
 ### Summary
 
-Trellis stops delivering rules through a plugin and a session-start hook. A repo adopts Trellis by running the Trellis CLI once. The CLI writes the rules, minus the repo's opt-outs, into committed files that every host reads at session start. Updating means running the CLI again and reviewing the diff. Existing consumers move over in one round of PRs, and the plugin then retires.
+Trellis stops delivering rules through a plugin and a session-start hook. A repo adopts Trellis by running the Trellis CLI once. The CLI writes the rules, minus the repo's opt-outs, into committed files that every host reads at session start. Updating means running the CLI again and reviewing the diff. Existing consumers move over in one round of PRs, except wisp and review-kit, which are retiring (R15), and the plugin then retires.
 
 ### Problem Frame
 
@@ -156,7 +156,7 @@ This plan covers Trellis's own delivery. The breakdown below is the current unde
 - How to measure Codex adherence before claiming parity: KTD16. The build claims no parity.
 - Whether Claude Code loads a parent directory's `.claude/rules/`: it does, even above the git root. KTD5 says what follows for `~/hq`.
 
-**Product Contract preservation:** changed only in wording, with two scope changes. R14 now covers S0–S5 rather than S0–S6, which the maintainer approved on 2026-10-18 (R14's note). R11 now covers the repos the round migrated rather than every session, which the maintainer approved on 2026-10-19 (R11's note). R16 and R20 carry the maintainer's approved readings, of 2026-10-18 and 2026-10-19, which change no scope. R18, AE4 and AE9 now say ogham's `install`, because ogham renamed `init` (ogham D19). The spore inventory row now says "plugin declared": spore's `.claude/settings.json` on its `main` at `9b10882` has `"trellis@kodhama": true`. "Building the CLI. This plan stops at requirements" left Scope Boundaries, because the Planning Contract now plans the build.
+**Product Contract preservation:** changed only in wording, with three scope changes. R14 now covers S0–S5 rather than S0–S6, which the maintainer approved on 2026-10-18 (R14's note). R11 now covers the repos the round migrated rather than every session, and R20's tagging starts at the CLI's first release, so the plugin releases before U9 stay untagged; the maintainer approved both on 2026-10-19 (each requirement's note). R16 carries the maintainer's approved reading of 2026-10-18, which changes no scope. R18, AE4 and AE9 now say ogham's `install`, because ogham renamed `init` (ogham D19). The spore inventory row now says "plugin declared": spore's `.claude/settings.json` on its `main` at `9b10882` has `"trellis@kodhama": true`. "Building the CLI. This plan stops at requirements" left Scope Boundaries, because the Planning Contract now plans the build.
 
 ### Sources / Research
 
@@ -232,7 +232,7 @@ Line numbers in this section and below cite this repo at `f42c0a1`. Several of t
   - It writes `governed = false` as the single top-level line above the first table, replacing any `governed` line already there. It keeps `seeded_from`, `strictness` and every row. That is the only form the old parsers accept as a decline (`codex-context.mjs:887-903`, `staleness.sh:333-347`), and those parsers keep reading consumer repos until R19.
   - The R15 rewrite of the header comment ("Rows govern rule activation live…") replaces that exact line only. Any other header gets a stderr warning.
 - KTD14. **One version line, and every release is tagged (R20).**
-  - **Single version:** `package.json` `version` and `plugins/trellis/VERSION` hold one number, and a parity test enforces it until U19 removes the plugin. The first CLI release follows the current 0.24.8, so it is v0.25.0, which collides with no `v0.1.0`–`v0.2.30` tag.
+  - **Single version:** `package.json` `version` and `plugins/trellis/VERSION` hold one number, and a parity test enforces it until U19 removes the plugin. The first CLI release follows the current 0.24.8, so it is v0.25.0, or the next unused minor if plugin releases land first (Assumptions); either collides with no `v0.1.0`–`v0.2.30` tag.
   - **Tagging:** a workflow on pushes to `main` creates `v<version>` on the merge commit when the version has no tag. That commit is the one that set the version (the last commit to change `package.json`'s `version`, which the parity test ties to `VERSION`), not the pushed head, so a tag job that failed on the release and reran on a later push still tags the release. A job fails when any version `main` has carried since the floor has no tag, not only the head's, so a later release cannot turn `main` green over an untagged one. Both skip every version below a floor committed in the workflow file. U1 commits the floor unset, so neither job acts on any version; U9 sets it to its own version, in the PR that makes that version the first CLI release. A plugin release that lands between U1 and U9 (Assumptions) is therefore never tagged, even at 0.25.0, so no tag names a commit with no CLI or only stub verbs. Without a floor, U1's own merge would tag v0.24.8 on a commit with no CLI. R20's "every release" starts at the CLI's first release, as the maintainer ruled on 2026-10-19 (R20's note), because the plugin releases before it are no pin's target. U4's record states that ruling.
   - **Release guard:** in U9, the first release, `release-guard` widens from `plugins/trellis/` to `bin/`, `lib/` and `payload/`, and to `package.json`'s runtime fields only, compared field by field: `name`, `bin`, `files`, `engines`, the dependency fields (`dependencies`, `optionalDependencies`, `peerDependencies`, `bundleDependencies`), and the install-time scripts npm runs for a `github:` package (`preinstall`, `install`, `postinstall`, `prepare`, `prepack`, `postpack`). Each of those changes what `npx github:` runs; the other scripts and `devDependencies` do not. The guard's `plugin.json` rule, which counts any changed line other than `"version":` (`release-guard.yml:77-84`), would not do here, because a dev-dependency bump changes lines too. A Dependabot bump of a dev dependency (`.github/dependabot.yml`) is therefore no release. Before U9 the CLI paths are unreleased: no tag names them, nothing pins them, and widening the guard earlier would make every unit from U2 to U8 a release of a stub CLI and spend v0.25.0 before U9.
   - **Protection:** a tag ruleset protects `refs/tags/v*` with GitHub Actions as its only bypass, so only a workflow can create, move or delete those tags. Workflows change only through reviewed PRs to `main`, so a tag names reviewed, merged code. No such ruleset exists today; the repo has only "main protection". The ruleset is a repository setting, and the maintainer applies it. Whether the Actions bypass also lets a workflow defined on an unmerged branch create a tag is unverified, and U1 checks it. If it does, the bypass would break R20, so the ruleset's only bypass becomes a GitHub App instead, whose key lives in a deployment environment that only `main` may deploy to: only a workflow run on `main` can then tag.
@@ -338,7 +338,7 @@ flowchart TB
   U2 --> U3[U3 skeleton + rows]
   U4 --> U5[U5 state probe]
   U3 --> U5 --> U21[U21 write primitives] --> U6[U6 install] --> U20[U20 Claude copy placement] --> U7[U7 check] --> U8[U8 update + remove]
-  U8 --> U9[U9 first release v0.25.0 - ogham U8 unblocked]
+  U8 --> U9[U9 first release v0.25.0 or next minor - ogham U8 unblocked]
   U9 --> U10[U10 install --migrate]
   U10 --> U11[U11 this repo self-applies - TRL-5]
   U11 --> U12[U12 migration round]
@@ -705,7 +705,7 @@ U-IDs are stable: U18–U20 were added after the first review and U21 after the 
 
 ### U12. The migration round
 
-- **Goal:** every live consumer in the inventory runs on vendored delivery.
+- **Goal:** every live consumer in the inventory runs on vendored delivery, except R15's exemptions, wisp and review-kit, which keep their current state until they retire.
 - **Requirements:** R15, R14; KTD5, KTD17.
 - **Dependencies:** U11, and a release that includes U10.
 - **Files:** in each consumer repo, which is cloned fresh and never in a shared checkout:
