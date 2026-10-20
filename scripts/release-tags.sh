@@ -20,6 +20,8 @@
 # above the floor must be plain X.Y.Z, because `sort -V` (GNU and BSD, not POSIX)
 # orders a prerelease after its release, and it must never come back once main
 # has moved past it, because one tag can name only one of its commits.
+#
+# It needs git and node, both on GitHub's ubuntu-latest runners.
 set -eu
 
 mode="${1:-}"
@@ -70,10 +72,9 @@ list_releases() {
   done
 }
 
-# fail <message>: plan's stdout carries only tag lines, so its errors go to
-# stderr; verify's become workflow annotations.
+# fail <message>: verify's errors become workflow annotations.
 fail() {
-  if [ "$mode" = plan ]; then echo "release-tags: $1" >&2; else echo "::error::$1"; fi
+  echo "::error::$1"
   failed=1
 }
 
@@ -89,7 +90,13 @@ while read -r version commit; do
   fi
   first="$(printf '%s\n' "$releases" | awk -v v="$version" '$1 == v { print $2; exit }')"
   if [ "$first" != "$commit" ]; then
-    fail "version $version came back at $commit after $first had set it and main had moved past it. A tag names one commit, so this release needs a new version."
+    # plan's stdout carries only tag lines, and one repeat must not stop the
+    # releases after it from being tagged, so plan notes it and verify fails.
+    if [ "$mode" = plan ]; then
+      echo "release-tags: skipping version $version at $commit, which $first set first; verify reports it" >&2
+    else
+      fail "version $version came back at $commit after $first set it and main moved past it. A tag names one commit, so this release cannot be tagged. Give the next release a new version, and raise TRELLIS_TAG_FLOOR in release-tag.yml past $version to clear this check."
+    fi
     continue
   fi
   tag="v$version"

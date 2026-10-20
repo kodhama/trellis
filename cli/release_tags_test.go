@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -298,24 +299,36 @@ func TestReleaseTagsReadOnlyTheTopLevelVersion(t *testing.T) {
 
 func TestReleaseTagsFailAVersionThatComesBack(t *testing.T) {
 	// One tag names one commit, so a version that returns after main moved past
-	// it cannot be tagged: both modes say so instead of staying green.
+	// it cannot be tagged. verify says so, naming the way out, while plan still
+	// lists the releases after it, so one repeat does not stop later tags.
 	r := newTagRepo(t)
 	first := r.commit("0.25.0", "first CLI release")
 	second := r.commit("0.26.0", "second CLI release")
-	back := r.commit("0.25.0", "the first version again")
+	back := r.commit("0.25.0", "a revert back to the first version")
+	third := r.commit("0.27.0", "third CLI release")
 	r.git("tag", "v0.25.0", first)
 	r.git("tag", "v0.26.0", second)
-	for _, mode := range []string{"plan", "verify"} {
-		out, code := r.run(mode, "0.25.0")
-		if code == 0 {
-			t.Errorf("%s exited 0 on a returning version:\n%s", mode, out)
-		}
-		for _, text := range []string{"0.25.0", first, back} {
-			if !strings.Contains(out, text) {
-				t.Errorf("%s output lacks %q:\n%s", mode, text, out)
-			}
+	out, code := r.run("plan", "0.25.0")
+	if code != 0 || planLines(out) != "v0.27.0 "+third {
+		t.Errorf("plan exited %d listing %q, want 0 listing v0.27.0 %s:\n%s", code, planLines(out), third, out)
+	}
+	for _, text := range []string{"0.25.0", first, back} {
+		if !strings.Contains(out, text) {
+			t.Errorf("plan's report lacks %q:\n%s", text, out)
 		}
 	}
+	r.git("tag", "v0.27.0", third)
+	r.wantVerify("0.25.0", 1, "0.25.0", first, back, "TRELLIS_TAG_FLOOR")
+	// The way out the message names: a floor raised past the repeated version.
+	r.wantVerify("0.26.1", 0)
+}
+
+func TestReleaseTagsIgnoreAChangeThatKeepsTheVersion(t *testing.T) {
+	// A Dependabot bump edits package.json at the same version: no new release.
+	r := newTagRepo(t)
+	release := r.commit("0.25.0", "first CLI release")
+	r.commitPackage("{\n  \"name\": \"trellis\",\n  \"version\": \"0.25.0\",\n  \"private\": true,\n  \"devDependencies\": { \"eslint\": \"10.12.0\" }\n}\n", "bump a dev dependency")
+	r.wantPlan("0.25.0", "v0.25.0 "+release)
 }
 
 // TestReleaseTagWorkflowShape pins the properties of release-tag.yml that keep
@@ -345,6 +358,14 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	}
 	if !strings.Contains(top, "group: release-tag-${{ github.ref }}") || !strings.Contains(top, "cancel-in-progress: false") {
 		t.Error("release-tag runs must queue per ref, never cancel one another")
+	}
+	// Every push before the CLI's first release has nothing to tag, and this guard
+	// keeps those pushes out of the release environment.
+	if !strings.Contains(tag, "needs: plan\n    if: needs.plan.outputs.tags != ''\n") {
+		t.Error("the tag job must run only when plan listed a tag")
+	}
+	if !regexp.MustCompile(`uses: actions/create-github-app-token@[0-9a-f]{40}\n`).MatchString(tag) {
+		t.Error("the step that holds the App's key must pin its action by commit")
 	}
 	if strings.Count(workflow, "environment: release") != 1 || !strings.Contains(tag, "environment: release") {
 		t.Error("only the tag job may use the release environment, which holds the App's key")

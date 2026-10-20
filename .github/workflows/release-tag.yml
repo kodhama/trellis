@@ -10,9 +10,10 @@ name: release-tag
 # environment:
 #   plan    lists each version at or above the floor that has no tag yet
 #   tag     creates those tags, and only creates: a tag is never moved or deleted
-#   verify  fails when any version at or above the floor is untagged, or tagged
-#           on a commit other than the one that set it. It runs after `tag`
-#           whatever `tag` did, so a failed tag job still names what is missing.
+#   verify  fails when any version at or above the floor is untagged, tagged on
+#           a commit other than the one that set it, or back after main moved
+#           past it. It runs after `tag` whatever `tag` did, so a failed tag job
+#           still names what is missing.
 # A failed tag can be retried by re-running the workflow, or by dispatching it on
 # main when nothing else has landed since.
 #
@@ -95,6 +96,10 @@ jobs:
           set -eu
           printf '%s\n' "$TAGS" | while read -r tag commit; do
             [ -n "$tag" ] || continue
+            if ! printf '%s %s\n' "$tag" "$commit" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+ [0-9a-f]{40}$'; then
+              echo "::error::plan listed \"$tag $commit\", which is not a v<X.Y.Z> tag on a full commit id"
+              exit 1
+            fi
             # POST /git/refs only creates. A tag that appeared since `plan` ran
             # is fine when it names the planned commit, and an error otherwise.
             if gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$commit" > /dev/null; then

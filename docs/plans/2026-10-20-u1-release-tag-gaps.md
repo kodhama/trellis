@@ -53,7 +53,7 @@ The story lead settled KTD1–KTD6. Each was checked against the repo at `02ccc5
   - Gap added: in a shallow clone the script exits 2, because a shallow history would make both modes see too little and pass.
   - *Checked:* `scripts/` exists, and `npm run lint:shell` already shellchecks `scripts/*.sh` in CI. **Flag:** `sort -V` is not POSIX. GNU `sort` on `ubuntu-latest` has it, and so does macOS `sort` (run locally), so the script is POSIX syntax plus one extension that the repo already uses.
   - *Checked:* KTD14 says the tagged commit is "the last commit to change `package.json`'s `version`". That is the same commit as KTD1's first appearance unless a version repeats. `release-guard` refuses a non-newer VERSION only on a PR that changes the payload, so a repeat is possible.
-  - Gap added: a version at or above the floor that comes back after a different version makes both modes exit non-zero, naming the version and both commits that set it. Without this, the second release would stay untagged while `verify` passed against the old tag. The way out is a fresh version and a floor raised past the repeated one, so no tag moves.
+  - Gap added: a version at or above the floor that comes back after a different version makes `verify` fail, naming the version, both commits that set it and the way out: a fresh version, and a floor raised past the repeated one, so no tag moves. `plan` notes the repeat on stderr and still lists the releases after it, so one repeat does not stop later tags (the story's review found that failing `plan` too blocked every later release).
 - KTD2. **`.github/workflows/release-tag.yml` has three jobs: `plan`, `tag` and `verify`.** It runs on push to `main`, in one concurrency group with `cancel-in-progress: false`.
   - `plan` runs with `contents: read` and runs `plan`.
   - `tag` needs `plan` and runs only when `plan`'s output is non-empty. It uses `environment: release`. It mints an installation token with `actions/create-github-app-token` from `vars.RELEASE_APP_CLIENT_ID` (v3 of the action deprecates `app-id` for `client-id`) and `secrets.RELEASE_APP_PRIVATE_KEY`. It creates each tag with `POST /repos/{owner}/{repo}/git/refs`, which only creates and never moves a tag.
@@ -152,7 +152,7 @@ flowchart TB
   - A clone made with `--depth 1` from a `file://` URL of the temporary repo makes both modes exit 2. Git ignores `--depth` for a plain-path local clone.
   - A `package.json` whose only other `"version"` key is nested inside another object is read as having no version.
   - A commit that deletes `package.json` is skipped.
-  - History `0.25.0` (A), `0.26.0` (D), `0.25.0` (E), floor `0.25.0`: both modes exit non-zero and name `0.25.0`, A and E.
+  - History `0.25.0` (A), `0.26.0` (D), `0.25.0` (E), `0.27.0` (F), floor `0.25.0`: `plan` exits 0 listing only F and names `0.25.0`, A and E; `verify` fails naming them and `TRELLIS_TAG_FLOOR`; with the floor at `0.26.1` it passes.
 - **Verification:** `cli/release_tags_test.go` is green under `-count=1`, and `npm run lint:shell` passes on the new script.
 
 ### U3. The workflow and its shape test
