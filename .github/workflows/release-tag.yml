@@ -1,0 +1,95 @@
+name: release-tag
+
+# decision-2026-10-20-trellis-delivers-rules-as-committed-files point 11: every
+# CLI release is tagged v<version> on the commit that set that version, and a pin
+# such as `npx github:kodhama/trellis#v0.25.0` always names reviewed, merged code.
+# The logic is scripts/release-tags.sh, which cli/release_tags_test.go drives.
+#
+# Three jobs, so that a push with nothing to tag never touches the `release`
+# environment:
+#   plan    lists each version at or above the floor that has no tag yet
+#   tag     creates those tags, and only creates: a tag is never moved or deleted
+#   verify  fails when any version at or above the floor is untagged, or tagged
+#           on a commit other than the one that set it. It runs after `tag`
+#           whatever `tag` did, so a failed tag job still names what is missing.
+#
+# THE FLOOR. Both modes skip every version below TRELLIS_TAG_FLOOR. It is unset
+# until the CLI's first release (U9), so no plugin release before it is tagged,
+# and the merge that adds this file tags nothing. U9 sets it to its own version.
+#
+# WHO MAY TAG. A tag ruleset on refs/tags/v* blocks creating, moving and deleting
+# those tags, with one GitHub App as its only bypass. GitHub Actions itself is not
+# the bypass: GitHub's ruleset docs list roles, teams, Apps and Dependabot as
+# bypass actors, not Actions, and a bypass belongs to an actor, not a branch, so
+# any workflow on any branch could have used it. The App's key lives in the
+# `release` environment, which only `main` may deploy to, so only a run on `main`
+# can mint the token the `tag` job uses. The ruleset, the App and the environment
+# are repository settings the maintainer applies; no file here carries them.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TRELLIS_TAG_FLOOR: ""
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.plan.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: plan
+        run: |
+          set -eu
+          tags="$(scripts/release-tags.sh plan)"
+          {
+            echo "tags<<RELEASE_TAGS_EOF"
+            if [ -n "$tags" ]; then printf '%s\n' "$tags"; fi
+            echo "RELEASE_TAGS_EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$tags" ]; then printf 'to tag:\n%s\n' "$tags"; else echo "nothing to tag"; fi
+
+  tag:
+    needs: plan
+    if: needs.plan.outputs.tags != ''
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - name: Create each missing tag
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          TAGS: ${{ needs.plan.outputs.tags }}
+        run: |
+          set -eu
+          printf '%s\n' "$TAGS" | while read -r tag commit; do
+            [ -n "$tag" ] || continue
+            # POST /git/refs only creates; it fails if the tag already exists.
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$commit" > /dev/null
+            echo "created $tag on $commit"
+          done
+
+  verify:
+    needs: [plan, tag]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: scripts/release-tags.sh verify

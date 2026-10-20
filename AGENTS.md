@@ -145,6 +145,14 @@ and CI (`decision-0075`).
   installs and no one else. `release-guard` fails that pair, keyed on the whole shipped bundle
   rather than `reference/`: #275 edited `hooks/staleness.sh` and was a release (0.10.0 → 0.11.0)
   though `reference/version`, which hashes `reference/` only, never moved.
+- **One version line, and every CLI release is tagged**
+  (`decision-2026-10-20-trellis-delivers-rules-as-committed-files` point 11). A bump sets
+  `package.json`'s `version`, and the two copies npm keeps in `package-lock.json`, to the new
+  `VERSION`; `TestPluginPackageParity` fails otherwise. On each push to `main`, `release-tag`
+  creates `v<version>` on the commit that set the version, then fails while any version at or
+  above its floor is untagged or tagged on another commit. The floor stays unset until the CLI's
+  first release, so nothing is tagged before it. Never create, move or delete a `v*` tag by hand:
+  a tag ruleset lets only the release GitHub App do it, from `main`.
 - **Artifact conformance is CI-applied** (`decision-0098`). A Go test checks the corpus that
   `docs/rubrics/artifact-contract.md` names (`docs/decisions/`, `docs/research/`, `docs/rubrics/`, `profiles/` and the `core/`
   artifacts listed there) against that rubric, in `cli-ci`'s `build-test` job on every PR.
