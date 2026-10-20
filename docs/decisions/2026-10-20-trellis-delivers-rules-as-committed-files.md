@@ -78,9 +78,10 @@ Rejected: Go binaries fetched from release assets by a JavaScript shim, and Type
 **3. The files Trellis owns.**
 
 - **`AGENTS.md` carries the rules in one section** between `<!-- trellis:vendored:begin -->` and
-  `<!-- trellis:vendored:end -->`, beside other tools' marked sections and never inside them. The
-  rules are inlined because Codex and Droid cannot import a file from `AGENTS.md`. `install`, `update`
-  and `check` warn on stderr when an `AGENTS.md` chain Codex reads passes its 32 KiB cap.
+  `<!-- trellis:vendored:end -->`, beside other tools' marked sections. It never wraps them and never
+  sits inside them. The rules are inlined because Codex and Droid cannot import a file from
+  `AGENTS.md`. `install`, `update` and `check` warn on stderr when an `AGENTS.md` chain Codex reads
+  passes its 32 KiB cap.
 - **The Claude copy**, where one is needed, is `.claude/rules/trellis-rules.md` (point 4).
 - **`.trellis/invariants.md`** holds the catalog entries the rules point to for detail. It is committed
   and read on demand, never loaded at session start.
@@ -99,6 +100,8 @@ and `update`, and the lock records which case applied:
 1. `CLAUDE.md` imports `AGENTS.md`, through a line that is exactly `@AGENTS.md` or `@./AGENTS.md`
    outside a code fence, or by being a symlink to `AGENTS.md`: no Claude copy.
 2. There is no `CLAUDE.md`: the CLI creates it as the single line `@AGENTS.md`, as ogham does.
+   `update` keeps this case, recorded as `created-claude-md`, while `CLAUDE.md` is still exactly
+   `@AGENTS.md`, so `remove` can still delete it (point 9).
 3. A `CLAUDE.md` exists without the import: the CLI writes `.claude/rules/trellis-rules.md`, which
    loads on turn one in cloud sessions.
 4. `install --no-claude-copy` writes no Claude copy, and `update` keeps that choice. It is for a repo
@@ -160,16 +163,24 @@ one line.
   writes. In `vendored` it reports `already-present`, and in S0–S6 or codex-bootstrap
   `already-present <state>`. In `declined` it reports `declined`. In `vendored-incomplete` or mixed it
   reports `error` with "run install --migrate", so a caller never reads success from a half-written
-  repo. The exception is a mixed repo whose new part is `governed = false`, which reports `declined`.
+  repo. The exception is a mixed repo whose new parts include `governed = false`, which reports
+  `declined`.
 - `install` never overrides a decline. Its `declined` line says how a person reverses one: delete the
   `governed = false` line, then run `install --migrate`.
+- **`update` by state.** In `vendored` it reports `done` and re-renders the rules. In `none` it reports
+  `error` with "run install", in `declined` `error` with "declined; see install", and in
+  `vendored-incomplete` `error` with "run install --migrate".
+- **`remove` by state.** In `vendored`, `vendored-incomplete` and `declined` it reports `done` and
+  deletes what Trellis wrote (point 9). In `none` it reports `done`, with a note, and changes nothing.
 - **S6 refuses every verb that would write.** On S6, `install --migrate`, `update` and `remove` change
   nothing and report `error`, telling the person to roll back the morph first.
 - **Old state goes through migration.** In S0–S5, codex-bootstrap or a mixed state, `update` and
-  `remove` change nothing and answer "run install --migrate". In a mixed state the old part decides
-  every verb but plain `install`, and `install --migrate` completes the conversion.
-- Migrating a repo whose plugin entry is `false`, or a mixed repo whose new part is `governed = false`,
-  reports `declined`, not `migrated`, because nothing was adopted.
+  `remove` change nothing and report `error` with "run install --migrate". In a mixed state the old
+  part decides every verb but two: plain `install`, as above, and `install --migrate` when the new
+  parts include `governed = false`, which reports `declined` (below). Otherwise `install --migrate`
+  completes the conversion.
+- Migrating a repo whose plugin entry is `false`, or a mixed repo whose new parts include
+  `governed = false`, reports `declined`, not `migrated`, because nothing was adopted.
 
 **Once the CLI's first release is tagged, this contract changes only through a new decision record and
 a notice to ogham's lead**, because ogham's `install` pins a Trellis tag and parses the line.
@@ -225,7 +236,8 @@ missing: run install --migrate or remove". A migration that ends `declined` wire
   decline.
 - **`remove` leaves a decline behind.** In a `vendored`, `vendored-incomplete` or `declined` repo, it
   deletes every file and section Trellis wrote except `rules.toml`, which it leaves holding
-  `governed = false`. In every other state it changes nothing (point 6). A `CLAUDE.md` that
+  `governed = false`. In `none` it reports `done` and changes nothing, and in S0–S6, codex-bootstrap
+  or a mixed state it changes nothing and reports `error` (point 6). A `CLAUDE.md` that
   Trellis created is deleted only while it is still exactly `@AGENTS.md` and `AGENTS.md` is gone, so
   another tool's use of the import survives. A repo that removed Trellis said no, and `decision-0077`
   holds that silence is not adoption: without the record, the next tool that calls `install` would
@@ -239,7 +251,8 @@ entry keeps its no: the run writes `governed = false`, removes the old artifacts
 no vendored file and no lock, and reports `declined`.
 
 - **On S6 it changes nothing and reports `error`, telling the person to roll back the morph first.**
-  The maintainer narrowed migration to S0–S5 on 2026-10-18.
+  The line adds that a morph already reversed leaves a stale tag, cleared with
+  `git tag -d trellis-pre-morph`. The maintainer narrowed migration to S0–S5 on 2026-10-18.
 - **Plain `install` never migrates.** The flag keeps the CLI at four verbs.
 - **One round of PRs migrates every live consumer** in the plan's inventory, and each PR also wires
   `check` into the repo's CI where the repo has CI. wisp and review-kit are exempt because they are
@@ -261,21 +274,24 @@ for.
 - **Tags are protected and never moved.** The tag workflow only creates tags. A tag ruleset on
   `refs/tags/v*` lets only GitHub Actions create, move or delete them, and workflows change only
   through reviewed PRs to `main`, so a pin always names reviewed, merged code. The ruleset is a
-  repository setting the maintainer applies. If the Actions bypass also lets a workflow on an unmerged
-  branch create a tag, the bypass becomes a GitHub App whose key only `main` can use.
+  repository setting the maintainer applies. If GitHub Actions cannot be the ruleset's bypass actor,
+  or if its bypass also lets a workflow on an unmerged branch create a tag, the bypass becomes a
+  GitHub App whose key only `main` can use.
 - **No reused names.** New tags never reuse a name from `v0.1.0`–`v0.2.30`, which name the retired v0
   CLI and are not a supported pin.
 - **The release guard widens at the first release.** From U9, `release-guard` also counts a change to
   `bin/`, `lib/`, `payload/`, or a `package.json` field that changes what `npx github:` runs, as a
   release.
 
-This lifts, for Trellis's own releases, these parts of `decision-0061`: the "synchronized bump" and
-"tag workflow" of its Decision state's "No family release, synchronized bump, tag workflow, release
-record, generated support table, history, approval ledger, or shared validator returns"; the tag in
-§1's "It does not restore a release channel, auto-update mechanism, or tag"; and the "immutable tag",
-"release workflow" and "synchronized version or bump policy" of §5's "Trellis adds no" list. The rest
-of those lists stays ruled out, a family release, a release record and a GitHub Release among them. U1,
-which adds the tag workflow and the version parity test, notes that record.
+This record decides that parts of `decision-0061` stop applying to Trellis's own releases. The lift
+takes effect with U1, which adds the tag workflow and the version parity test and notes that record.
+The parts are the
+"synchronized bump" and "tag workflow" of its Decision state's "No family release, synchronized bump,
+tag workflow, release record, generated support table, history, approval ledger, or shared validator
+returns"; the tag in §1's "It does not restore a release channel, auto-update mechanism, or tag"; and
+the "immutable tag", "release workflow" and "synchronized version or bump policy" of §5's "Trellis
+adds no" list. The rest of those lists stays ruled out, a family release, a release record and a
+GitHub Release among them.
 
 **12. This repo self-applies through the CLI.** Once migration exists (U10), this repo migrates itself
 (U11) and carries the vendored files. Its CI runs `node bin/trellis.mjs check` from the checkout,
@@ -294,8 +310,9 @@ from what HEAD's own payload renders. That closes TRL-5.
   maintainer's reading of 2026-10-18.
 - **Then the releases that stop delivery.** They retire, one per release, `install.sh` (U16),
   `staleness.sh` (U15), which ends delivery on Claude Code, and `codex-context.mjs` (U18), after
-  which no Trellis hook runs anywhere. U19 then deletes the plugin package, `VERSION` included, and
-  the `trellis` entry leaves the kodhama marketplace last, in kodhama/stewards (U17).
+  which no Trellis hook runs in any install that has updated to U18. U19 then deletes the plugin
+  package, `VERSION` included, and the `trellis` entry leaves the kodhama marketplace last, in
+  kodhama/stewards (U17).
 - **On a machine where the round ran, no hook or startup script runs for Trellis in any session in a
   repo the round migrated.** The maintainer narrowed this guarantee to those repos on 2026-10-19.
   wisp and review-kit keep their hooks until they retire or a removal release takes the hooks away.
@@ -325,7 +342,9 @@ to claim parity". That entry is what brings the measurement back.
   whose install runs that release.
 - **A consumer the round missed loses delivery at the retirement releases.** It stops receiving the
   rules from the plugin at U15 on Claude Code and at U18 on Codex, and the last delivering release's
-  notice is its only warning.
+  notice is its only warning. The notice reaches only an install that updates while a release that
+  still ships the host's hook is the marketplace head: U14 or U16 on Claude Code, and U14, U16 or
+  U15 on Codex.
 - **Sessions see less advice.** A repo's sessions stop receiving the hook's per-session activation
   section and advice. Switched-off rules are absent instead of being named as inactive, and the
   rendered header says so.
@@ -334,8 +353,9 @@ to claim parity". That entry is what brings the measurement back.
 
 ## Open questions
 
-- Whether the GitHub Actions bypass lets a workflow on an unmerged branch create a `v*` tag. U1
-  (TRL-119) checks it, and point 11 says what follows either way.
+- Whether GitHub Actions can be a tag ruleset's bypass actor at all, and if it can, whether its bypass
+  lets a workflow on an unmerged branch create a `v*` tag. U1 (TRL-119) checks both, and point 11 says
+  what follows in each case.
 - Whether Claude Code still loads a parent's `CLAUDE.md` and `.claude/rules/` into a nested repo when
   `~/hq` migrates. Point 4's `~/hq` case rests on one measurement, and U12 measures again before
   migrating `~/hq`.
