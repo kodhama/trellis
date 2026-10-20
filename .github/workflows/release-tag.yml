@@ -3,7 +3,8 @@ name: release-tag
 # decision-2026-10-20-trellis-delivers-rules-as-committed-files point 11: every
 # CLI release is tagged v<version> on the commit that set that version, and a pin
 # such as `npx github:kodhama/trellis#v0.25.0` always names reviewed, merged code.
-# The logic is scripts/release-tags.sh, which cli/release_tags_test.go drives.
+# The logic is scripts/release-tags.sh, which cli/release_tags_test.go drives, and
+# TestReleaseTagWorkflowShape pins the properties below that keep tagging on main.
 #
 # Three jobs, so that a push with nothing to tag never touches the `release`
 # environment:
@@ -12,26 +13,39 @@ name: release-tag
 #   verify  fails when any version at or above the floor is untagged, or tagged
 #           on a commit other than the one that set it. It runs after `tag`
 #           whatever `tag` did, so a failed tag job still names what is missing.
+# A failed tag can be retried by re-running the workflow, or by dispatching it on
+# main when nothing else has landed since.
 #
 # THE FLOOR. Both modes skip every version below TRELLIS_TAG_FLOOR. It is unset
 # until the CLI's first release (U9), so no plugin release before it is tagged,
 # and the merge that adds this file tags nothing. U9 sets it to its own version.
 #
-# WHO MAY TAG. A tag ruleset on refs/tags/v* blocks creating, moving and deleting
-# those tags, with one GitHub App as its only bypass. GitHub Actions itself is not
-# the bypass: GitHub's ruleset docs list roles, teams, Apps and Dependabot as
-# bypass actors, not Actions, and a bypass belongs to an actor, not a branch, so
-# any workflow on any branch could have used it. The App's key lives in the
-# `release` environment, which only `main` may deploy to, so only a run on `main`
-# can mint the token the `tag` job uses. The ruleset, the App and the environment
-# are repository settings the maintainer applies; no file here carries them.
+# WHO MAY TAG. GitHub Actions itself cannot be the bypass: GitHub's ruleset docs
+# list roles, teams, Apps and Dependabot as bypass actors, not Actions, and a
+# bypass belongs to an actor, not a branch, so any workflow on any branch could
+# use it. The bypass is a GitHub App whose key only a run on `main` can read.
+# These are repository settings the maintainer applies; no file carries them:
+#   - App: installed on this repository only, with Contents: read and write,
+#     Metadata: read, and no webhook. Its client ID is the `release` environment's
+#     variable RELEASE_APP_CLIENT_ID, and its private key is that environment's
+#     secret RELEASE_APP_PRIVATE_KEY, never a repository secret, which a workflow
+#     on any branch could read.
+#   - Environment `release`: deployment branches "Selected branches and tags",
+#     with the one rule branch `main` and no tag rule ("Protected branches only"
+#     would admit every protected branch), and no required reviewers.
+#   - Tag ruleset: targets refs/tags/v*, active, restricts creation, update and
+#     deletion, with the App as its only bypass, set to always.
+#   - Merge methods: squash only. A rebase merge lands a PR's commits one by one,
+#     so the commit that sets a version would be the PR's bump commit, not the
+#     merge commit R20 tags.
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
-  group: release-tag
+  group: release-tag-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -67,10 +81,12 @@ jobs:
     environment: release
     steps:
       - id: app
-        uses: actions/create-github-app-token@v3
+        # Pinned by commit: this step holds the App's key. v3.2.0.
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
       - name: Create each missing tag
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -79,9 +95,19 @@ jobs:
           set -eu
           printf '%s\n' "$TAGS" | while read -r tag commit; do
             [ -n "$tag" ] || continue
-            # POST /git/refs only creates; it fails if the tag already exists.
-            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$commit" > /dev/null
-            echo "created $tag on $commit"
+            # POST /git/refs only creates. A tag that appeared since `plan` ran
+            # is fine when it names the planned commit, and an error otherwise.
+            if gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$commit" > /dev/null; then
+              echo "created $tag on $commit"
+              continue
+            fi
+            existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq .object.sha 2> /dev/null || true)"
+            if [ "$existing" = "$commit" ]; then
+              echo "$tag already names $commit"
+            else
+              echo "::error::could not create $tag on $commit (the tag names ${existing:-nothing})"
+              exit 1
+            fi
           done
 
   verify:

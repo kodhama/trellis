@@ -21,6 +21,8 @@ date: 2026-10-20
 
 # Trellis delivers its rules as committed files
 
+> **Dated note, 2026-10-20 — TRL-119 (PR #341):** Point 11's "A tag ruleset on `refs/tags/v*` lets only GitHub Actions create, move or delete them" no longer holds, and the first open question is answered. GitHub's ruleset docs list roles, teams, GitHub Apps and Dependabot as bypass actors, not GitHub Actions, and a bypass held by an actor would let a workflow on an unmerged branch create a tag. So, as point 11 provides, the ruleset's only bypass is a GitHub App whose key sits in the `release` environment, which only `main` may deploy to. That answer comes from the docs and that reasoning; no live probe ran. `.github/workflows/release-tag.yml` states the bypass and the repository settings it needs, and `scripts/release-tags.sh` carries the tag logic.
+
 ## Context
 
 Trellis reaches a session today through a plugin. Its session-start hooks,

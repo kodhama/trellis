@@ -31,10 +31,17 @@ func newTagRepo(t *testing.T) *tagRepo {
 	return r
 }
 
+// isolatedGitEnv keeps the maintainer's own git config, signing included, out
+// of the throwaway repositories.
+func isolatedGitEnv() []string {
+	return append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
+}
+
 func (r *tagRepo) git(args ...string) string {
 	r.t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.dir
+	cmd.Env = isolatedGitEnv()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		r.t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
@@ -50,10 +57,22 @@ func (r *tagRepo) commit(version, note string) string {
 	if version != "" {
 		pkg = "{\n  \"name\": \"trellis\",\n  \"version\": \"" + version + "\",\n  \"private\": true\n}\n"
 	}
-	for name, body := range map[string]string{"package.json": pkg, "note.txt": note + "\n"} {
-		if err := os.WriteFile(filepath.Join(r.dir, name), []byte(body), 0o644); err != nil {
+	return r.commitPackage(pkg, note)
+}
+
+// commitPackage commits package.json as given, deleting it when pkg is empty.
+func (r *tagRepo) commitPackage(pkg, note string) string {
+	r.t.Helper()
+	path := filepath.Join(r.dir, "package.json")
+	if pkg == "" {
+		if err := os.Remove(path); err != nil {
 			r.t.Fatal(err)
 		}
+	} else if err := os.WriteFile(path, []byte(pkg), 0o644); err != nil {
+		r.t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(r.dir, "note.txt"), []byte(note+"\n"), 0o644); err != nil {
+		r.t.Fatal(err)
 	}
 	r.git("add", "-A")
 	r.git("commit", "-q", "-m", note)
@@ -70,7 +89,7 @@ func (r *tagRepo) run(mode, floor string) (string, int) {
 	}
 	cmd := exec.Command(script, mode)
 	cmd.Dir = r.dir
-	cmd.Env = append(os.Environ(), "TRELLIS_TAG_FLOOR="+floor)
+	cmd.Env = append(isolatedGitEnv(), "TRELLIS_TAG_FLOOR="+floor)
 	out, err := cmd.CombinedOutput()
 	code := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
@@ -193,12 +212,166 @@ func TestReleaseTagsFailATagOnTheWrongCommit(t *testing.T) {
 	r.wantVerify("0.25.0", 1, "v0.25.0", early, release)
 }
 
-func TestReleaseTagsRefuseAMalformedFloor(t *testing.T) {
+func TestReleaseTagsRefuseAMalformedFloorOrMode(t *testing.T) {
 	r := newTagRepo(t)
 	r.commit("0.25.0", "first CLI release")
-	for _, mode := range []string{"plan", "verify"} {
-		if out, code := r.run(mode, "v0.25"); code != 2 {
-			t.Errorf("%s with floor v0.25 exited %d, want 2:\n%s", mode, code, out)
+	for _, floor := range []string{"v0.25.0", "0.25"} {
+		for _, mode := range []string{"plan", "verify"} {
+			if out, code := r.run(mode, floor); code != 2 {
+				t.Errorf("%s with floor %s exited %d, want 2:\n%s", mode, floor, code, out)
+			}
 		}
+	}
+	for _, mode := range []string{"", "tag"} {
+		if out, code := r.run(mode, "0.25.0"); code != 2 {
+			t.Errorf("mode %q exited %d, want 2:\n%s", mode, code, out)
+		}
+	}
+}
+
+func TestReleaseTagsCompareTheTagsCommit(t *testing.T) {
+	// An annotated tag is a tag object; what must match is the commit it names.
+	r := newTagRepo(t)
+	release := r.commit("0.25.0", "first CLI release")
+	r.git("tag", "-a", "-m", "v0.25.0", "v0.25.0", release)
+	r.wantPlan("0.25.0", "")
+	r.wantVerify("0.25.0", 0, "ok")
+}
+
+func TestReleaseTagsIgnoreWhatIsBelowTheFloor(t *testing.T) {
+	// Early commits with no version, and the retired v0 CLI's tags, are below it.
+	r := newTagRepo(t)
+	old := r.commit("", "before the version line")
+	r.git("tag", "v0.2.30", old)
+	r.commit("0.24.8", "U1")
+	release := r.commit("0.25.0", "first CLI release")
+	r.wantPlan("0.25.0", "v0.25.0 "+release)
+	r.git("tag", "v0.25.0", release)
+	r.wantVerify("0.25.0", 0)
+}
+
+func TestReleaseTagsTagTheMergeCommit(t *testing.T) {
+	// A version set on a side branch is set, on main's first-parent line, by the
+	// merge that brought it in.
+	r := newTagRepo(t)
+	r.commit("0.24.8", "U1")
+	r.git("checkout", "-q", "-b", "release")
+	r.commit("0.25.0", "first CLI release, on a branch")
+	r.git("checkout", "-q", "main")
+	r.git("merge", "-q", "--no-ff", "-m", "merge the release", "release")
+	merge := r.git("rev-parse", "HEAD")
+	r.wantPlan("0.25.0", "v0.25.0 "+merge)
+}
+
+func TestReleaseTagsRefuseAPrereleaseAboveTheFloor(t *testing.T) {
+	// sort -V puts 0.25.0-rc.1 after 0.25.0, so it cannot be compared.
+	r := newTagRepo(t)
+	r.commit("0.25.0", "first CLI release")
+	r.commit("0.25.1-rc.1", "a prerelease")
+	for _, mode := range []string{"plan", "verify"} {
+		out, code := r.run(mode, "0.25.0")
+		if code != 2 || !strings.Contains(out, "0.25.1-rc.1") {
+			t.Errorf("%s exited %d, want 2 naming 0.25.1-rc.1:\n%s", mode, code, out)
+		}
+	}
+}
+
+func TestReleaseTagsRefuseAShallowClone(t *testing.T) {
+	r := newTagRepo(t)
+	r.commit("0.25.0", "first CLI release")
+	r.commit("0.26.0", "second CLI release")
+	shallow := &tagRepo{t: t, dir: filepath.Join(t.TempDir(), "shallow")}
+	// git ignores --depth for a plain local path, so clone through file://.
+	cmd := exec.Command("git", "clone", "-q", "--depth", "1", "file://"+r.dir, shallow.dir)
+	cmd.Env = isolatedGitEnv()
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git clone: %v\n%s", err, out)
+	}
+	for _, mode := range []string{"plan", "verify"} {
+		if out, code := shallow.run(mode, "0.25.0"); code != 2 {
+			t.Errorf("%s in a shallow clone exited %d, want 2:\n%s", mode, code, out)
+		}
+	}
+}
+
+func TestReleaseTagsReadOnlyTheTopLevelVersion(t *testing.T) {
+	// A nested "version" key is not the package's, and a commit that deletes
+	// package.json leaves the version as it was.
+	r := newTagRepo(t)
+	r.commitPackage("{\n  \"name\": \"trellis\",\n  \"engines\": { \"version\": \"0.30.0\" }\n}\n", "a nested key")
+	release := r.commit("0.25.0", "first CLI release")
+	r.commitPackage("", "package.json deleted")
+	r.commit("0.25.0", "package.json restored at the same version")
+	r.wantPlan("0.25.0", "v0.25.0 "+release)
+}
+
+func TestReleaseTagsFailAVersionThatComesBack(t *testing.T) {
+	// One tag names one commit, so a version that returns after main moved past
+	// it cannot be tagged: both modes say so instead of staying green.
+	r := newTagRepo(t)
+	first := r.commit("0.25.0", "first CLI release")
+	second := r.commit("0.26.0", "second CLI release")
+	back := r.commit("0.25.0", "the first version again")
+	r.git("tag", "v0.25.0", first)
+	r.git("tag", "v0.26.0", second)
+	for _, mode := range []string{"plan", "verify"} {
+		out, code := r.run(mode, "0.25.0")
+		if code == 0 {
+			t.Errorf("%s exited 0 on a returning version:\n%s", mode, out)
+		}
+		for _, text := range []string{"0.25.0", first, back} {
+			if !strings.Contains(out, text) {
+				t.Errorf("%s output lacks %q:\n%s", mode, text, out)
+			}
+		}
+	}
+}
+
+// TestReleaseTagWorkflowShape pins the properties of release-tag.yml that keep
+// tagging on main and create-only. The repo has no YAML parser, so it reads the
+// file as text, job by job, as TestCliCIProvidesNode20BeforeGoTests does.
+func TestReleaseTagWorkflowShape(t *testing.T) {
+	workflow := readFileT(t, "../.github/workflows/release-tag.yml")
+	jobs := strings.Index(workflow, "\njobs:\n")
+	planAt := strings.Index(workflow, "\n  plan:\n")
+	tagAt := strings.Index(workflow, "\n  tag:\n")
+	verifyAt := strings.Index(workflow, "\n  verify:\n")
+	if jobs < 0 || planAt < jobs || tagAt < planAt || verifyAt < tagAt {
+		t.Fatal("release-tag.yml must define the jobs plan, tag and verify, in that order")
+	}
+	top, plan, tag, verify := workflow[:jobs], workflow[planAt:tagAt], workflow[tagAt:verifyAt], workflow[verifyAt:]
+
+	// U1 commits the floor unset, so its merge tags nothing; U9 sets it, and
+	// changes this line with it.
+	if !strings.Contains(top, "\n  TRELLIS_TAG_FLOOR: \"\"\n") {
+		t.Error("the floor must be committed unset until the CLI's first release")
+	}
+	if !strings.Contains(top, "\non:\n  push:\n    branches: [main]\n  workflow_dispatch:\n\n") {
+		t.Error("release-tag must run on pushes to main and on dispatch, and on nothing else")
+	}
+	if !strings.Contains(top, "\npermissions:\n  contents: read\n") {
+		t.Error("release-tag's token must be read-only; only the App's token writes")
+	}
+	if !strings.Contains(top, "group: release-tag-${{ github.ref }}") || !strings.Contains(top, "cancel-in-progress: false") {
+		t.Error("release-tag runs must queue per ref, never cancel one another")
+	}
+	if strings.Count(workflow, "environment: release") != 1 || !strings.Contains(tag, "environment: release") {
+		t.Error("only the tag job may use the release environment, which holds the App's key")
+	}
+	if !strings.Contains(tag, `gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref=`) {
+		t.Error("the tag job must create tags with a POST to git/refs")
+	}
+	for _, verb := range []string{"PATCH", "DELETE", "--method", "-X ", "force"} {
+		if strings.Contains(workflow, verb) {
+			t.Errorf("release-tag must only create tags, but it contains %q", verb)
+		}
+	}
+	for name, job := range map[string]string{"plan": plan, "verify": verify} {
+		if !strings.Contains(job, "fetch-depth: 0") {
+			t.Errorf("the %s job must check out the full history", name)
+		}
+	}
+	if !strings.Contains(verify, "needs: [plan, tag]") || !strings.Contains(verify, "if: always()") {
+		t.Error("verify must run after tag whatever tag did")
 	}
 }
