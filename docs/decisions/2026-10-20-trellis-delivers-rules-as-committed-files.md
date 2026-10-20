@@ -139,8 +139,11 @@ repo is in exactly one:
    file.
 7. **`none`** when nothing Trellis wrote is present, which is D1's S0-unadopted state.
 
-The probe is a pure function from the repo's files to a state plus the evidence that decided it, in
-the CLI's `lib/states.mjs`. **No new component enumerates delivery states**: every new caller, ogham's
+The probe is a pure function in the CLI's `lib/states.mjs`. It takes the repo's files and whether the
+`trellis-pre-morph` tag exists, and returns a state plus the evidence that decided it. The tag's
+presence is passed in as an input, so the function stays pure. A tag with no `.trellis/rollback`
+reads as S6, because the probe cannot tell a stale tag from a standing morph whose rollback file is
+gone. **No new component enumerates delivery states**: every new caller, ogham's
 `install` included, asks the CLI. The plugin's components keep their own scoped enumerations, under
 D1's relevance clause, until each retires (point 13). The last delivering release adds only the lock
 to them, so their hooks stand down in a vendored repo. D1's table stays the definition of S0–S6 and the
