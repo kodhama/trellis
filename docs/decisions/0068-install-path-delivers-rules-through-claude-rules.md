@@ -430,7 +430,7 @@ Decisions — D1 (project scope only), D5 (record the posture mismatch), D11
    was described there"* and that a future version choice *"requires a new
    project-local decision on its own evidence"* (`decision-0060:76-79`). Citing
    0059 was closing a question on retired ground. The live authority,
-   `decision-0061` §1, deliberately carries **no** bump policy — `:211` lists
+   `decision-0061` §1, deliberately carries **no** bump policy — `:213` lists
    "synchronized version or bump policy" among what does not return.
 
    **So the bump is argued here on its own evidence, not inherited.** The plugin's

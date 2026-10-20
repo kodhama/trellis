@@ -5,7 +5,9 @@ package main
 // canonical SemVer, and cross-manifest identity and version equality for the two
 // host manifests. The surface matrix the other three bullets validated is retired,
 // so nothing here reads a surface row, a behavior state, or a marketplace
-// observation. It is deliberately a repository-local parity guard, not a release
+// observation. It also holds the root package.json and its lockfile to VERSION,
+// the one version line of decision-2026-10-20-trellis-delivers-rules-as-committed-files
+// point 11. It is deliberately a repository-local parity guard, not a release
 // engine: no other product version, tag, marketplace, or network service is read.
 
 import (
@@ -257,5 +259,40 @@ func TestPluginPackageParity(t *testing.T) {
 		if err := validateManifestPath(trellisPluginDir, manifest.Hooks, rel+" hooks"); err != nil {
 			t.Error(err)
 		}
+	}
+
+	// One version line (decision-2026-10-20-trellis-delivers-rules-as-committed-files
+	// point 11): the root package.json is the CLI's package, and its version is the
+	// number release-tag.yml tags, so it must equal VERSION until the plugin retires.
+	rootPackage, err := os.ReadFile(filepath.Join("..", "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(rootPackage, &pkg); err != nil {
+		t.Fatalf("package.json: %v", err)
+	}
+	if pkg.Version != version {
+		t.Errorf("package.json must declare version %s, the version in plugins/trellis/VERSION, got %q", version, pkg.Version)
+	}
+	// npm copies the version into the lockfile twice; a bump that skips them leaves
+	// the next `npm install` to rewrite them in an unrelated diff.
+	rootLock, err := os.ReadFile(filepath.Join("..", "package-lock.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lock struct {
+		Version  string `json:"version"`
+		Packages map[string]struct {
+			Version string `json:"version"`
+		} `json:"packages"`
+	}
+	if err := json.Unmarshal(rootLock, &lock); err != nil {
+		t.Fatalf("package-lock.json: %v", err)
+	}
+	if lock.Version != version || lock.Packages[""].Version != version {
+		t.Errorf("package-lock.json must carry version %s at its root and at packages[\"\"], got %q and %q (run npm install --package-lock-only)", version, lock.Version, lock.Packages[""].Version)
 	}
 }
