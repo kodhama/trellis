@@ -162,10 +162,11 @@ one line.
   `governed = false` line, then run `install --migrate`.
 - **S6 refuses every verb that would write.** On S6, `install --migrate`, `update` and `remove` change
   nothing and report `error`, telling the person to roll back the morph first.
-- In a mixed state the old part decides every other verb: `update` and `remove` answer "run install
-  --migrate", and `install --migrate` completes the conversion.
-- Migrating a repo whose plugin entry is `false` reports `declined`, not `migrated`, because nothing was
-  adopted.
+- **Old state goes through migration.** In S0–S5, codex-bootstrap or a mixed state, `update` and
+  `remove` change nothing and answer "run install --migrate". In a mixed state the old part decides
+  every verb but plain `install`, and `install --migrate` completes the conversion.
+- Migrating a repo whose plugin entry is `false`, or a mixed repo whose new part is `governed = false`,
+  reports `declined`, not `migrated`, because nothing was adopted.
 
 **Once the CLI's first release is tagged, this contract changes only through a new decision record and
 a notice to ogham's lead**, because ogham's `install` pins a Trellis tag and parses the line.
@@ -219,8 +220,9 @@ missing: run install --migrate or remove". A migration that ends `declined` wire
   the plugin. The CLI writes `governed = false` as the single top-level line above the first table,
   keeping `seeded_from`, `strictness` and every row, the only form the old hook parsers read as a
   decline.
-- **`remove` leaves a decline behind.** Outside S6 (point 6), it deletes every file and section
-  Trellis wrote except `rules.toml`, which it leaves holding `governed = false`. A `CLAUDE.md` that
+- **`remove` leaves a decline behind.** In a `vendored`, `vendored-incomplete` or `declined` repo, it
+  deletes every file and section Trellis wrote except `rules.toml`, which it leaves holding
+  `governed = false`. In every other state it changes nothing (point 6). A `CLAUDE.md` that
   Trellis created is deleted only while it is still exactly `@AGENTS.md` and `AGENTS.md` is gone, so
   another tool's use of the import survives. A repo that removed Trellis said no, and `decision-0077`
   holds that silence is not adoption: without the record, the next tool that calls `install` would
