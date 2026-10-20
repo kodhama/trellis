@@ -1,9 +1,9 @@
 ---
 id: decision-2026-10-20-trellis-delivers-rules-as-committed-files
 type: decision
-depends_on: [decision-0060, decision-0061, decision-0070, decision-0073, decision-0077, decision-2026-09-15-rule-rows-only-switch-rules-off]  # coupling under decision-0047's test. 0073 is superseded in part by point 5, whose set keeps 0073 D1's table as the definition of S0–S6. 0060 §2 requires a new project-local decision for any release choice, which point 11 is. 0061 §1 makes plugins/trellis/VERSION the version authority that point 11's single version line keeps until the plugin retires, and point 11 lifts its Decision state's "no ... tag workflow ... returns" for Trellis. 0070 D2 is why running install is the adoption act (point 1). 0077 is why remove leaves a decline behind (point 9). The rule-rows record is the opt-out semantics the rendered rules follow (point 9)
+depends_on: [decision-0060, decision-0061, decision-0069, decision-0070, decision-0073, decision-0077, decision-2026-09-15-rule-rows-only-switch-rules-off]  # coupling under decision-0047's test. 0073 is superseded in part by point 5, whose set keeps 0073 D1's table as the definition of S0–S6. 0060 §2 requires a new project-local decision for any release choice, which point 11 is. 0061 §1 makes plugins/trellis/VERSION the version authority that point 11's single version line keeps until the plugin retires, and point 11 lifts the parts of 0061 it names. 0069 D1 requires a record that prunes the manual copy path to supersede it, which point 13's last bullet answers. 0070 D2 is why running install is the adoption act (point 1). 0077 is why remove leaves a decline behind (point 9). The rule-rows record is the opt-out semantics the rendered rules follow (point 9)
 changes: [decision-0073]
-informed_by: [decision-0028, decision-0065, decision-0069, decision-0071]
+informed_by: [decision-0028, decision-0065, decision-0071]
 owner: agent
 date: 2026-10-20
 ---
@@ -102,40 +102,49 @@ and `update`, and the lock records which case applied:
 3. A `CLAUDE.md` exists without the import: the CLI writes `.claude/rules/trellis-rules.md`, which
    loads on turn one in cloud sessions.
 4. `install --no-claude-copy` writes no Claude copy, and `update` keeps that choice. It is for a repo
-   that contains other adopted repos, such as `~/hq`: Claude Code loads a parent directory's
+   that contains other adopted repos and whose own sessions get the rules another way, as `~/hq`'s
+   do: majordomo reads `AGENTS.md` there by instruction. Claude Code loads a parent directory's
    `CLAUDE.md` and `.claude/rules/` into a session started in a nested repo (measured on Claude Code
-   2.1.302, 2026-10-18).
+   2.1.302, 2026-10-18), so any Claude copy in such a repo would reach every repo under it.
 
 `CLAUDE.local.md` and `.claude/CLAUDE.md` never count as the import. `check` fails when the recorded
 case no longer matches the files, as when someone adds `@AGENTS.md` beside an existing rules file.
 
 **5. The CLI holds the one enumeration of delivery states, and this record states the set.** This
-supersedes `decision-0073` D1 in part. A repo is in exactly one of these states:
+supersedes `decision-0073` D1 in part. The parts the probe looks for are of two kinds:
 
-- **S0–S6**, as `decision-0073` D1's table defines them. With nothing present, a repo is in D1's
-  S0-unadopted state, which the CLI calls `none`.
-- **codex-bootstrap**: the `AGENTS.md` block opening `<!-- trellis:codex-bootstrap:begin`, which
-  `cli/apply.go` writes and D1's table omits.
-- **`vendored`**: a lock, and every file it names present.
-- **`vendored-incomplete`**: a new artifact (the vendored section, `.claude/rules/trellis-rules.md` or
-  `.trellis/invariants.md`) without a lock, or a lock that names a missing file.
-- **`declined`**: `.trellis/rules.toml` holding `governed = false`, which D1 reads as S0.
-- **mixed**: an old part beside a new part, which is what a migration that crashed before its removal
-  step leaves. The old parts are S1's `.claude/rules/trellis.md`, S2's `.trellis/internal/`, S3's
+- **Old parts:** S1's `.claude/rules/trellis.md`, S2's `.trellis/internal/`, S3's
   `.trellis/trellis.md` or `.trellis/version`, an S4 block, S5's `.claude/skills/trellis/`, the
-  codex-bootstrap block, and a Trellis plugin entry, `true` or `false`. The new parts are a new
-  artifact, a lock and the `governed = false` line. This is one of the "conflicting combination[s]"
-  D1 requires every reader to name.
+  codex-bootstrap block, and a Trellis plugin entry, `true` or `false`. The codex-bootstrap block is
+  the `AGENTS.md` block opening `<!-- trellis:codex-bootstrap:begin`, which `cli/apply.go` renders
+  into the payload and D1's table omits.
+- **New parts:** a new artifact (the vendored section, `.claude/rules/trellis-rules.md` or
+  `.trellis/invariants.md`), a lock, and the `governed = false` line.
 
-`.trellis/rules.toml` is never an old part: alone it reads as S0, and beside a new part it belongs to
-the vendored or declined form. S6 is never part of a mixed state: any S6 marker makes the repo read as
-S6, with the other parts named as evidence, so no verb removes `.trellis/rollback`.
+`.trellis/rules.toml` is neither: alone it is D1's config-only S0, and beside a new part it belongs to
+the vendored or declined form. The probe gives a repo the first of these states that matches, so every
+repo is in exactly one:
+
+1. **S6** when any S6 marker is present, with every other part it finds named as evidence, so no verb
+   removes `.trellis/rollback`.
+2. **mixed** when an old part sits beside a new part, which is what a migration that crashed before its
+   removal step leaves. This is one of the "conflicting combination[s]" D1 requires every reader to
+   name, and the probe names both parts.
+3. **S0–S5 or codex-bootstrap**, as D1's table defines S0–S5, when old parts or a bare `rules.toml`
+   are present and no new part is. The probe names each state whose parts it finds.
+4. **`declined`** when `.trellis/rules.toml` holds `governed = false`, whatever other new parts
+   remain. D1's table reads such a repo as S0.
+5. **`vendored`** when a lock is present and every file it names exists.
+6. **`vendored-incomplete`** when a new artifact is present without a lock, or a lock names a missing
+   file.
+7. **`none`** when nothing Trellis wrote is present, which is D1's S0-unadopted state.
 
 The probe is a pure function from the repo's files to a state plus the evidence that decided it, in
-the CLI's `lib/states.mjs`. **No new code enumerates delivery states**: every new caller, ogham's
+the CLI's `lib/states.mjs`. **No new component enumerates delivery states**: every new caller, ogham's
 `install` included, asks the CLI. The plugin's components keep their own scoped enumerations, under
-D1's relevance clause, until each retires (point 13), and then the CLI's is the only one. D1's table
-stays the definition of S0–S6 and the input migration reads until the plugin package retires. Adding a state is a new record
+D1's relevance clause, until each retires (point 13). The last delivering release adds only the lock
+to them, so their hooks stand down in a vendored repo. D1's table stays the definition of S0–S6 and the
+input migration reads until the plugin package retires. Adding a state is a new record
 superseding this one in part, never a code change alone.
 
 **6. The outcome contract, which callers pin.** Every run prints exactly one stdout line,
@@ -144,13 +153,17 @@ superseding this one in part, never a code change alone.
 `error`, which exit 1. A usage error prints `error` and exits 2. Warnings go to stderr, so stdout stays
 one line.
 
-- `install` in a repo in S0–S6 or codex-bootstrap reports `already-present <state>` and changes
-  nothing.
-- `install` in a `vendored-incomplete` or mixed repo reports `error` with "run install --migrate", so a
-  caller never reads success from a half-written repo. The exception is a mixed repo whose new part is
-  `governed = false`, which reports `declined`.
+- **`install` by state.** In `none` it reports `installed` and writes every file; only this case
+  writes. In `vendored` it reports `already-present`, and in S0–S6 or codex-bootstrap
+  `already-present <state>`. In `declined` it reports `declined`. In `vendored-incomplete` or mixed it
+  reports `error` with "run install --migrate", so a caller never reads success from a half-written
+  repo. The exception is a mixed repo whose new part is `governed = false`, which reports `declined`.
 - `install` never overrides a decline. Its `declined` line says how a person reverses one: delete the
   `governed = false` line, then run `install --migrate`.
+- **S6 refuses every verb that would write.** On S6, `install --migrate`, `update` and `remove` change
+  nothing and report `error`, telling the person to roll back the morph first.
+- In a mixed state the old part decides every other verb: `update` and `remove` answer "run install
+  --migrate", and `install --migrate` completes the conversion.
 - Migrating a repo whose plugin entry is `false` reports `declined`, not `migrated`, because nothing was
   adopted.
 
@@ -163,18 +176,24 @@ a notice to ogham's lead**, because ogham's `install` pins a Trellis tag and par
   are `schema` (1), `version`, `claude_copy` (`import`, `rules-file`, `created-claude-md` or `none`),
   `opt_outs` (the switched-off slugs as rendered), `files` (each wholly owned file mapped to its
   sha256) and `sections` (`AGENTS.md` mapped to the sha256 of its section, markers included). Hashes
-  run over text with any BOM stripped and CRLF turned into LF. The lock records no commit, because
-  tags are immutable (point 11). A CLI that meets a newer `schema` reports `error` and names the
-  version that wrote the lock.
-- **The working tree only.** The CLI never reads HEAD or the git index. It never refuses because a file
-  is untracked or uncommitted, `AGENTS.md` included, and it keeps other tools' bytes exactly. It finds
-  the root with `git rev-parse --show-toplevel` and reports `error` outside a git repo.
+  run over text with any BOM stripped and CRLF turned into LF. The lock records no commit, because a
+  `v*` tag is never moved once created (point 11), so the version names the code. A CLI that meets a
+  newer `schema` reports `error` and names the version that wrote the lock.
+- **The working tree only.** The CLI reads file content from the working tree, never from HEAD or the
+  git index, and it never changes the index. It never refuses because a file is untracked or
+  uncommitted, `AGENTS.md` included, and it keeps other tools' bytes exactly. It finds the root with
+  `git rev-parse --show-toplevel` and reports `error` outside a git repo.
 - **Atomic writes in a fixed order.** Each file goes to a temporary file beside it and is renamed into
   place, in this order: `invariants.md`, the Claude copy, the `AGENTS.md` section, `rules.toml`, and
   the lock last. A crash therefore leaves no lock, a state the probe names and `install --migrate`
-  completes. Migration writes the new artifacts first, then removes the old ones, then writes the lock.
-  Where an old artifact is the only record of the opt-outs or of a decline, `rules.toml` carries them
-  before any old artifact goes. When two runs overlap, the last writer wins.
+  completes. The run that completes it must repeat the original flags, `--no-claude-copy` included,
+  because the lock that would have recorded them is written last.
+- **Migration's order.** Migration writes the new artifacts first, then removes the old ones, then
+  writes the lock. It makes one exception to the order above: where an old artifact holds opt-outs or a
+  decline that no `rules.toml` holds yet (S3's overlay, an S4 block in a repo with no `rules.toml`, or a
+  `false` plugin entry), it writes `rules.toml` first, before the section replaces any old block. So no
+  old artifact goes before `rules.toml` carries what it held. When two runs overlap, the last writer
+  wins.
 - **Hand edits and broken markers.** A missing end marker, a duplicated section, or a section inside
   another tool's markers stops every verb with `error`, and nothing is written. `update` and `remove`
   act on Trellis-owned content even when it was hand-edited, warning on stderr and naming each file,
@@ -184,10 +203,10 @@ a notice to ogham's lead**, because ogham's `install` pins a Trellis tag and par
 Trellis file or section differs from what the lock records, naming each, and when the opt-outs in
 `rules.toml` differ from those the lock records as rendered, naming the rows. A newer release never
 fails it: there were 26 version bumps between 2026-07-24 and 2026-10-09, and failing on each would
-break every adopted repo's `main`. Each migrated repo's CI runs `check` at the version its lock
-records, so `update` never edits CI. With no lock, the CI step passes only when `rules.toml` holds the
-top-level `governed = false` line, and otherwise fails with "Trellis lock missing: run install
---migrate or remove". A migration that ends `declined` wires no step.
+break every adopted repo's `main`. Each migrated repo that has CI runs `check` there at the version
+its lock records, so `update` never edits CI. With no lock, the CI step passes only when
+`rules.toml` holds the top-level `governed = false` line, and otherwise fails with "Trellis lock
+missing: run install --migrate or remove". A migration that ends `declined` wires no step.
 
 **9. Opt-outs and the decline.**
 
@@ -200,9 +219,12 @@ top-level `governed = false` line, and otherwise fails with "Trellis lock missin
   the plugin. The CLI writes `governed = false` as the single top-level line above the first table,
   keeping `seeded_from`, `strictness` and every row, the only form the old hook parsers read as a
   decline.
-- **`remove` leaves a decline behind.** It deletes everything Trellis wrote except `rules.toml`, which
-  it leaves holding `governed = false`. A repo that removed Trellis said no (`decision-0077`), and
-  without the record the next tool that calls `install` would adopt the repo again.
+- **`remove` leaves a decline behind.** Outside S6 (point 6), it deletes every file and section
+  Trellis wrote except `rules.toml`, which it leaves holding `governed = false`. A `CLAUDE.md` that
+  Trellis created is deleted only while it is still exactly `@AGENTS.md` and `AGENTS.md` is gone, so
+  another tool's use of the import survives. A repo that removed Trellis said no, and `decision-0077`
+  holds that silence is not adoption: without the record, the next tool that calls `install` would
+  adopt the repo again.
 
 **10. Migration is `install --migrate`, run once across the consumers.** It converts a repo in S0–S5
 or codex-bootstrap to the vendored form. It keeps the opt-out rows, removes the old overlay, block,
@@ -215,9 +237,9 @@ no vendored file and no lock, and reports `declined`.
   The maintainer narrowed migration to S0–S5 on 2026-10-18.
 - **Plain `install` never migrates.** The flag keeps the CLI at four verbs.
 - **One round of PRs migrates every live consumer** in the plan's inventory, and each PR also wires
-  `check` into the repo's CI. wisp and review-kit are exempt because they are being retired, and keep
-  their current state until they go. A consumer outside the inventory keeps working until the plugin
-  retires.
+  `check` into the repo's CI where the repo has CI. wisp and review-kit are exempt because they are
+  being retired, and keep their current state until they go. A consumer outside the inventory keeps
+  working until the plugin retires.
 
 **11. The release choice.** This is the new project-local release decision `decision-0060` §2 asks
 for.
@@ -228,26 +250,32 @@ for.
 - **Every CLI release is tagged `v<version>`, from the CLI's first release on. The plugin-only releases
   before it get no tag**, as the maintainer ruled on 2026-10-19, because no pin targets them. A
   workflow on pushes to `main` creates the tag on the commit that set the version, when that version has
-  no tag. A job fails when any version `main` has carried since a floor committed in the workflow file
-  has no tag. U1 commits the floor unset, and U9 sets it to its own version.
-- **Tags are protected.** A tag ruleset on `refs/tags/v*` lets only GitHub Actions create, move or
-  delete them, so a pin always names reviewed, merged code. The ruleset is a repository setting the
-  maintainer applies. If the Actions bypass also lets a workflow on an unmerged branch create a tag,
-  the bypass becomes a GitHub App whose key only `main` can use.
+  no tag, and a second job fails when any version `main` has carried has no tag. **Both skip every
+  version below a floor committed in the workflow file.** U1 commits the floor unset, so neither job
+  acts on any version, and U9 sets it to its own version.
+- **Tags are protected and never moved.** The tag workflow only creates tags. A tag ruleset on
+  `refs/tags/v*` lets only GitHub Actions create, move or delete them, and workflows change only
+  through reviewed PRs to `main`, so a pin always names reviewed, merged code. The ruleset is a
+  repository setting the maintainer applies. If the Actions bypass also lets a workflow on an unmerged
+  branch create a tag, the bypass becomes a GitHub App whose key only `main` can use.
 - **No reused names.** New tags never reuse a name from `v0.1.0`–`v0.2.30`, which name the retired v0
   CLI and are not a supported pin.
 - **The release guard widens at the first release.** From U9, `release-guard` also counts a change to
   `bin/`, `lib/`, `payload/`, or a `package.json` field that changes what `npx github:` runs, as a
   release.
 
-This lifts, for Trellis, `decision-0061`'s Decision state "No family release, synchronized bump, tag
-workflow, release record, generated support table, history, approval ledger, or shared validator
-returns." U1, which adds the tag workflow, notes that record.
+This lifts, for Trellis's own releases, these parts of `decision-0061`: the "synchronized bump" and
+"tag workflow" of its Decision state's "No family release, synchronized bump, tag workflow, release
+record, generated support table, history, approval ledger, or shared validator returns"; the tag in
+§1's "It does not restore a release channel, auto-update mechanism, or tag"; and the "immutable tag",
+"release workflow" and "synchronized version or bump policy" of §5's "Trellis adds no" list. The rest
+of those lists stays ruled out, a family release, a release record and a GitHub Release among them. U1,
+which adds the tag workflow and the version parity test, notes that record.
 
-**12. This repo self-applies through the CLI.** Once migration exists (U11), this repo carries the
-vendored files. Its CI runs `node bin/trellis.mjs check` from the checkout, because HEAD's version has
-no tag until it merges, and a test fails when the committed files differ from what HEAD's own payload
-renders. That closes TRL-5.
+**12. This repo self-applies through the CLI.** Once migration exists (U10), this repo migrates itself
+(U11) and carries the vendored files. Its CI runs `node bin/trellis.mjs check` from the checkout,
+because HEAD's version has no tag until it merges, and a test fails when the committed files differ
+from what HEAD's own payload renders. That closes TRL-5.
 
 **13. The retirement order: notice, then stop.**
 
@@ -259,9 +287,10 @@ renders. That closes TRL-5.
   update routine (KOD-7) exist. It injects nothing in a repo that carries the lock. Anywhere else it
   delivers the rules as before, says the plugin is retiring, and gives the CLI command. This is the
   maintainer's reading of 2026-10-18.
-- **Then the releases that stop delivery.** They retire `install.sh` (U16), `staleness.sh` (U15),
-  `codex-context.mjs` (U18) and the plugin package (U19). The `trellis` entry leaves the kodhama
-  marketplace after them, in kodhama/stewards (U17).
+- **Then the releases that stop delivery.** They retire, one per release, `install.sh` (U16),
+  `staleness.sh` (U15), which ends delivery on Claude Code, and `codex-context.mjs` (U18), after
+  which no Trellis hook runs anywhere. U19 then deletes the plugin package, `VERSION` included, and
+  the `trellis` entry leaves the kodhama marketplace last, in kodhama/stewards (U17).
 - **On a machine where the round ran, no hook or startup script runs for Trellis in any session in a
   repo the round migrated.** The maintainer narrowed this guarantee to those repos on 2026-10-19.
   wisp and review-kit keep their hooks until they retire or a removal release takes the hooks away.
@@ -287,7 +316,11 @@ to claim parity". That entry is what brings the measurement back.
 - **Some sessions get the rules twice during the round.** On a machine with an old install, a migrated
   repo's Claude sessions get the hook's injection as well as the committed copy, and its Codex sessions
   do too, because `codex-context.mjs` keys vendored mode on `.trellis/internal/` only. The round's
-  machine-level step ends this per machine, and the last delivering release ends it everywhere.
+  machine-level step ends this per machine, and the last delivering release ends it on any machine
+  whose install runs that release.
+- **A consumer the round missed loses delivery at the retirement releases.** It stops receiving the
+  rules from the plugin at U15 on Claude Code and at U18 on Codex, and the last delivering release's
+  notice is its only warning.
 - **Sessions see less advice.** A repo's sessions stop receiving the hook's per-session activation
   section and advice. Switched-off rules are absent instead of being named as inactive, and the
   rendered header says so.
