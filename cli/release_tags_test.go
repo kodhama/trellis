@@ -65,15 +65,11 @@ func (r *tagRepo) commitPackage(pkg, note string) string {
 	r.t.Helper()
 	path := filepath.Join(r.dir, "package.json")
 	if pkg == "" {
-		if err := os.Remove(path); err != nil {
-			r.t.Fatal(err)
-		}
-	} else if err := os.WriteFile(path, []byte(pkg), 0o644); err != nil {
-		r.t.Fatal(err)
+		removeFileT(r.t, path)
+	} else {
+		writeFileT(r.t, path, pkg)
 	}
-	if err := os.WriteFile(filepath.Join(r.dir, "note.txt"), []byte(note+"\n"), 0o644); err != nil {
-		r.t.Fatal(err)
-	}
+	writeFileT(r.t, filepath.Join(r.dir, "note.txt"), note+"\n")
 	r.git("add", "-A")
 	r.git("commit", "-q", "-m", note)
 	return r.git("rev-parse", "HEAD")
@@ -122,7 +118,7 @@ func planLines(out string) string {
 	return strings.Join(lines, "\n")
 }
 
-func (r *tagRepo) wantVerify(floor string, wantCode int, wantText ...string) {
+func (r *tagRepo) wantVerify(floor string, wantCode int, wantText ...string) string {
 	r.t.Helper()
 	out, code := r.run("verify", floor)
 	if code != wantCode {
@@ -133,6 +129,7 @@ func (r *tagRepo) wantVerify(floor string, wantCode int, wantText ...string) {
 			r.t.Errorf("verify output lacks %q:\n%s", text, out)
 		}
 	}
+	return out
 }
 
 func TestReleaseTagsDoNothingWithoutAFloor(t *testing.T) {
@@ -176,9 +173,7 @@ func TestReleaseTagsVerifyEveryVersionSinceTheFloor(t *testing.T) {
 	second := r.commit("0.26.0", "second CLI release")
 	r.git("tag", "v0.26.0", second)
 	r.wantPlan("0.25.0", "v0.25.0 "+first)
-	r.wantVerify("0.25.0", 1, "v0.25.0", first)
-	out, _ := r.run("verify", "0.25.0")
-	if strings.Contains(out, "v0.26.0 is") {
+	if out := r.wantVerify("0.25.0", 1, "v0.25.0", first); strings.Contains(out, "::error::v0.26.0") {
 		t.Errorf("verify flagged the tagged head version:\n%s", out)
 	}
 }
@@ -282,11 +277,7 @@ func TestReleaseTagsRefuseAShallowClone(t *testing.T) {
 	r.commit("0.26.0", "second CLI release")
 	shallow := &tagRepo{t: t, dir: filepath.Join(t.TempDir(), "shallow")}
 	// git ignores --depth for a plain local path, so clone through file://.
-	cmd := exec.Command("git", "clone", "-q", "--depth", "1", "file://"+r.dir, shallow.dir)
-	cmd.Env = isolatedGitEnv()
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git clone: %v\n%s", err, out)
-	}
+	r.git("clone", "-q", "--depth", "1", "file://"+r.dir, shallow.dir)
 	for _, mode := range []string{"plan", "verify"} {
 		if out, code := shallow.run(mode, "0.25.0"); code != 2 {
 			t.Errorf("%s in a shallow clone exited %d, want 2:\n%s", mode, code, out)

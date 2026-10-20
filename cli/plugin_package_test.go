@@ -264,14 +264,10 @@ func TestPluginPackageParity(t *testing.T) {
 	// One version line (decision-2026-10-20-trellis-delivers-rules-as-committed-files
 	// point 11): the root package.json is the CLI's package, and its version is the
 	// number release-tag.yml tags, so it must equal VERSION until the plugin retires.
-	rootPackage, err := os.ReadFile(filepath.Join("..", "package.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	var pkg struct {
 		Version string `json:"version"`
 	}
-	if err := json.Unmarshal(rootPackage, &pkg); err != nil {
+	if err := json.Unmarshal([]byte(readFileT(t, filepath.Join("..", "package.json"))), &pkg); err != nil {
 		t.Fatalf("package.json: %v", err)
 	}
 	if pkg.Version != version {
@@ -279,17 +275,13 @@ func TestPluginPackageParity(t *testing.T) {
 	}
 	// npm copies the version into the lockfile twice; a bump that skips them leaves
 	// the next `npm install` to rewrite them in an unrelated diff.
-	rootLock, err := os.ReadFile(filepath.Join("..", "package-lock.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	var lock struct {
 		Version  string `json:"version"`
 		Packages map[string]struct {
 			Version string `json:"version"`
 		} `json:"packages"`
 	}
-	if err := json.Unmarshal(rootLock, &lock); err != nil {
+	if err := json.Unmarshal([]byte(readFileT(t, filepath.Join("..", "package-lock.json"))), &lock); err != nil {
 		t.Fatalf("package-lock.json: %v", err)
 	}
 	if lock.Version != version || lock.Packages[""].Version != version {
