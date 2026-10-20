@@ -12,6 +12,8 @@ provenance: maintainer intent act 2026-08-03, in session, opening a governed run
 
 # 0073 — the delivery shapes are a closed set, enumerated once
 
+> **Dated note, 2026-10-20 — TRL-122 (PR #340):** D1's closed set and its "this record is its single normative home" no longer hold. The set gains the codex-bootstrap block that `cli/apply.go` writes and D1's table omits, and the Trellis CLI's `vendored`, `vendored-incomplete` and `declined` states; D1's table reads a `declined` repo as S0. The set's code home becomes the CLI's `lib/states.mjs` once TRL-123 builds it, and every new caller asks the CLI instead of enumerating states itself, and the plugin's components keep their scoped enumerations until each retires. `decision-2026-10-20-trellis-delivers-rules-as-committed-files` point 5 states the set now. D1's table stays the definition of S0–S6 and the input migration reads until the plugin package retires.
+
 ## Context
 
 **Twenty review findings on trellis#227 were one defect**: a remedy, recipe or
