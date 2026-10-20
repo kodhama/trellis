@@ -8,6 +8,7 @@ package main
 // point 11). Nothing here reaches a remote.
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,9 +34,17 @@ func newTagRepo(t *testing.T) *tagRepo {
 }
 
 // isolatedGitEnv keeps the maintainer's own git config, signing included, out
-// of the throwaway repositories.
+// of the throwaway repositories. Config passed through the environment
+// (GIT_CONFIG_PARAMETERS, GIT_CONFIG_COUNT and its KEY_n and VALUE_n) outranks
+// the repository's own, so it is dropped too.
 func isolatedGitEnv() []string {
-	return append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
+	var env []string
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "GIT_CONFIG") {
+			env = append(env, kv)
+		}
+	}
+	return append(env, "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
 }
 
 func (r *tagRepo) git(args ...string) string {
@@ -76,9 +85,10 @@ func (r *tagRepo) commitPackage(pkg, note string) string {
 	return r.git("rev-parse", "HEAD")
 }
 
-// run runs the script in mode with the floor set as given, returning its
-// combined output and exit code.
-func (r *tagRepo) run(mode, floor string) (string, int) {
+// runStreams runs the script in mode with the floor set as given, returning
+// its stdout, its stderr and its exit code. The workflow reads plan's stdout
+// as the list of tags to create, so the streams are kept apart.
+func (r *tagRepo) runStreams(mode, floor string) (string, string, int) {
 	r.t.Helper()
 	script, err := filepath.Abs(filepath.Join("..", "scripts", "release-tags.sh"))
 	if err != nil {
@@ -87,36 +97,41 @@ func (r *tagRepo) run(mode, floor string) (string, int) {
 	cmd := exec.Command(script, mode)
 	cmd.Dir = r.dir
 	cmd.Env = append(isolatedGitEnv(), "TRELLIS_TAG_FLOOR="+floor)
-	out, err := cmd.CombinedOutput()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err = cmd.Run()
 	code := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		code = exitErr.ExitCode()
 	} else if err != nil {
 		r.t.Fatalf("release-tags.sh %s: %v", mode, err)
 	}
-	return string(out), code
+	return stdout.String(), stderr.String(), code
 }
 
-func (r *tagRepo) wantPlan(floor, want string) {
+// run is runStreams with both streams together, for checks on what the script
+// reports rather than on what plan lists.
+func (r *tagRepo) run(mode, floor string) (string, int) {
 	r.t.Helper()
-	out, code := r.run("plan", floor)
-	if code != 0 {
-		r.t.Fatalf("plan exited %d:\n%s", code, out)
-	}
-	if got := planLines(out); got != want {
-		r.t.Errorf("plan listed %q, want %q", got, want)
-	}
+	stdout, stderr, code := r.runStreams(mode, floor)
+	return stdout + stderr, code
 }
 
-// planLines keeps only the tag lines of plan's output, dropping its notes.
-func planLines(out string) string {
-	var lines []string
-	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(line, "v") {
-			lines = append(lines, line)
-		}
+// wantPlan checks that plan's stdout is exactly the tag lines in want, one per
+// line, and nothing else.
+func (r *tagRepo) wantPlan(floor, want string) string {
+	r.t.Helper()
+	stdout, stderr, code := r.runStreams("plan", floor)
+	if code != 0 {
+		r.t.Fatalf("plan exited %d:\n%s%s", code, stdout, stderr)
 	}
-	return strings.Join(lines, "\n")
+	if want != "" {
+		want += "\n"
+	}
+	if stdout != want {
+		r.t.Errorf("plan printed %q on stdout, want %q", stdout, want)
+	}
+	return stderr
 }
 
 func (r *tagRepo) wantVerify(floor string, wantCode int, wantText ...string) string {
@@ -131,6 +146,23 @@ func (r *tagRepo) wantVerify(floor string, wantCode int, wantText ...string) str
 		}
 	}
 	return out
+}
+
+func TestReleaseTagsIgnoreGitConfigFromTheEnvironment(t *testing.T) {
+	// A hooks path passed as command-scoped config would run a failing hook on
+	// every commit in the throwaway repositories, if it reached them.
+	hooks := t.TempDir()
+	writeFileT(t, filepath.Join(hooks, "pre-commit"), "#!/bin/sh\nexit 1\n")
+	if err := os.Chmod(filepath.Join(hooks, "pre-commit"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_COUNT", "1")
+	t.Setenv("GIT_CONFIG_KEY_0", "core.hooksPath")
+	t.Setenv("GIT_CONFIG_VALUE_0", hooks)
+	t.Setenv("GIT_CONFIG_PARAMETERS", "'core.hookspath'='"+hooks+"'")
+	r := newTagRepo(t)
+	release := r.commit("0.25.0", "first CLI release")
+	r.wantPlan("0.25.0", "v0.25.0 "+release)
 }
 
 func TestReleaseTagsDoNothingWithoutAFloor(t *testing.T) {
@@ -308,13 +340,11 @@ func TestReleaseTagsFailAVersionThatComesBack(t *testing.T) {
 	third := r.commit("0.27.0", "third CLI release")
 	r.git("tag", "v0.25.0", first)
 	r.git("tag", "v0.26.0", second)
-	out, code := r.run("plan", "0.25.0")
-	if code != 0 || planLines(out) != "v0.27.0 "+third {
-		t.Errorf("plan exited %d listing %q, want 0 listing v0.27.0 %s:\n%s", code, planLines(out), third, out)
-	}
+	// The note goes to stderr: the workflow reads all of plan's stdout as tags.
+	note := r.wantPlan("0.25.0", "v0.27.0 "+third)
 	for _, text := range []string{"0.25.0", first, back} {
-		if !strings.Contains(out, text) {
-			t.Errorf("plan's report lacks %q:\n%s", text, out)
+		if !strings.Contains(note, text) {
+			t.Errorf("plan's note on stderr lacks %q:\n%s", text, note)
 		}
 	}
 	r.git("tag", "v0.27.0", third)
@@ -370,8 +400,17 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	if strings.Count(workflow, "environment: release") != 1 || !strings.Contains(tag, "environment: release") {
 		t.Error("only the tag job may use the release environment, which holds the App's key")
 	}
-	if !strings.Contains(tag, `gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref=`) {
-		t.Error("the tag job must create tags with a POST to git/refs")
+	if !strings.Contains(tag, `gh api -i "repos/$GITHUB_REPOSITORY/git/refs" -f ref=`) {
+		t.Error("the tag job must create tags with a POST to git/refs, keeping the response's status line")
+	}
+	// Only a 422 means the tag may already exist; any other failure fails the job
+	// (the gaps plan, KTD2). The existing tag is compared by the commit it names,
+	// since an annotated tag's ref names the tag object.
+	if !strings.Contains(tag, "if [ \"$status\" != 422 ]; then") {
+		t.Error("the tag job must fail on any failed create that is not a 422")
+	}
+	if !strings.Contains(tag, `gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$tag" --jq .sha`) {
+		t.Error("the tag job must compare an existing tag by the commit it names")
 	}
 	for _, verb := range []string{"PATCH", "DELETE", "--method", "-X ", "force"} {
 		if strings.Contains(workflow, verb) {

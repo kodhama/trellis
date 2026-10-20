@@ -100,13 +100,20 @@ jobs:
               echo "::error::plan listed \"$tag $commit\", which is not a v<X.Y.Z> tag on a full commit id"
               exit 1
             fi
-            # POST /git/refs only creates. A tag that appeared since `plan` ran
-            # is fine when it names the planned commit, and an error otherwise.
-            if gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$commit" > /dev/null; then
+            # POST /git/refs only creates. Only a 422 can mean the tag appeared
+            # since `plan` ran, which is fine when it names the planned commit;
+            # any other failure fails the job. -i keeps the status line.
+            if response="$(gh api -i "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$commit")"; then
               echo "created $tag on $commit"
               continue
             fi
-            existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq .object.sha 2> /dev/null || true)"
+            status="$(printf '%s\n' "$response" | sed -n '1s/^HTTP\/[0-9.]* \([0-9][0-9]*\).*/\1/p')"
+            if [ "$status" != 422 ]; then
+              echo "::error::could not create $tag on $commit (HTTP ${status:-status unread})"
+              exit 1
+            fi
+            # An annotated tag's ref names the tag object, so read the commit it names.
+            existing="$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$tag" --jq .sha 2> /dev/null || true)"
             if [ "$existing" = "$commit" ]; then
               echo "$tag already names $commit"
             else
