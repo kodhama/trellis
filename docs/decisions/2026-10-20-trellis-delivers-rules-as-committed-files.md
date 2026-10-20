@@ -14,7 +14,8 @@ date: 2026-10-20
 > 2026-10-18 he ruled that the CLI is committed, zero-dependency Node ESM, that migration refuses a
 > morphed repo, and that the plugin ends with "notice, then stop". On 2026-10-19 he ruled that release
 > tags start at the CLI's first release, and that the guarantee of no Trellis hook covers only the
-> repos the migration round migrated. Those rulings reached the author as relayed by the supervising
+> repos the migration round migrated. On 2026-10-20 he ruled that the machine-level step (U13) waits
+> for the adoption nudge (KOD-6). Those rulings reached the author as relayed by the supervising
 > session `trl-cli-lead`, and are recorded here as relayed, not quoted. Unit names (U1–U21) are the
 > plan's.
 
@@ -300,10 +301,13 @@ from what HEAD's own payload renders. That closes TRL-5.
 
 **13. The retirement order: notice, then stop.**
 
-- **The round ends machine-level delivery too.** On each machine the inventory covers, it uninstalls
-  `trellis@kodhama` at user scope from Claude Code and Codex, uninstalls `trellis@stewards` at user
-  scope from Droid and removes it from untracked project `.factory/settings.json` files, and removes
-  the Trellis lines from cloud environment setup scripts.
+- **Machine-level delivery ends first (U13), after the round and only once the adoption nudge (KOD-6)
+  exists.** On each machine the inventory covers, U13 uninstalls `trellis@kodhama` at user scope from
+  Claude Code and Codex, uninstalls `trellis@stewards` at user scope from Droid and removes it from
+  untracked project `.factory/settings.json` files, and removes the Trellis lines from cloud
+  environment setup scripts. It waits for the nudge because the user-scope plugin it uninstalls makes
+  today's in-session adoption offer, which the nudge replaces. The maintainer ruled this on
+  2026-10-20; the plan's U13 lists U12 alone.
 - **Then the plugin's last delivering release (U14)**, and only once the adoption nudge (KOD-6) and the
   update routine (KOD-7) exist. It injects nothing in a repo that carries the lock. Anywhere else it
   delivers the rules as before, says the plugin is retiring, and gives the CLI command. This is the
@@ -335,11 +339,12 @@ to claim parity". That entry is what brings the measurement back.
   change is a release with its `plugins/trellis/VERSION` bump (U1, U9, U19).
 - **ogham waits on the first tag.** Its `install` calls Trellis's pinned to a tag and parses point 6's
   line.
-- **Some sessions get the rules twice during the round.** On a machine with an old install, a migrated
-  repo's Claude sessions get the hook's injection as well as the committed copy, and its Codex sessions
-  do too, because `codex-context.mjs` keys vendored mode on `.trellis/internal/` only. The round's
-  machine-level step ends this per machine, and the last delivering release ends it on any machine
-  whose install runs that release.
+- **Some sessions get the rules twice from the round until the machine-level step.** On a machine with
+  an old install, a migrated repo's Claude sessions get the hook's injection as well as the committed
+  copy, and its Codex sessions do too, because `codex-context.mjs` keys vendored mode on
+  `.trellis/internal/` only. The machine-level step (U13), which waits for the adoption nudge (point
+  13), ends this per machine, and the last delivering release ends it on any machine whose install
+  runs that release.
 - **A consumer the round missed loses delivery at the retirement releases.** It stops receiving the
   rules from the plugin at U15 on Claude Code and at U18 on Codex, and the last delivering release's
   notice is its only warning. The notice reaches only an install that updates while a release that
