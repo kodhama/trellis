@@ -1,7 +1,7 @@
 ---
 id: decision-2026-10-20-trellis-delivers-rules-as-committed-files
 type: decision
-depends_on: [decision-0060, decision-0061, decision-0069, decision-0070, decision-0073, decision-0077, decision-2026-09-15-rule-rows-only-switch-rules-off]  # coupling under decision-0047's test. 0073 is superseded in part by point 5, whose set keeps 0073 D1's table as the definition of S0–S6. 0060 §2 requires a new project-local decision for any release choice, which point 11 is. 0061 §1 makes plugins/trellis/VERSION the version authority that point 11's single version line keeps until the plugin retires, and point 11 lifts the parts of 0061 it names. 0069 D1 requires a record that prunes the manual copy path to supersede it, which point 13's last bullet answers. 0070 D2 is why running install is the adoption act (point 1). 0077 is why remove leaves a decline behind (point 9). The rule-rows record is the opt-out semantics the rendered rules follow (point 9)
+depends_on: [decision-0060, decision-0061, decision-0069, decision-0070, decision-0073, decision-0077, decision-2026-09-15-rule-rows-only-switch-rules-off]  # coupling under decision-0047's test. 0073 is superseded in part by point 5, whose set keeps 0073 D1's table as the definition of S0–S6. 0060 §2 requires a new project-local decision for any release choice, which point 11 is. 0061 §1 makes plugins/trellis/VERSION the version authority that point 11's single version line keeps until the plugin retires, and point 11 decides which parts of 0061 stop applying, a lift that takes effect with U1. 0069 D1 requires a record that prunes the manual copy path to supersede it, which point 13's last bullet answers. 0070 D2 is why running install is the adoption act (point 1). 0077 is why remove leaves a decline behind (point 9). The rule-rows record is the opt-out semantics the rendered rules follow (point 9)
 changes: [decision-0073]
 informed_by: [decision-0028, decision-0065, decision-0071]
 owner: agent
@@ -237,12 +237,12 @@ missing: run install --migrate or remove". A migration that ends `declined` wire
   decline.
 - **`remove` leaves a decline behind.** In a `vendored`, `vendored-incomplete` or `declined` repo, it
   deletes every file and section Trellis wrote except `rules.toml`, which it leaves holding
-  `governed = false`. In `none` it reports `done` and changes nothing, and in S0–S6, codex-bootstrap
-  or a mixed state it changes nothing and reports `error` (point 6). A `CLAUDE.md` that
-  Trellis created is deleted only while it is still exactly `@AGENTS.md` and `AGENTS.md` is gone, so
-  another tool's use of the import survives. A repo that removed Trellis said no, and `decision-0077`
-  holds that silence is not adoption: without the record, the next tool that calls `install` would
-  adopt the repo again.
+  `governed = false`. An `AGENTS.md` left empty by removing the section is deleted. In `none` it reports
+  `done` and changes nothing, and in S0–S6, codex-bootstrap or a mixed state it changes nothing and
+  reports `error` (point 6). A `CLAUDE.md` that Trellis created is deleted only while it is still
+  exactly `@AGENTS.md` and `AGENTS.md` is gone, so another tool's use of the import survives. A repo
+  that removed Trellis said no, and `decision-0077` holds that silence is not adoption: without the
+  record, the next tool that calls `install` would adopt the repo again.
 
 **10. Migration is `install --migrate`, run once across the consumers.** It converts a repo in S0–S5
 or codex-bootstrap to the vendored form. It keeps the opt-out rows, removes the old overlay, block,
@@ -301,13 +301,13 @@ from what HEAD's own payload renders. That closes TRL-5.
 
 **13. The retirement order: notice, then stop.**
 
-- **Machine-level delivery ends first (U13), after the round and only once the adoption nudge (KOD-6)
-  exists.** On each machine the inventory covers, U13 uninstalls `trellis@kodhama` at user scope from
-  Claude Code and Codex, uninstalls `trellis@stewards` at user scope from Droid and removes it from
-  untracked project `.factory/settings.json` files, and removes the Trellis lines from cloud
-  environment setup scripts. It waits for the nudge because the user-scope plugin it uninstalls makes
-  today's in-session adoption offer, which the nudge replaces. The maintainer ruled this on
-  2026-10-20; the plan's U13 lists U12 alone.
+- **The round ends machine-level delivery too.** Its machine-level step (U13) comes after the migration
+  PRs (U12) and waits for the adoption nudge (KOD-6). On each machine the inventory covers, U13
+  uninstalls `trellis@kodhama` at user scope from Claude Code and Codex, uninstalls `trellis@stewards`
+  at user scope from Droid and removes it from untracked project `.factory/settings.json` files, and
+  removes the Trellis lines from cloud environment setup scripts. It waits for the nudge because the
+  user-scope plugin it uninstalls makes today's in-session adoption offer, which the nudge replaces. The
+  maintainer ruled this on 2026-10-20; the plan's U13 lists U12 alone.
 - **Then the plugin's last delivering release (U14)**, and only once the adoption nudge (KOD-6) and the
   update routine (KOD-7) exist. It injects nothing in a repo that carries the lock. Anywhere else it
   delivers the rules as before, says the plugin is retiring, and gives the CLI command. This is the
@@ -339,12 +339,12 @@ to claim parity". That entry is what brings the measurement back.
   change is a release with its `plugins/trellis/VERSION` bump (U1, U9, U19).
 - **ogham waits on the first tag.** Its `install` calls Trellis's pinned to a tag and parses point 6's
   line.
-- **Some sessions get the rules twice from the round until the machine-level step.** On a machine with
-  an old install, a migrated repo's Claude sessions get the hook's injection as well as the committed
-  copy, and its Codex sessions do too, because `codex-context.mjs` keys vendored mode on
-  `.trellis/internal/` only. The machine-level step (U13), which waits for the adoption nudge (point
-  13), ends this per machine, and the last delivering release ends it on any machine whose install
-  runs that release.
+- **Some sessions get the rules twice during the round, until its machine-level step.** On a machine
+  with an old install, a migrated repo's Claude sessions get the hook's injection as well as the
+  committed copy, and its Codex sessions do too, because `codex-context.mjs` keys vendored mode on
+  `.trellis/internal/` only. The round's machine-level step (U13), which waits for the adoption nudge
+  (point 13), ends this per machine, and the last delivering release ends it on any machine whose
+  install runs that release.
 - **A consumer the round missed loses delivery at the retirement releases.** It stops receiving the
   rules from the plugin at U15 on Claude Code and at U18 on Codex, and the last delivering release's
   notice is its only warning. The notice reaches only an install that updates while a release that
