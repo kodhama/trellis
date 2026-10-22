@@ -399,13 +399,15 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	}
 	// GitHub replaces a concurrency group's pending run with any newer one, so
 	// a re-run of an old run could drop a push's own run and its version.
-	if strings.Contains(workflow, "concurrency:") {
+	if regexp.MustCompile(`(?m)^[^#\n]*\bconcurrency\b["']?\s*:`).MatchString(workflow) {
 		t.Error("release-tag runs must not share a concurrency group, which can drop a push's run")
 	}
 	// plan's output decides what the App tags, and verify is the check that
 	// fails, so neither may run an action that can change under the same name.
-	uses := regexp.MustCompile(`(?m)^\s*(- )?uses: .*$`).FindAllString(workflow, -1)
-	pinned := regexp.MustCompile(`uses: [\w./-]+@[0-9a-f]{40}( # v[0-9.]+)?$`)
+	// Any line outside a comment that names uses counts, whatever its form, and
+	// only a plain step line pinned by commit passes.
+	uses := regexp.MustCompile(`(?m)^[^#\n]*\buses\b.*$`).FindAllString(workflow, -1)
+	pinned := regexp.MustCompile(`^ *(- )?uses: [\w./-]+@[0-9a-f]{40}( # v[0-9.]+)?$`)
 	if len(uses) != 3 {
 		t.Errorf("release-tag.yml should use 3 actions (two checkouts and the App token), found %d", len(uses))
 	}
@@ -423,8 +425,13 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	if !strings.Contains(tag, "needs: plan\n    if: needs.plan.outputs.tags != ''\n") {
 		t.Error("the tag job must run only when plan listed a tag")
 	}
-	if !regexp.MustCompile(`uses: actions/create-github-app-token@[0-9a-f]{40}\n`).MatchString(tag) {
+	if !regexp.MustCompile(`uses: actions/create-github-app-token@[0-9a-f]{40}( # v[0-9.]+)?\n`).MatchString(tag) {
 		t.Error("the step that holds the App's key must pin its action by commit")
+	}
+	// Without this input the App's token gets every permission the installation
+	// holds, not only creating tags.
+	if !strings.Contains(tag, "\n          permission-contents: write\n") {
+		t.Error("the App's token must be limited to contents: write")
 	}
 	if strings.Count(workflow, "environment: release") != 1 || !strings.Contains(tag, "environment: release") {
 		t.Error("only the tag job may use the release environment, which holds the App's key")
