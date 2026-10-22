@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -374,13 +375,13 @@ func TestReleaseTagsIgnoreAChangeThatKeepsTheVersion(t *testing.T) {
 func readReleaseWorkflow(t *testing.T) (string, map[string]string) {
 	t.Helper()
 	workflow := readFileT(t, "../.github/workflows/release-tag.yml")
-	at := strings.Index(workflow, "\njobs:\n")
-	if at < 0 {
+	at := regexp.MustCompile(`(?m)^jobs:[ \t]*(?:#.*)?\n`).FindStringIndex(workflow)
+	if at == nil {
 		t.Fatal("release-tag.yml has no jobs")
 	}
-	body := workflow[at+len("\njobs:\n"):]
+	body := workflow[at[1]:]
 	jobs := map[string]string{}
-	locs := regexp.MustCompile(`(?m)^  ([A-Za-z_][\w-]*):[ \t]*$`).FindAllStringSubmatchIndex(body, -1)
+	locs := regexp.MustCompile(`(?m)^  ([A-Za-z_][\w-]*):[ \t]*(?:#.*)?$`).FindAllStringSubmatchIndex(body, -1)
 	for i, loc := range locs {
 		end := len(body)
 		if i+1 < len(locs) {
@@ -393,16 +394,16 @@ func readReleaseWorkflow(t *testing.T) (string, map[string]string) {
 			t.Fatalf("release-tag.yml must define the job %s", name)
 		}
 	}
-	return workflow[:at+1], jobs
+	return workflow[:at[0]], jobs
 }
 
 // jobSteps returns each step of job, in order, as written.
 func jobSteps(job string) []string {
-	at := strings.Index(job, "\n    steps:\n")
-	if at < 0 {
+	at := regexp.MustCompile(`(?m)^    steps:[ \t]*(?:#.*)?\n`).FindStringIndex(job)
+	if at == nil {
 		return nil
 	}
-	body := job[at+len("\n    steps:\n"):]
+	body := job[at[1]:]
 	locs := regexp.MustCompile(`(?m)^      - `).FindAllStringIndex(body, -1)
 	var steps []string
 	for i, loc := range locs {
@@ -415,19 +416,90 @@ func jobSteps(job string) []string {
 	return steps
 }
 
-var yamlComment = regexp.MustCompile(`(^|\s)#.*$`)
+var (
+	yamlComment = regexp.MustCompile(`(^|\s)#.*$`)
+	blockScalar = regexp.MustCompile(`^( *(?:- )?)([\w-]+):[ \t]*[|>][-+]?$`)
+	inlineRun   = regexp.MustCompile(`^ *(?:- )?run:[ \t]*(.*)$`)
+)
 
-// uncommented drops comments and blank lines, so a check reads what runs, not
-// what a comment says about it. No value in release-tag.yml holds a "#"; a
-// shell comment inside a run block goes too, which no check looks at.
-func uncommented(text string) string {
-	var lines []string
-	for _, line := range strings.Split(text, "\n") {
-		if line = strings.TrimRight(yamlComment.ReplaceAllString(line, ""), " \t"); line != "" {
-			lines = append(lines, line)
+// yamlParts splits YAML text into its structure, the lines outside block
+// scalars with comments and blank lines dropped, and the shell of each run, as
+// written. So a check of the structure reads what runs, not what a comment says
+// about it, and a "#" inside a shell hides nothing from a check of the shells.
+func yamlParts(text string) (string, []string) {
+	lines := strings.Split(text, "\n")
+	var structure, shells []string
+	for i := 0; i < len(lines); i++ {
+		code := strings.TrimRight(yamlComment.ReplaceAllString(lines[i], ""), " \t")
+		if code == "" {
+			continue
+		}
+		structure = append(structure, code)
+		m := blockScalar.FindStringSubmatch(code)
+		if m == nil {
+			if run := inlineRun.FindStringSubmatch(lines[i]); run != nil {
+				shells = append(shells, run[1]+"\n")
+			}
+			continue
+		}
+		var block []string
+		dedent := -1
+		for i+1 < len(lines) {
+			l := lines[i+1]
+			indent := len(l) - len(strings.TrimLeft(l, " "))
+			if strings.TrimSpace(l) != "" && indent <= len(m[1]) {
+				break
+			}
+			i++
+			if strings.TrimSpace(l) == "" {
+				block = append(block, "")
+				continue
+			}
+			if dedent < 0 {
+				dedent = indent
+			}
+			block = append(block, l[min(dedent, indent):])
+		}
+		if m[2] == "run" {
+			shells = append(shells, strings.TrimRight(strings.Join(block, "\n"), "\n")+"\n")
 		}
 	}
-	return strings.Join(lines, "\n") + "\n"
+	return strings.Join(structure, "\n") + "\n", shells
+}
+
+// structureOf is yamlParts' structure alone.
+func structureOf(text string) string {
+	structure, _ := yamlParts(text)
+	return structure
+}
+
+// needsOf returns the jobs a job needs, sorted and comma-joined, whether
+// written as a flow list or a block list.
+func needsOf(job string) string {
+	lines := strings.Split(structureOf(job), "\n")
+	for i, line := range lines {
+		m := regexp.MustCompile(`^    needs:[ \t]*(.*)$`).FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		var names []string
+		if v := strings.Trim(m[1], "[] "); v != "" {
+			for _, name := range strings.Split(v, ",") {
+				names = append(names, strings.TrimSpace(name))
+			}
+		} else {
+			for _, l := range lines[i+1:] {
+				item := regexp.MustCompile(`^      - (\S+)$`).FindStringSubmatch(l)
+				if item == nil {
+					break
+				}
+				names = append(names, item[1])
+			}
+		}
+		sort.Strings(names)
+		return strings.Join(names, ",")
+	}
+	return ""
 }
 
 // keyValues returns the value of every `key:` in text, whether the key opens a
@@ -452,39 +524,32 @@ func trimmedLines(text string) []string {
 
 // stepShell returns the shell a step runs, as GitHub hands it to bash: a
 // `run: |` block without its indentation, or a one-line run.
+// TestReleaseTagWorkflowShape refuses the forms YAML would change on the way.
 func stepShell(t *testing.T, step string) string {
 	t.Helper()
-	lines := strings.Split(step, "\n")
-	runKey := regexp.MustCompile(`^([ \t]*)(- )?run:[ \t]*(.*)$`)
-	for i, line := range lines {
-		m := runKey.FindStringSubmatch(line)
-		if m == nil {
-			continue
-		}
-		if m[3] != "|" {
-			return m[3] + "\n"
-		}
-		keyIndent := len(m[1]) + len(m[2])
-		var block []string
-		dedent := -1
-		for _, l := range lines[i+1:] {
-			if strings.TrimSpace(l) == "" {
-				block = append(block, "")
-				continue
-			}
-			indent := len(l) - len(strings.TrimLeft(l, " "))
-			if indent <= keyIndent {
-				break
-			}
-			if dedent < 0 {
-				dedent = indent
-			}
-			block = append(block, l[min(dedent, indent):])
-		}
-		return strings.TrimRight(strings.Join(block, "\n"), "\n") + "\n"
+	_, shells := yamlParts(step)
+	if len(shells) != 1 {
+		t.Fatalf("this step should run one shell, but it runs %d:\n%s", len(shells), step)
 	}
-	t.Fatalf("this step runs no shell:\n%s", step)
-	return ""
+	return shells[0]
+}
+
+// stepPath returns a directory for a step test's PATH, holding links to the
+// two tools the steps use besides bash's builtins, so a step that calls
+// anything else fails rather than reaching a real gh, curl or git.
+func stepPath(t *testing.T) string {
+	t.Helper()
+	bin := t.TempDir()
+	for _, tool := range []string{"grep", "sed"} {
+		path, err := exec.LookPath(tool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(path, filepath.Join(bin, tool)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return bin
 }
 
 // runStepShell runs shell in dir as GitHub runs a step that names no `shell:`,
@@ -528,13 +593,46 @@ func lastStep(t *testing.T, jobs map[string]string, name string) string {
 // tagging on main and create-only, and that the step tests below rely on.
 func TestReleaseTagWorkflowShape(t *testing.T) {
 	top, jobs := readReleaseWorkflow(t)
-	code := uncommented(top + "jobs:\n" + jobs["plan"] + jobs["tag"] + jobs["verify"])
-	for name, job := range jobs {
-		if name != "plan" && name != "tag" && name != "verify" {
-			code += uncommented(job)
+	code, shells := yamlParts(readFileT(t, "../.github/workflows/release-tag.yml"))
+	topCode := structureOf(top)
+	// A shell comment that fills its line hides nothing; one after code might
+	// open inside a quote, so it stays.
+	runs := regexp.MustCompile(`(?m)^[ \t]*#.*\n`).ReplaceAllString(strings.Join(shells, ""), "")
+
+	// Every line outside a run is a plain key or a list item, so the checks
+	// below read each value whole: no value continues onto the next line, no key
+	// is quoted, escaped, tagged or merged in from an anchor.
+	keyLine := regexp.MustCompile(`^( *)(- )?[A-Za-z_][\w-]*:(?: (.*))?$`)
+	itemLine := regexp.MustCompile(`^( *)- ([^&*!|>\s].*)$`)
+	column, open := -1, true
+	for _, line := range strings.Split(strings.TrimSuffix(code, "\n"), "\n") {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		key, item := keyLine.FindStringSubmatch(line), itemLine.FindStringSubmatch(line)
+		switch {
+		case key == nil && item == nil, strings.Contains(line, "\\"), regexp.MustCompile(`(^|[\s\[{,])[&*!][\w!]`).MatchString(line):
+			t.Errorf("every line of release-tag.yml outside a run must be a plain key or a list item, but it has %q", line)
+		case indent > column && !open:
+			t.Errorf("no value in release-tag.yml may continue onto the next line, but %q does", line)
+		}
+		column, open = indent, false
+		if key != nil {
+			column += len(key[2])
+			open = key[3] == ""
+		} else if item != nil {
+			column += 2
 		}
 	}
-	topCode := uncommented(top)
+	// The step tests hand each run to bash as written; a folded or quoted run
+	// would reach GitHub's bash changed, and an expression would be filled in
+	// there and not in the tests.
+	for _, v := range keyValues(code, "run") {
+		if v == "" || (strings.ContainsAny(v[:1], `|>"'`) && v != "|" && v != "|-" && v != "|+") {
+			t.Errorf("every run must be a literal block or a plain line, but one is %q", v)
+		}
+	}
+	if strings.Contains(runs, "${{") {
+		t.Error("no run may hold an expression; a step gets its inputs through env")
+	}
 
 	// U1 commits the floor unset, so its merge tags nothing; U9 sets it, and
 	// changes this line with it. Nothing else may name the floor, or a job or a
@@ -542,7 +640,7 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	if !strings.Contains(topCode, "\nenv:\n  TRELLIS_TAG_FLOOR: \"\"\n") {
 		t.Error("the floor must be committed unset, in the workflow's top-level env, until the CLI's first release")
 	}
-	if n := strings.Count(code, "TRELLIS_TAG_FLOOR"); n != 1 {
+	if n := strings.Count(code+runs, "TRELLIS_TAG_FLOOR"); n != 1 {
 		t.Errorf("only the top-level env may set the floor, but release-tag.yml names it %d times outside comments", n)
 	}
 
@@ -590,7 +688,7 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 			t.Errorf("only the App's token may write, but release-tag.yml grants %q", strings.TrimSpace(grant))
 		}
 	}
-	if v := keyValues(uncommented(jobs["tag"]), "permissions"); len(v) != 1 || v[0] != "{}" {
+	if v := keyValues(structureOf(jobs["tag"]), "permissions"); len(v) != 1 || v[0] != "{}" {
 		t.Errorf("the tag job's GITHUB_TOKEN must get no permissions (permissions: {}); it has %q", v)
 	}
 
@@ -619,7 +717,7 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 		}
 	}
 	// The release environment holds the App's key, so only the tag job enters it.
-	if v := keyValues(code, "environment"); len(v) != 1 || keyValues(uncommented(jobs["tag"]), "environment") == nil || v[0] != "release" {
+	if v := keyValues(code, "environment"); len(v) != 1 || keyValues(structureOf(jobs["tag"]), "environment") == nil || v[0] != "release" {
 		t.Errorf("only the tag job may use the release environment, which holds the App's key; release-tag.yml has environment %q", v)
 	}
 	for _, text := range []string{"secrets.", "steps.app.outputs.token"} {
@@ -629,7 +727,7 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	}
 	// Create only: nothing may move or delete a tag.
 	for _, verb := range []string{`\bPATCH\b`, `DELETE`, `(^|\s)-X`, `--method`, `\bforce\b`, `\bgit\s+push\b`, `\bgraphql\b`} {
-		if regexp.MustCompile(verb).MatchString(code) {
+		if regexp.MustCompile(verb).MatchString(code + runs) {
 			t.Errorf("release-tag must only create tags, but it matches %s", verb)
 		}
 	}
@@ -641,13 +739,13 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	for name, want := range map[string][2]string{
 		"plan":   {"", ""},
 		"tag":    {"plan", "needs.plan.outputs.tags != ''"},
-		"verify": {"[plan, tag]", "always()"},
+		"verify": {"plan,tag", "always()"},
 	} {
-		job := uncommented(jobs[name])
-		needs, ifs := keyValues(job, "needs"), keyValues(job, "if")
-		if (want[0] == "" && needs != nil) || (want[0] != "" && (len(needs) != 1 || needs[0] != want[0])) {
+		job := structureOf(jobs[name])
+		if needs := needsOf(jobs[name]); needs != want[0] || len(keyValues(job, "needs")) > 1 {
 			t.Errorf("the %s job must need %q, but it needs %q", name, want[0], needs)
 		}
+		ifs := keyValues(job, "if")
 		if (want[1] == "" && ifs != nil) || (want[1] != "" && (len(ifs) != 1 || ifs[0] != want[1])) {
 			t.Errorf("the %s job must run if %q, and no step of it may have a condition, but it has if %q", name, want[1], ifs)
 		}
@@ -659,18 +757,18 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	checkout := regexp.MustCompile(`^- uses: actions/checkout@[0-9a-f]{40}\nwith:\nfetch-depth: 0$`)
 	for _, name := range []string{"plan", "verify"} {
 		steps := jobSteps(jobs[name])
-		if len(steps) != 2 || !checkout.MatchString(strings.Join(trimmedLines(uncommented(steps[0])), "\n")) {
+		if len(steps) != 2 || !checkout.MatchString(strings.Join(trimmedLines(structureOf(steps[0])), "\n")) {
 			t.Errorf("the %s job must check out the full history with a pinned actions/checkout and nothing else, then run one step", name)
 		}
 	}
-	if !strings.Contains(uncommented(jobs["plan"]), "\n    outputs:\n      tags: ${{ steps.plan.outputs.tags }}\n") || !strings.HasPrefix(uncommented(lastStep(t, jobs, "plan")), "      - id: plan\n") {
+	if !strings.Contains(structureOf(jobs["plan"]), "\n    outputs:\n      tags: ${{ steps.plan.outputs.tags }}\n") || !slices.Equal(keyValues(structureOf(lastStep(t, jobs, "plan")), "id"), []string{"plan"}) {
 		t.Error("the plan job's tags output must be what its plan step publishes")
 	}
 	steps := jobSteps(jobs["tag"])
 	if len(steps) != 2 {
 		t.Fatalf("the tag job must have two steps, the App's token and the create step; it has %d", len(steps))
 	}
-	app := trimmedLines(regexp.MustCompile(`@[0-9a-f]{40}\n`).ReplaceAllString(uncommented(steps[0]), "@<commit>\n"))
+	app := trimmedLines(regexp.MustCompile(`@[0-9a-f]{40}\n`).ReplaceAllString(structureOf(steps[0]), "@<commit>\n"))
 	app[0] = strings.TrimPrefix(app[0], "- ")
 	sort.Strings(app)
 	// Without permission-contents the App's token gets every permission the
@@ -686,7 +784,7 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	if strings.Join(app, "\n") != strings.Join(wantApp, "\n") {
 		t.Errorf("the App's token step must be a pinned create-github-app-token limited to contents: write, but it reads:\n%s", strings.Join(app, "\n"))
 	}
-	create := uncommented(steps[1])
+	create := structureOf(steps[1])
 	for _, line := range []string{"GH_TOKEN: ${{ steps.app.outputs.token }}", "TAGS: ${{ needs.plan.outputs.tags }}"} {
 		if !strings.Contains(create, "\n          "+line+"\n") {
 			t.Errorf("the create step must get %s", line)
@@ -718,7 +816,7 @@ exit "$STUB_CODE"
 `)
 			writeFileT(t, output, "")
 			writeFileT(t, log, "")
-			out, code := runStepShell(t, dir, shell, "STUB_LOG="+log, "STUB_OUT="+tc.out, "STUB_CODE="+tc.code, "GITHUB_OUTPUT="+output, "TRELLIS_TAG_FLOOR=0.25.0")
+			out, code := runStepShell(t, dir, shell, "STUB_LOG="+log, "STUB_OUT="+tc.out, "STUB_CODE="+tc.code, "GITHUB_OUTPUT="+output, "TRELLIS_TAG_FLOOR=0.25.0", "PATH="+stepPath(t))
 			if calls := readFileT(t, log); calls != "plan floor=0.25.0\n" {
 				t.Errorf("the plan step must run scripts/release-tags.sh plan once, with the workflow's floor; it ran:\n%s", calls)
 			}
@@ -750,7 +848,7 @@ func TestReleaseTagWorkflowVerifyStepFailsWithTheScript(t *testing.T) {
 exit "$STUB_CODE"
 `)
 		writeFileT(t, log, "")
-		out, code := runStepShell(t, dir, shell, "STUB_LOG="+log, "STUB_CODE="+scriptCode, "TRELLIS_TAG_FLOOR=0.25.0")
+		out, code := runStepShell(t, dir, shell, "STUB_LOG="+log, "STUB_CODE="+scriptCode, "TRELLIS_TAG_FLOOR=0.25.0", "PATH="+stepPath(t))
 		if calls := readFileT(t, log); calls != "verify floor=0.25.0\n" {
 			t.Errorf("the verify step must run scripts/release-tags.sh verify once, with the workflow's floor; it ran:\n%s", calls)
 		}
@@ -791,7 +889,7 @@ func TestReleaseTagWorkflowCreateStep(t *testing.T) {
 		{"a short commit", "v0.25.0 1111111\n", "201", "", false, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir, bin := t.TempDir(), t.TempDir()
+			dir, bin := t.TempDir(), stepPath(t)
 			log := filepath.Join(dir, "calls.log")
 			writeFileT(t, log, "")
 			writeStub(t, filepath.Join(bin, "gh"), `printf 'gh %s\n' "$*" >> "$STUB_LOG"
@@ -809,7 +907,7 @@ printf '%s\n' "$STUB_EXISTING"
 exit 1
 `)
 			out, code := runStepShell(t, dir, shell,
-				"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+				"PATH="+bin,
 				"STUB_LOG="+log, "STUB_CREATE="+tc.create, "STUB_EXISTING="+tc.existing,
 				"GH_TOKEN=app-token", "GITHUB_REPOSITORY=kodhama/trellis", "TAGS="+tc.tags)
 			if (code == 0) != tc.wantOK {

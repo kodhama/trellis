@@ -26,9 +26,10 @@ name: release-tag
 # that overlap are safe because a tag another run created is the 422 case the
 # tag job handles. One push starts no run at all: GitHub skips push workflows
 # when the head commit's message holds [skip ci], [ci skip], [no ci],
-# [skip actions] or [actions skip]. A squash merge whose title or body carries
-# one leaves its release untagged, with nothing red, until the next push to main
-# or a dispatch, which plans from history and tags it.
+# [skip actions] or [actions skip], or ends with a skip-checks: true trailer. A
+# squash merge whose title or body carries one leaves its release untagged, with
+# nothing red, until the next push to main or a dispatch, which plans from
+# history and tags it.
 #
 # THE FLOOR. Both modes skip every version below TRELLIS_TAG_FLOOR. It is unset
 # until the CLI's first release (U9), so no plugin release before it is tagged,
