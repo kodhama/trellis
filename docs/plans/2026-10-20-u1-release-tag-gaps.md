@@ -172,12 +172,15 @@ flowchart TB
   - `verify` declares `needs: [plan, tag]` and `if: always()`.
   - The workflow has no concurrency group.
   - Every action is pinned by commit, no line grants the GITHUB_TOKEN write, `tag` sets `permissions: {}`, and nothing sets `continue-on-error` (the lead's re-review, round 1).
+  - Only the top-level `env` names the floor, only `tag` uses the `release` environment, and no step has a condition. `plan`'s and `verify`'s steps run against a stand-in script, and `tag`'s create step runs against a stand-in `gh`: a 201, a 422 on the planned commit, a 422 on another commit, a failed read-back, any other status and a malformed plan line (the lead's re-review, round 2).
 - **Approach:**
   1. The header comment carries KTD7's settings:
      - **App:** installed on this repository only, with Contents: read and write, Metadata: read, and no webhook.
-     - **Environment `release`:** deployment branches set to "Selected branches and tags" with one rule, branch `main`, and no tag rule. "Protected branches only" would admit every protected branch. No required reviewers, because a reviewer would stall every release. It holds `RELEASE_APP_PRIVATE_KEY` as an environment secret, never a repository secret, which any branch's workflow could read. `RELEASE_APP_ID` is a variable.
+     - **Environment `release`:** deployment branches set to "Selected branches and tags" with one rule, branch `main`, and no tag rule. "Protected branches only" would admit every protected branch. No required reviewers, because a reviewer would stall every release. It holds `RELEASE_APP_PRIVATE_KEY` as an environment secret, never a repository secret, which any branch's workflow could read. `RELEASE_APP_CLIENT_ID` is a variable.
      - **Tag ruleset:** targets `refs/tags/v*`, is active, restricts creation, update and deletion, and has the App as its only bypass, set to always.
      - **Merge methods:** squash only, with rebase merging switched off (KTD7).
+     - **Branch ruleset "main protection"** on `main`: requires a pull request before merging, with 0 approvals, blocks force pushes, restricts deletions, and has no bypass actors (Gonçalo's rulings, 2026-10-22).
+     - **Branch ruleset on `refs/heads/v*`:** active, restricts creation, with no bypass actors, because npm resolves a pin such as `#v0.25.0` to a branch of that name while no tag has it (Gonçalo's ruling, 2026-10-22).
   2. `plan` passes its lines to `tag` as a multi-line step output, which needs the `name<<delimiter` form of `GITHUB_OUTPUT`.
   3. `tag` asks `actions/create-github-app-token` for Contents: write only.
   4. `tag` handles the `POST` response as KTD2 says, and `verify` then reports the result.
