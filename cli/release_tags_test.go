@@ -417,25 +417,60 @@ func jobSteps(job string) []string {
 }
 
 var (
-	yamlComment = regexp.MustCompile(`(^|\s)#.*$`)
-	blockScalar = regexp.MustCompile(`^( *(?:- )?)([\w-]+):[ \t]*[|>][-+]?$`)
-	inlineRun   = regexp.MustCompile(`^ *(?:- )?run:[ \t]*(.*)$`)
+	runBlock  = regexp.MustCompile(`^( *(?:- )?)run:[ \t]*\|[-+]?$`)
+	inlineRun = regexp.MustCompile(`^ *(?:- )?run:[ \t]*(.*)$`)
 )
 
-// yamlParts splits YAML text into its structure, the lines outside block
-// scalars with comments and blank lines dropped, and the shell of each run, as
-// written. So a check of the structure reads what runs, not what a comment says
-// about it, and a "#" inside a shell hides nothing from a check of the shells.
+// scanYAMLLine returns line without its comment, a "#" after a space or at the
+// line's start and outside quotes, and whether every quote and bracket it opens
+// closes on the line. A quote opens a quoted value only where a value starts.
+func scanYAMLLine(line string) (string, bool) {
+	var quote byte
+	depth, start := 0, true
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		if quote != 0 {
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch {
+		case c == '#' && (i == 0 || line[i-1] == ' ' || line[i-1] == '\t'):
+			return strings.TrimRight(line[:i], " \t"), depth == 0
+		case (c == '"' || c == '\'') && start:
+			quote = c
+		case c == '[' || c == '{':
+			depth++
+		case c == ']' || c == '}':
+			depth--
+		}
+		if c != ' ' && c != '\t' {
+			start = c == '[' || c == '{' || c == ',' || ((c == ':' || c == '-') && i+1 < len(line) && line[i+1] == ' ')
+		}
+	}
+	return strings.TrimRight(line, " \t"), quote == 0 && depth == 0
+}
+
+// yamlParts splits YAML text into its structure, the lines outside run blocks
+// with comments and blank lines dropped, and the shell of each run, as written.
+// So a check of the structure reads what runs, not what a comment says about
+// it, and a "#" inside a shell hides nothing from a check of the shells. A
+// line of the structure that leaves a quote or a bracket open ends with "\x00",
+// which no check accepts.
 func yamlParts(text string) (string, []string) {
 	lines := strings.Split(text, "\n")
 	var structure, shells []string
 	for i := 0; i < len(lines); i++ {
-		code := strings.TrimRight(yamlComment.ReplaceAllString(lines[i], ""), " \t")
+		code, closed := scanYAMLLine(lines[i])
 		if code == "" {
 			continue
 		}
+		if !closed {
+			code += "\x00"
+		}
 		structure = append(structure, code)
-		m := blockScalar.FindStringSubmatch(code)
+		m := runBlock.FindStringSubmatch(code)
 		if m == nil {
 			if run := inlineRun.FindStringSubmatch(lines[i]); run != nil {
 				shells = append(shells, run[1]+"\n")
@@ -447,7 +482,9 @@ func yamlParts(text string) (string, []string) {
 		for i+1 < len(lines) {
 			l := lines[i+1]
 			indent := len(l) - len(strings.TrimLeft(l, " "))
-			if strings.TrimSpace(l) != "" && indent <= len(m[1]) {
+			// The block ends at a line indented no deeper than its key, or less
+			// deep than its first line.
+			if strings.TrimSpace(l) != "" && (indent <= len(m[1]) || (dedent >= 0 && indent < dedent)) {
 				break
 			}
 			i++
@@ -460,9 +497,7 @@ func yamlParts(text string) (string, []string) {
 			}
 			block = append(block, l[min(dedent, indent):])
 		}
-		if m[2] == "run" {
-			shells = append(shells, strings.TrimRight(strings.Join(block, "\n"), "\n")+"\n")
-		}
+		shells = append(shells, strings.TrimRight(strings.Join(block, "\n"), "\n")+"\n")
 	}
 	return strings.Join(structure, "\n") + "\n", shells
 }
@@ -485,7 +520,7 @@ func needsOf(job string) string {
 		var names []string
 		if v := strings.Trim(m[1], "[] "); v != "" {
 			for _, name := range strings.Split(v, ",") {
-				names = append(names, strings.TrimSpace(name))
+				names = append(names, strings.Trim(name, `"' `))
 			}
 		} else {
 			for _, l := range lines[i+1:] {
@@ -493,7 +528,7 @@ func needsOf(job string) string {
 				if item == nil {
 					break
 				}
-				names = append(names, item[1])
+				names = append(names, strings.Trim(item[1], `"'`))
 			}
 		}
 		sort.Strings(names)
@@ -523,8 +558,8 @@ func trimmedLines(text string) []string {
 }
 
 // stepShell returns the shell a step runs, as GitHub hands it to bash: a
-// `run: |` block without its indentation, or a one-line run.
-// TestReleaseTagWorkflowShape refuses the forms YAML would change on the way.
+// `run: |` block without its indentation, or a one-line run. The shape test
+// refuses the forms of run that YAML would change on the way.
 func stepShell(t *testing.T, step string) string {
 	t.Helper()
 	_, shells := yamlParts(step)
@@ -552,15 +587,25 @@ func stepPath(t *testing.T) string {
 	return bin
 }
 
+// stepEvents are the events release-tag runs on; each step test runs its step
+// under both, so a step that behaves differently on one fails a test.
+var stepEvents = []string{"push", "workflow_dispatch"}
+
 // runStepShell runs shell in dir as GitHub runs a step that names no `shell:`,
-// with `bash -e`, and returns its combined output and its exit code.
-func runStepShell(t *testing.T, dir, shell string, env ...string) (string, int) {
+// with `bash -e`, and returns its combined output and its exit code. The step
+// sees the variables GitHub sets for a run of release-tag on main, and env,
+// and nothing from the environment the tests run in.
+func runStepShell(t *testing.T, dir, shell, event string, env ...string) (string, int) {
 	t.Helper()
 	script := filepath.Join(t.TempDir(), "step.sh")
 	writeFileT(t, script, shell)
 	cmd := exec.Command("bash", "-e", script)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), env...)
+	cmd.Env = append([]string{
+		"HOME=" + t.TempDir(), "CI=true", "GITHUB_ACTIONS=true", "RUNNER_OS=Linux",
+		"GITHUB_WORKFLOW=release-tag", "GITHUB_EVENT_NAME=" + event, "GITHUB_REPOSITORY=kodhama/trellis",
+		"GITHUB_REF=refs/heads/main", "GITHUB_REF_NAME=main", "GITHUB_REF_TYPE=branch",
+	}, env...)
 	out, err := cmd.CombinedOutput()
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		return string(out), exitErr.ExitCode()
@@ -599,38 +644,70 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	// open inside a quote, so it stays.
 	runs := regexp.MustCompile(`(?m)^[ \t]*#.*\n`).ReplaceAllString(strings.Join(shells, ""), "")
 
-	// Every line outside a run is a plain key or a list item, so the checks
-	// below read each value whole: no value continues onto the next line, no key
-	// is quoted, escaped, tagged or merged in from an anchor.
-	keyLine := regexp.MustCompile(`^( *)(- )?[A-Za-z_][\w-]*:(?: (.*))?$`)
+	// Every line outside a run is a plain key or a list item that closes its
+	// quotes and brackets, so the checks below read each value whole: no value
+	// continues onto the next line, and no key is quoted, escaped, tagged or
+	// merged in from an anchor. Every key sits where release-tag.yml expects
+	// one, so nothing the checks do not read, such as an env var that changes
+	// how bash runs or a step's working-directory, can slip in.
+	keyLine := regexp.MustCompile(`^( *)(- )?([A-Za-z_][\w-]*):(?: (.*))?$`)
 	itemLine := regexp.MustCompile(`^( *)- ([^&*!|>\s].*)$`)
+	nodeProperty := regexp.MustCompile(`(:\s+|[\[{,]\s*|^\s*-\s+)[&*!]`)
+	allowedKey := regexp.MustCompile(`^(name|on(\.(push(\.branches)?|workflow_dispatch))?|permissions(\.contents)?|env(\.TRELLIS_TAG_FLOOR)?|` +
+		`jobs(\.[\w-]+(\.(runs-on|needs|if|environment|continue-on-error|permissions(\.[\w-]+)?|outputs(\.tags)?|steps(\.(id|name|uses|with(\.[\w-]+)?|run|continue-on-error))?))?)?|` +
+		`jobs\.tag\.steps\.env(\.(GH_TOKEN|TAGS))?)$`)
+	type frame struct {
+		column int
+		key    string
+	}
+	var path []frame
 	column, open := -1, true
-	for _, line := range strings.Split(strings.TrimSuffix(code, "\n"), "\n") {
+	for i, line := range strings.Split(strings.TrimSuffix(code, "\n"), "\n") {
+		if i == 0 && line == "---" {
+			continue
+		}
 		indent := len(line) - len(strings.TrimLeft(line, " "))
 		key, item := keyLine.FindStringSubmatch(line), itemLine.FindStringSubmatch(line)
 		switch {
-		case key == nil && item == nil, strings.Contains(line, "\\"), regexp.MustCompile(`(^|[\s\[{,])[&*!][\w!]`).MatchString(line):
-			t.Errorf("every line of release-tag.yml outside a run must be a plain key or a list item, but it has %q", line)
+		case key == nil && item == nil, strings.ContainsAny(line, "\\\x00"), nodeProperty.MatchString(line):
+			t.Errorf("every line of release-tag.yml outside a run must be a plain key or a list item, closed on its line, but it has %q", strings.TrimSuffix(line, "\x00"))
 		case indent > column && !open:
 			t.Errorf("no value in release-tag.yml may continue onto the next line, but %q does", line)
 		}
 		column, open = indent, false
-		if key != nil {
-			column += len(key[2])
-			open = key[3] == ""
-		} else if item != nil {
+		if item != nil && key == nil {
 			column += 2
+			continue
+		}
+		if key == nil {
+			continue
+		}
+		column += len(key[2])
+		open = key[4] == ""
+		for len(path) > 0 && path[len(path)-1].column >= column {
+			path = path[:len(path)-1]
+		}
+		path = append(path, frame{column, key[3]})
+		var keys []string
+		for _, f := range path {
+			keys = append(keys, f.key)
+		}
+		if name := strings.Join(keys, "."); !allowedKey.MatchString(name) {
+			t.Errorf("release-tag.yml sets %s, which no check reads", name)
+		}
+		if key[4] != "" && slices.Contains([]string{"on", "jobs", "env", "steps", "with", "outputs"}, key[3]) {
+			t.Errorf("release-tag.yml's %s must be a block, not %q", key[3], key[4])
 		}
 	}
 	// The step tests hand each run to bash as written; a folded or quoted run
-	// would reach GitHub's bash changed, and an expression would be filled in
-	// there and not in the tests.
+	// would reach GitHub's bash changed, and an expression, even in a shell
+	// comment, would be filled in there and not in the tests.
 	for _, v := range keyValues(code, "run") {
 		if v == "" || (strings.ContainsAny(v[:1], `|>"'`) && v != "|" && v != "|-" && v != "|+") {
 			t.Errorf("every run must be a literal block or a plain line, but one is %q", v)
 		}
 	}
-	if strings.Contains(runs, "${{") {
+	if strings.Contains(strings.Join(shells, ""), "${{") {
 		t.Error("no run may hold an expression; a step gets its inputs through env")
 	}
 
@@ -807,32 +884,34 @@ func TestReleaseTagWorkflowPlanStepPublishesTheScriptsPlan(t *testing.T) {
 		{"nothing to tag", "", "0", "tags<<RELEASE_TAGS_EOF\nRELEASE_TAGS_EOF\n"},
 		{"the script fails", "", "2", ""},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			log, output := filepath.Join(dir, "calls.log"), filepath.Join(dir, "github-output")
-			writeStub(t, filepath.Join(dir, "scripts", "release-tags.sh"), `printf '%s floor=%s\n' "$*" "${TRELLIS_TAG_FLOOR-unset}" >> "$STUB_LOG"
+		for _, event := range stepEvents {
+			t.Run(tc.name+" on "+event, func(t *testing.T) {
+				dir := t.TempDir()
+				log, output := filepath.Join(dir, "calls.log"), filepath.Join(dir, "github-output")
+				writeStub(t, filepath.Join(dir, "scripts", "release-tags.sh"), `printf '%s floor=%s\n' "$*" "${TRELLIS_TAG_FLOOR-unset}" >> "$STUB_LOG"
 printf '%s' "$STUB_OUT"
 exit "$STUB_CODE"
 `)
-			writeFileT(t, output, "")
-			writeFileT(t, log, "")
-			out, code := runStepShell(t, dir, shell, "STUB_LOG="+log, "STUB_OUT="+tc.out, "STUB_CODE="+tc.code, "GITHUB_OUTPUT="+output, "TRELLIS_TAG_FLOOR=0.25.0", "PATH="+stepPath(t))
-			if calls := readFileT(t, log); calls != "plan floor=0.25.0\n" {
-				t.Errorf("the plan step must run scripts/release-tags.sh plan once, with the workflow's floor; it ran:\n%s", calls)
-			}
-			if tc.code != "0" {
-				if code == 0 {
-					t.Errorf("the plan step must fail when the script fails, but it exited 0:\n%s", out)
+				writeFileT(t, output, "")
+				writeFileT(t, log, "")
+				out, code := runStepShell(t, dir, shell, event, "STUB_LOG="+log, "STUB_OUT="+tc.out, "STUB_CODE="+tc.code, "GITHUB_OUTPUT="+output, "TRELLIS_TAG_FLOOR=0.25.0", "PATH="+stepPath(t))
+				if calls := readFileT(t, log); calls != "plan floor=0.25.0\n" {
+					t.Errorf("the plan step must run scripts/release-tags.sh plan once, with the workflow's floor; it ran:\n%s", calls)
 				}
-				return
-			}
-			if code != 0 {
-				t.Fatalf("the plan step exited %d:\n%s", code, out)
-			}
-			if got := readFileT(t, output); got != tc.wantOutput {
-				t.Errorf("the plan step wrote %q to GITHUB_OUTPUT, want %q", got, tc.wantOutput)
-			}
-		})
+				if tc.code != "0" {
+					if code == 0 {
+						t.Errorf("the plan step must fail when the script fails, but it exited 0:\n%s", out)
+					}
+					return
+				}
+				if code != 0 {
+					t.Fatalf("the plan step exited %d:\n%s", code, out)
+				}
+				if got := readFileT(t, output); got != tc.wantOutput {
+					t.Errorf("the plan step wrote %q to GITHUB_OUTPUT, want %q", got, tc.wantOutput)
+				}
+			})
+		}
 	}
 }
 
@@ -842,18 +921,20 @@ func TestReleaseTagWorkflowVerifyStepFailsWithTheScript(t *testing.T) {
 	_, jobs := readReleaseWorkflow(t)
 	shell := stepShell(t, lastStep(t, jobs, "verify"))
 	for _, scriptCode := range []string{"0", "1"} {
-		dir := t.TempDir()
-		log := filepath.Join(dir, "calls.log")
-		writeStub(t, filepath.Join(dir, "scripts", "release-tags.sh"), `printf '%s floor=%s\n' "$*" "${TRELLIS_TAG_FLOOR-unset}" >> "$STUB_LOG"
+		for _, event := range stepEvents {
+			dir := t.TempDir()
+			log := filepath.Join(dir, "calls.log")
+			writeStub(t, filepath.Join(dir, "scripts", "release-tags.sh"), `printf '%s floor=%s\n' "$*" "${TRELLIS_TAG_FLOOR-unset}" >> "$STUB_LOG"
 exit "$STUB_CODE"
 `)
-		writeFileT(t, log, "")
-		out, code := runStepShell(t, dir, shell, "STUB_LOG="+log, "STUB_CODE="+scriptCode, "TRELLIS_TAG_FLOOR=0.25.0", "PATH="+stepPath(t))
-		if calls := readFileT(t, log); calls != "verify floor=0.25.0\n" {
-			t.Errorf("the verify step must run scripts/release-tags.sh verify once, with the workflow's floor; it ran:\n%s", calls)
-		}
-		if (code == 0) != (scriptCode == "0") {
-			t.Errorf("the verify step exited %d when the script exited %s:\n%s", code, scriptCode, out)
+			writeFileT(t, log, "")
+			out, code := runStepShell(t, dir, shell, event, "STUB_LOG="+log, "STUB_CODE="+scriptCode, "TRELLIS_TAG_FLOOR=0.25.0", "PATH="+stepPath(t))
+			if calls := readFileT(t, log); calls != "verify floor=0.25.0\n" {
+				t.Errorf("the verify step must run scripts/release-tags.sh verify once, with the workflow's floor; it ran:\n%s", calls)
+			}
+			if (code == 0) != (scriptCode == "0") {
+				t.Errorf("the verify step exited %d on %s when the script exited %s:\n%s", code, event, scriptCode, out)
+			}
 		}
 	}
 }
@@ -888,11 +969,12 @@ func TestReleaseTagWorkflowCreateStep(t *testing.T) {
 		{"a malformed plan line", "v0.25 " + planned + "\n", "201", "", false, ""},
 		{"a short commit", "v0.25.0 1111111\n", "201", "", false, ""},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dir, bin := t.TempDir(), stepPath(t)
-			log := filepath.Join(dir, "calls.log")
-			writeFileT(t, log, "")
-			writeStub(t, filepath.Join(bin, "gh"), `printf 'gh %s\n' "$*" >> "$STUB_LOG"
+		for _, event := range stepEvents {
+			t.Run(tc.name+" on "+event, func(t *testing.T) {
+				dir, bin := t.TempDir(), stepPath(t)
+				log := filepath.Join(dir, "calls.log")
+				writeFileT(t, log, "")
+				writeStub(t, filepath.Join(bin, "gh"), `printf 'gh %s\n' "$*" >> "$STUB_LOG"
 if [ "$2" = -i ]; then
   case "$STUB_CREATE" in
     201) printf 'HTTP/2.0 201 Created\nContent-Type: application/json\n\n{"ref":"%s"}\n' "$5"; exit 0 ;;
@@ -903,19 +985,20 @@ fi
 if [ "$STUB_EXISTING" = fail ]; then echo 'gh: Not Found (HTTP 404)' >&2; exit 1; fi
 printf '%s\n' "$STUB_EXISTING"
 `)
-			writeStub(t, filepath.Join(bin, "git"), `printf 'git %s\n' "$*" >> "$STUB_LOG"
+				writeStub(t, filepath.Join(bin, "git"), `printf 'git %s\n' "$*" >> "$STUB_LOG"
 exit 1
 `)
-			out, code := runStepShell(t, dir, shell,
-				"PATH="+bin,
-				"STUB_LOG="+log, "STUB_CREATE="+tc.create, "STUB_EXISTING="+tc.existing,
-				"GH_TOKEN=app-token", "GITHUB_REPOSITORY=kodhama/trellis", "TAGS="+tc.tags)
-			if (code == 0) != tc.wantOK {
-				t.Errorf("the create step exited %d, want success %v:\n%s", code, tc.wantOK, out)
-			}
-			if calls := readFileT(t, log); calls != tc.wantCalls {
-				t.Errorf("the create step made these calls:\n%s\nwant:\n%s", calls, tc.wantCalls)
-			}
-		})
+				out, code := runStepShell(t, dir, shell, event,
+					"PATH="+bin,
+					"STUB_LOG="+log, "STUB_CREATE="+tc.create, "STUB_EXISTING="+tc.existing,
+					"GH_TOKEN=app-token", "TAGS="+tc.tags)
+				if (code == 0) != tc.wantOK {
+					t.Errorf("the create step exited %d, want success %v:\n%s", code, tc.wantOK, out)
+				}
+				if calls := readFileT(t, log); calls != tc.wantCalls {
+					t.Errorf("the create step made these calls:\n%s\nwant:\n%s", calls, tc.wantCalls)
+				}
+			})
+		}
 	}
 }
