@@ -1,0 +1,153 @@
+name: release-tag
+
+# decision-2026-10-20-trellis-delivers-rules-as-committed-files point 11: every
+# CLI release is tagged v<version> on the commit that set that version, and a pin
+# such as `npx github:kodhama/trellis#v0.25.0` always names reviewed, merged code.
+# The logic is scripts/release-tags.sh and the tag job's create step, which
+# cli/release_tags_test.go runs against stand-ins, and TestReleaseTagWorkflowShape
+# pins the properties below that keep tagging on main.
+#
+# Three jobs, so that a push with nothing to tag never touches the `release`
+# environment:
+#   plan    lists each version at or above the floor that has no tag yet
+#   tag     creates those tags, and only creates: a tag is never moved or deleted
+#   verify  fails when any version at or above the floor is untagged, tagged on
+#           a commit other than the one that set it, or back after main moved
+#           past it. It runs after `tag` whatever `tag` did, so a failed tag job
+#           still names what is missing.
+# A failed tag can be retried by re-running the run, or by dispatching the
+# workflow on main.
+#
+# NO CONCURRENCY GROUP. GitHub keeps one pending run per group and replaces it
+# with any newer one queued, `cancel-in-progress: false` or not. A re-run of an
+# old run could so take the place of a push's own run, and its checkout of the
+# old commit would never see that push's version. Each run instead plans, tags
+# and verifies the history of its own commit, so no run replaces another; runs
+# that overlap are safe because a tag another run created is the 422 case the
+# tag job handles. One push starts no run at all: GitHub skips push workflows
+# when the head commit's message holds [skip ci], [ci skip], [no ci],
+# [skip actions] or [actions skip], or ends with a skip-checks: true trailer. A
+# squash merge whose title or body carries one leaves its release untagged, with
+# nothing red, until the next push to main or a dispatch, which plans from
+# history and tags it.
+#
+# THE FLOOR. Both modes skip every version below TRELLIS_TAG_FLOOR. It is unset
+# until the CLI's first release (U9), so no plugin release before it is tagged,
+# and the merge that adds this file tags nothing. U9 sets it to its own version.
+#
+# WHO MAY TAG. GitHub Actions itself cannot be the bypass: GitHub's ruleset docs
+# list roles, teams, Apps and Dependabot as bypass actors, not Actions, and a
+# bypass belongs to an actor, not a branch, so any workflow on any branch could
+# use it. The bypass is a GitHub App whose key only a run on `main` can read.
+# These are repository settings the maintainer applies; no file carries them:
+#   - App: installed on this repository only, with Contents: read and write,
+#     Metadata: read, and no webhook. Its client ID is the `release` environment's
+#     variable RELEASE_APP_CLIENT_ID, and its private key is that environment's
+#     secret RELEASE_APP_PRIVATE_KEY, never a repository secret, which a workflow
+#     on any branch could read.
+#   - Environment `release`: deployment branches "Selected branches and tags",
+#     with the one rule branch `main` and no tag rule ("Protected branches only"
+#     would admit every protected branch), and no required reviewers.
+#   - Tag ruleset: targets refs/tags/v*, active, restricts creation, update and
+#     deletion, with the App as its only bypass, set to always.
+#   - Merge methods: squash only. A rebase merge lands a PR's commits one by one,
+#     so the commit that sets a version would be the PR's bump commit, not the
+#     merge commit R20 tags.
+#   - Branch ruleset "main protection" on `main`: require a pull request before
+#     merging, with 0 approvals; block force pushes; restrict deletions; no
+#     bypass actors. So every change to this workflow or to the version reaches
+#     main through a pull request, never a direct push, and the history the tags
+#     name is never rewritten.
+#   - Branch ruleset on refs/heads/v*: active, restricts creation, with no bypass
+#     actors. npm resolves a pin such as #v0.25.0 to a branch of that name while
+#     no tag has it, so no branch may take a release tag's name.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TRELLIS_TAG_FLOOR: ""
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.plan.outputs.tags }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: plan
+        run: |
+          set -eu
+          tags="$(scripts/release-tags.sh plan)"
+          {
+            echo "tags<<RELEASE_TAGS_EOF"
+            if [ -n "$tags" ]; then printf '%s\n' "$tags"; fi
+            echo "RELEASE_TAGS_EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$tags" ]; then printf 'to tag:\n%s\n' "$tags"; else echo "nothing to tag"; fi
+
+  tag:
+    needs: plan
+    if: needs.plan.outputs.tags != ''
+    runs-on: ubuntu-latest
+    environment: release
+    # The App's token does all the writing; this job's GITHUB_TOKEN gets nothing.
+    permissions: {}
+    steps:
+      - id: app
+        # Pinned by commit: this step holds the App's key. v3.2.0.
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+      - name: Create each missing tag
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          TAGS: ${{ needs.plan.outputs.tags }}
+        run: |
+          set -eu
+          printf '%s\n' "$TAGS" | while read -r tag commit; do
+            [ -n "$tag" ] || continue
+            if ! printf '%s %s\n' "$tag" "$commit" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+ [0-9a-f]{40}$'; then
+              echo "::error::plan listed \"$tag $commit\", which is not a v<X.Y.Z> tag on a full commit id"
+              exit 1
+            fi
+            # POST /git/refs only creates. Only a 422 can mean the tag appeared
+            # since `plan` ran, which is fine when it names the planned commit;
+            # any other failure fails the job. -i keeps the status line.
+            if response="$(gh api -i "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$commit")"; then
+              echo "created $tag on $commit"
+              continue
+            fi
+            status="$(printf '%s\n' "$response" | sed -n '1s/^HTTP\/[0-9.]* \([0-9][0-9]*\).*/\1/p')"
+            if [ "$status" != 422 ]; then
+              echo "::error::could not create $tag on $commit (HTTP ${status:-status unread})"
+              exit 1
+            fi
+            # An annotated tag's ref names the tag object, so read the commit it names.
+            existing="$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$tag" --jq .sha 2> /dev/null || true)"
+            if [ "$existing" = "$commit" ]; then
+              echo "$tag already names $commit"
+            else
+              echo "::error::could not create $tag on $commit (the tag names ${existing:-nothing})"
+              exit 1
+            fi
+          done
+
+  verify:
+    needs: [plan, tag]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: scripts/release-tags.sh verify

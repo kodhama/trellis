@@ -1,5 +1,6 @@
 {
   "name": "trellis-repository-quality",
+  "version": "0.24.8",
   "private": true,
   "scripts": {
     "check:go-format": "test -z \"$(gofmt -l cli/*.go)\"",
