@@ -14,8 +14,16 @@ name: release-tag
 #           a commit other than the one that set it, or back after main moved
 #           past it. It runs after `tag` whatever `tag` did, so a failed tag job
 #           still names what is missing.
-# A failed tag can be retried by re-running the workflow, or by dispatching it on
-# main when nothing else has landed since.
+# A failed tag can be retried by re-running the run, or by dispatching the
+# workflow on main.
+#
+# NO CONCURRENCY GROUP. GitHub keeps one pending run per group and replaces it
+# with any newer one queued, `cancel-in-progress: false` or not. A re-run of an
+# old run could so take the place of a push's own run, and its checkout of the
+# old commit would never see that push's version. Each run instead plans, tags
+# and verifies the history of its own commit, so no push's run is ever dropped;
+# runs that overlap are safe because a tag another run created is the 422 case
+# the tag job handles.
 #
 # THE FLOOR. Both modes skip every version below TRELLIS_TAG_FLOOR. It is unset
 # until the CLI's first release (U9), so no plugin release before it is tagged,
@@ -45,10 +53,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: release-tag-${{ github.ref }}
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
@@ -61,7 +65,7 @@ jobs:
     outputs:
       tags: ${{ steps.plan.outputs.tags }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: plan
@@ -80,6 +84,8 @@ jobs:
     if: needs.plan.outputs.tags != ''
     runs-on: ubuntu-latest
     environment: release
+    # The App's token does all the writing; this job's GITHUB_TOKEN gets nothing.
+    permissions: {}
     steps:
       - id: app
         # Pinned by commit: this step holds the App's key. v3.2.0.
@@ -127,7 +133,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - run: scripts/release-tags.sh verify

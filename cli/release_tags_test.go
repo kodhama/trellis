@@ -386,8 +386,37 @@ func TestReleaseTagWorkflowShape(t *testing.T) {
 	if !strings.Contains(top, "\npermissions:\n  contents: read\n") {
 		t.Error("release-tag's token must be read-only; only the App's token writes")
 	}
-	if !strings.Contains(top, "group: release-tag-${{ github.ref }}") || !strings.Contains(top, "cancel-in-progress: false") {
-		t.Error("release-tag runs must queue per ref, never cancel one another")
+	// A job-level grant would widen the token for that job alone, so no line
+	// outside a comment may grant write, except the App token's own input.
+	for _, line := range strings.Split(workflow, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "#") && regexp.MustCompile(`\bwrite\b`).MatchString(line) && line != "permission-contents: write" {
+			t.Errorf("only the App's token may write, but release-tag.yml has %q", line)
+		}
+	}
+	if !strings.Contains(tag, "\n    permissions: {}\n") {
+		t.Error("the tag job's GITHUB_TOKEN must get no permissions; the App's token does the writing")
+	}
+	// GitHub replaces a concurrency group's pending run with any newer one, so
+	// a re-run of an old run could drop a push's own run and its version.
+	if strings.Contains(workflow, "concurrency:") {
+		t.Error("release-tag runs must not share a concurrency group, which can drop a push's run")
+	}
+	// plan's output decides what the App tags, and verify is the check that
+	// fails, so neither may run an action that can change under the same name.
+	uses := regexp.MustCompile(`(?m)^\s*(- )?uses: .*$`).FindAllString(workflow, -1)
+	pinned := regexp.MustCompile(`uses: [\w./-]+@[0-9a-f]{40}( # v[0-9.]+)?$`)
+	if len(uses) != 3 {
+		t.Errorf("release-tag.yml should use 3 actions (two checkouts and the App token), found %d", len(uses))
+	}
+	for _, line := range uses {
+		if !pinned.MatchString(line) {
+			t.Errorf("every action in release-tag must be pinned by commit, but found %q", strings.TrimSpace(line))
+		}
+	}
+	// A failed verify must fail the run.
+	if strings.Contains(workflow, "continue-on-error") {
+		t.Error("no release-tag step or job may continue on error")
 	}
 	// Every push before the CLI's first release has nothing to tag, and this guard
 	// keeps those pushes out of the release environment.

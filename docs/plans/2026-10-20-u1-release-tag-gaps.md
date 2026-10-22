@@ -54,14 +54,14 @@ The story lead settled KTD1–KTD6. Each was checked against the repo at `02ccc5
   - *Checked:* `scripts/` exists, and `npm run lint:shell` already shellchecks `scripts/*.sh` in CI. **Flag:** `sort -V` is not POSIX. GNU `sort` on `ubuntu-latest` has it, and so does macOS `sort` (run locally), so the script is POSIX syntax plus one extension that the repo already uses.
   - *Checked:* KTD14 says the tagged commit is "the last commit to change `package.json`'s `version`". That is the same commit as KTD1's first appearance unless a version repeats. `release-guard` refuses a non-newer VERSION only on a PR that changes the payload, so a repeat is possible.
   - Gap added: a version at or above the floor that comes back after a different version makes `verify` fail, naming the version, both commits that set it and the way out: a fresh version, and a floor raised past the repeated one, so no tag moves. `plan` notes the repeat on stderr and still lists the releases after it, so one repeat does not stop later tags (the story's review found that failing `plan` too blocked every later release).
-- KTD2. **`.github/workflows/release-tag.yml` has three jobs: `plan`, `tag` and `verify`.** It runs on push to `main`, in one concurrency group with `cancel-in-progress: false`.
+- KTD2. **`.github/workflows/release-tag.yml` has three jobs: `plan`, `tag` and `verify`.** It runs on push to `main`, with no concurrency group.
   - `plan` runs with `contents: read` and runs `plan`.
   - `tag` needs `plan` and runs only when `plan`'s output is non-empty. It uses `environment: release`. It mints an installation token with `actions/create-github-app-token` from `vars.RELEASE_APP_CLIENT_ID` (v3 of the action deprecates `app-id` for `client-id`) and `secrets.RELEASE_APP_PRIVATE_KEY`. It creates each tag with `POST /repos/{owner}/{repo}/git/refs`, which only creates and never moves a tag.
   - `verify` needs `[plan, tag]`, runs under `if: always()`, and runs `verify`.
   - While the floor is empty, `tag` never runs, so no run references `release` or records a deployment.
   - *Checked:* `cli-ci.yml` checks out with the default depth of 1 (`actions/checkout@v7`, no `fetch-depth`). `plan` and `verify` each need `fetch-depth: 0`, so that they see every commit and every tag. `verify` checks out fresh after `tag`, which is how it sees the new tags.
-  - *Checked:* GitHub keeps one pending run per concurrency group and replaces any older pending run. That is safe here, because each run plans every version since the floor.
-  - Gap added: the workflow also takes `workflow_dispatch`, so a failed tag can be retried when nothing else lands on `main`. A dispatch from another branch cannot tag, because `release` deploys only from `main`. The concurrency group includes `github.ref`, so such a dispatch cannot replace a pending run on `main`.
+  - *Checked:* GitHub keeps one pending run per concurrency group and replaces it with any newer one queued, even with `cancel-in-progress: false`. That is not safe here: a re-run of an old run can replace a push's pending run, and its checkout of the old commit never sees that push's version, so the version stays untagged with nothing failing (the lead's re-review, round 1). Without a group, every push's run runs; overlapping runs are safe because a tag another run created is the 422 case below.
+  - Gap added: the workflow also takes `workflow_dispatch`, so a failed tag can be retried. A dispatch from another branch cannot tag, because `release` deploys only from `main`.
   - Gap added: when the `POST` returns 422 because the tag already exists, `tag` reads the ref. It succeeds if the tag names the planned commit and fails naming both commits if not. Any other response that is not 201 fails. A re-run of an old run can hit the 422 case.
 - KTD3. **The ruleset's only bypass is a GitHub App, not GitHub Actions.**
   - *Fact:* GitHub's ruleset docs list repository admins and owners, the maintain and write roles, teams (excluding secret teams), GitHub Apps and Dependabot as bypass actors. GitHub Actions is not in that list (fetched 2026-10-20, "Creating rulesets for a repository").
@@ -170,7 +170,8 @@ flowchart TB
   - `tag` creates refs with a `POST` to `git/refs`, and the file contains no `PATCH`, no `DELETE` and no `force`.
   - The `plan` and `verify` checkouts set `fetch-depth: 0`.
   - `verify` declares `needs: [plan, tag]` and `if: always()`.
-  - The concurrency group includes `github.ref` and sets `cancel-in-progress: false`.
+  - The workflow has no concurrency group.
+  - Every action is pinned by commit, no line grants the GITHUB_TOKEN write, `tag` sets `permissions: {}`, and nothing sets `continue-on-error` (the lead's re-review, round 1).
 - **Approach:**
   1. The header comment carries KTD7's settings:
      - **App:** installed on this repository only, with Contents: read and write, Metadata: read, and no webhook.
