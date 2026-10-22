@@ -47,6 +47,9 @@ name: release-tag
 #   - Merge methods: squash only. A rebase merge lands a PR's commits one by one,
 #     so the commit that sets a version would be the PR's bump commit, not the
 #     merge commit R20 tags.
+#   - Branch ruleset "main protection" on `main`: require a pull request before
+#     merging, with 0 approvals, so every change to this workflow or to the
+#     version reaches main through a pull request, never a direct push.
 
 on:
   push:
