@@ -165,18 +165,19 @@ and CI (`decision-0075`).
   `fix/…`. Since the Linear migration, `feature/*` branches also carry the issue key
   (`feature/trl-22-…`), so **whether a branch is findable by issue number depends on its category**:
   all three current `feature/*` branches are, no `decision/*` branch is.
-- **Grove the supervision plugin is declared; the old grove fleet stays retired.**
-  `.claude/settings.json` enables `grove@grove` from the `kodhama/grove` marketplace, whose
-  `grove:project-lead` and `grove:story-worker` skills run supervised work. The declaration reaches
-  local Claude Code sessions (`plugins/trellis/README.md`); Codex needs a user-level install. Their
-  bindings and handoffs go to the gitignored `.context/supervision/`. The `grove@kodhama`
-  plugin that `decision-0076` retired stays retired, with its `grove:<role>` subagent types,
-  the commands it shipped and `.grove/`; `grove@grove` ships skills and no subagent types. A
-  test fails if `grove@kodhama` returns to `.claude/settings.json`. Citations to
+- **Grove's supervision skills are installed per user, not declared here; the old grove fleet
+  stays retired.** This repository declares no grove plugin. The kodhama CLI installs grove's
+  skills at user scope, as unprefixed folders under `~/.claude/skills/` for Claude Code and
+  `~/.agents/skills/` for Codex, each marked by a `.kodhama-skill.json` naming `grove` as its
+  tool. Their `project-lead` and `story-worker` skills run supervised work, and their bindings and
+  handoffs go to the gitignored `.context/supervision/`. The `grove@kodhama` plugin that
+  `decision-0076` retired stays retired, with its `grove:<role>` subagent types, the commands it
+  shipped and `.grove/`; the user-scope install ships skills and no subagent types. A test fails
+  if `grove@kodhama` returns to `.claude/settings.json`. Citations to
   **grove-the-repo** (`grove/adr-00NN`, `grove#NN`) name the original grove repository, archived as
-  `kodhama/grove-v0`, not the plugin's `kodhama/grove`. They are a different thing and remain
-  live and load-bearing — `decision-0045` is superseded in part by `grove/adr-0010`. Do not
-  "clean up" those.
+  `kodhama/grove-v0`, not `kodhama/grove`, where the supervision skills now live. They are a
+  different thing and remain live and load-bearing — `decision-0045` is superseded in part by
+  `grove/adr-0010`. Do not "clean up" those.
 
 ## Maintaining project instructions
 
