@@ -38,6 +38,8 @@ date: 2026-07-24
 > artifact; and *"Future surface tests can add bounded rows or observations"* —
 > they cannot, because no row remains to add to.
 
+> **Dated note, 2026-10-20 — TRL-119 (PR #341):** Six phrases no longer hold for Trellis's own releases: "synchronized bump" and "tag workflow" in the Decision state's "No family release, synchronized bump, tag workflow … returns"; the tag in §1's "It does not restore a release channel, auto-update mechanism, or tag"; and "immutable tag", "release workflow" and "synchronized version or bump policy" in §5's "Trellis adds no" list. `decision-2026-10-20-trellis-delivers-rules-as-committed-files` point 11 lifts them. `package.json`'s `version` and `VERSION` now hold one number, which `TestPluginPackageParity` in `cli/plugin_package_test.go` enforces, and `.github/workflows/release-tag.yml` creates and checks the `v<version>` tags at or above a floor committed in that file. `AGENTS.md`'s release rule states the current behaviour. The rest of those lists still stands, a family release, a release record and a GitHub Release among them.
+
 ## Decision state
 
 **Decided** (maintainer, 2026-07-24):

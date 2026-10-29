@@ -132,7 +132,7 @@ occurrences of the field names AC6 forbids — `:59`, `:212`, `:218`, `:312`.
 
 ### 5. `VERSION` stays `0.2.0`, and that is a judgment
 
-`decision-0061:200-201`: *"A package change now requires an intentional
+`decision-0061:231-232`: *"A package change now requires an intentional
 Trellis-local SemVer update; this decision does not automate or centrally dictate
 that judgment."* Removing a file from the shipped bundle and editing the shipped
 README **is** a package change, so two different byte-sets would ship as `0.2.0`.
@@ -148,26 +148,26 @@ rather than to prefer it. Named rather than left silent, so it can be overruled.
 
 ## Supersession
 
-**`decision-0061` §3 and §4 — superseded in part.** §3 (`:97-147`) authorized
-`surfaces.json` and its closed row shape. §4 (`:149-166`) lists what the parity
-guard validates. **Three of its six bullets are matrix-only and go** — `:155`
-*"`surfaces.json.version` equality and its closed row shape"*, `:156` *"unique,
-valid surface identifiers and allowed states"*, and `:157` *"every present
-marketplace observation's closed structure and row match"*. `:156` is easy to
+**`decision-0061` §3 and §4 — superseded in part.** §3 (`:128-178`) authorized
+`surfaces.json` and its closed row shape. §4 (`:180-197`) lists what the parity
+guard validates. **Three of its six bullets are matrix-only and go** — `:186`
+*"`surfaces.json.version` equality and its closed row shape"*, `:187` *"unique,
+valid surface identifiers and allowed states"*, and `:188` *"every present
+marketplace observation's closed structure and row match"*. `:187` is easy to
 miss and is not a near-miss: "surface identifiers" and "allowed states" are
-`surface_id` and `behavior_state`, defined at `0061:119-121`, which the host
+`surface_id` and `behavior_state`, defined at `0061:150-152`, which the host
 manifests do not have; its implementation is `validateInitialSurfaceRows`
 (`cli/plugin_package_test.go:261-306`), which dies with the file. The other
 three — `VERSION` as canonical SemVer, cross-manifest identity and version
 equality, and manifest-declared path existence — stand.
 
-**§1 (`:68-84`), §2 (`:86-95`) and §5 (`:168-187`) stand unchanged**: independent
+**§1 (`:99-115`), §2 (`:117-126`) and §5 (`:199-218`) stand unchanged**: independent
 package SemVer, the two host manifests, and their parity are untouched.
 
-**`0061`'s Consequences (`:189-201`) are historical narration and are not
+**`0061`'s Consequences (`:220-232`) are historical narration and are not
 amended**, per the append-only rule — but two bullets read false after this
-change and a reader should be told which: `:194-195` *"Surface facts have one
-small product-owned home"* (that home becomes the README) and `:198-199`
+change and a reader should be told which: `:225-226` *"Surface facts have one
+small product-owned home"* (that home becomes the README) and `:229-230`
 *"Future surface tests can add bounded rows or observations"* (they cannot; no
 row remains to add to). The prose forward pointer AC7 requires names both.
 `docs/decisions/0061-independent-dual-host-plugin-package.md` gains
@@ -192,7 +192,7 @@ so a stale row is a live spec defect. `specs/0005-curl-install-mechanical-vendor
 gains `superseded_in_part_by: [decision-0066]`.
 
 **`decision-0059` and `spec-0008` need nothing.** Both are `status: superseded`
-with `superseded_by: [decision-0060]`, and `decision-0061:185-187` already
+with `superseded_by: [decision-0060]`, and `decision-0061:216-218` already
 declares *"Superseded `decision-0059` and `spec-0008` remain historical and
 authorize nothing."* Their many `surfaces.json` references are inert archive.
 
